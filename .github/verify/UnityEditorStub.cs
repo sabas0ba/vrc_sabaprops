@@ -104,6 +104,14 @@ namespace UnityEditor
         public static GUIStyle label => null;
     }
 
+    public static class ShaderUtil
+    {
+        public static bool ShaderHasError(Shader s) => false;
+        public static int GetShaderMessageCount(Shader s) => 0;
+        public static UnityEditor.Rendering.ShaderMessage[] GetShaderMessages(Shader s) =>
+            new UnityEditor.Rendering.ShaderMessage[0];
+    }
+
     public static class EditorGUIUtility
     {
         public static void PingObject(UnityEngine.Object obj) { }
@@ -261,5 +269,64 @@ namespace UnityEditor.SceneManagement
     public static class EditorSceneManager
     {
         public static bool MarkSceneDirty(Scene scene) => false;
+    }
+}
+
+namespace UnityEditor.Rendering
+{
+    public struct ShaderMessage
+    {
+        public string message { get; }
+        public string messageDetails { get; }
+        public string file { get; }
+        public int line { get; }
+    }
+}
+
+// Enough NUnit to compile-check the CI project's EditMode tests offline. The
+// real assertions run inside Unity via the Unity workflow.
+namespace NUnit.Framework
+{
+    [AttributeUsage(AttributeTargets.Method)]
+    public sealed class TestAttribute : Attribute { }
+
+    [AttributeUsage(AttributeTargets.Method)]
+    public sealed class SetUpAttribute : Attribute { }
+
+    [AttributeUsage(AttributeTargets.Method)]
+    public sealed class TearDownAttribute : Attribute { }
+
+    [AttributeUsage(AttributeTargets.Method)]
+    public sealed class OneTimeSetUpAttribute : Attribute { }
+
+    [AttributeUsage(AttributeTargets.Method)]
+    public sealed class OneTimeTearDownAttribute : Attribute { }
+
+    public static class Assert
+    {
+        public static void Fail(string message) { }
+
+        public static void IsNull(object value) { }
+        public static void IsNull(object value, string message) { }
+        public static void IsNotNull(object value) { }
+        public static void IsNotNull(object value, string message) { }
+
+        public static void IsTrue(bool condition) { }
+        public static void IsTrue(bool condition, string message) { }
+        public static void IsFalse(bool condition) { }
+        public static void IsFalse(bool condition, string message) { }
+
+        public static void AreEqual(object expected, object actual) { }
+        public static void AreEqual(object expected, object actual, string message) { }
+        public static void AreEqual(double expected, double actual, double delta) { }
+        public static void AreEqual(double expected, double actual, double delta, string message) { }
+
+        public static void AreSame(object expected, object actual) { }
+        public static void AreSame(object expected, object actual, string message) { }
+
+        public static void Greater(double arg1, double arg2) { }
+        public static void Greater(double arg1, double arg2, string message) { }
+        public static void Less(double arg1, double arg2) { }
+        public static void Less(double arg1, double arg2, string message) { }
     }
 }

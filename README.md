@@ -126,9 +126,47 @@ Actions から `Build VPM Listing` を `workflow_dispatch` で実行してくだ
   生成されたバリアントがコンパイルできるかは検証していません。チェックしているのは
   シェーダー自身のコード（`vert` / `surf` / ライティング関数と `SabaFoliageCore.cginc`）だけです。
 
-この 2 つを埋めるには実物の Unity が必要です。GameCI（`game-ci/unity-builder`）を使えば
-GitHub Actions 上で実際に Unity をまわせますが、リポジトリシークレットに Unity のライセンス
-（`UNITY_EMAIL` / `UNITY_PASSWORD` / `UNITY_LICENSE`）を登録する必要があります。
+この 2 つは下の `Unity` ワークフローが埋めます。
+
+---
+
+## 検証 (実物の Unity)
+
+`Unity` ワークフローが、GameCI 経由で実際の Unity Editor 上でパッケージをコンパイルし、
+EditMode テストを実行します。オフライン検証では届かない部分を担当します。
+
+| テスト | 内容 |
+| --- | --- |
+| `Shader_CompilesWithoutErrors` | `ShaderUtil.ShaderHasError` でサーフェスシェーダーの生成とコンパイルを確認。**シェーダーのギャップはここで埋まります** |
+| `DefaultMaterial_UsesFoliageShaderWithInstancing` | 既定マテリアルのシェーダーと GPU Instancing フラグ |
+| `GrassClump_TopologyMatchesParameters` | 頂点数・三角形数がパラメータから導かれる値と一致するか |
+| `Sunflower_IsWellFormedAndCheap` | NaN・法線・UV3・バウンディング、および三角形数の上限 |
+| `SameSeedProducesIdenticalGeometry` | メッシュ生成の決定性 |
+| `GpuInstanced_CreatesOneRendererPerInstance` | 実際に地面へ配置し、全個体が単一メッシュを共有しているか |
+| `MergedChunks_CollapsesRenderersIntoChunks` | 結合後の Renderer 数と UV3 の保持 |
+| `Clear_RemovesEverythingItGenerated` | Clear の後始末 |
+| `Build_IsDeterministicForAGivenSeed` | 同じシードで同じ配置になるか |
+
+エディタコード全体が実物の Unity でコンパイルされるため、**UnityEditor の API シグネチャの
+ギャップもここで埋まります**。
+
+### 必要なシークレット
+
+Unity のライセンスをリポジトリの Secrets に登録してください。
+未設定の場合、このジョブは何もせず成功扱いになります（フォークからの PR をブロックしないため）。
+
+| Secret | 内容 |
+| --- | --- |
+| `UNITY_EMAIL` | Unity ID のメールアドレス |
+| `UNITY_PASSWORD` | Unity ID のパスワード |
+| `UNITY_LICENSE` | Personal ライセンスの `Unity_v20XX.ulf` の中身をそのまま |
+| `UNITY_SERIAL` | Plus / Pro の場合は `UNITY_LICENSE` の代わりにこちら |
+
+`.ulf` の取得手順は [GameCI の Activation ドキュメント](https://game.ci/docs/github/activation) を参照してください。
+
+CI 用の Unity プロジェクトは `.github/verify/CIProject/` にあります。ワークフローがこれをコピーし、
+`Packages/com.sabaprops.foliage` を embedded package として配置してから Unity を起動します。
+Unity のバージョンは `.github/verify/CIProject/ProjectSettings/ProjectVersion.txt` で決まります。
 
 ---
 

@@ -122,6 +122,28 @@ csc "${COMMON[@]}" "${BCL[@]}" "${UNITY_ARGS[@]}" \
 echo "ok: ${#EDITOR_SOURCES[@]} file(s)"
 
 # ---------------------------------------------------------------------------
+log "Compiling CI EditMode tests"
+# ---------------------------------------------------------------------------
+# These run for real inside Unity via .github/workflows/unity.yml. Compiling
+# them here catches typos long before a Unity runner is spun up.
+TEST_DIR="$HERE/CIProject/Assets/Tests"
+if [ -d "$TEST_DIR" ]; then
+    mapfile -t TEST_SOURCES < <(find "$TEST_DIR" -name '*.cs' | sort)
+    if [ "${#TEST_SOURCES[@]}" -gt 0 ]; then
+        csc "${COMMON[@]}" "${BCL[@]}" "${UNITY_ARGS[@]}" \
+            -r:"$OUT/SabaProps.Foliage.Runtime.dll" \
+            -r:"$OUT/SabaProps.Foliage.Editor.dll" \
+            -r:"$OUT/UnityEditor.dll" \
+            -out:"$OUT/SabaProps.Foliage.CITests.dll" "${TEST_SOURCES[@]}"
+        echo "ok: ${#TEST_SOURCES[@]} file(s)"
+    else
+        echo "skipped: no test sources"
+    fi
+else
+    echo "skipped: no CI project"
+fi
+
+# ---------------------------------------------------------------------------
 log "Type-checking shader HLSL"
 # ---------------------------------------------------------------------------
 SHADER_DIR="$PACKAGE/Runtime/Shaders"
