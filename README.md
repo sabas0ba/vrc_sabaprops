@@ -97,6 +97,41 @@ Actions から `Build VPM Listing` を `workflow_dispatch` で実行してくだ
 
 ---
 
+## 検証 (CI)
+
+`Verify` ワークフローが PR と main への push で走ります。ローカルでも同じものを実行できます。
+
+```bash
+./.github/verify/verify.sh
+```
+
+必要なもの: .NET SDK 8+, `glslangValidator` (`apt install glslang-tools`), curl, unzip, python3。
+初回は参照アセンブリをダウンロードするため数分かかります（`.verify/` にキャッシュされます）。
+
+### 検証できること
+
+| 対象 | 内容 |
+| --- | --- |
+| Runtime アセンブリ | **実物の UnityEngine 参照アセンブリ**（Unity が NuGet で配布している `UnityEngine.Modules`）に対してコンパイル |
+| Editor アセンブリ | コンパイル。UnityEngine の API 使用は実物に対して検証されます |
+| シェーダー | `shader_feature` の全 4 組み合わせで HLSL として型チェック |
+| マニフェスト | `package.json` の必須項目、フォルダ名との一致、CHANGELOG のバージョン記載、`source.json` への登録、`.meta` の欠落 |
+
+### 検証できないこと
+
+- **UnityEditor の API シグネチャ。** `UnityEditor.dll` は再配布できないため、
+  `.github/verify/UnityEditorStub.cs` が手書きのスタブとして代役を務めています。
+  スタブと実装が同じ勘違いをしていれば、このチェックは通ってしまいます。
+- **サーフェスシェーダーの生成結果。** `#pragma surface` の設定を Unity が受け付けるか、
+  生成されたバリアントがコンパイルできるかは検証していません。チェックしているのは
+  シェーダー自身のコード（`vert` / `surf` / ライティング関数と `SabaFoliageCore.cginc`）だけです。
+
+この 2 つを埋めるには実物の Unity が必要です。GameCI（`game-ci/unity-builder`）を使えば
+GitHub Actions 上で実際に Unity をまわせますが、リポジトリシークレットに Unity のライセンス
+（`UNITY_EMAIL` / `UNITY_PASSWORD` / `UNITY_LICENSE`）を登録する必要があります。
+
+---
+
 ## ライセンス
 
 MIT License. 詳細は [LICENSE](LICENSE) を参照してください。

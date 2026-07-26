@@ -1,0 +1,42 @@
+name: Verify
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: verify-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  compile:
+    name: Compile and validate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Install glslang
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq glslang-tools
+
+      # The reference assemblies never change for a given pin, so a cache hit
+      # makes the whole job network-independent.
+      - name: Cache reference assemblies
+        uses: actions/cache@v4
+        with:
+          path: .verify/refs
+          key: unity-refs-2021.3.33-netfx-1.0.3
+
+      - name: Verify package
+        run: ./.github/verify/verify.sh

@@ -79,3 +79,6 @@ desktop.ini
 # ---------------------------------------------------------------------------
 __pycache__/
 *.py[cod]
+
+# Local output of .github/verify/verify.sh
+.verify/
