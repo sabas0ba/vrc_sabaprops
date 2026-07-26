@@ -1,0 +1,56 @@
+name: Build VPM Listing
+
+on:
+  workflow_dispatch:
+  workflow_call:
+  push:
+    branches:
+      - main
+    paths:
+      - "source.json"
+      - "Website/**"
+      - ".github/scripts/build_listing.py"
+      - ".github/workflows/build-listing.yml"
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Never let two Pages deployments race; queue them instead of cancelling, so a
+# release triggered listing is not dropped by a later docs push.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Generate index.json
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python3 .github/scripts/build_listing.py \
+            --source source.json \
+            --output Website/index.json
+          cat Website/index.json
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: Website
+
+      - name: Deploy to GitHub Pages
+        id: deploy
+        uses: actions/deploy-pages@v4
