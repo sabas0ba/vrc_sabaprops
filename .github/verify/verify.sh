@@ -62,6 +62,11 @@ fetch_nupkg() {
 fetch_nupkg unityengine.modules "$UNITY_REFS_VERSION" "$REFS/unity"
 fetch_nupkg microsoft.netframework.referenceassemblies.net472 "$NETFX_REFS_VERSION" "$REFS/netfx"
 
+# UnityEngine.Modules stores its entries with mode 000, and unzip faithfully
+# reproduces that. Root does not care, an ordinary CI user cannot read a single
+# DLL. Applied outside fetch_nupkg so a restored cache is fixed up too.
+chmod -R u+rwX "$REFS"
+
 UNITY_DIR="$REFS/unity/lib/net35"
 NETFX_DIR="$REFS/netfx/build/.NETFramework/v4.7.2"
 
