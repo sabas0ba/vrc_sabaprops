@@ -60,6 +60,15 @@ host_path() {
 
 RUN_ARGS=(--rm -v "$(host_path "$REPO"):/repo" -w /repo)
 
+# No network unless the caller asks for it. Only build_listing.py talks to the
+# GitHub API; the rest read and write local files. Denying the socket by
+# default means the step that carries a token is the only step that could send
+# one anywhere, which is a smaller thing to reason about than trusting every
+# step not to.
+if [ "${CONTAINER_NETWORK:-none}" = "none" ]; then
+    RUN_ARGS+=(--network=none)
+fi
+
 # Who the container writes as, which decides whether the files it leaves in the
 # work tree belong to the caller.
 #
