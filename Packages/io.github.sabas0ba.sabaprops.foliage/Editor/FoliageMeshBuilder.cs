@@ -21,20 +21,49 @@ namespace SabaProps.Foliage.Editors
                 return null;
             }
 
+            BuiltMesh built = BuildBuffer(species);
+
+            // Every species reaches the season pass through here, so a new
+            // generator gets all four seasons without knowing they exist.
+            FoliageSeasonPass.Apply(built.Buffer, species.ActiveSeasonTint);
+
+            return built.ToMesh();
+        }
+
+        private static BuiltMesh BuildBuffer(FoliageSpecies species)
+        {
             switch (species.kind)
             {
                 case FoliageSpeciesKind.Sunflower:
-                    return BuildSunflower(species.sunflower, species.meshSeed);
+                    return BuildSunflowerBuffer(species.sunflower, species.meshSeed);
 
                 case FoliageSpeciesKind.Clover:
-                    return BuildClover(species.clover, species.meshSeed);
+                    return BuildCloverBuffer(species.clover, species.meshSeed);
 
                 case FoliageSpeciesKind.Reed:
-                    return BuildReed(species.reed, species.meshSeed);
+                    return BuildReedBuffer(species.reed, species.meshSeed);
 
                 case FoliageSpeciesKind.GrassClump:
                 default:
-                    return BuildGrassClump(species.grass, species.meshSeed);
+                    return BuildGrassClumpBuffer(species.grass, species.meshSeed);
+            }
+        }
+
+        /// <summary>
+        /// A finished buffer together with the name and bounds padding it bakes
+        /// with. Generators stop one step short of a mesh so that passes which
+        /// need per-vertex data the mesh does not carry — the season pass and its
+        /// weights — can still run.
+        /// </summary>
+        private struct BuiltMesh
+        {
+            public FoliageMeshBuffer Buffer;
+            public string Name;
+            public float BoundsPadding;
+
+            public Mesh ToMesh()
+            {
+                return Buffer.ToMesh(Name, BoundsPadding);
             }
         }
 
@@ -57,6 +86,11 @@ namespace SabaProps.Foliage.Editors
         // ------------------------------------------------------------------
 
         public static Mesh BuildGrassClump(GrassParams p, int seed)
+        {
+            return BuildGrassClumpBuffer(p, seed).ToMesh();
+        }
+
+        private static BuiltMesh BuildGrassClumpBuffer(GrassParams p, int seed)
         {
             var rng = new FoliageRandom(seed);
             var buffer = new FoliageMeshBuffer();
@@ -99,7 +133,12 @@ namespace SabaProps.Foliage.Editors
                 tallest = Mathf.Max(tallest, height);
             }
 
-            return buffer.ToMesh("SabaFoliage_GrassClump", tallest * 0.35f);
+            return new BuiltMesh
+            {
+                Buffer = buffer,
+                Name = "SabaFoliage_GrassClump",
+                BoundsPadding = tallest * 0.35f,
+            };
         }
 
         private static void AddBlade(
@@ -182,6 +221,11 @@ namespace SabaProps.Foliage.Editors
 
         public static Mesh BuildSunflower(SunflowerParams p, int seed)
         {
+            return BuildSunflowerBuffer(p, seed).ToMesh();
+        }
+
+        private static BuiltMesh BuildSunflowerBuffer(SunflowerParams p, int seed)
+        {
             var rng = new FoliageRandom(seed);
             var buffer = new FoliageMeshBuffer();
 
@@ -201,7 +245,12 @@ namespace SabaProps.Foliage.Editors
             AddLeaves(buffer, p, ref rng, leanDir, height, lean, plantSeed);
             AddHead(buffer, p, ref rng, leanDir, height, lean, plantSeed);
 
-            return buffer.ToMesh("SabaFoliage_Sunflower", height * 0.3f);
+            return new BuiltMesh
+            {
+                Buffer = buffer,
+                Name = "SabaFoliage_Sunflower",
+                BoundsPadding = height * 0.3f,
+            };
         }
 
         private static Vector3 StemPoint(Vector3 leanDir, float height, float lean, float t)
@@ -361,6 +410,11 @@ namespace SabaProps.Foliage.Editors
             var petalTipData = new Vector4(0f, 0f, 0f, petalTip);
 
             // --- disc -------------------------------------------------------
+            // The disc is already a dead brown, so a season has little left to
+            // do to it; letting it turn as far as a leaf only muddies the
+            // contrast against the petals.
+            buffer.SeasonWeight = 0.55f;
+
             Color centerColor = p.headColor;
             centerColor.a = plantSeed;
 
@@ -389,6 +443,11 @@ namespace SabaProps.Foliage.Editors
             }
 
             // --- petals -----------------------------------------------------
+            // Petals hold most of their own colour through the year. A sunflower
+            // whose petals bleach to straw along with the grass around it is no
+            // longer identifiable as one.
+            buffer.SeasonWeight = 0.3f;
+
             int petalCount = Mathf.Max(4, p.petalCount);
             float innerRadius = p.headRadius * 0.85f;
             float outerRadius = p.headRadius + p.petalLength;
@@ -431,6 +490,8 @@ namespace SabaProps.Foliage.Editors
                 buffer.AddQuad(innerLeft, innerRight, outerRight, outerLeft);
                 buffer.AddTriangle(outerLeft, outerRight, tipIndex);
             }
+
+            buffer.SeasonWeight = 1f;
         }
 
         // ------------------------------------------------------------------
@@ -438,6 +499,11 @@ namespace SabaProps.Foliage.Editors
         // ------------------------------------------------------------------
 
         public static Mesh BuildClover(CloverParams p, int seed)
+        {
+            return BuildCloverBuffer(p, seed).ToMesh();
+        }
+
+        private static BuiltMesh BuildCloverBuffer(CloverParams p, int seed)
         {
             var rng = new FoliageRandom(seed);
             var buffer = new FoliageMeshBuffer();
@@ -478,7 +544,12 @@ namespace SabaProps.Foliage.Editors
                 AddCloverLeaflet(buffer, p, top, outward, side, length, halfWidth, droop, leaf, rim, rootData);
             }
 
-            return buffer.ToMesh("SabaFoliage_Clover", height * 0.4f);
+            return new BuiltMesh
+            {
+                Buffer = buffer,
+                Name = "SabaFoliage_Clover",
+                BoundsPadding = height * 0.4f,
+            };
         }
 
         private static void AddCloverStem(
@@ -555,6 +626,11 @@ namespace SabaProps.Foliage.Editors
 
         public static Mesh BuildReed(ReedParams p, int seed)
         {
+            return BuildReedBuffer(p, seed).ToMesh();
+        }
+
+        private static BuiltMesh BuildReedBuffer(ReedParams p, int seed)
+        {
             var rng = new FoliageRandom(seed);
             var buffer = new FoliageMeshBuffer();
 
@@ -608,7 +684,12 @@ namespace SabaProps.Foliage.Editors
                 AddReedSpike(buffer, p, tallestTop, tallestDir, tallestRoot, tallestSeed);
             }
 
-            return buffer.ToMesh("SabaFoliage_Reed", tallest * 0.35f);
+            return new BuiltMesh
+            {
+                Buffer = buffer,
+                Name = "SabaFoliage_Reed",
+                BoundsPadding = tallest * 0.35f,
+            };
         }
 
         private static void AddReedSpike(
@@ -627,6 +708,9 @@ namespace SabaProps.Foliage.Editors
 
             Color color = p.spikeColor;
             color.a = elementSeed;
+
+            // A seed head is the same brown whatever the month.
+            buffer.SeasonWeight = 0.5f;
 
             foreach (Vector3 side in axes)
             {
@@ -651,6 +735,8 @@ namespace SabaProps.Foliage.Editors
                 buffer.AddQuad(baseLeft, baseRight, midRight, midLeft);
                 buffer.AddTriangle(midLeft, midRight, tipIndex);
             }
+
+            buffer.SeasonWeight = 1f;
         }
 
         // ------------------------------------------------------------------

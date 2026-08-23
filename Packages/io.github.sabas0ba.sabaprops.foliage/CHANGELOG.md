@@ -6,6 +6,24 @@
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-08-23
+
+### Added
+
+- `Season`: 春夏秋冬の色をメッシュ生成時に頂点カラーへ焼き込みます。実行時のコストはありません
+  - 寄せ方（目標色・寄せる割合・彩度・明度）は Species ごとに `Season Palette` として持ちます。
+    同じ秋でも種ごとに違う枯れ方をさせられます
+  - `Summer` は何も変えません。既存の Species アセットは `Summer` として読み込まれるため、
+    生成されるメッシュはこれまでと同一です
+  - 花弁など、季節が変わっても色を保つべき部位は生成側で効き方を弱めています
+    （ひまわりの花弁 30 %、花芯 55 %、葦の穂 50 %）
+- サンプルシーンにセクション 6 `Seasons` を追加しました。種・比率・シードが共通で、季節だけが違う 4 区画です
+- [拡充ロードマップ](Documentation~/roadmap.md): 種と樹木、ツタまでの計画と、その過程での設計上の線引きを記録しています
+
+### Changed
+
+- サンプルシーンの地面を、追加した 6 番目の区画列まで届くように広げました
+
 ## [0.1.1] - 2026-08-23
 
 `v0.1.0` はリスティングへ公開されないまま終わったため、実質的にこれが最初の公開版です。
@@ -76,6 +94,7 @@
 - `FoliageSpecies` ScriptableObject による種別プリセット
 - セットアップメニュー: `Tools/SabaProps/Foliage/Create Default Assets`
 
-[Unreleased]: https://github.com/sabas0ba/vrc_sabaprops/compare/v0.1.1...HEAD
+[Unreleased]: https://github.com/sabas0ba/vrc_sabaprops/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/sabas0ba/vrc_sabaprops/compare/v0.1.1...v0.2.0
 [0.1.1]: https://github.com/sabas0ba/vrc_sabaprops/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/sabas0ba/vrc_sabaprops/releases/tag/v0.1.0

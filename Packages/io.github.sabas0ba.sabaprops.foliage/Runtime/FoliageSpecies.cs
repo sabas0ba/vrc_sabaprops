@@ -202,6 +202,13 @@ namespace SabaProps.Foliage
         [Tooltip("メッシュ生成のシード。変えると形状バリエーションが変わります。")]
         public int meshSeed = 1;
 
+        [Header("Season")]
+        [Tooltip("生成時に頂点カラーへ焼き込む季節。Summer は Species の色をそのまま使います。")]
+        public FoliageSeason season = FoliageSeason.Summer;
+
+        [Tooltip("季節ごとの色の寄せ方。種ごとに枯れ方を変えられます。")]
+        public SeasonPalette seasonPalette = new SeasonPalette();
+
         [Header("Placement")]
         [Tooltip("複数種を混ぜたときの出現比率。")]
         [Min(0f)] public float placementWeight = 1f;
@@ -247,6 +254,16 @@ namespace SabaProps.Foliage
         [Header("Generated (read only)")]
         [Tooltip("ビルド時に自動生成・上書きされるメッシュアセット。")]
         public Mesh generatedMesh;
+
+        /// <summary>
+        /// The tint for the selected season, or null when the asset predates the
+        /// palette. A null tint means "leave the colours alone", which is what an
+        /// asset authored before seasons existed expects.
+        /// </summary>
+        public SeasonTint ActiveSeasonTint
+        {
+            get { return seasonPalette != null ? seasonPalette.For(season) : null; }
+        }
 
         /// <summary>
         /// Clamped, always-valid scale range. Guards against a user inverting the

@@ -177,6 +177,42 @@ namespace SabaProps.Foliage.Editors
             }
         }
 
+        /// <summary>Every season, in calendar order.</summary>
+        public static readonly FoliageSeason[] AllSeasons =
+        {
+            FoliageSeason.Spring,
+            FoliageSeason.Summer,
+            FoliageSeason.Autumn,
+            FoliageSeason.Winter,
+        };
+
+        /// <summary>
+        /// Asset file name for a seasonal variant of a species.
+        /// <para>
+        /// Summer carries no suffix. It is the season a species is authored in,
+        /// and leaving its name alone keeps every asset and scene reference from
+        /// before seasons existed pointing at the same file.
+        /// </para>
+        /// </summary>
+        public static string DisplayName(FoliageSpeciesKind kind, FoliageSeason season)
+        {
+            string baseName = DisplayName(kind);
+            return season == FoliageSeason.Summer ? baseName : baseName + "_" + season;
+        }
+
+        /// <summary>Name of the serialised tint a season reads from.</summary>
+        public static string SeasonProperty(FoliageSeason season)
+        {
+            switch (season)
+            {
+                case FoliageSeason.Spring: return "spring";
+                case FoliageSeason.Autumn: return "autumn";
+                case FoliageSeason.Winter: return "winter";
+                case FoliageSeason.Summer:
+                default: return "summer";
+            }
+        }
+
         /// <summary>Name of the serialised parameter block a kind reads from.</summary>
         public static string ParameterProperty(FoliageSpeciesKind kind)
         {
@@ -225,12 +261,13 @@ namespace SabaProps.Foliage.Editors
             return species;
         }
 
-        /// <summary>Creates the two built-in species presets if they are missing.</summary>
-        public static FoliageSpecies CreateOrLoadDefaultSpecies(FoliageSpeciesKind kind, Material material)
+        /// <summary>Creates a built-in species preset if it is missing.</summary>
+        public static FoliageSpecies CreateOrLoadDefaultSpecies(
+            FoliageSpeciesKind kind, Material material, FoliageSeason season = FoliageSeason.Summer)
         {
             EnsureFolder(SpeciesFolder);
 
-            string assetName = DisplayName(kind);
+            string assetName = DisplayName(kind, season);
             string path = $"{SpeciesFolder}/{assetName}.asset";
 
             var existing = AssetDatabase.LoadAssetAtPath<FoliageSpecies>(path);
@@ -249,6 +286,7 @@ namespace SabaProps.Foliage.Editors
             species.name = assetName;
             species.kind = kind;
             species.material = material;
+            species.season = season;
 
             ApplyPreset(species, kind);
 

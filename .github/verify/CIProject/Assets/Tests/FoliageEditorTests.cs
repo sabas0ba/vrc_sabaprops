@@ -682,6 +682,72 @@ namespace SabaProps.Foliage.CITests
         }
 
         [Test]
+        public void SampleScene_SeasonSectionDiffersOnlyInColour()
+        {
+            GameObject seasons = FindRootObject(_scene, FoliageSampleScene.SeasonRoot);
+            Assert.IsNotNull(seasons, "the demo has no season section");
+
+            var plots = new List<FoliageField>(seasons.GetComponentsInChildren<FoliageField>());
+            Assert.AreEqual(FoliageAssetLibrary.AllSeasons.Length, plots.Count,
+                "the season section should have one plot per season");
+
+            FoliageField reference = plots[0];
+
+            var warmth = new List<float>();
+
+            foreach (FoliageField plot in plots)
+            {
+                AssertBuilt(plot, FoliageOutputMode.MergedChunks);
+
+                // Same seed, same species, same ground: anything other than
+                // colour differing between the plots would make the comparison
+                // meaningless.
+                Assert.AreEqual(reference.lastBuildStats.instanceCount, plot.lastBuildStats.instanceCount,
+                    $"'{plot.name}' placed a different number of plants than '{reference.name}'");
+
+                warmth.Add(MeanWarmth(plot));
+            }
+
+            // Every plot has to look different from every other, or a season is
+            // silently doing nothing.
+            for (int i = 0; i < warmth.Count; i++)
+            {
+                for (int j = i + 1; j < warmth.Count; j++)
+                {
+                    Assert.Greater(Mathf.Abs(warmth[i] - warmth[j]), 0.01f,
+                        $"'{plots[i].name}' and '{plots[j].name}' came out the same colour");
+                }
+            }
+        }
+
+        /// <summary>
+        /// Mean red-minus-blue over everything a field grew. Enough to tell two
+        /// seasons apart without asserting a particular shade.
+        /// </summary>
+        private static float MeanWarmth(FoliageField field)
+        {
+            float sum = 0f;
+            int count = 0;
+
+            foreach (MeshFilter filter in field.GetComponentsInChildren<MeshFilter>())
+            {
+                if (filter.sharedMesh == null)
+                {
+                    continue;
+                }
+
+                foreach (Color color in filter.sharedMesh.colors)
+                {
+                    sum += color.r - color.b;
+                    count++;
+                }
+            }
+
+            Assert.Greater(count, 0, $"'{field.name}' has no vertex colours to measure");
+            return sum / count;
+        }
+
+        [Test]
         public void SampleScene_LeavesNoBakedCollidersBehind()
         {
             // The bake proxies are hidden and unsaved, but a leak would put a

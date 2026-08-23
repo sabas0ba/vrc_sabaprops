@@ -37,6 +37,13 @@ internal static class OfflineMeshTests
         Run("one plant sways with one wind phase", SinglePlantsShareOneWindPhase);
         Run("the sunflower head does not tear", SunflowerHeadDoesNotTear);
 
+        Run("summer leaves a species exactly as authored", SummerIsIdentity);
+        Run("a season recolours without touching geometry or wind", SeasonsOnlyRecolour);
+        Run("every season stays well-formed", EverySeasonIsWellFormed);
+        Run("autumn warms and winter drains the colour", SeasonsMoveInTheRightDirection);
+        Run("a season keeps the root-to-tip gradient", SeasonsPreserveTheGradient);
+        Run("season weight holds a colour back", SeasonWeightHoldsColourBack);
+
         Run("degenerate parameters stay finite", DegenerateParametersStayFinite);
         Run("merging preserves counts and moves the wind pivots", MergePreservesChannels);
 
@@ -242,6 +249,169 @@ internal static class OfflineMeshTests
             $"the head stretches {strongest / weakest:0.00}x; the petals will tear off the disc");
     }
 
+    private static void SummerIsIdentity()
+    {
+        // Summer is the season a species is authored in. An asset saved before
+        // seasons existed deserialises to it, and must generate the mesh it
+        // always did -- byte for byte, not merely close.
+        foreach (FoliageSpeciesKind kind in AllKinds())
+        {
+            Mesh plain = Build(kind, 9);
+            Mesh summer = Build(kind, 9, FoliageSeason.Summer);
+
+            Require(plain.vertexCount == summer.vertexCount, $"{kind}: summer changed the vertex count");
+
+            for (int i = 0; i < plain.vertexCount; i++)
+            {
+                Color a = plain.colors[i];
+                Color b = summer.colors[i];
+
+                Require(a.r == b.r && a.g == b.g && a.b == b.b && a.a == b.a,
+                    $"{kind}: summer altered vertex colour {i}");
+            }
+        }
+    }
+
+    private static void SeasonsOnlyRecolour()
+    {
+        foreach (FoliageSpeciesKind kind in AllKinds())
+        {
+            Mesh summer = Build(kind, 9, FoliageSeason.Summer);
+
+            var summerUv3 = new List<Vector4>();
+            summer.GetUVs(3, summerUv3);
+
+            foreach (FoliageSeason season in AllSeasons())
+            {
+                if (season == FoliageSeason.Summer)
+                {
+                    continue;
+                }
+
+                Mesh mesh = Build(kind, 9, season);
+
+                var uv3 = new List<Vector4>();
+                mesh.GetUVs(3, uv3);
+
+                Require(mesh.vertexCount == summer.vertexCount,
+                    $"{kind}/{season}: the season changed the vertex count");
+
+                bool anyColourMoved = false;
+
+                for (int i = 0; i < mesh.vertexCount; i++)
+                {
+                    Vector3 a = summer.vertices[i];
+                    Vector3 b = mesh.vertices[i];
+
+                    Require(a.x == b.x && a.y == b.y && a.z == b.z,
+                        $"{kind}/{season}: the season moved vertex {i}");
+
+                    // Alpha is the wind phase and UV3.w the stiffness. A recolour
+                    // that disturbs either makes a plant sway out of step with
+                    // itself, which is invisible until the wind blows.
+                    Require(summer.colors[i].a == mesh.colors[i].a,
+                        $"{kind}/{season}: the season changed the wind phase of vertex {i}");
+
+                    Require(summerUv3[i].w == uv3[i].w,
+                        $"{kind}/{season}: the season changed the stiffness of vertex {i}");
+
+                    anyColourMoved |= Distance(summer.colors[i], mesh.colors[i]) > 1e-3f;
+                }
+
+                Require(anyColourMoved, $"{kind}/{season}: the season changed nothing at all");
+            }
+        }
+    }
+
+    private static void EverySeasonIsWellFormed()
+    {
+        foreach (FoliageSpeciesKind kind in AllKinds())
+        {
+            foreach (FoliageSeason season in AllSeasons())
+            {
+                Mesh mesh = Build(kind, 3, season);
+                AssertWellFormed(mesh, $"{kind}/{season}");
+
+                foreach (Color c in mesh.colors)
+                {
+                    Require(c.r >= 0f && c.r <= 1f && c.g >= 0f && c.g <= 1f && c.b >= 0f && c.b <= 1f,
+                        $"{kind}/{season}: vertex colour left [0,1]");
+                }
+            }
+        }
+    }
+
+    private static void SeasonsMoveInTheRightDirection()
+    {
+        Mesh summer = Build(FoliageSpeciesKind.GrassClump, 3, FoliageSeason.Summer);
+        Mesh autumn = Build(FoliageSpeciesKind.GrassClump, 3, FoliageSeason.Autumn);
+        Mesh winter = Build(FoliageSpeciesKind.GrassClump, 3, FoliageSeason.Winter);
+
+        // Warmth as red minus blue, which needs no hue conversion to read.
+        float summerWarmth = MeanWarmth(summer);
+        float autumnWarmth = MeanWarmth(autumn);
+
+        Require(autumnWarmth > summerWarmth + 0.05f,
+            $"autumn is no warmer than summer ({autumnWarmth:0.000} vs {summerWarmth:0.000})");
+
+        float summerSaturation = MeanSaturation(summer);
+        float winterSaturation = MeanSaturation(winter);
+
+        Require(winterSaturation < summerSaturation * 0.75f,
+            $"winter is barely less saturated than summer ({winterSaturation:0.000} vs {summerSaturation:0.000})");
+    }
+
+    private static void SeasonsPreserveTheGradient()
+    {
+        // Generators bake a root-to-tip brightness gradient into their colours,
+        // and that gradient is what reads as shape. The season pass scales
+        // brightness rather than interpolating it precisely so the gradient
+        // survives; interpolation would flatten the plant into a silhouette.
+        //
+        // Grass alone, because every one of its vertices carries the same season
+        // weight. Where the weight varies, so does the multiplier, and the
+        // ordering across the two groups is allowed to change.
+        Mesh summer = Build(FoliageSpeciesKind.GrassClump, 3, FoliageSeason.Summer);
+        Mesh winter = Build(FoliageSpeciesKind.GrassClump, 3, FoliageSeason.Winter);
+
+        for (int i = 0; i < summer.vertexCount; i++)
+        {
+            for (int j = i + 1; j < summer.vertexCount; j++)
+            {
+                float before = Brightness(summer.colors[i]) - Brightness(summer.colors[j]);
+                if (Math.Abs(before) < 0.02f)
+                {
+                    continue;
+                }
+
+                float after = Brightness(winter.colors[i]) - Brightness(winter.colors[j]);
+
+                Require(before * after >= 0f,
+                    $"winter inverted the brightness of vertices {i} and {j} "
+                    + $"({before:0.000} became {after:0.000})");
+            }
+        }
+    }
+
+    private static void SeasonWeightHoldsColourBack()
+    {
+        // What keeps a sunflower's petals yellow while the leaves around them
+        // turn. Without it the flower bleaches to straw and stops being one.
+        var tint = new SeasonPalette().winter;
+        var petal = new Color(0.902f, 0.596f, 0.086f, 0.5f);
+
+        Color full = FoliageSeasonPass.Apply(petal, tint, 1f, 1f);
+        Color held = FoliageSeasonPass.Apply(petal, tint, 1f, 0.3f);
+        Color none = FoliageSeasonPass.Apply(petal, tint, 1f, 0f);
+
+        Require(Distance(none, petal) < 1e-6f, "a weight of zero still changed the colour");
+        Require(Distance(held, petal) < Distance(full, petal),
+            "a held-back vertex moved as far as a fully exposed one");
+        Require(Distance(held, petal) > 1e-4f, "a held-back vertex did not move at all");
+
+        Require(full.a == petal.a && held.a == petal.a, "the wind phase did not survive the recolour");
+    }
+
     private static void DegenerateParametersStayFinite()
     {
         // Values a user can dial in from the inspector that collapse a basis
@@ -325,8 +495,49 @@ internal static class OfflineMeshTests
         FoliageSpeciesKind.Reed,
     };
 
+    private static FoliageSeason[] AllSeasons() => new[]
+    {
+        FoliageSeason.Spring,
+        FoliageSeason.Summer,
+        FoliageSeason.Autumn,
+        FoliageSeason.Winter,
+    };
+
     private static Mesh Build(FoliageSpeciesKind kind, int seed) =>
         FoliageMeshBuilder.Build(new FoliageSpecies { kind = kind, meshSeed = seed });
+
+    private static Mesh Build(FoliageSpeciesKind kind, int seed, FoliageSeason season) =>
+        FoliageMeshBuilder.Build(
+            new FoliageSpecies { kind = kind, meshSeed = seed, season = season });
+
+    private static float Brightness(Color c) => Mathf.Max(c.r, Mathf.Max(c.g, c.b));
+
+    private static float Distance(Color a, Color b) =>
+        Math.Abs(a.r - b.r) + Math.Abs(a.g - b.g) + Math.Abs(a.b - b.b);
+
+    private static float MeanWarmth(Mesh mesh)
+    {
+        float sum = 0f;
+        foreach (Color c in mesh.colors)
+        {
+            sum += c.r - c.b;
+        }
+
+        return mesh.vertexCount > 0 ? sum / mesh.vertexCount : 0f;
+    }
+
+    private static float MeanSaturation(Mesh mesh)
+    {
+        float sum = 0f;
+        foreach (Color c in mesh.colors)
+        {
+            float max = Mathf.Max(c.r, Mathf.Max(c.g, c.b));
+            float min = Mathf.Min(c.r, Mathf.Min(c.g, c.b));
+            sum += max > 0f ? (max - min) / max : 0f;
+        }
+
+        return mesh.vertexCount > 0 ? sum / mesh.vertexCount : 0f;
+    }
 
     private static void AssertWellFormed(Mesh mesh, string label)
     {

@@ -39,6 +39,7 @@ namespace SabaProps.Foliage.Editors
         public const string TerrainRoot = "3 Terrain";
         public const string MixRoot = "4 Combinations";
         public const string OutputRoot = "5 Output Modes";
+        public const string SeasonRoot = "6 Seasons";
         public const string GroundRoot = "Ground";
 
         public const string InstancedPlotName = "GPU Instanced";
@@ -73,7 +74,7 @@ namespace SabaProps.Foliage.Editors
             SceneView view = SceneView.lastActiveSceneView;
             if (view != null)
             {
-                view.LookAt(new Vector3(0f, 0.5f, 16f), Quaternion.Euler(38f, 0f, 0f), 44f);
+                view.LookAt(new Vector3(0f, 0.5f, 20f), Quaternion.Euler(38f, 0f, 0f), 52f);
             }
         }
 
@@ -105,6 +106,7 @@ namespace SabaProps.Foliage.Editors
             BuildTerrain(stock, fields);
             BuildMixes(stock, fields);
             BuildOutputModes(stock, fields);
+            BuildSeasons(material, fields);
 
             var stats = new List<FoliageBuildStats>(fields.Count);
             foreach (FoliageField field in fields)
@@ -343,6 +345,49 @@ namespace SabaProps.Foliage.Editors
             }
         }
 
+        /// <summary>
+        /// The same mix, the same seed, four times over. Only the season differs,
+        /// so the four plots are one comparison rather than four fields.
+        /// </summary>
+        private static void BuildSeasons(Material material, List<FoliageField> fields)
+        {
+            Transform root = CreateRoot(SeasonRoot);
+
+            for (int i = 0; i < FoliageAssetLibrary.AllSeasons.Length && i < Columns.Length; i++)
+            {
+                FoliageSeason season = FoliageAssetLibrary.AllSeasons[i];
+
+                // One seed for all four plots: every clump stands where its
+                // neighbour's does, so the only difference left to see is colour.
+                FoliageField field = CreatePlot(
+                    root, season.ToString(), new Vector3(Columns[i], 0f, Pitch * 5f),
+                    PlotDensity, 3501, FoliageOutputMode.MergedChunks);
+
+                AddSpecies(field, SeasonalSpecies(FoliageSpeciesKind.GrassClump, season, material), 1f);
+                AddSpecies(field, SeasonalSpecies(FoliageSpeciesKind.Clover, season, material), 0.45f);
+                AddSpecies(field, SeasonalSpecies(FoliageSpeciesKind.Sunflower, season, material), 0.06f);
+
+                fields.Add(field);
+            }
+        }
+
+        /// <summary>
+        /// The stock preset for a kind in one season, created on demand. Summer
+        /// resolves to the plain preset rather than a copy of it.
+        /// </summary>
+        private static FoliageSpecies SeasonalSpecies(
+            FoliageSpeciesKind kind, FoliageSeason season, Material material)
+        {
+            FoliageSpecies species = FoliageAssetLibrary.CreateOrLoadDefaultSpecies(kind, material, season);
+            if (species == null)
+            {
+                return null;
+            }
+
+            FoliageAssetLibrary.WriteSpeciesMesh(species);
+            return species;
+        }
+
         // ------------------------------------------------------------------
         // Plot and species helpers
         // ------------------------------------------------------------------
@@ -500,9 +545,11 @@ namespace SabaProps.Foliage.Editors
         {
             var root = new GameObject(GroundRoot);
 
-            // Covers every plot with room to walk between them.
+            // Covers every plot with room to walk between them. A Plane primitive
+            // is 10 m square before scaling, so this reaches from z = -12 to
+            // z = 52 — the last row of plots sits at z = 45.
             CreateGroundPiece(root.transform, PrimitiveType.Plane, "Flat",
-                new Vector3(0f, 0f, 16f), Quaternion.identity, new Vector3(4.2f, 1f, 5.6f), material);
+                new Vector3(0f, 0f, 20f), Quaternion.identity, new Vector3(4.2f, 1f, 6.4f), material);
 
             // --- section 3's ground -----------------------------------------
             float z = Pitch * 2f;
