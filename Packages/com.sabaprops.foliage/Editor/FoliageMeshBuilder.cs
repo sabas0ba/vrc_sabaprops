@@ -270,14 +270,13 @@ namespace SabaProps.Foliage.Editors
                 Color color = JitterColor(p.leafColor, ref rng, 0.08f);
                 color.a = plantSeed;
 
-                // The leaf inherits the stem's bend mask at its attachment point,
-                // plus a little extra so its tip trails behind.
-                float mask = Mathf.Clamp01(t + 0.12f);
-
-                int baseIndex = buffer.AddVertex(attach, normal, color, new Vector2(0.5f, mask), rootData);
-                int leftIndex = buffer.AddVertex(mid - side * (width * 0.5f), normal, color, new Vector2(0f, mask), rootData);
-                int rightIndex = buffer.AddVertex(mid + side * (width * 0.5f), normal, color, new Vector2(1f, mask), rootData);
-                int tipIndex = buffer.AddVertex(tip, normal, color, new Vector2(0.5f, Mathf.Clamp01(mask + 0.12f)), rootData);
+                // The base takes the stem's own mask at the attachment point, or
+                // the leaf lifts off the stem as the plant sways. Only the part
+                // of the leaf that hangs free trails behind.
+                int baseIndex = buffer.AddVertex(attach, normal, color, new Vector2(0.5f, t), rootData);
+                int leftIndex = buffer.AddVertex(mid - side * (width * 0.5f), normal, color, new Vector2(0f, Mathf.Clamp01(t + 0.06f)), rootData);
+                int rightIndex = buffer.AddVertex(mid + side * (width * 0.5f), normal, color, new Vector2(1f, Mathf.Clamp01(t + 0.06f)), rootData);
+                int tipIndex = buffer.AddVertex(tip, normal, color, new Vector2(0.5f, Mathf.Clamp01(t + 0.14f)), rootData);
 
                 buffer.AddTriangle(baseIndex, leftIndex, tipIndex);
                 buffer.AddTriangle(baseIndex, tipIndex, rightIndex);
@@ -310,7 +309,23 @@ namespace SabaProps.Foliage.Editors
             Vector3 tangentB = Vector3.Cross(headNormal, tangentA).normalized;
 
             Vector3 center = top + headNormal * (p.headRadius * 0.15f);
-            var headRootData = new Vector4(0f, 0f, 0f, p.petalStiffness);
+
+            // The head rides on the stem tip as one rigid piece: same wind phase,
+            // same bend mask, same stiffness as the stem's last ring. Any
+            // mismatch across a joint is relative motion, and relative motion at
+            // a joint is a visible tear.
+            var headRootData = new Vector4(0f, 0f, 0f, p.stemStiffness);
+
+            // Petal tips may travel a little further than the disc they grow
+            // from. That difference is exactly what stretches a petal, and a
+            // petal is a few centimetres long, so only a fraction of the
+            // requested petal stiffness is spent on it.
+            float petalTip = Mathf.Lerp(p.stemStiffness, Mathf.Max(p.stemStiffness, p.petalStiffness), 0.25f);
+            float petalMid = Mathf.Lerp(p.stemStiffness, petalTip, 0.6f);
+
+            var petalInnerData = headRootData;
+            var petalMidData = new Vector4(0f, 0f, 0f, petalMid);
+            var petalTipData = new Vector4(0f, 0f, 0f, petalTip);
 
             // --- disc -------------------------------------------------------
             Color centerColor = p.headColor;
@@ -363,18 +378,22 @@ namespace SabaProps.Foliage.Editors
                 Color baseColor = p.petalBaseColor;
                 Color tipColor = p.petalTipColor;
 
-                // Nudge each petal's seed a little instead of randomising it
-                // outright: neighbouring petals then ripple in sequence rather
-                // than fluttering independently of the flower they belong to.
-                float petalSeed = Mathf.Repeat(plantSeed + i * 0.015f, 1f);
-                baseColor.a = petalSeed;
-                tipColor.a = petalSeed;
+                // One phase for the whole plant. A petal is rigidly attached to
+                // the disc, so giving it a phase of its own only buys a gap
+                // between the two.
+                baseColor.a = plantSeed;
+                tipColor.a = plantSeed;
 
-                int innerLeft = buffer.AddVertex(inner - across * (halfWidth * 0.6f), normal, baseColor, new Vector2(0f, 0.94f), headRootData);
-                int innerRight = buffer.AddVertex(inner + across * (halfWidth * 0.6f), normal, baseColor, new Vector2(1f, 0.94f), headRootData);
-                int outerLeft = buffer.AddVertex(outer - across * halfWidth, normal, Color.Lerp(baseColor, tipColor, 0.6f), new Vector2(0f, 0.98f), headRootData);
-                int outerRight = buffer.AddVertex(outer + across * halfWidth, normal, Color.Lerp(baseColor, tipColor, 0.6f), new Vector2(1f, 0.98f), headRootData);
-                int tipIndex = buffer.AddVertex(tip, normal, tipColor, new Vector2(0.5f, 1f), headRootData);
+                Color midColor = Color.Lerp(baseColor, tipColor, 0.6f);
+
+                // Every head vertex sits at the top of the bend mask; the travel
+                // along a petal comes from its stiffness ramp alone, so the disc
+                // and the petal roots cannot drift apart.
+                int innerLeft = buffer.AddVertex(inner - across * (halfWidth * 0.6f), normal, baseColor, new Vector2(0f, 1f), petalInnerData);
+                int innerRight = buffer.AddVertex(inner + across * (halfWidth * 0.6f), normal, baseColor, new Vector2(1f, 1f), petalInnerData);
+                int outerLeft = buffer.AddVertex(outer - across * halfWidth, normal, midColor, new Vector2(0f, 1f), petalMidData);
+                int outerRight = buffer.AddVertex(outer + across * halfWidth, normal, midColor, new Vector2(1f, 1f), petalMidData);
+                int tipIndex = buffer.AddVertex(tip, normal, tipColor, new Vector2(0.5f, 1f), petalTipData);
 
                 buffer.AddQuad(innerLeft, innerRight, outerRight, outerLeft);
                 buffer.AddTriangle(outerLeft, outerRight, tipIndex);

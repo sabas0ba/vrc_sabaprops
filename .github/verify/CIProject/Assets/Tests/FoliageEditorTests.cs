@@ -162,6 +162,82 @@ namespace SabaProps.Foliage.CITests
             }
         }
 
+        /// <summary>
+        /// Mirrors the shader's default _BendPower. Only used to compare wind
+        /// amplitudes against each other, so drifting from the material's actual
+        /// value would weaken this check rather than invalidate it.
+        /// </summary>
+        private const float BendPower = 2.2f;
+
+        [Test]
+        public void Sunflower_HeadDoesNotTearInWind()
+        {
+            var species = ScriptableObject.CreateInstance<FoliageSpecies>();
+            try
+            {
+                species.kind = FoliageSpeciesKind.Sunflower;
+
+                Mesh mesh = FoliageMeshBuilder.Build(species);
+                Assert.IsNotNull(mesh);
+
+                // Wind phase comes from COLOR.a. Stem, leaves, disc and petals
+                // are one rigid plant, so a second phase anywhere means some
+                // joint is being driven apart.
+                var phases = new HashSet<float>();
+                foreach (Color color in mesh.colors)
+                {
+                    phases.Add(color.a);
+                }
+
+                Assert.AreEqual(1, phases.Count,
+                    "the sunflower must sway with a single wind phase, or its parts drift apart");
+
+                var uv3 = new List<Vector4>();
+                mesh.GetUVs(3, uv3);
+                Vector2[] uv0 = mesh.uv;
+                Vector3[] vertices = mesh.vertices;
+
+                float top = 0f;
+                foreach (Vector3 vertex in vertices)
+                {
+                    top = Mathf.Max(top, vertex.y);
+                }
+
+                // Everything from the topmost leaf up: stem tip, disc, petals.
+                // These are rigidly joined, so their sway amplitudes have to stay
+                // close or the petals slide off the disc.
+                float headFloor = top - (species.sunflower.headRadius + species.sunflower.petalLength);
+
+                float weakest = float.MaxValue;
+                float strongest = 0f;
+                int counted = 0;
+
+                for (int i = 0; i < vertices.Length; i++)
+                {
+                    if (vertices[i].y < headFloor)
+                    {
+                        continue;
+                    }
+
+                    float bend = Mathf.Pow(Mathf.Clamp01(uv0[i].y), BendPower) * uv3[i].w;
+                    weakest = Mathf.Min(weakest, bend);
+                    strongest = Mathf.Max(strongest, bend);
+                    counted++;
+                }
+
+                Assert.Greater(counted, 0, "found no head vertices to check");
+                Assert.Greater(weakest, 0f, "part of the head does not move with the wind at all");
+                Assert.Less(strongest / weakest, 1.3f,
+                    "the flower head stretches too much; the petals will tear away from the disc");
+
+                Object.DestroyImmediate(mesh);
+            }
+            finally
+            {
+                Object.DestroyImmediate(species);
+            }
+        }
+
         [Test]
         public void SameSeedProducesIdenticalGeometry()
         {
