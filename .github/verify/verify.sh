@@ -11,6 +11,8 @@
 #   * mesh generation RUNS, and the geometry it produces holds up: topology,
 #     finiteness, determinism, the UV3/COLOR channels the shader reads, and the
 #     wind-joint rules that stop a plant coming apart. See offline/.
+#   * the documentation site renders, with no raw Markdown left in the text
+#     and no broken internal links
 #
 # What this does NOT prove:
 #   * UnityEditor API signatures. UnityEditor.dll is not redistributable, so
@@ -234,6 +236,23 @@ cat > "$OFFLINE_OUT/OfflineMeshTests.runtimeconfig.json" <<'JSON'
 JSON
 
 dotnet "$OFFLINE_OUT/OfflineMeshTests.dll" || fail "offline mesh checks failed"
+
+# ---------------------------------------------------------------------------
+log "Rendering documentation"
+# ---------------------------------------------------------------------------
+# The docs site is generated from the same Markdown the repository ships, by a
+# hand-written converter. Building it here means a document that trips the
+# converter fails the pull request rather than the deploy.
+# Built into a copy of the site, not into the working tree: the link check
+# resolves references to the listing page and the shared stylesheet, so those
+# have to be sitting where the deployed site would have them.
+rm -rf "$OUT/site"
+mkdir -p "$OUT/site"
+cp -r "$REPO/Website/." "$OUT/site/"
+rm -rf "$OUT/site/docs"
+
+python3 "$REPO/.github/scripts/build_docs.py" --repo "$REPO" --out "$OUT/site"
+python3 "$REPO/.github/scripts/check_docs.py" --repo "$REPO" --out "$OUT/site"
 
 # ---------------------------------------------------------------------------
 log "Validating manifests"

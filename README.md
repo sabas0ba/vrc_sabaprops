@@ -101,6 +101,34 @@ Actions から `Build VPM Listing` を `workflow_dispatch` で実行してくだ
 
 ---
 
+## ドキュメントサイト
+
+リスティングと同じ GitHub Pages に、パッケージのドキュメントを静的サイトとして公開します。
+
+```
+https://sabas0ba.github.io/vrc_sabaprops/docs/
+```
+
+ソースはリポジトリ内の Markdown そのものです（各パッケージの `README.md` / `CHANGELOG.md` /
+`Documentation~/*.md`）。二重管理はありません。
+
+```bash
+python3 .github/scripts/build_docs.py    # Website/docs/ を生成
+python3 .github/scripts/check_docs.py    # 生成物を検査
+```
+
+Markdown 変換は `build_listing.py` と同じ方針で自前実装です。CI で動くものの可動部を増やさないためで、
+対応しているのはリポジトリ内の文書が実際に使っている構文（見出し・段落・箇条書き・表・コードブロック・
+引用・水平線・強調・リンク）に限ります。
+
+手書きの変換器が壊れるときはクラッシュではなく「見た目は出るが本文に生の記法が残る」「リンクが黙って
+どこにも行かない」という形になるため、`check_docs.py` がその 2 つを検査します。
+生成物のテキストノードに未変換の記法が残っていないか、サイト内リンクが実在するか、
+全パッケージが索引から辿れるかを確認し、1 つでも該当すれば非ゼロで終了します。
+`Verify` ワークフローでも実行しているので、文書の不備は公開時ではなく PR で落ちます。
+
+---
+
 ## 検証 (CI)
 
 `Verify` ワークフローが PR と main への push で走ります。ローカルでも同じものを実行できます。

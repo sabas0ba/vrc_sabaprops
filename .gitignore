@@ -63,6 +63,7 @@ VRChatCache/
 /build/
 /dist/
 Website/index.json
+Website/docs/
 
 # ---------------------------------------------------------------------------
 # Editors & OS
