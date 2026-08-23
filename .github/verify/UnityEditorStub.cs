@@ -337,6 +337,9 @@ namespace NUnit.Framework
         public static void AreSame(object expected, object actual) { }
         public static void AreSame(object expected, object actual, string message) { }
 
+        public static void Contains(object expected, System.Collections.ICollection actual) { }
+        public static void Contains(object expected, System.Collections.ICollection actual, string message) { }
+
         public static void Greater(double arg1, double arg2) { }
         public static void Greater(double arg1, double arg2, string message) { }
         public static void Less(double arg1, double arg2) { }
