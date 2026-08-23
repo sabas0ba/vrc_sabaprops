@@ -47,7 +47,7 @@ VRChat のワールドとアバターでは、**実行時に C# が動きませ�
 | 5 Output Modes | GPU Instanced / Merged Chunks | 出力モードのみ |
 | 6 Seasons | Spring / Summer / Autumn / Winter Snow / Winter Bare | 季節のみ。種・比率・シードは共通 |
 
-合計 8,619 個体、645 Renderer、231,355 三角形、生成に 3.8 秒です。
+合計 9,095 個体、649 Renderer、243,167 三角形、生成に 4.0 秒です。
 
 セクション 6 は同じシードなので、5 区画は同じ位置に生えています。違うのは季節だけです。
 使う Species アセット（`GrassSeed_Autumn` など）は `Assets/SabaProps/Foliage/Species/` に作られます。
