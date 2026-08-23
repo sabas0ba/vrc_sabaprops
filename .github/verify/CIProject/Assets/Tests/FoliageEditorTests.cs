@@ -510,8 +510,8 @@ namespace SabaProps.Foliage.CITests
             sunflower.name = "CI Absent Sunflower";
             sunflower.kind = FoliageSpeciesKind.Sunflower;
             sunflower.material = FoliageAssetLibrary.CreateOrLoadDefaultMaterial();
-            sunflower.season = FoliageSeason.Winter;
-            sunflower.seasonPalette.winter.appearance = SeasonAppearance.Absent;
+            sunflower.season = FoliageSeason.WinterSnow;
+            sunflower.seasonPalette.winterSnow.appearance = SeasonAppearance.Absent;
             sunflower.placementWeight = 1f;
 
             try
@@ -729,24 +729,37 @@ namespace SabaProps.Foliage.CITests
             Assert.AreEqual(FoliageAssetLibrary.AllSeasons.Length, plots.Count,
                 "the season section should have one plot per season");
 
-            FoliageField reference = plots[0];
-
             var warmth = new List<float>();
 
             foreach (FoliageField plot in plots)
             {
                 AssertBuilt(plot, FoliageOutputMode.MergedChunks);
-
-                // Same seed, same species, same ground. The stock presets keep
-                // every species present in every season -- the sunflower goes
-                // dormant rather than absent -- so the four plots must place the
-                // same plants in the same places, or the comparison is between
-                // two different fields rather than between two seasons.
-                Assert.AreEqual(reference.lastBuildStats.instanceCount, plot.lastBuildStats.instanceCount,
-                    $"'{plot.name}' placed a different number of plants than '{reference.name}'");
-
                 warmth.Add(MeanWarmth(plot));
             }
+
+            // Same seed, same species, same ground: the seasons in which every
+            // species is present must place the same plants in the same places.
+            // The sunflower goes dormant in autumn rather than absent, so it is
+            // still one of them -- it just has no petals.
+            FoliageField spring = FindChildField(seasons, FoliageSeason.Spring.ToString());
+            FoliageField summer = FindChildField(seasons, FoliageSeason.Summer.ToString());
+            FoliageField autumn = FindChildField(seasons, FoliageSeason.Autumn.ToString());
+
+            Assert.AreEqual(summer.lastBuildStats.instanceCount, spring.lastBuildStats.instanceCount,
+                "spring and summer place every species, so they must place the same plants");
+            Assert.AreEqual(summer.lastBuildStats.instanceCount, autumn.lastBuildStats.instanceCount,
+                "a dormant species is still placed; autumn should differ from summer in what it grows, not where");
+
+            // The sunflower is an annual and is marked absent for both winters,
+            // so those plots have to come out with fewer plants -- and with the
+            // same number as each other, since they differ only in colour.
+            FoliageField snow = FindChildField(seasons, FoliageSeason.WinterSnow.ToString());
+            FoliageField bare = FindChildField(seasons, FoliageSeason.WinterBare.ToString());
+
+            Assert.Less(snow.lastBuildStats.instanceCount, summer.lastBuildStats.instanceCount,
+                "the winter plots still grow sunflowers; Absent did not take effect");
+            Assert.AreEqual(snow.lastBuildStats.instanceCount, bare.lastBuildStats.instanceCount,
+                "the two winters place different plants, so they are not comparable");
 
             // Every plot has to look different from every other, or a season is
             // silently doing nothing.

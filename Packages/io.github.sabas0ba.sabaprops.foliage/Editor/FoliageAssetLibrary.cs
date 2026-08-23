@@ -183,7 +183,8 @@ namespace SabaProps.Foliage.Editors
             FoliageSeason.Spring,
             FoliageSeason.Summer,
             FoliageSeason.Autumn,
-            FoliageSeason.Winter,
+            FoliageSeason.WinterSnow,
+            FoliageSeason.WinterBare,
         };
 
         /// <summary>
@@ -207,7 +208,8 @@ namespace SabaProps.Foliage.Editors
             {
                 case FoliageSeason.Spring: return "spring";
                 case FoliageSeason.Autumn: return "autumn";
-                case FoliageSeason.Winter: return "winter";
+                case FoliageSeason.WinterSnow: return "winterSnow";
+                case FoliageSeason.WinterBare: return "winterBare";
                 case FoliageSeason.Summer:
                 default: return "summer";
             }
@@ -343,12 +345,13 @@ namespace SabaProps.Foliage.Editors
                 species.faceSun = true;
                 species.faceSunJitter = 16f;
 
-                // A sunflower is an annual: it flowers once, sheds its petals
-                // and stands through the winter as a seed head on a dry stalk.
-                // Recolouring a flower in full bloom to straw would produce
-                // something that does not exist.
+                // A sunflower is an annual. In autumn it has shed its petals and
+                // stands as a seed head on a drying stalk; by winter it is gone
+                // altogether. Recolouring a flower in full bloom to straw would
+                // produce something that does not exist.
                 species.seasonPalette.autumn.appearance = SeasonAppearance.Dormant;
-                species.seasonPalette.winter.appearance = SeasonAppearance.Dormant;
+                species.seasonPalette.winterSnow.appearance = SeasonAppearance.Absent;
+                species.seasonPalette.winterBare.appearance = SeasonAppearance.Absent;
 
                 // Sunflowers are sparse and tall enough to be worth a shadow.
                 species.castShadows = true;

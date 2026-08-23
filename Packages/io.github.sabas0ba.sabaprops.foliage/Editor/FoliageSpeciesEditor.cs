@@ -73,7 +73,7 @@ namespace SabaProps.Foliage.Editors
 
             using (new EditorGUI.DisabledScope(season.hasMultipleDifferentValues))
             {
-                showEverySeason = EditorGUILayout.ToggleLeft("四季すべての設定を表示", showEverySeason);
+                showEverySeason = EditorGUILayout.ToggleLeft("すべての季節の設定を表示", showEverySeason);
             }
         }
 

@@ -57,6 +57,13 @@ namespace SabaProps.Foliage.Editors
         /// <summary>Column centres, four across.</summary>
         private static readonly float[] Columns = { -13.5f, -4.5f, 4.5f, 13.5f };
 
+        /// <summary>
+        /// The season row is five wide rather than four — winter is two states,
+        /// not one — so it gets its own centres instead of stretching the grid
+        /// every other section is laid out on.
+        /// </summary>
+        private static readonly float[] SeasonColumns = { -18f, -9f, 0f, 9f, 18f };
+
         [MenuItem("Tools/SabaProps/Foliage/Create Sample Scene", false, 1)]
         public static void CreateAndOpen()
         {
@@ -353,14 +360,14 @@ namespace SabaProps.Foliage.Editors
         {
             Transform root = CreateRoot(SeasonRoot);
 
-            for (int i = 0; i < FoliageAssetLibrary.AllSeasons.Length && i < Columns.Length; i++)
+            for (int i = 0; i < FoliageAssetLibrary.AllSeasons.Length && i < SeasonColumns.Length; i++)
             {
                 FoliageSeason season = FoliageAssetLibrary.AllSeasons[i];
 
-                // One seed for all four plots: every clump stands where its
-                // neighbour's does, so the only difference left to see is colour.
+                // One seed for every plot: each clump stands where its
+                // neighbour's does, so what is left to see is the season alone.
                 FoliageField field = CreatePlot(
-                    root, season.ToString(), new Vector3(Columns[i], 0f, Pitch * 5f),
+                    root, season.ToString(), new Vector3(SeasonColumns[i], 0f, Pitch * 5f),
                     PlotDensity, 3501, FoliageOutputMode.MergedChunks);
 
                 AddSpecies(field, SeasonalSpecies(FoliageSpeciesKind.GrassClump, season, material), 1f);
@@ -547,9 +554,10 @@ namespace SabaProps.Foliage.Editors
 
             // Covers every plot with room to walk between them. A Plane primitive
             // is 10 m square before scaling, so this reaches from z = -12 to
-            // z = 52 — the last row of plots sits at z = 45.
+            // z = 52 and from x = -23 to x = 23 — the last row of plots sits at
+            // z = 45, and the season row reaches out to x = 18 plus half a plot.
             CreateGroundPiece(root.transform, PrimitiveType.Plane, "Flat",
-                new Vector3(0f, 0f, 20f), Quaternion.identity, new Vector3(4.2f, 1f, 6.4f), material);
+                new Vector3(0f, 0f, 20f), Quaternion.identity, new Vector3(4.6f, 1f, 6.4f), material);
 
             // --- section 3's ground -----------------------------------------
             float z = Pitch * 2f;

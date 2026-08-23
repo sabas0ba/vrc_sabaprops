@@ -22,17 +22,25 @@ namespace SabaProps.Foliage.Editors
     /// </summary>
     public static class FoliageSeasonPass
     {
-        /// <summary>
-        /// Recolours a buffer in place. Vertices keep their alpha, which carries
-        /// the per-element wind phase rather than opacity.
-        /// </summary>
-        internal static void Apply(FoliageMeshBuffer buffer, SeasonStyle tint)
+        /// <summary>Applies a season to a buffer in place.</summary>
+        internal static void Apply(FoliageMeshBuffer buffer, SeasonStyle style)
         {
-            if (buffer == null || tint == null || tint.IsIdentity)
+            if (buffer == null || style == null || style.IsIdentity)
             {
                 return;
             }
 
+            Recolour(buffer, style);
+            Stiffen(buffer, style);
+            Bend(buffer, style);
+        }
+
+        /// <summary>
+        /// Recolours a buffer in place. Vertices keep their alpha, which carries
+        /// the per-element wind phase rather than opacity.
+        /// </summary>
+        private static void Recolour(FoliageMeshBuffer buffer, SeasonStyle tint)
+        {
             List<Color> colors = buffer.Colors;
             List<float> weights = buffer.SeasonWeights;
 
@@ -44,6 +52,85 @@ namespace SabaProps.Foliage.Editors
                 colors[i] = Apply(colors[i], tint, scale, weight);
             }
         }
+
+        /// <summary>
+        /// Scales how far the wind moves the plant.
+        /// <para>
+        /// A dried stem has lost the water that let it bend, and reads wrong if
+        /// it keeps waving like a green one. One factor across every vertex, not
+        /// a per-part adjustment: the wind-joint rule is that rigidly joined
+        /// geometry shares its bend inputs, and a uniform scale is the only kind
+        /// of change that leaves every one of those relationships intact.
+        /// </para>
+        /// </summary>
+        private static void Stiffen(FoliageMeshBuffer buffer, SeasonStyle style)
+        {
+            float scale = Mathf.Clamp01(style.windScale);
+            if (Mathf.Abs(scale - 1f) < 1e-5f)
+            {
+                return;
+            }
+
+            List<Vector4> uv3 = buffer.Uv3;
+            for (int i = 0; i < uv3.Count; i++)
+            {
+                Vector4 entry = uv3[i];
+                entry.w *= scale;
+                uv3[i] = entry;
+            }
+        }
+
+        /// <summary>
+        /// Bends the plant over from its base, as a stalk that has dried out and
+        /// can no longer hold its own weight does.
+        /// <para>
+        /// A rotation about the root rather than a sideways offset: rotating
+        /// preserves the length of the stem, and the same rotation applied to
+        /// the normal keeps the lighting correct without recalculating anything.
+        /// </para>
+        /// <para>
+        /// The angle grows with UV0.y, the bend mask the wind already uses, so
+        /// the base stays planted and the tip travels furthest. That also makes
+        /// it free for any generator that fills the channel correctly — the same
+        /// reason the recolour needs no per-species knowledge.
+        /// </para>
+        /// </summary>
+        private static void Bend(FoliageMeshBuffer buffer, SeasonStyle style)
+        {
+            float droop = Mathf.Clamp01(style.droop);
+            if (droop <= 0f)
+            {
+                return;
+            }
+
+            List<Vector3> positions = buffer.Positions;
+            List<Vector3> normals = buffer.Normals;
+            List<Vector2> uv0 = buffer.Uv0;
+
+            // Towards object-space +Z, the direction the sunflower already leans
+            // and tilts. Every instance is yawed at random when it is placed, so
+            // a field does not end up bending as one.
+            for (int i = 0; i < positions.Count; i++)
+            {
+                float t = i < uv0.Count ? Mathf.Clamp01(uv0[i].y) : 0f;
+                if (t <= 0f)
+                {
+                    continue;
+                }
+
+                Quaternion bend = Quaternion.AngleAxis(droop * MaxDroopDegrees * t * t, Vector3.right);
+
+                positions[i] = bend * positions[i];
+
+                if (i < normals.Count)
+                {
+                    normals[i] = bend * normals[i];
+                }
+            }
+        }
+
+        /// <summary>How far over a fully drooping plant leans at its tip.</summary>
+        private const float MaxDroopDegrees = 80f;
 
         /// <summary>
         /// The multiplier that moves the mesh's overall brightness onto the
