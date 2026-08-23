@@ -53,11 +53,9 @@ replace "$CIPROJECT/Assets/Tests" "$PROJECT/Assets/Tests"
 # PlayMode tests that need the SDK, so they cannot live in the CI project.
 replace "$HERE/Tests" "$PROJECT/Assets/WorldTests"
 
-# The movement sample, imported the way a user would from the Tools menu. Here
-# it is unconditional: the play-mode test asserts the demo actually raises the
-# player's walk speed and lets them jump, and it cannot do that if the
-# behaviour was never compiled into the project.
-replace "$PACKAGE/Samples~/VRChatDemoMovement" "$PROJECT/Assets/SabaPropsDemoMovement"
+# The movement sample is not copied here. FoliageWorldProjectSetup imports it
+# through the same menu entry a user would, in the setup session, so what the
+# play-mode test exercises is that entry rather than a copy of its output.
 
 # Brings ProjectSettings up to what a VRChat world project is expected to
 # have. run-tests.sh invokes it; see Setup/FoliageWorldProjectSetup.cs.

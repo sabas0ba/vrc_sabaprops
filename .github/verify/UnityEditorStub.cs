@@ -119,6 +119,17 @@ namespace UnityEditor
         public void Repaint() { }
     }
 
+    public class MonoScript : TextAsset { }
+
+    [Flags]
+    public enum ImportAssetOptions
+    {
+        Default = 0,
+        ForceUpdate = 1,
+        ForceSynchronousImport = 8,
+        ImportRecursive = 256,
+    }
+
     public class MaterialProperty { }
 
     public class MaterialEditor : Editor
@@ -178,6 +189,7 @@ namespace UnityEditor
         public static void SaveAssets() { }
         public static void Refresh() { }
         public static void ImportAsset(string path) { }
+        public static void ImportAsset(string path, ImportAssetOptions options) { }
         public static void StartAssetEditing() { }
         public static void StopAssetEditing() { }
         public static void AddObjectToAsset(UnityEngine.Object objectToAdd, UnityEngine.Object assetObject) { }

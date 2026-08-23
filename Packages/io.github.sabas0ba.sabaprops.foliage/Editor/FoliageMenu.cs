@@ -76,14 +76,19 @@ namespace SabaProps.Foliage.Editors
             FoliageAssetLibrary.EnsureFolder(FoliageSampleScene.SampleFolder);
             string destination = FoliageSampleScene.SampleFolder + "/FoliageDemoMovement.cs";
 
-            if (File.Exists(destination))
+            if (!File.Exists(destination))
             {
-                Debug.Log($"[SabaProps Foliage] {destination} は既にあります。上書きしていません。");
-                return;
+                File.Copy(source, destination);
             }
 
-            File.Copy(source, destination);
-            AssetDatabase.ImportAsset(destination);
+            // Synchronously, because the program asset created below has to
+            // reference the MonoScript this import produces.
+            AssetDatabase.ImportAsset(destination, ImportAssetOptions.ForceSynchronousImport);
+
+            if (!FoliageVrcWorld.TryCreateUdonProgramAsset(destination))
+            {
+                return;
+            }
 
             Debug.Log(
                 $"[SabaProps Foliage] {destination} を作成しました。"

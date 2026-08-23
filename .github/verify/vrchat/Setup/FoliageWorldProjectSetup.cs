@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
+using SabaProps.Foliage.Editors;
 using VRC.SDK3.ClientSim.Editor;
 
 namespace SabaProps.Foliage.WorldSetup
@@ -62,6 +63,12 @@ namespace SabaProps.Foliage.WorldSetup
                 ClientSimProjectSettingsSetup.SetAudioSettings();
                 applied.Add("audio");
             }
+
+            // The demo's movement behaviour, imported the way a user would from
+            // the Tools menu. In its own session because it is an UdonSharp
+            // script: the tests need it compiled, and compilation happens
+            // between editor sessions, not within one.
+            FoliageMenu.ImportDemoMovement();
 
             AssetDatabase.SaveAssets();
 
