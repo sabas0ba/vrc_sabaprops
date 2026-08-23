@@ -729,12 +729,12 @@ namespace SabaProps.Foliage.CITests
             Assert.AreEqual(FoliageAssetLibrary.AllSeasons.Length, plots.Count,
                 "the season section should have one plot per season");
 
-            var warmth = new List<float>();
+            var colours = new List<Color>();
 
             foreach (FoliageField plot in plots)
             {
                 AssertBuilt(plot, FoliageOutputMode.MergedChunks);
-                warmth.Add(MeanWarmth(plot));
+                colours.Add(MeanColour(plot));
             }
 
             // Same seed, same species, same ground: the seasons in which every
@@ -763,23 +763,32 @@ namespace SabaProps.Foliage.CITests
 
             // Every plot has to look different from every other, or a season is
             // silently doing nothing.
-            for (int i = 0; i < warmth.Count; i++)
+            for (int i = 0; i < colours.Count; i++)
             {
-                for (int j = i + 1; j < warmth.Count; j++)
+                for (int j = i + 1; j < colours.Count; j++)
                 {
-                    Assert.Greater(Mathf.Abs(warmth[i] - warmth[j]), 0.01f,
-                        $"'{plots[i].name}' and '{plots[j].name}' came out the same colour");
+                    Assert.Greater(ColourDistance(colours[i], colours[j]), 0.02f,
+                        $"'{plots[i].name}' ({colours[i]}) and '{plots[j].name}' ({colours[j]}) "
+                        + "came out the same colour");
                 }
             }
         }
 
         /// <summary>
-        /// Mean red-minus-blue over everything a field grew. Enough to tell two
+        /// Mean vertex colour over everything a field grew. Enough to tell two
         /// seasons apart without asserting a particular shade.
+        /// <para>
+        /// The whole colour, not a single axis such as red-minus-blue: spring's
+        /// bright yellow-green and autumn's dark brown happen to sit at nearly
+        /// the same distance between red and blue, and a test that looked only
+        /// there called two plainly different plots identical.
+        /// </para>
         /// </summary>
-        private static float MeanWarmth(FoliageField field)
+        private static Color MeanColour(FoliageField field)
         {
-            float sum = 0f;
+            float r = 0f;
+            float g = 0f;
+            float b = 0f;
             int count = 0;
 
             foreach (MeshFilter filter in field.GetComponentsInChildren<MeshFilter>())
@@ -791,13 +800,20 @@ namespace SabaProps.Foliage.CITests
 
                 foreach (Color color in filter.sharedMesh.colors)
                 {
-                    sum += color.r - color.b;
+                    r += color.r;
+                    g += color.g;
+                    b += color.b;
                     count++;
                 }
             }
 
             Assert.Greater(count, 0, $"'{field.name}' has no vertex colours to measure");
-            return sum / count;
+            return new Color(r / count, g / count, b / count, 1f);
+        }
+
+        private static float ColourDistance(Color a, Color b)
+        {
+            return Mathf.Abs(a.r - b.r) + Mathf.Abs(a.g - b.g) + Mathf.Abs(a.b - b.b);
         }
 
         [Test]

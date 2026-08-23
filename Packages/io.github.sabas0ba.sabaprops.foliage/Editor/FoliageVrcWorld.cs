@@ -81,27 +81,32 @@ namespace SabaProps.Foliage.Editors
             }
 
             Type behaviourType = FindType(MovementTypeName);
-            Type utility = FindType("UdonSharpEditor.UdonSharpEditorUtility");
-
-            if (behaviourType == null || utility == null)
+            if (behaviourType == null)
             {
                 return false;
             }
 
             // AddUdonSharpComponent, rather than AddComponent: an UdonSharp
-            // behaviour on its own is an inert proxy. The utility is what pairs
-            // it with the UdonBehaviour that actually runs.
-            MethodInfo add = utility.GetMethod(
-                "AddUdonSharpComponent",
-                BindingFlags.Public | BindingFlags.Static,
-                null,
-                new[] { typeof(GameObject), typeof(Type) },
-                null);
+            // behaviour added on its own is an inert proxy, and this is what
+            // pairs it with the UdonBehaviour that actually runs.
+            //
+            // It is declared as an extension method on GameObject, so it is
+            // reached here as the plain static it compiles down to.
+            Type extensions = FindType("UdonSharpEditor.UdonSharpComponentExtensions");
+
+            MethodInfo add = extensions == null
+                ? null
+                : extensions.GetMethod(
+                    "AddUdonSharpComponent",
+                    BindingFlags.Public | BindingFlags.Static,
+                    null,
+                    new[] { typeof(GameObject), typeof(Type) },
+                    null);
 
             if (add == null)
             {
                 Debug.LogWarning(
-                    "[SabaProps Foliage] UdonSharpEditorUtility.AddUdonSharpComponent が見つかりません。"
+                    "[SabaProps Foliage] UdonSharpComponentExtensions.AddUdonSharpComponent が見つかりません。"
                     + "UdonSharp のバージョン差の可能性があります。移動設定は追加していません。");
                 return false;
             }
