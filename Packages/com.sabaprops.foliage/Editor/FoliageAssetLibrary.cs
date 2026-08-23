@@ -278,10 +278,11 @@ namespace SabaProps.Foliage.Editors
             {
                 species.meshSeed = 13;
 
-                // Tall and sparse, and it wants flat ground: reeds growing out
-                // of a hillside read as a mistake.
-                species.placementWeight = 0.12f;
-                species.minSpacing = 0.35f;
+                // Reeds grow in stands, not as isolated stalks, so they are
+                // packed far tighter than their height would suggest. They still
+                // want flat ground: reeds out of a hillside read as a mistake.
+                species.placementWeight = 0.35f;
+                species.minSpacing = 0.11f;
                 species.scaleRange = new Vector2(0.75f, 1.3f);
                 species.maxTilt = 4f;
                 species.alignToGroundNormal = 0.1f;
@@ -299,6 +300,10 @@ namespace SabaProps.Foliage.Editors
                 species.maxTilt = 6f;
                 species.alignToGroundNormal = 0.15f;
                 species.slopeLimits = new Vector2(0f, 25f);
+
+                // Heliotropism: a field of sunflowers all faces the same way.
+                species.faceSun = true;
+                species.faceSunJitter = 16f;
 
                 // Sunflowers are sparse and tall enough to be worth a shadow.
                 species.castShadows = true;

@@ -106,6 +106,12 @@ namespace SabaProps.Foliage
         [Tooltip("OFF にすると地面が無い場所ではエリア平面に配置します。")]
         public bool requireGroundHit = true;
 
+        [Tooltip(
+            "地面として使う SkinnedMeshRenderer。生成時だけ現在のポーズをベイクして"
+            + "一時的な MeshCollider を作り、それに対してレイキャストします。"
+            + "Collider は生成後に破棄され、シーンには残りません。")]
+        public List<SkinnedMeshRenderer> skinnedGround = new List<SkinnedMeshRenderer>();
+
         [Tooltip("配置を許可する高度 (m, ワールド Y)。")]
         public Vector2 altitudeLimits = new Vector2(-10000f, 10000f);
 

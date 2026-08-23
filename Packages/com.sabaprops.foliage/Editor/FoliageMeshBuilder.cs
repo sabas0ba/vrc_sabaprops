@@ -186,8 +186,12 @@ namespace SabaProps.Foliage.Editors
             var buffer = new FoliageMeshBuffer();
 
             float height = p.height * rng.Range(1f - p.heightVariance, 1f + p.heightVariance);
-            float leanAngle = rng.Range(0f, Mathf.PI * 2f);
-            var leanDir = new Vector3(Mathf.Cos(leanAngle), 0f, Mathf.Sin(leanAngle));
+
+            // The stem leans, and the head tilts, along object-space +Z. Fixing
+            // the direction rather than randomising it is what lets the
+            // scatterer aim the flower: with Face Sun off, per-instance yaw is
+            // random anyway, so nothing is lost.
+            Vector3 leanDir = Vector3.forward;
             float lean = p.lean * rng.Range(0.6f, 1.4f);
 
             // One seed for the whole plant so stem, leaves and head sway together.

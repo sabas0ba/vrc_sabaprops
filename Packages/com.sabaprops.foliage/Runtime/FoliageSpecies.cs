@@ -215,6 +215,14 @@ namespace SabaProps.Foliage
         [Tooltip("鉛直からのランダムな傾き (度)。")]
         [Range(0f, 45f)] public float maxTilt = 7f;
 
+        [Tooltip(
+            "個体の向きをランダムにせず、太陽（Directional Light）の方位へ揃えます。"
+            + "ひまわりのように向きが揃う植物向けです。")]
+        public bool faceSun = false;
+
+        [Tooltip("Face Sun のときの向きのばらつき (度)。0 で完全に揃います。")]
+        [Range(0f, 180f)] public float faceSunJitter = 18f;
+
         [Tooltip("地面の法線にどれだけ倣うか。0 で常に鉛直。")]
         [Range(0f, 1f)] public float alignToGroundNormal = 0.3f;
 

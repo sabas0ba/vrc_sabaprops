@@ -289,6 +289,7 @@ namespace UnityEditor
         public static bool Foldout(bool foldout, string content) => foldout;
 
         public static UnityEngine.Object ObjectField(UnityEngine.Object obj, Type objType, bool allowSceneObjects, params GUILayoutOption[] options) => obj;
+        public static UnityEngine.Object ObjectField(string label, UnityEngine.Object obj, Type objType, bool allowSceneObjects, params GUILayoutOption[] options) => obj;
 
         public static bool Toggle(string label, bool value, params GUILayoutOption[] options) => value;
         public static bool ToggleLeft(string label, bool value, params GUILayoutOption[] options) => value;

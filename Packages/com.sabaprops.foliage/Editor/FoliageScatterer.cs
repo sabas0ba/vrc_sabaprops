@@ -64,12 +64,26 @@ namespace SabaProps.Foliage.Editors
                 return results;
             }
 
+            Color[] maskPixels = TryReadMask(field, out int maskWidth, out int maskHeight);
+
+            using (var baked = new BakedSkinnedGround(field))
+            {
+                return ScatterOver(
+                    field, validSpecies, cumulativeWeights, targetCount,
+                    maskPixels, maskWidth, maskHeight, results, ref error);
+            }
+        }
+
+        private static List<FoliageInstance> ScatterOver(
+            FoliageField field, List<FoliageSpecies> validSpecies, float[] cumulativeWeights, int targetCount,
+            Color[] maskPixels, int maskWidth, int maskHeight,
+            List<FoliageInstance> results, ref string error)
+        {
+            float area = field.AreaSquareMeters;
             float step = Mathf.Sqrt(area / targetCount);
             Vector2 extents = field.LocalExtents;
             int cellsX = Mathf.Max(1, Mathf.CeilToInt(extents.x * 2f / step));
             int cellsZ = Mathf.Max(1, Mathf.CeilToInt(extents.y * 2f / step));
-
-            Color[] maskPixels = TryReadMask(field, out int maskWidth, out int maskHeight);
 
             // Colliders moved this frame are not reflected in the physics scene
             // until it ticks, which never happens in edit mode.
@@ -79,6 +93,7 @@ namespace SabaProps.Foliage.Editors
             Matrix4x4 localToWorld = fieldTransform.localToWorldMatrix;
 
             var rng = new FoliageRandom(field.seed);
+            float? sunBearing = SunBearing();
             // One grid per species. Min Spacing means "keep this species apart
             // from itself": checking it against every other species as well let
             // dense ground cover crowd out anything sparse, so a sunflower mixed
@@ -168,7 +183,7 @@ namespace SabaProps.Foliage.Editors
                     results.Add(new FoliageInstance
                     {
                         Position = position,
-                        Rotation = BuildRotation(species, groundNormal, ref rng),
+                        Rotation = BuildRotation(species, groundNormal, sunBearing, ref rng),
                         Scale = rng.Range(scaleRange.x, scaleRange.y),
                         SpeciesIndex = speciesIndex,
                     });
@@ -256,11 +271,147 @@ namespace SabaProps.Foliage.Editors
             return cumulativeWeights.Length - 1;
         }
 
-        private static Quaternion BuildRotation(FoliageSpecies species, Vector3 groundNormal, ref FoliageRandom rng)
+        /// <summary>
+        /// Temporary colliders for skinned ground.
+        /// <para>
+        /// A SkinnedMeshRenderer has no collider that follows the skin, so there
+        /// is nothing for the scatterer to raycast against. Baking the current
+        /// pose into a throwaway MeshCollider means the existing ground path
+        /// works unchanged, and the geometry matches what the player sees rather
+        /// than a proxy someone has to keep in sync by hand.
+        /// </para>
+        /// <para>
+        /// The colliders are hidden and never saved, and go away with the build.
+        /// </para>
+        /// </summary>
+        private sealed class BakedSkinnedGround : System.IDisposable
+        {
+            private readonly List<GameObject> _objects = new List<GameObject>();
+            private readonly List<Mesh> _meshes = new List<Mesh>();
+
+            public BakedSkinnedGround(FoliageField field)
+            {
+                if (field.skinnedGround == null)
+                {
+                    return;
+                }
+
+                foreach (SkinnedMeshRenderer skinned in field.skinnedGround)
+                {
+                    if (skinned == null || skinned.sharedMesh == null)
+                    {
+                        continue;
+                    }
+
+                    var mesh = new Mesh { name = $"{skinned.name}_BakedGround" };
+
+                    // useScale: the baked vertices then already carry the
+                    // renderer's lossy scale, so the proxy needs only its
+                    // position and rotation.
+                    skinned.BakeMesh(mesh, true);
+
+                    var go = new GameObject($"__SabaFoliageGround_{skinned.name}")
+                    {
+                        hideFlags = HideFlags.HideAndDontSave,
+                        layer = skinned.gameObject.layer,
+                    };
+
+                    go.transform.SetPositionAndRotation(
+                        skinned.transform.position, skinned.transform.rotation);
+
+                    go.AddComponent<MeshCollider>().sharedMesh = mesh;
+
+                    _objects.Add(go);
+                    _meshes.Add(mesh);
+                }
+
+                if (_objects.Count > 0)
+                {
+                    Physics.SyncTransforms();
+                }
+            }
+
+            public void Dispose()
+            {
+                foreach (GameObject go in _objects)
+                {
+                    Object.DestroyImmediate(go);
+                }
+
+                foreach (Mesh mesh in _meshes)
+                {
+                    Object.DestroyImmediate(mesh);
+                }
+
+                _objects.Clear();
+                _meshes.Clear();
+            }
+        }
+
+        /// <summary>
+        /// Compass bearing of the sun, in degrees, for species that face it.
+        /// <para>
+        /// Taken from the scene's sun so the flowers agree with the shadows.
+        /// Returns null when the scene has no directional light, which leaves
+        /// those species on random yaw rather than pointing them all at an
+        /// arbitrary default.
+        /// </para>
+        /// </summary>
+        public static float? SunBearing()
+        {
+            Light sun = RenderSettings.sun;
+
+            if (sun == null || !sun.isActiveAndEnabled || sun.type != LightType.Directional)
+            {
+                sun = null;
+                float brightest = 0f;
+
+                foreach (Light light in Object.FindObjectsOfType<Light>())
+                {
+                    if (light.type != LightType.Directional || !light.isActiveAndEnabled)
+                    {
+                        continue;
+                    }
+
+                    if (sun == null || light.intensity > brightest)
+                    {
+                        sun = light;
+                        brightest = light.intensity;
+                    }
+                }
+            }
+
+            if (sun == null)
+            {
+                return null;
+            }
+
+            // The light points away from the sun, so the direction to look in is
+            // the reverse of its forward, flattened onto the ground.
+            Vector3 toSun = -sun.transform.forward;
+            var flat = new Vector2(toSun.x, toSun.z);
+
+            if (flat.sqrMagnitude < 1e-6f)
+            {
+                // Straight overhead: there is no bearing to face.
+                return null;
+            }
+
+            return Mathf.Atan2(flat.x, flat.y) * Mathf.Rad2Deg;
+        }
+
+        private static Quaternion BuildRotation(
+            FoliageSpecies species, Vector3 groundNormal, float? sunBearing, ref FoliageRandom rng)
         {
             Vector3 up = Vector3.Slerp(Vector3.up, groundNormal, species.alignToGroundNormal).normalized;
             Quaternion align = Quaternion.FromToRotation(Vector3.up, up);
-            Quaternion yaw = Quaternion.AngleAxis(rng.Range(0f, 360f), Vector3.up);
+
+            // The stock meshes lean and face along object-space +Z, so aiming
+            // that axis at the sun aims the flower.
+            Quaternion yaw = species.faceSun && sunBearing.HasValue
+                ? Quaternion.AngleAxis(
+                    sunBearing.Value + rng.Range(-species.faceSunJitter, species.faceSunJitter), Vector3.up)
+                : Quaternion.AngleAxis(rng.Range(0f, 360f), Vector3.up);
 
             Quaternion tilt = Quaternion.identity;
             if (species.maxTilt > 0f)

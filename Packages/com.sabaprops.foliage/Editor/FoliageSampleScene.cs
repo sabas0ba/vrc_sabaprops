@@ -43,6 +43,7 @@ namespace SabaProps.Foliage.Editors
 
         public const string InstancedPlotName = "GPU Instanced";
         public const string MergedPlotName = "Merged Chunks";
+        public const string SkinnedPlotName = "Skinned Mesh";
 
         /// <summary>Player spawn, on the flat ground and facing up the garden.</summary>
         public static readonly Vector3 SpawnPosition = new Vector3(0f, 0.05f, -7f);
@@ -240,7 +241,7 @@ namespace SabaProps.Foliage.Editors
             FoliageSpecies clover = Of(stock, FoliageSpeciesKind.Clover);
             FoliageSpecies sunflower = Of(stock, FoliageSpeciesKind.Sunflower);
 
-            string[] names = { "Mound", "Ramp", "Terrace" };
+            string[] names = { "Mound", "Ramp", "Terrace", SkinnedPlotName };
 
             for (int i = 0; i < names.Length; i++)
             {
@@ -255,8 +256,32 @@ namespace SabaProps.Foliage.Editors
                 AddSpecies(field, clover, 0.5f);
                 AddSpecies(field, sunflower, 0.1f);
 
+                if (names[i] == SkinnedPlotName)
+                {
+                    // The skinned ground carries no collider, so without this the
+                    // rays fall straight through it to the flat plane below.
+                    SkinnedMeshRenderer skinned = FindSkinnedGround();
+                    if (skinned != null)
+                    {
+                        field.skinnedGround.Add(skinned);
+                    }
+                }
+
                 fields.Add(field);
             }
+        }
+
+        private static SkinnedMeshRenderer FindSkinnedGround()
+        {
+            foreach (SkinnedMeshRenderer skinned in UnityEngine.Object.FindObjectsOfType<SkinnedMeshRenderer>())
+            {
+                if (skinned.name == SkinnedPlotName + " Ground")
+                {
+                    return skinned;
+                }
+            }
+
+            return null;
         }
 
         /// <summary>Three mixes of the same stock species.</summary>
@@ -502,6 +527,142 @@ namespace SabaProps.Foliage.Editors
                     new Vector3(Columns[2], 0.15f + step * 0.3f, z - 2.4f + step * 2.4f),
                     Quaternion.identity, new Vector3(7f, 0.3f + step * 0.6f, 2.4f), material);
             }
+
+            BuildSkinnedGround(root.transform, new Vector3(Columns[3], 0f, z), material);
+        }
+
+        /// <summary>
+        /// A lumpy surface driven by bones, with no collider of its own.
+        /// <para>
+        /// This is the case a MeshCollider cannot cover: the shape only exists
+        /// once the skin is evaluated. The plot above it lists this renderer as
+        /// skinned ground, and the scatterer bakes the pose into a throwaway
+        /// collider for the duration of the build.
+        /// </para>
+        /// </summary>
+        private static void BuildSkinnedGround(Transform parent, Vector3 origin, Material material)
+        {
+            const int cells = 8;
+            const float size = 7.6f;
+            const int boneGrid = 3;
+
+            var root = new GameObject(SkinnedPlotName + " Ground");
+            root.transform.SetParent(parent, false);
+            root.transform.position = origin;
+
+            // Bones on a coarse grid, each lifted by a fixed amount. Fixed, not
+            // random: the demo has to look the same on every machine.
+            var bones = new Transform[boneGrid * boneGrid];
+            var bindPoses = new Matrix4x4[bones.Length];
+            float[] lift = { 0.15f, 0.95f, 0.35f, 0.75f, 1.35f, 0.25f, 0.45f, 0.65f, 1.05f };
+
+            for (int i = 0; i < bones.Length; i++)
+            {
+                int bx = i % boneGrid;
+                int bz = i / boneGrid;
+
+                var bone = new GameObject($"Bone_{bx}_{bz}").transform;
+                bone.SetParent(root.transform, false);
+
+                // Bind flat, then lift. Computing the bind pose from the lifted
+                // position would make bind pose and current pose identical, and
+                // the skin would deform the mesh by exactly nothing.
+                bone.localPosition = new Vector3(
+                    Mathf.Lerp(-size * 0.5f, size * 0.5f, bx / (float)(boneGrid - 1)),
+                    0f,
+                    Mathf.Lerp(-size * 0.5f, size * 0.5f, bz / (float)(boneGrid - 1)));
+
+                bones[i] = bone;
+                bindPoses[i] = bone.worldToLocalMatrix * root.transform.localToWorldMatrix;
+            }
+
+            var vertices = new Vector3[(cells + 1) * (cells + 1)];
+            var normals = new Vector3[vertices.Length];
+            var weights = new BoneWeight[vertices.Length];
+
+            for (int vz = 0; vz <= cells; vz++)
+            {
+                for (int vx = 0; vx <= cells; vx++)
+                {
+                    int index = vz * (cells + 1) + vx;
+
+                    vertices[index] = new Vector3(
+                        Mathf.Lerp(-size * 0.5f, size * 0.5f, vx / (float)cells),
+                        0f,
+                        Mathf.Lerp(-size * 0.5f, size * 0.5f, vz / (float)cells));
+
+                    normals[index] = Vector3.up;
+
+                    // Rigid binding to the nearest bone. Smooth weights would
+                    // read better, but this is ground for a demo, and the hard
+                    // creases make it obvious the surface is skinned.
+                    weights[index] = new BoneWeight
+                    {
+                        boneIndex0 = NearestBone(bones, root.transform.TransformPoint(vertices[index])),
+                        weight0 = 1f,
+                    };
+                }
+            }
+
+            var triangles = new int[cells * cells * 6];
+            int t = 0;
+
+            for (int vz = 0; vz < cells; vz++)
+            {
+                for (int vx = 0; vx < cells; vx++)
+                {
+                    int a = vz * (cells + 1) + vx;
+                    int b = a + 1;
+                    int c = a + cells + 1;
+                    int d = c + 1;
+
+                    triangles[t++] = a;
+                    triangles[t++] = c;
+                    triangles[t++] = b;
+                    triangles[t++] = b;
+                    triangles[t++] = c;
+                    triangles[t++] = d;
+                }
+            }
+
+            var mesh = new Mesh { name = "SabaFoliage_SkinnedGround" };
+            mesh.vertices = vertices;
+            mesh.normals = normals;
+            mesh.triangles = triangles;
+            mesh.boneWeights = weights;
+            mesh.bindposes = bindPoses;
+            mesh.RecalculateBounds();
+
+            var skinned = root.AddComponent<SkinnedMeshRenderer>();
+            skinned.sharedMesh = mesh;
+            skinned.bones = bones;
+            skinned.rootBone = bones[bones.Length / 2];
+            skinned.sharedMaterial = material;
+            skinned.updateWhenOffscreen = true;
+
+            // Pose it only now that the bind pose is recorded.
+            for (int i = 0; i < bones.Length; i++)
+            {
+                bones[i].localPosition += Vector3.up * lift[i];
+            }
+        }
+
+        private static int NearestBone(Transform[] bones, Vector3 worldPosition)
+        {
+            int nearest = 0;
+            float best = float.MaxValue;
+
+            for (int i = 0; i < bones.Length; i++)
+            {
+                float distance = (bones[i].position - worldPosition).sqrMagnitude;
+                if (distance < best)
+                {
+                    best = distance;
+                    nearest = i;
+                }
+            }
+
+            return nearest;
         }
 
         private static void CreateGroundPiece(

@@ -33,6 +33,15 @@ namespace SabaProps.Foliage.Editors
         private float _chunkSize = 12f;
         private bool _buildImmediately = true;
 
+        private SkinnedMeshRenderer _skinnedGround;
+
+        private bool _limitAltitude;
+        private Vector2 _altitudeLimits = new Vector2(0f, 10f);
+
+        private Texture2D _densityMask;
+        private float _densityMaskThreshold = 0.05f;
+        private bool _invertDensityMask;
+
         private GameObject _parent;
         private Vector2 _scroll;
 
@@ -140,6 +149,39 @@ namespace SabaProps.Foliage.Editors
             _seed = EditorGUILayout.IntField("Seed", _seed);
 
             EditorGUILayout.Space(10f);
+            EditorGUILayout.LabelField("Where it may grow", EditorStyles.boldLabel);
+
+            _skinnedGround = EditorGUILayout.ObjectField(
+                "Skinned Ground", _skinnedGround, typeof(SkinnedMeshRenderer), true) as SkinnedMeshRenderer;
+
+            EditorGUILayout.LabelField(
+                "SkinnedMeshRenderer を地面にする場合に指定します。生成時だけ現在のポーズをベイクした"
+                + "一時 Collider を作るので、対象に Collider を付けておく必要はありません。",
+                EditorStyles.wordWrappedMiniLabel);
+
+            _limitAltitude = EditorGUILayout.Toggle("Limit by height", _limitAltitude);
+            using (new EditorGUI.DisabledScope(!_limitAltitude))
+            {
+                _altitudeLimits = EditorGUILayout.Vector2Field("Height (m, world Y)", _altitudeLimits);
+            }
+
+            _densityMask = EditorGUILayout.ObjectField(
+                "Density Mask", _densityMask, typeof(Texture2D), false) as Texture2D;
+
+            using (new EditorGUI.DisabledScope(_densityMask == null))
+            {
+                _densityMaskThreshold = EditorGUILayout.Slider("Mask Threshold", _densityMaskThreshold, 0f, 1f);
+                _invertDensityMask = EditorGUILayout.Toggle("Invert Mask", _invertDensityMask);
+            }
+
+            if (_densityMask != null && !_densityMask.isReadable)
+            {
+                EditorGUILayout.HelpBox(
+                    "このテクスチャは Read/Write Enabled が OFF です。インポート設定で有効にしてください。",
+                    MessageType.Warning);
+            }
+
+            EditorGUILayout.Space(10f);
             EditorGUILayout.LabelField("Output", EditorStyles.boldLabel);
 
             _outputMode = (FoliageOutputMode)EditorGUILayout.EnumPopup("Mode", _outputMode);
@@ -219,6 +261,20 @@ namespace SabaProps.Foliage.Editors
             field.chunkSize = _chunkSize;
             field.species.AddRange(species);
             field.speciesWeights.AddRange(weights);
+
+            if (_skinnedGround != null)
+            {
+                field.skinnedGround.Add(_skinnedGround);
+            }
+
+            if (_limitAltitude)
+            {
+                field.altitudeLimits = _altitudeLimits;
+            }
+
+            field.densityMask = _densityMask;
+            field.densityMaskThreshold = _densityMaskThreshold;
+            field.invertDensityMask = _invertDensityMask;
 
             // Drop the field where the user is looking, not at the world origin.
             SceneView sceneView = SceneView.lastActiveSceneView;

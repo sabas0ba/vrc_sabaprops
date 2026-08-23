@@ -635,6 +635,64 @@ namespace SabaProps.Foliage.CITests
                 "the ramp should carry fewer species than the mound: the slope filter is what it demonstrates");
         }
 
+        [Test]
+        public void SampleScene_GrowsOnSkinnedGround()
+        {
+            Scene scene = _scene;
+
+            GameObject terrain = FindRootObject(scene, FoliageSampleScene.TerrainRoot);
+            Assert.IsNotNull(terrain, "the demo has no terrain section");
+
+            FoliageField plot = FindChildField(terrain, FoliageSampleScene.SkinnedPlotName);
+
+            Assert.AreEqual(1, plot.skinnedGround.Count, "the skinned plot has no skinned ground assigned");
+            SkinnedMeshRenderer ground = plot.skinnedGround[0];
+            Assert.IsNotNull(ground, "the skinned ground reference is empty");
+            Assert.IsNull(ground.GetComponent<Collider>(),
+                "the skinned ground has a collider of its own, so it is not testing the bake path");
+
+            Assert.IsNotNull(plot.lastBuildStats);
+            Assert.Greater(plot.lastBuildStats.instanceCount, 0,
+                "nothing grew on the skinned ground; the pose was not baked into a collider");
+
+            // The skin lifts the surface clear of the flat plane, so foliage at
+            // ground level would mean the rays fell through to the plane.
+            //
+            // Measured on vertices, not on transforms or bounds: a merged chunk's
+            // transform sits at the chunk origin rather than at any instance, and
+            // its bounds are padded for wind.
+            float lowest = float.MaxValue;
+            foreach (MeshFilter filter in plot.GetComponentsInChildren<MeshFilter>())
+            {
+                if (filter.sharedMesh == null)
+                {
+                    continue;
+                }
+
+                Transform t = filter.transform;
+                foreach (Vector3 vertex in filter.sharedMesh.vertices)
+                {
+                    lowest = Mathf.Min(lowest, t.TransformPoint(vertex).y);
+                }
+            }
+
+            Assert.Less(lowest, float.MaxValue, "the skinned plot has no geometry to measure");
+            Assert.Greater(lowest, 0.05f,
+                "foliage landed at plane height, so the rays missed the skinned surface");
+        }
+
+        [Test]
+        public void SampleScene_LeavesNoBakedCollidersBehind()
+        {
+            // The bake proxies are hidden and unsaved, but a leak would put a
+            // stray collider in the user's scene, so it is worth asserting.
+            foreach (MeshCollider collider in Object.FindObjectsOfType<MeshCollider>())
+            {
+                Assert.IsFalse(collider.name.StartsWith("__SabaFoliageGround"),
+                    $"a baked ground proxy survived the build: {collider.name}");
+            }
+        }
+
         /// <summary>
         /// Species a field actually placed, read from the names the builder gives
         /// its renderers.

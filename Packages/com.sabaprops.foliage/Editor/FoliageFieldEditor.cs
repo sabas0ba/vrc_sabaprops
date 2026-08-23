@@ -19,6 +19,7 @@ namespace SabaProps.Foliage.Editors
         private SerializedProperty _raycastHeight;
         private SerializedProperty _raycastDistance;
         private SerializedProperty _requireGroundHit;
+        private SerializedProperty _skinnedGround;
         private SerializedProperty _altitudeLimits;
         private SerializedProperty _groundOffset;
 
@@ -53,6 +54,7 @@ namespace SabaProps.Foliage.Editors
             _raycastHeight = serializedObject.FindProperty("raycastHeight");
             _raycastDistance = serializedObject.FindProperty("raycastDistance");
             _requireGroundHit = serializedObject.FindProperty("requireGroundHit");
+            _skinnedGround = serializedObject.FindProperty("skinnedGround");
             _altitudeLimits = serializedObject.FindProperty("altitudeLimits");
             _groundOffset = serializedObject.FindProperty("groundOffset");
 
@@ -144,6 +146,7 @@ namespace SabaProps.Foliage.Editors
                 EditorGUILayout.PropertyField(_raycastDistance);
                 EditorGUILayout.PropertyField(_altitudeLimits);
                 EditorGUILayout.PropertyField(_groundOffset);
+                EditorGUILayout.PropertyField(_skinnedGround, true);
 
                 EditorGUILayout.HelpBox(
                     "地面には Collider が必要です。Terrain は TerrainCollider、メッシュ地形は MeshCollider を付けてください。",
