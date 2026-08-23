@@ -53,6 +53,10 @@ replace "$CIPROJECT/Assets/Tests" "$PROJECT/Assets/Tests"
 # PlayMode tests that need the SDK, so they cannot live in the CI project.
 replace "$HERE/Tests" "$PROJECT/Assets/WorldTests"
 
+# Brings ProjectSettings up to what a VRChat world project is expected to
+# have. run-tests.sh invokes it; see Setup/FoliageWorldProjectSetup.cs.
+replace "$HERE/Setup" "$PROJECT/Assets/WorldSetup"
+
 # Embedded packages resolve against the working tree and pull their own
 # registry dependencies, so nothing has to be listed in manifest.json.
 replace "$PACKAGE" "$PROJECT/Packages/com.sabaprops.foliage"

@@ -63,7 +63,27 @@ to_native() {
     fi
 }
 
-echo "running EditMode tests in $PROJECT"
+# A separate editor session, deliberately: switching the active input handler
+# only takes effect on the next launch, and the tests need the VRChat layer
+# list and collision matrix in place to be testing VRChat's physics rather than
+# Unity's defaults. Idempotent, so re-running costs one editor start.
+SETUP_LOG="$PROJECT/unity-setup.log"
+rm -f "$SETUP_LOG"
+echo "configuring $PROJECT for VRChat"
+
+if ! "$UNITY_BIN" \
+    -batchmode -quit \
+    -projectPath "$(to_native "$PROJECT")" \
+    -executeMethod SabaProps.Foliage.WorldSetup.FoliageWorldProjectSetup.ConfigureForVrchat \
+    -logFile "$(to_native "$SETUP_LOG")"; then
+    echo "error: project setup failed; see $SETUP_LOG" >&2
+    grep -E "error CS|\[SabaProps Foliage\]" "$SETUP_LOG" | head -20 >&2 || true
+    exit 1
+fi
+
+grep -E "\[SabaProps Foliage\]" "$SETUP_LOG" | head -5 || true
+
+echo "running tests in $PROJECT"
 
 # The SDK ships its own test assemblies, and two of them fail for reasons that
 # have nothing to do with this package (a randomised JSON fuzz case, and one

@@ -33,6 +33,16 @@ Unity Editor だけはホストのものを使います。Unity をコンテナ�
 ./.github/verify/vrchat/assemble.sh   # build/WorldProject を組む
 ```
 
+`run-tests.sh` は Unity を 2 回起動します。1 回目でプロジェクト設定を VRChat 準拠にし、2 回目でテストを実行します。
+Active Input Handling の変更は次回起動時にしか反映されないため、セッションを分けています。
+設定内容は `Setup/FoliageWorldProjectSetup.cs` にあり、SDK の `UpdateLayers` と
+ClientSim の `ClientSimProjectSettingsSetup` を呼ぶだけです。SDK コントロールパネルの
+「Review Any Alerts」のボタンと同じ処理で、VCC がワールドテンプレートから作ったプロジェクトには
+最初から入っているものです。
+
+レイヤーと Collision Matrix は警告を消すためだけのものではありません。プレイヤーが何と衝突するかを決めるため、
+これらが無い状態でのテストは VRChat の物理を検証したことになりません。
+
 Unity は Unity Hub の既定の場所から `ProjectVersion.txt` に一致するバージョンを探します。
 見つからない場合は `UNITY` に Editor の実行ファイルか Hub のインストールルートを指定してください。
 コンテナエンジンは `podman`、無ければ `docker` を自動で選びます。`CONTAINER_ENGINE` で明示指定もできます。
