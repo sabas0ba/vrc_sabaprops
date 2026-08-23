@@ -12,7 +12,15 @@
   - 地面・起伏・傾斜・ライト・カメラと、GPU Instanced / Merged Chunks 両モードのフィールドを含むデモを生成し、
     ビルドまで済ませた状態で `Assets/SabaProps/Foliage/Samples/FoliageDemo.unity` に保存します
   - シーンも生成メッシュもプロジェクト側に書き出されるため、パッケージにバイナリアセットは増えません
+  - VRChat Worlds SDK が導入されているプロジェクトでは `VRCSceneDescriptor` と Spawn も配置され、
+    そのままアップロードできるワールドになります。SDK が無い場合はスキップし、通常の Unity シーンとして生成します
 - `FoliageAssetLibrary.CreateOrLoadDefaults()`: 共有マテリアルと 2 種の Species をまとめて用意する API
+
+### Changed
+
+- グラスシードの既定の草丈を 0.35 m から 0.6 m に変更しました。既存の Species アセットは影響を受けません
+  （新規作成時の既定値のみ変更）
+- サンプルシーンの密度を引き上げました（Meadow 4.5 → 12 /m²、Clearing 8 → 20 /m²）
 
 ## [0.1.0] - 2026-07-26
 

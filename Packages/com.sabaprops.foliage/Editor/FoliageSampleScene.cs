@@ -26,6 +26,9 @@ namespace SabaProps.Foliage.Editors
         public const string MeadowName = "Meadow (GPU Instanced)";
         public const string ClearingName = "Clearing (Merged Chunks)";
 
+        /// <summary>Player spawn, on the flat ground and facing both fields.</summary>
+        public static readonly Vector3 SpawnPosition = new Vector3(0f, 0.05f, -14f);
+
         [MenuItem("Tools/SabaProps/Foliage/Create Sample Scene", false, 1)]
         public static void CreateAndOpen()
         {
@@ -72,10 +75,13 @@ namespace SabaProps.Foliage.Editors
             FoliageBuildStats meadowStats = FoliageFieldBuilder.Build(meadow);
             FoliageBuildStats clearingStats = FoliageFieldBuilder.Build(clearing);
 
+            GameObject world = FoliageVrcWorld.TryCreateWorld(
+                SpawnPosition, Quaternion.identity, Camera.main);
+
             FoliageAssetLibrary.EnsureFolder(SampleFolder);
             EditorSceneManager.SaveScene(scene, ScenePath);
 
-            Debug.Log(Summarise(meadowStats, clearingStats));
+            Debug.Log(Summarise(meadowStats, clearingStats, world != null));
             return scene;
         }
 
@@ -178,7 +184,7 @@ namespace SabaProps.Foliage.Editors
             var field = go.AddComponent<FoliageField>();
             field.shape = FoliageAreaShape.Rectangle;
             field.size = new Vector2(18f, 18f);
-            field.density = 4.5f;
+            field.density = 12f;
             field.seed = 1024;
             field.chunkSize = 6f;
             field.outputMode = FoliageOutputMode.GpuInstanced;
@@ -196,7 +202,7 @@ namespace SabaProps.Foliage.Editors
             var field = go.AddComponent<FoliageField>();
             field.shape = FoliageAreaShape.Circle;
             field.radius = 7f;
-            field.density = 8f;
+            field.density = 20f;
             field.seed = 2048;
             field.chunkSize = 5f;
             field.outputMode = FoliageOutputMode.MergedChunks;
@@ -205,12 +211,18 @@ namespace SabaProps.Foliage.Editors
             return field;
         }
 
-        private static string Summarise(FoliageBuildStats meadow, FoliageBuildStats clearing)
+        private static string Summarise(FoliageBuildStats meadow, FoliageBuildStats clearing, bool worldCreated)
         {
             var text = new StringBuilder();
             text.AppendLine($"[SabaProps Foliage] サンプルシーンを {ScenePath} に作成しました。");
             AppendStats(text, MeadowName, meadow);
             AppendStats(text, ClearingName, clearing);
+
+            text.AppendLine(worldCreated
+                ? "  VRChat: VRCSceneDescriptor と Spawn を配置しました。そのままアップロードできます。"
+                : "  VRChat: Worlds SDK が見つからないため VRCSceneDescriptor は配置していません。"
+                  + " SDK を導入してから再実行すると追加されます。");
+
             return text.ToString().TrimEnd();
         }
 

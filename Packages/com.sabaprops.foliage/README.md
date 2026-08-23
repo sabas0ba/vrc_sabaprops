@@ -37,11 +37,15 @@ VRChat のワールドとアバターでは、**実行時に C# が動きませ�
 
 | フィールド | モード | 内容 |
 | --- | --- | --- |
-| Meadow | GPU Instanced | 草＋ひまわり。約 1,200 個体、Renderer 1,188、推定 3 ドローコール |
-| Clearing | Merged Chunks | 草のみ。約 1,200 個体を 12 Renderer に結合 |
+| Meadow | GPU Instanced | 草＋ひまわり。3,102 個体、Renderer 3,102、推定 7 ドローコール |
+| Clearing | Merged Chunks | 草のみ。3,014 個体を 12 Renderer に結合 |
 
 Ramp は傾斜 30 度で、ひまわりの傾斜上限 25 度を超えるため草だけが生えます。
 Mound では地面法線への追従が確認できます。どちらも追加設定なしで、傾斜フィルタと地面吸着がそのまま見える配置です。
+
+VRChat Worlds SDK が入っているプロジェクトでは、`VRCSceneDescriptor` と Spawn を持つ `VRCWorld` も配置されます。
+そのままアップロードして実機で確認できます。SDK が無いプロジェクトではこの部分だけスキップされ、通常の Unity シーンとして生成されます。
+このパッケージ自体は VRChat SDK に依存しません。
 
 現在開いているシーンは置き換えられます。未保存の変更があるときは確認ダイアログが出ます。
 

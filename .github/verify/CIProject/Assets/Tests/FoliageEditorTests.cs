@@ -410,6 +410,37 @@ namespace SabaProps.Foliage.CITests
             Assert.IsNotNull(Camera.main, "the demo has no camera to look through");
         }
 
+        [Test]
+        public void SampleScene_MatchesTheVrchatSdkThatIsInstalled()
+        {
+            Scene scene = FoliageSampleScene.Create();
+            GameObject world = FindRootObject(scene, FoliageVrcWorld.WorldObjectName);
+
+            if (!FoliageVrcWorld.IsSdkPresent)
+            {
+                Assert.IsNull(world,
+                    "no VRChat Worlds SDK is installed, so the demo must not fabricate a world root");
+                return;
+            }
+
+            Assert.IsNotNull(world, "the Worlds SDK is installed but the demo has no world root");
+            Assert.IsNotNull(world.transform.Find(FoliageVrcWorld.SpawnObjectName),
+                "the world root has no spawn point");
+
+            // The descriptor is bound by reflection, so the useful assertion is
+            // that a component of that type actually landed on the object.
+            bool hasDescriptor = false;
+            foreach (Component component in world.GetComponents<Component>())
+            {
+                if (component != null && component.GetType().FullName == FoliageVrcWorld.DescriptorTypeName)
+                {
+                    hasDescriptor = true;
+                }
+            }
+
+            Assert.IsTrue(hasDescriptor, $"{FoliageVrcWorld.DescriptorTypeName} was not added");
+        }
+
         private static FoliageField FindField(Scene scene, string name)
         {
             GameObject go = FindRootObject(scene, name);

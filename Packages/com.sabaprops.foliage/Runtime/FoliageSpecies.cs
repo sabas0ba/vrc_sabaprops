@@ -26,7 +26,7 @@ namespace SabaProps.Foliage
         [Tooltip("クランプの半径 (m)。ブレードの根元がこの円内に散ります。")]
         [Min(0f)] public float clumpRadius = 0.08f;
 
-        [Min(0.01f)] public float height = 0.35f;
+        [Min(0.01f)] public float height = 0.6f;
         [Range(0f, 0.9f)] public float heightVariance = 0.35f;
 
         [Min(0.001f)] public float width = 0.022f;
