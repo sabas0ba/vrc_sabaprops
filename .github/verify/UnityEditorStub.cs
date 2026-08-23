@@ -108,8 +108,8 @@ namespace UnityEditor
     {
         public static bool ShaderHasError(Shader s) => false;
         public static int GetShaderMessageCount(Shader s) => 0;
-        public static UnityEditor.Rendering.ShaderMessage[] GetShaderMessages(Shader s) =>
-            new UnityEditor.Rendering.ShaderMessage[0];
+        public static ShaderMessage[] GetShaderMessages(Shader s) =>
+            new ShaderMessage[0];
     }
 
     public static class EditorGUIUtility
@@ -272,7 +272,10 @@ namespace UnityEditor.SceneManagement
     }
 }
 
-namespace UnityEditor.Rendering
+// ShaderMessage lives in UnityEditor, not UnityEditor.Rendering, in 2022.3.
+// Declaring it anywhere else makes this harness agree with a test file that
+// real Unity rejects.
+namespace UnityEditor
 {
     public struct ShaderMessage
     {

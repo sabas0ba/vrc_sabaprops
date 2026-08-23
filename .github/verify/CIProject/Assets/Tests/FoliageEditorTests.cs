@@ -31,7 +31,7 @@ namespace SabaProps.Foliage.CITests
             if (ShaderUtil.ShaderHasError(shader))
             {
                 var details = new List<string>();
-                foreach (UnityEditor.Rendering.ShaderMessage message in ShaderUtil.GetShaderMessages(shader))
+                foreach (ShaderMessage message in ShaderUtil.GetShaderMessages(shader))
                 {
                     details.Add($"{message.file}({message.line}): {message.message} {message.messageDetails}");
                 }
