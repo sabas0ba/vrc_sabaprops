@@ -32,23 +32,22 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
-      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
-        with:
-          python-version: "3.12"
-
+      # No setup-python step: every script here runs in the pinned container
+      # that .github/scripts/run.sh starts, so the runner's interpreter never
+      # takes part. Docker is preinstalled on GitHub-hosted runners.
       - name: Generate index.json
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          python3 .github/scripts/build_listing.py \
+          ./.github/scripts/run.sh .github/scripts/build_listing.py \
             --source source.json \
             --output Website/index.json
           cat Website/index.json
 
       - name: Render documentation
         run: |
-          python3 .github/scripts/build_docs.py
-          python3 .github/scripts/check_docs.py
+          ./.github/scripts/run.sh .github/scripts/build_docs.py
+          ./.github/scripts/run.sh .github/scripts/check_docs.py
 
       - uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # v5.0.0
 

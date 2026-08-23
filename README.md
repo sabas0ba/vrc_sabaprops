@@ -113,9 +113,13 @@ https://sabas0ba.github.io/vrc_sabaprops/docs/
 `Documentation~/*.md`）。二重管理はありません。
 
 ```bash
-python3 .github/scripts/build_docs.py    # Website/docs/ を生成
-python3 .github/scripts/check_docs.py    # 生成物を検査
+./.github/scripts/run.sh .github/scripts/build_docs.py    # Website/docs/ を生成
+./.github/scripts/run.sh .github/scripts/check_docs.py    # 生成物を検査
 ```
+
+このリポジトリの Python は**すべて digest 固定のコンテナ内で実行**します
+（`.github/scripts/run.sh`）。ホストの `python3` へフォールバックはしません。
+黙って手元の処理系を使うと再現性が失われるためです。
 
 Markdown 変換は `build_listing.py` と同じ方針で自前実装です。CI で動くものの可動部を増やさないためで、
 対応しているのはリポジトリ内の文書が実際に使っている構文（見出し・段落・箇条書き・表・コードブロック・
@@ -137,7 +141,8 @@ Markdown 変換は `build_listing.py` と同じ方針で自前実装です。CI 
 ./.github/verify/verify.sh
 ```
 
-必要なもの: .NET SDK 8+, `glslangValidator` (`apt install glslang-tools`), curl, unzip, python3。
+必要なもの: .NET SDK 8+, `glslangValidator` (`apt install glslang-tools`), curl, unzip,
+および podman か docker。Python はホストに不要です（コンテナ内で実行します）。
 初回は参照アセンブリをダウンロードするため数分かかります（`.verify/` にキャッシュされます）。
 
 ### 検証できること

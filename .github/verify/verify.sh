@@ -27,7 +27,9 @@
 #
 # Closing those gaps needs a real Unity install; see README.md.
 #
-# Requirements: dotnet SDK 8+, glslangValidator, curl, unzip, python3.
+# Requirements: dotnet SDK 8+, glslangValidator, curl, unzip, and podman or
+# docker. Python is not required on the host: every script that needs it runs
+# in the pinned container that .github/scripts/run.sh starts.
 set -euo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -46,7 +48,7 @@ mkdir -p "$REFS" "$OUT"
 log() { printf '\n\033[1m== %s\033[0m\n' "$1"; }
 fail() { printf '\033[31merror: %s\033[0m\n' "$1" >&2; exit 1; }
 
-for tool in dotnet curl unzip python3 glslangValidator; do
+for tool in dotnet curl unzip glslangValidator; do
     command -v "$tool" >/dev/null 2>&1 || fail "$tool is required but not installed"
 done
 
@@ -101,6 +103,9 @@ for dll in "$UNITY_DIR"/*.dll; do UNITY_ARGS+=(-r:"$dll"); done
 COMMON=(-nostdlib+ -noconfig -langversion:9.0 -nowarn:1701,1702 -target:library -nologo)
 
 csc() { dotnet "$CSC_DLL" "$@"; }
+
+# All Python in this repository runs in a pinned container; see run.sh.
+PYTHON="$REPO/.github/scripts/run.sh"
 
 # ---------------------------------------------------------------------------
 log "Compiling Runtime assembly (real UnityEngine references)"
@@ -159,7 +164,7 @@ SHADER_DIR="$PACKAGE/Runtime/Shaders"
 SHADER="$SHADER_DIR/SabaFoliage.shader"
 [ -f "$SHADER" ] || fail "shader not found at $SHADER"
 
-python3 "$HERE/extract_shader_body.py" "$SHADER" "$OUT/shader_body.hlsl"
+"$PYTHON" .github/verify/extract_shader_body.py "$SHADER" "$OUT/shader_body.hlsl"
 cp "$HERE/shader_harness.hlsl" "$OUT/shader_harness.hlsl"
 
 # Every combination of the shader's shader_feature keywords.
@@ -251,73 +256,12 @@ mkdir -p "$OUT/site"
 cp -r "$REPO/Website/." "$OUT/site/"
 rm -rf "$OUT/site/docs"
 
-python3 "$REPO/.github/scripts/build_docs.py" --repo "$REPO" --out "$OUT/site"
-python3 "$REPO/.github/scripts/check_docs.py" --repo "$REPO" --out "$OUT/site"
+"$PYTHON" .github/scripts/build_docs.py --repo "$REPO" --out "$OUT/site"
+"$PYTHON" .github/scripts/check_docs.py --repo "$REPO" --out "$OUT/site"
 
 # ---------------------------------------------------------------------------
 log "Validating manifests"
 # ---------------------------------------------------------------------------
-python3 - "$REPO" "$PACKAGE" <<'PY'
-import json
-import os
-import sys
-
-repo, package = sys.argv[1], sys.argv[2]
-problems = []
-
-manifest_path = os.path.join(package, "package.json")
-with open(manifest_path, encoding="utf-8") as handle:
-    manifest = json.load(handle)
-
-for field in ("name", "displayName", "version", "unity", "description"):
-    if not manifest.get(field):
-        problems.append(f"package.json is missing '{field}'")
-
-package_id = os.path.basename(package.rstrip("/"))
-if manifest.get("name") != package_id:
-    problems.append(f"package.json name '{manifest.get('name')}' != folder '{package_id}'")
-
-version = manifest.get("version", "")
-if version and not all(part.isdigit() for part in version.split("-")[0].split(".")):
-    problems.append(f"version '{version}' is not numeric dotted form")
-
-changelog = os.path.join(package, "CHANGELOG.md")
-if os.path.exists(changelog):
-    with open(changelog, encoding="utf-8") as handle:
-        if f"[{version}]" not in handle.read():
-            problems.append(f"CHANGELOG.md has no entry for version {version}")
-
-with open(os.path.join(repo, "source.json"), encoding="utf-8") as handle:
-    source = json.load(handle)
-
-if manifest.get("name") not in (source.get("packages") or []):
-    problems.append(f"{manifest.get('name')} is not listed in source.json packages")
-
-# Every non-tilde file Unity imports needs a .meta, or GUIDs churn per install.
-missing = []
-for root, dirs, files in os.walk(package):
-    dirs[:] = [d for d in dirs if not d.endswith("~") and not d.startswith(".")]
-    for name in dirs:
-        target = os.path.join(root, name)
-        if not os.path.exists(target + ".meta"):
-            missing.append(os.path.relpath(target, repo))
-    for name in files:
-        if name.endswith(".meta") or name.startswith("."):
-            continue
-        if os.path.splitext(name)[1].lower() not in (".cs", ".asmdef", ".shader", ".cginc", ".hlsl", ".json", ".md"):
-            continue
-        target = os.path.join(root, name)
-        if not os.path.exists(target + ".meta"):
-            missing.append(os.path.relpath(target, repo))
-
-problems.extend(f"missing .meta for {path}" for path in sorted(missing))
-
-if problems:
-    for problem in problems:
-        print(f"error: {problem}", file=sys.stderr)
-    sys.exit(1)
-
-print(f"ok: {manifest['name']} {version}")
-PY
+"$PYTHON" .github/scripts/check_package.py "$REPO" "$PACKAGE"
 
 log "All checks passed"
