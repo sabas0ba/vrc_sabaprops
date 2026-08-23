@@ -1,0 +1,14 @@
+{
+    "name": "SabaProps.Foliage.Runtime",
+    "rootNamespace": "SabaProps.Foliage",
+    "references": [],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

@@ -1,0 +1,264 @@
+# SabaProps Foliage
+
+GPU インスタンシング前提の、軽量な草木スキャッタリングツールです。
+草叢・クローバー・ひまわり・葦をプロシージャルに生成し、広い範囲に大量配置できます。
+
+- テクスチャ不要（頂点カラー駆動）。パッケージにバイナリアセットを含みません
+- ワールド座標ハッシュによる個体差なので、per-instance データの送信が一切不要です
+- Built-in Render Pipeline / Unity 2022.3 / VRChat ワールド・アバターの両方で使えます
+
+---
+
+## 設計上の前提：VRChat で「GPU インスタンシング」を効かせるということ
+
+VRChat のワールドとアバターでは、**実行時に C# が動きません**（動くのは Udon だけです）。
+つまり `Graphics.DrawMeshInstanced` を毎フレーム呼ぶタイプの実装はアップロード後に何も描画しません。
+
+そこでこのパッケージは、実際に VRChat で効く 2 つの方法だけを採用しています。
+
+| モード | 仕組み | 向いている場面 |
+| --- | --- | --- |
+| **GPU Instanced** | 同一メッシュ＋同一マテリアルの Renderer を並べ、Unity の自動インスタンシングに任せる | 〜数千個体。個体ごとのカリングと距離縮退が効く |
+| **Merged Chunks** | チャンク単位でメッシュを結合し、1 チャンク 1 ドローコールにする | 数千〜数万個体。CPU コストが最小 |
+
+どちらのモードでも風揺れ・個体差・距離縮退は同じシェーダーが処理します。
+配置計算はすべてエディタ時に完結し、シーンに残るのは MeshRenderer だけです。
+
+---
+
+## クイックスタート
+
+### まず動くものを見る
+
+`Tools > SabaProps > Foliage > Create Sample Scene`
+
+地面・起伏・傾斜・ライト・カメラと 16 の区画からなるデモシーンを生成し、
+**ビルドまで済ませた状態**で開きます。保存先は `Assets/SabaProps/Foliage/Samples/FoliageDemo.unity` です。
+
+シーンは 7 m 角の区画を並べた庭のような構成です。隣り合う区画は 1 つだけ条件が違うので、
+歩いて見比べれば何がどう効くのかが分かります。Scene ビューでは各区画の名前がその場に表示されます。
+
+| セクション | 区画 | 変えているもの |
+| --- | --- | --- |
+| 1 Single Species | Grass / Clover / Sunflower / Reed | 種のみ。サイズ・シードは共通 |
+| 2 Parameter Variants | Grass - Tall / Clover - Broad / Sunflower - Dwarf / Reed - Splayed | 同じ種の形状パラメータ |
+| 3 Terrain | Mound / Ramp / Terrace / Skinned Mesh | 地面の形だけ。フィールド設定は共通 |
+| 4 Combinations | Meadow / Waterside / Flowerbed | 種の組み合わせと比率 |
+| 5 Output Modes | GPU Instanced / Merged Chunks | 出力モードのみ |
+
+合計 6,675 個体、597 Renderer、生成に 3 秒です。
+
+セクション 3 の Ramp は傾斜 28 度で、ひまわりの傾斜上限 25 度を超えるため草とクローバーだけが残ります。
+Mound では地面法線への追従、Terrace では段差への吸着が見えます。いずれも追加設定はしていません。
+Skinned Mesh はボーンで変形させた起伏地形で、**Collider を一切持ちません**（後述の Skinned Ground）。
+
+セクション 5 は同じ設定・同じシードの区画を 2 つ並べてあるので、
+Inspector の統計で Renderer 数と推定ドローコールの差をそのまま比較できます。
+
+セクション 2 が使う Species アセットは `Assets/SabaProps/Foliage/Samples/Species/` に別途作られます。
+既定のプリセットは書き換えません。
+
+VRChat Worlds SDK が入っているプロジェクトでは、`VRCSceneDescriptor` と Spawn を持つ `VRCWorld` も配置されます。
+そのままアップロードして実機で確認できます。SDK が無いプロジェクトではこの部分だけスキップされ、通常の Unity シーンとして生成されます。
+このパッケージ自体は VRChat SDK に依存しません。
+
+現在開いているシーンは置き換えられます。未保存の変更があるときは確認ダイアログが出ます。
+
+### 自分のシーンに置く
+
+1. 地面に Collider を付ける
+   Terrain なら TerrainCollider、メッシュ地形なら MeshCollider。**これが無いと 1 本も生えません。**
+2. `GameObject > SabaProps > Foliage Field`
+   ダイアログが開きます。配置する種と出現比率、エリア形状、密度、出力モードをここで決めます。
+   必要な Species アセットとマテリアルは `Assets/SabaProps/Foliage/` に自動で作られます。
+3. **Create**
+   シーンビューの中心にフィールドが置かれ、Generate now が ON なら生成まで済ませます。
+
+やり直したいときは Inspector の **Clear**、パラメータを変えたら **Generate** で作り直します。
+`Seed` が同じなら何度ビルドしても同じ配置になるので、他の PC でも結果は一致します。
+
+種の構成や比率は後から Inspector の **Species / Mix** でも変えられます。
+Mix はフィールドごとの値で、Species アセットは書き換えません。0 にすると Species 側の `Placement Weight` に従います。
+
+Species アセットだけ先に作りたい場合は `Tools > SabaProps > Foliage > Create Default Assets` で全種そろいます。
+
+---
+
+## Foliage Field の主な設定
+
+### Area
+
+| 項目 | 説明 |
+| --- | --- |
+| Shape | `Rectangle` / `Circle` |
+| Size / Radius | エリアの大きさ (m)。シーンビューのハンドルでも変更できます |
+
+### Density
+
+| 項目 | 説明 |
+| --- | --- |
+| Density | 1 m² あたりの個体数。草原なら 6〜15 くらいが目安 |
+| Seed | 配置の乱数シード。決定論的なので同じ値なら常に同じ結果 |
+| Max Instances | 安全弁。到達するとその時点で打ち切り、警告を出します |
+
+### Ground
+
+地面へのレイキャストで配置高さを決めます。
+
+| 項目 | 説明 |
+| --- | --- |
+| Ground Layers | 地面として扱うレイヤー |
+| Require Ground Hit | OFF にすると地面が無い場所ではエリア平面に配置します |
+| Raycast Height / Distance | レイの開始高さと到達距離。地形の起伏より大きく取ってください |
+| Altitude Limits | 配置を許可するワールド Y の範囲。水面下を除外するときなどに |
+| Ground Offset | 地面に少し埋める量。既定の `-0.01` で接地の隙間が消えます |
+| Skinned Ground | 地面として使う `SkinnedMeshRenderer`（下記） |
+
+**Skinned Ground** は、形状がスキン評価後にしか決まらない地面のための項目です。
+`SkinnedMeshRenderer` には形に追従する Collider が無いため、通常のレイキャストでは貫通します。
+ここに指定すると、生成時だけ現在のポーズを `BakeMesh` して一時的な `MeshCollider` を作り、
+それに対してレイを飛ばします。Collider は生成が終わると破棄され、シーンにもプレハブにも残りません。
+
+対象オブジェクトのレイヤーが `Ground Layers` に含まれている必要があります。
+ポーズを変えたら **Generate をやり直してください**。配置はベイク時点の形状に対して行われます。
+
+### Exclusion / Density Mask
+
+- **Exclusion**: 指定レイヤーのコライダー付近には生やしません（道や建物の除外に）
+- **Density Mask**: グレースケールテクスチャをエリアに投影します。
+  しきい値以上でも値に応じて確率的に間引くので、グラデーションがそのまま密度勾配になります。
+  テクスチャの **Read/Write Enabled を ON** にしてください。
+
+### Output
+
+| 項目 | 説明 |
+| --- | --- |
+| Output Mode | `GPU Instanced` / `Merged Chunks`（上の表を参照） |
+| Chunk Size | チャンクの一辺 (m)。小さいほどカリングが効き、ドローコールは増えます |
+
+---
+
+## Species
+
+Species は「1 つのメッシュ ＝ 1 つのインスタンシングバッチ」の単位です。
+`Assets > Create > SabaProps > Foliage > Species` で追加できます。
+
+共通の配置設定に加えて、種類ごとの形状パラメータを持ちます。
+
+| 種類 | 形状パラメータ | 用途 |
+| --- | --- | --- |
+| **Grass Clump** | ブレード枚数、分割数、クランプ半径、高さ・幅とそのばらつき、倒れ具合、根元 AO、色 | 地面を埋める主役 |
+| **Clover** | 小葉の枚数、茎の高さ、葉の長さ・幅、垂れ、先端の切れ込み、色 | 草の隙間を埋める低いグラウンドカバー |
+| **Sunflower** | 茎の高さ・傾き、葉の枚数と垂れ、花芯の半径とチルト、花弁の枚数・長さ・反り、色 | まばらに置く背の高いアクセント |
+| **Reed** | ブレード枚数、高さ、先端の開き、クランプ半径、穂の有無と長さ、色 | 直立した縦のシルエット |
+
+風で形が崩れないよう、1 株が 1 つの部品として動く種（Clover / Sunflower）は株全体で風の位相を共有し、
+接合部では bend マスクと stiffness を一致させています。先端の追加の動きは、部位に沿った stiffness の勾配で表現します。
+
+`Placement Weight` で複数種の混合比を決めます。既定は草 `1.0`、クローバー `0.5`、葦 `0.35`、ひまわり `0.06` で、
+草にクローバーと葦が混ざり、ひまわりがぽつぽつ立つ比率です。
+
+フィールド側の **Mix** に 0 より大きい値を入れると、そのフィールドではこちらが優先されます。
+同じ Species アセットを使いながらフィールドごとに違う構成にできます。
+
+`Face Sun` を ON にすると、個体の向きをランダムにせずシーンの Directional Light の方位へ揃えます。
+ひまわりは既定で ON（`Face Sun Jitter` 16 度）なので、畑全体が同じ方を向きます。
+太陽は `RenderSettings.sun`、未設定なら最も明るい Directional Light を使います。
+シーンに Directional Light が無い、または真上を向いている場合は従来どおりランダムです。
+
+`Min Spacing` は**同じ種どうし**の最小距離です。他の種との距離には影響しません。
+種をまたいで判定すると、密なグラウンドカバーの平均間隔が背の高い種の `Min Spacing` を下回った時点で、
+少数派の種がほぼ配置されなくなるためです。種どうしの粗密は `Density` と比率で決めてください。
+
+---
+
+## 影
+
+`SabaProps/Foliage` は `addshadow` 付きのサーフェスシェーダーなので、**影は風で揺れた後の形から落ちます**。
+シャドウキャスタが頂点アニメーションを共有するため、揺れる草と静止した影がずれることはありません。
+
+落とすかどうかは Species ごとの `Cast Shadows` です。既定は次のとおりです。
+
+| 種類 | Cast Shadows | 理由 |
+| --- | --- | --- |
+| Grass Clump | OFF | 数千個体分のシャドウパスはフレームレートを落とす最大の要因 |
+| Clover | OFF | 同上。かつ低いので影の寄与がほとんど無い |
+| Sunflower | ON | まばらで背が高く、影の効果が大きい |
+| Reed | ON | 同上 |
+
+草にも影を付けたい場合、コストを抑える現実的な方法は **Merged Chunks モードにすることです**。
+GPU Instanced モードでは 1 個体 1 シャドウキャスタになりますが、Merged Chunks なら 1 チャンク 1 つで済みます。
+サンプルの Merged Chunks 区画は 486 個体が 8 Renderer なので、影を有効にしても追加されるドローコールは 8 です。
+
+---
+
+## シェーダー `SabaProps/Foliage`
+
+Built-in RP のサーフェスシェーダーです。
+
+- **個体差** — 要素の根元のワールド座標をハッシュして色相・彩度・明度をずらします。
+  `MaterialPropertyBlock` はシーンに保存されないため使っていません。ハッシュならリロード後も同じ見た目です。
+- **風** — ワールド空間を進行する波＋大きな突風＋先端のフラッター。
+  揺れ量は頂点の高さ比 (`UV0.y`) を `Bend Falloff` 乗したものに、部位ごとの剛性 (`UV3.w`) を掛けた値です。
+- **Distance Shrink** — `Shrink Start` から `Shrink End` にかけて、各要素をその根元へ縮退させます。
+  遠景の頂点負荷とオーバードローが下がり、実質的な密度 LOD として働きます。
+- **ライティング** — ラップディフューズ＋透過光。`noforwardadd` 指定なので、
+  **追加のリアルタイムライトはピクセルライトではなく頂点ライトとして扱われます**。
+  草原にポイントライトを大量に置いても描画が増えないための意図的な選択です。
+
+### メッシュのチャンネル規約
+
+自作メッシュを差し替える場合は、この規約に合わせてください。
+
+| チャンネル | 内容 |
+| --- | --- |
+| `COLOR.rgb` | ベースアルベド（根元→先端のグラデーションと AO を焼き込み済み） |
+| `COLOR.a` | 要素ごとの乱数シード (0〜1) |
+| `UV0.x` | 要素の幅方向 |
+| `UV0.y` | 高さ比 0〜1。そのまま風の曲げマスクになります |
+| `UV3.xyz` | 要素の根元（オブジェクト空間）。揺れと縮退のピボット |
+| `UV3.w` | 風に対する柔らかさ 0〜1 |
+
+`UV1` / `UV2` はライトマップ UV 用に Unity が予約しているため、意図的に避けて `UV3` を使っています。
+
+---
+
+## パフォーマンスの指針
+
+- **草の影は落とさない。** 草とクローバーの `Cast Shadows` は既定で OFF です。
+  数千の影投影は最も簡単にフレームレートを落とします。どうしても要るなら Merged Chunks モードで（[影](#影)）。
+- **ライトマップではなくライトプローブ。** ライトマップは Batching Static を要求し、それはインスタンシングを潰します。
+  生成された Renderer はライトプローブを使う設定になっています。
+- **静的バッチングは無効。** シェーダー側で `DisableBatching = True` を指定しています。
+  静的バッチングは頂点をワールド空間へ焼き込むため、風の計算に必要なオブジェクト行列が失われます。
+- **モードの切り替えどき。** GPU Instanced で Renderer が 1 万を超えると警告が出ます。
+  その規模なら Merged Chunks の方が総合的に軽くなります。
+- **Distance Shrink を使う。** 遠景を縮退させるだけで頂点処理が大きく減ります。
+
+---
+
+## 生成物の置き場所
+
+| パス | 内容 |
+| --- | --- |
+| `Assets/SabaProps/Foliage/Materials/` | 共有マテリアル |
+| `Assets/SabaProps/Foliage/Species/` | Species プリセット |
+| `Assets/SabaProps/Foliage/Generated/Species/` | Species ごとのメッシュ（再ビルドで上書き。GUID は維持されます） |
+| `Assets/SabaProps/Foliage/Generated/Merged/<field>/` | Merged Chunks モードの結合メッシュ。Clear で削除されます |
+| `Assets/SabaProps/Foliage/Samples/` | `Create Sample Scene` が作るデモシーンと地面マテリアル |
+
+生成物はパッケージフォルダの外に置かれます。VCC はアップグレード時にパッケージフォルダを丸ごと置き換えるためです。
+
+---
+
+## 制限事項
+
+- Built-in Render Pipeline 専用です（URP / HDRP は未対応）
+- ライトマップベイクには対応していません。ライトプローブを使ってください
+- 配置はエディタ時のみです。ワールド内で動的に草を生やすことはできません
+
+---
+
+## ライセンス
+
+MIT License. リポジトリの [LICENSE](https://github.com/sabas0ba/vrc_sabaprops/blob/main/LICENSE) を参照してください。

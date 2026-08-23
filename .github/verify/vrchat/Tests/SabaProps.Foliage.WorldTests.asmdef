@@ -1,0 +1,28 @@
+{
+    "name": "SabaProps.Foliage.WorldTests",
+    "rootNamespace": "SabaProps.Foliage.WorldTests",
+    "references": [
+        "SabaProps.Foliage.Runtime",
+        "SabaProps.Foliage.Editor",
+        "UnityEngine.TestRunner",
+        "UnityEditor.TestRunner",
+        "VRC.ClientSim"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": true,
+    "precompiledReferences": [
+        "nunit.framework.dll",
+        "VRCSDKBase.dll",
+        "VRCSDK3.dll"
+    ],
+    "autoReferenced": false,
+    "defineConstraints": [
+        "UNITY_INCLUDE_TESTS"
+    ],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
