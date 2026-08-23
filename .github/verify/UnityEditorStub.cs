@@ -59,6 +59,8 @@ namespace UnityEditor
         public int intValue { get; set; }
         public string stringValue { get; set; }
         public SerializedProperty GetArrayElementAtIndex(int index) => null;
+        public void InsertArrayElementAtIndex(int index) { }
+        public void DeleteArrayElementAtIndex(int index) { }
     }
 
     public class SerializedObject
@@ -82,6 +84,21 @@ namespace UnityEditor
         public static void DrawPropertiesExcluding(SerializedObject obj, params string[] propertyToExclude) { }
     }
 
+    public class EditorWindow : ScriptableObject
+    {
+        public Vector2 minSize { get; set; }
+        public Vector2 maxSize { get; set; }
+        public string title { get; set; }
+
+        public static T GetWindow<T>(bool utility, string title, bool focus) where T : EditorWindow =>
+            CreateInstance<T>();
+
+        public void Show() { }
+        public void ShowUtility() { }
+        public void Close() { }
+        public void Repaint() { }
+    }
+
     public class MaterialProperty { }
 
     public class MaterialEditor : Editor
@@ -99,6 +116,7 @@ namespace UnityEditor
         public static GUIStyle boldLabel => null;
         public static GUIStyle miniLabel => null;
         public static GUIStyle miniBoldLabel => null;
+        public static GUIStyle wordWrappedMiniLabel => null;
         public static GUIStyle helpBox => null;
         public static GUIStyle foldoutHeader => null;
         public static GUIStyle label => null;
@@ -250,6 +268,24 @@ namespace UnityEditor
         public static bool Foldout(bool foldout, string content) => foldout;
 
         public static UnityEngine.Object ObjectField(UnityEngine.Object obj, Type objType, bool allowSceneObjects, params GUILayoutOption[] options) => obj;
+
+        public static bool Toggle(string label, bool value, params GUILayoutOption[] options) => value;
+        public static bool ToggleLeft(string label, bool value, params GUILayoutOption[] options) => value;
+
+        public static float Slider(float value, float leftValue, float rightValue, params GUILayoutOption[] options) => value;
+        public static float Slider(string label, float value, float leftValue, float rightValue, params GUILayoutOption[] options) => value;
+
+        public static float FloatField(float value, params GUILayoutOption[] options) => value;
+        public static float FloatField(string label, float value, params GUILayoutOption[] options) => value;
+
+        public static int IntField(string label, int value, params GUILayoutOption[] options) => value;
+
+        public static Vector2 Vector2Field(string label, Vector2 value, params GUILayoutOption[] options) => value;
+
+        public static Enum EnumPopup(string label, Enum selected, params GUILayoutOption[] options) => selected;
+
+        public static Vector2 BeginScrollView(Vector2 position, params GUILayoutOption[] options) => position;
+        public static void EndScrollView() { }
 
         public class HorizontalScope : IDisposable
         {

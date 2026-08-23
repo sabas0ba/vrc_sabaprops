@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Text;
 using UnityEditor;
 using UnityEditor.SceneManagement;
@@ -57,8 +58,8 @@ namespace SabaProps.Foliage.Editors
         /// </summary>
         public static Scene Create()
         {
-            if (!FoliageAssetLibrary.CreateOrLoadDefaults(
-                    out _, out FoliageSpecies grass, out FoliageSpecies sunflower))
+            List<FoliageSpecies> species = FoliageAssetLibrary.CreateOrLoadDefaults(out Material material);
+            if (material == null || species == null || species.Count == 0)
             {
                 return default;
             }
@@ -69,8 +70,14 @@ namespace SabaProps.Foliage.Editors
             ConfigureCamera();
             BuildGround(CreateOrLoadGroundMaterial());
 
-            FoliageField meadow = CreateMeadow(grass, sunflower);
-            FoliageField clearing = CreateClearing(grass);
+            FoliageField meadow = CreateMeadow(
+                Of(species, FoliageSpeciesKind.GrassClump),
+                Of(species, FoliageSpeciesKind.Clover),
+                Of(species, FoliageSpeciesKind.Sunflower));
+
+            FoliageField clearing = CreateClearing(
+                Of(species, FoliageSpeciesKind.GrassClump),
+                Of(species, FoliageSpeciesKind.Reed));
 
             FoliageBuildStats meadowStats = FoliageFieldBuilder.Build(meadow);
             FoliageBuildStats clearingStats = FoliageFieldBuilder.Build(clearing);
@@ -176,7 +183,25 @@ namespace SabaProps.Foliage.Editors
             }
         }
 
-        private static FoliageField CreateMeadow(FoliageSpecies grass, FoliageSpecies sunflower)
+        /// <summary>The stock species of a given kind, or null if it is missing.</summary>
+        private static FoliageSpecies Of(List<FoliageSpecies> species, FoliageSpeciesKind kind)
+        {
+            return species.Find(entry => entry != null && entry.kind == kind);
+        }
+
+        private static void AddSpecies(FoliageField field, FoliageSpecies species, float weight)
+        {
+            if (species == null)
+            {
+                return;
+            }
+
+            field.species.Add(species);
+            field.speciesWeights.Add(weight);
+        }
+
+        private static FoliageField CreateMeadow(
+            FoliageSpecies grass, FoliageSpecies clover, FoliageSpecies sunflower)
         {
             var go = new GameObject(MeadowName);
             go.transform.position = new Vector3(-9f, 0f, 0f);
@@ -188,13 +213,17 @@ namespace SabaProps.Foliage.Editors
             field.seed = 1024;
             field.chunkSize = 6f;
             field.outputMode = FoliageOutputMode.GpuInstanced;
-            field.species.Add(grass);
-            field.species.Add(sunflower);
+
+            // Weights live on the field, not on the shared species assets, so the
+            // clearing next door can use a different mix of the same presets.
+            AddSpecies(field, grass, 1f);
+            AddSpecies(field, clover, 0.45f);
+            AddSpecies(field, sunflower, 0.06f);
 
             return field;
         }
 
-        private static FoliageField CreateClearing(FoliageSpecies grass)
+        private static FoliageField CreateClearing(FoliageSpecies grass, FoliageSpecies reed)
         {
             var go = new GameObject(ClearingName);
             go.transform.position = new Vector3(9f, 0f, 0f);
@@ -206,7 +235,9 @@ namespace SabaProps.Foliage.Editors
             field.seed = 2048;
             field.chunkSize = 5f;
             field.outputMode = FoliageOutputMode.MergedChunks;
-            field.species.Add(grass);
+
+            AddSpecies(field, grass, 1f);
+            AddSpecies(field, reed, 0.1f);
 
             return field;
         }

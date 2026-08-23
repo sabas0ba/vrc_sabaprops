@@ -12,6 +12,8 @@ namespace SabaProps.Foliage.Editors
             "m_Script",
             "grass",
             "sunflower",
+            "clover",
+            "reed",
             "generatedMesh",
         };
 
@@ -23,9 +25,9 @@ namespace SabaProps.Foliage.Editors
 
             EditorGUILayout.Space(6f);
             var kind = (FoliageSpeciesKind)serializedObject.FindProperty("kind").enumValueIndex;
-            string parameterProperty = kind == FoliageSpeciesKind.Sunflower ? "sunflower" : "grass";
 
-            EditorGUILayout.PropertyField(serializedObject.FindProperty(parameterProperty), true);
+            EditorGUILayout.PropertyField(
+                serializedObject.FindProperty(FoliageAssetLibrary.ParameterProperty(kind)), true);
 
             serializedObject.ApplyModifiedProperties();
 

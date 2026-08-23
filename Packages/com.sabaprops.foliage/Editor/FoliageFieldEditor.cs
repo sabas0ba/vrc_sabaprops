@@ -30,6 +30,7 @@ namespace SabaProps.Foliage.Editors
         private SerializedProperty _invertDensityMask;
 
         private SerializedProperty _species;
+        private SerializedProperty _speciesWeights;
 
         private SerializedProperty _outputMode;
         private SerializedProperty _chunkSize;
@@ -63,6 +64,7 @@ namespace SabaProps.Foliage.Editors
             _invertDensityMask = serializedObject.FindProperty("invertDensityMask");
 
             _species = serializedObject.FindProperty("species");
+            _speciesWeights = serializedObject.FindProperty("speciesWeights");
 
             _outputMode = serializedObject.FindProperty("outputMode");
             _chunkSize = serializedObject.FindProperty("chunkSize");
@@ -199,9 +201,61 @@ namespace SabaProps.Foliage.Editors
             if (_species.arraySize == 0)
             {
                 EditorGUILayout.HelpBox(
-                    "Species が空です。Tools/SabaProps/Foliage/Create Default Assets でグラスシードとひまわりのプリセットを作成できます。",
+                    "Species が空です。Tools/SabaProps/Foliage/Create Default Assets でプリセットを作成できます。",
                     MessageType.Info);
+                return;
             }
+
+            DrawSpeciesWeights();
+        }
+
+        /// <summary>
+        /// Mix for this field, shown next to the species it belongs to. The
+        /// weights are a parallel list in the serialised data, which on its own
+        /// would be impossible to line up by eye.
+        /// </summary>
+        private void DrawSpeciesWeights()
+        {
+            EditorGUILayout.Space(4f);
+            EditorGUILayout.LabelField("Mix", EditorStyles.miniBoldLabel);
+
+            // Grow the parallel list to match rather than asking the user to.
+            while (_speciesWeights.arraySize < _species.arraySize)
+            {
+                _speciesWeights.InsertArrayElementAtIndex(_speciesWeights.arraySize);
+                _speciesWeights.GetArrayElementAtIndex(_speciesWeights.arraySize - 1).floatValue = 0f;
+            }
+
+            var field = (FoliageField)target;
+            float total = 0f;
+            for (int i = 0; i < _species.arraySize; i++)
+            {
+                total += field.PlacementWeightAt(i);
+            }
+
+            for (int i = 0; i < _species.arraySize; i++)
+            {
+                var species = _species.GetArrayElementAtIndex(i).objectReferenceValue as FoliageSpecies;
+                SerializedProperty weight = _speciesWeights.GetArrayElementAtIndex(i);
+
+                using (new EditorGUILayout.HorizontalScope())
+                {
+                    EditorGUILayout.LabelField(
+                        species != null ? species.name : "(none)", GUILayout.Width(120f));
+
+                    weight.floatValue = Mathf.Max(0f, EditorGUILayout.FloatField(weight.floatValue));
+
+                    string share = total > 0f
+                        ? $"{field.PlacementWeightAt(i) / total * 100f:0.#} %"
+                        : "-";
+
+                    EditorGUILayout.LabelField(share, GUILayout.Width(52f));
+                }
+            }
+
+            EditorGUILayout.LabelField(
+                "0 にすると Species アセット側の Placement Weight を使います。",
+                EditorStyles.wordWrappedMiniLabel);
         }
 
         private void DrawOutput(FoliageField field)

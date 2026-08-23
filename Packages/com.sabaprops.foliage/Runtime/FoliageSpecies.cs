@@ -11,6 +11,12 @@ namespace SabaProps.Foliage
 
         /// <summary>Stem, leaves, disc and petals.</summary>
         Sunflower = 1,
+
+        /// <summary>Low ground cover: a short stem carrying heart-shaped leaflets.</summary>
+        Clover = 2,
+
+        /// <summary>A tall, near-vertical blade cluster with a seed spike.</summary>
+        Reed = 3,
     }
 
     /// <summary>Parameters for <see cref="FoliageSpeciesKind.GrassClump"/>.</summary>
@@ -107,6 +113,78 @@ namespace SabaProps.Foliage
         [Range(0f, 1f)] public float petalStiffness = 0.85f;
     }
 
+    /// <summary>Parameters for <see cref="FoliageSpeciesKind.Clover"/>.</summary>
+    [Serializable]
+    public class CloverParams
+    {
+        [Tooltip("1 株あたりの小葉の枚数。")]
+        [Range(2, 5)] public int leafletCount = 3;
+
+        [Tooltip("茎の高さ (m)。小葉はこの高さに付きます。")]
+        [Min(0.01f)] public float height = 0.11f;
+
+        [Range(0f, 0.9f)] public float heightVariance = 0.3f;
+
+        [Min(0.002f)] public float stemWidth = 0.006f;
+
+        [Min(0.005f)] public float leafLength = 0.055f;
+        [Min(0.005f)] public float leafWidth = 0.062f;
+
+        [Tooltip("小葉の垂れ下がり角度 (度)。")]
+        [Range(-45f, 45f)] public float leafDroop = 16f;
+
+        [Tooltip("先端の切れ込みの深さ。クローバーらしいハート形になります。")]
+        [Range(0f, 0.5f)] public float notch = 0.22f;
+
+        public Color leafColor = new Color(0.208f, 0.361f, 0.145f, 1f);
+        public Color leafRimColor = new Color(0.325f, 0.498f, 0.204f, 1f);
+
+        [Range(0f, 1f)] public float rootOcclusion = 0.3f;
+
+        [Tooltip("株ごとの色ゆらぎ。")]
+        [Range(0f, 0.5f)] public float perPlantTintJitter = 0.07f;
+
+        [Range(0f, 1f)] public float stiffness = 0.75f;
+    }
+
+    /// <summary>Parameters for <see cref="FoliageSpeciesKind.Reed"/>.</summary>
+    [Serializable]
+    public class ReedParams
+    {
+        [Range(1, 8)] public int bladeCount = 4;
+        [Range(2, 6)] public int segments = 3;
+
+        [Min(0.05f)] public float height = 1.05f;
+        [Range(0f, 0.9f)] public float heightVariance = 0.28f;
+
+        [Min(0.002f)] public float width = 0.017f;
+        [Range(0f, 0.9f)] public float widthVariance = 0.2f;
+
+        [Tooltip("先端の開き (m)。草より小さくすると直立した葦らしくなります。")]
+        [Range(0f, 0.8f)] public float spread = 0.16f;
+
+        [Min(0f)] public float clumpRadius = 0.035f;
+
+        [Range(0.2f, 3f)] public float taper = 1.1f;
+        [Range(0f, 1f)] public float normalUpBlend = 0.6f;
+
+        public Color rootColor = new Color(0.243f, 0.298f, 0.129f, 1f);
+        public Color tipColor = new Color(0.475f, 0.478f, 0.239f, 1f);
+
+        [Range(0f, 1f)] public float rootOcclusion = 0.3f;
+
+        [Header("Spike")]
+        [Tooltip("最も高いブレードの先に穂を付けます。")]
+        public bool spike = true;
+
+        [Min(0.01f)] public float spikeLength = 0.14f;
+        [Min(0.002f)] public float spikeWidth = 0.024f;
+
+        public Color spikeColor = new Color(0.318f, 0.208f, 0.114f, 1f);
+
+        [Range(0f, 1f)] public float stiffness = 0.55f;
+    }
+
     /// <summary>
     /// A reusable foliage preset: how the mesh is generated and how instances of
     /// it are placed. One species maps to exactly one mesh, and therefore to one
@@ -155,6 +233,8 @@ namespace SabaProps.Foliage
         [Header("Mesh Parameters")]
         public GrassParams grass = new GrassParams();
         public SunflowerParams sunflower = new SunflowerParams();
+        public CloverParams clover = new CloverParams();
+        public ReedParams reed = new ReedParams();
 
         [Header("Generated (read only)")]
         [Tooltip("ビルド時に自動生成・上書きされるメッシュアセット。")]

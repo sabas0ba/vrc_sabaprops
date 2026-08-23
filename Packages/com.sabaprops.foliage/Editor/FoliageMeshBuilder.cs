@@ -26,10 +26,30 @@ namespace SabaProps.Foliage.Editors
                 case FoliageSpeciesKind.Sunflower:
                     return BuildSunflower(species.sunflower, species.meshSeed);
 
+                case FoliageSpeciesKind.Clover:
+                    return BuildClover(species.clover, species.meshSeed);
+
+                case FoliageSpeciesKind.Reed:
+                    return BuildReed(species.reed, species.meshSeed);
+
                 case FoliageSpeciesKind.GrassClump:
                 default:
                     return BuildGrassClump(species.grass, species.meshSeed);
             }
+        }
+
+        /// <summary>
+        /// The parts of a tapered blade that grass and reeds share. Passed
+        /// explicitly rather than as a params object so the two species can keep
+        /// their own inspector layouts without one dictating the other's.
+        /// </summary>
+        private struct BladeShape
+        {
+            public int Segments;
+            public float Taper;
+            public float NormalUpBlend;
+            public float RootOcclusion;
+            public float Stiffness;
         }
 
         // ------------------------------------------------------------------
@@ -43,6 +63,15 @@ namespace SabaProps.Foliage.Editors
 
             int bladeCount = Mathf.Max(1, p.bladeCount);
             float tallest = 0f;
+
+            var shape = new BladeShape
+            {
+                Segments = p.segments,
+                Taper = p.taper,
+                NormalUpBlend = p.normalUpBlend,
+                RootOcclusion = p.rootOcclusion,
+                Stiffness = p.stiffness,
+            };
 
             for (int i = 0; i < bladeCount; i++)
             {
@@ -66,7 +95,7 @@ namespace SabaProps.Foliage.Editors
                 Color rootColor = JitterColor(p.rootColor, ref rng, p.perBladeTintJitter);
                 Color tipColor = JitterColor(p.tipColor, ref rng, p.perBladeTintJitter);
 
-                AddBlade(buffer, p, root, bendDir, height, width, bend, elementSeed, rootColor, tipColor);
+                AddBlade(buffer, shape, root, bendDir, height, width, bend, elementSeed, rootColor, tipColor);
                 tallest = Mathf.Max(tallest, height);
             }
 
@@ -74,14 +103,14 @@ namespace SabaProps.Foliage.Editors
         }
 
         private static void AddBlade(
-            FoliageMeshBuffer buffer, GrassParams p,
+            FoliageMeshBuffer buffer, BladeShape p,
             Vector3 root, Vector3 bendDir,
             float height, float width, float bend,
             float elementSeed, Color rootColor, Color tipColor)
         {
             var side = new Vector3(-bendDir.z, 0f, bendDir.x);
-            int segments = Mathf.Max(1, p.segments);
-            var rootData = new Vector4(root.x, root.y, root.z, p.stiffness);
+            int segments = Mathf.Max(1, p.Segments);
+            var rootData = new Vector4(root.x, root.y, root.z, p.Stiffness);
 
             int previousLeft = -1;
             int previousRight = -1;
@@ -92,8 +121,8 @@ namespace SabaProps.Foliage.Editors
                 Vector3 center = BladePoint(root, bendDir, height, bend, t);
                 Vector3 normal = BladeNormal(p, side, bendDir, height, bend, t);
 
-                float halfWidth = width * 0.5f * Mathf.Pow(1f - t, p.taper);
-                Color color = ShadeBlade(rootColor, tipColor, p.rootOcclusion, t, elementSeed);
+                float halfWidth = width * 0.5f * Mathf.Pow(1f - t, p.Taper);
+                Color color = ShadeBlade(rootColor, tipColor, p.RootOcclusion, t, elementSeed);
 
                 int left = buffer.AddVertex(center - side * halfWidth, normal, color, new Vector2(0f, t), rootData);
                 int right = buffer.AddVertex(center + side * halfWidth, normal, color, new Vector2(1f, t), rootData);
@@ -111,7 +140,7 @@ namespace SabaProps.Foliage.Editors
             // degenerate quad, and a cleaner silhouette.
             Vector3 tipPoint = BladePoint(root, bendDir, height, bend, 1f);
             Vector3 tipNormal = BladeNormal(p, side, bendDir, height, bend, 1f);
-            Color tipShaded = ShadeBlade(rootColor, tipColor, p.rootOcclusion, 1f, elementSeed);
+            Color tipShaded = ShadeBlade(rootColor, tipColor, p.RootOcclusion, 1f, elementSeed);
 
             int tip = buffer.AddVertex(tipPoint, tipNormal, tipShaded, new Vector2(0.5f, 1f), rootData);
             buffer.AddTriangle(previousLeft, previousRight, tip);
@@ -123,7 +152,7 @@ namespace SabaProps.Foliage.Editors
             return root + Vector3.up * (height * t) + bendDir * (bend * t * t);
         }
 
-        private static Vector3 BladeNormal(GrassParams p, Vector3 side, Vector3 bendDir, float height, float bend, float t)
+        private static Vector3 BladeNormal(BladeShape p, Vector3 side, Vector3 bendDir, float height, float bend, float t)
         {
             Vector3 tangent = (Vector3.up * height + bendDir * (2f * bend * t)).normalized;
             Vector3 face = Vector3.Cross(side, tangent).normalized;
@@ -131,7 +160,7 @@ namespace SabaProps.Foliage.Editors
             // Biasing the normal upwards is the standard foliage trick: it makes
             // both faces of a two-sided blade light consistently, so we never
             // need a VFACE flip in the fragment stage.
-            return Vector3.Slerp(face, Vector3.up, p.normalUpBlend).normalized;
+            return Vector3.Slerp(face, Vector3.up, p.NormalUpBlend).normalized;
         }
 
         private static Color ShadeBlade(Color rootColor, Color tipColor, float rootOcclusion, float t, float elementSeed)
@@ -397,6 +426,226 @@ namespace SabaProps.Foliage.Editors
 
                 buffer.AddQuad(innerLeft, innerRight, outerRight, outerLeft);
                 buffer.AddTriangle(outerLeft, outerRight, tipIndex);
+            }
+        }
+
+        // ------------------------------------------------------------------
+        // Clover
+        // ------------------------------------------------------------------
+
+        public static Mesh BuildClover(CloverParams p, int seed)
+        {
+            var rng = new FoliageRandom(seed);
+            var buffer = new FoliageMeshBuffer();
+
+            float height = p.height * rng.Range(1f - p.heightVariance, 1f + p.heightVariance);
+
+            // One phase for the whole plant, as with the sunflower: the leaflets
+            // are rigidly attached to the stem tip, so a phase of their own would
+            // only pull them off it.
+            float plantSeed = rng.Value01();
+
+            float leanAngle = rng.Range(0f, Mathf.PI * 2f);
+            var leanDir = new Vector3(Mathf.Cos(leanAngle), 0f, Mathf.Sin(leanAngle));
+            float lean = height * 0.18f * rng.Range(0f, 1f);
+
+            Vector3 top = new Vector3(leanDir.x * lean, height, leanDir.z * lean);
+            var rootData = new Vector4(0f, 0f, 0f, p.stiffness);
+
+            Color leaf = JitterColor(p.leafColor, ref rng, p.perPlantTintJitter);
+            Color rim = JitterColor(p.leafRimColor, ref rng, p.perPlantTintJitter);
+            leaf.a = plantSeed;
+            rim.a = plantSeed;
+
+            AddCloverStem(buffer, p, leanDir, top, height, leaf, rootData);
+
+            int leaflets = Mathf.Max(2, p.leafletCount);
+            float droop = Mathf.Tan(p.leafDroop * Mathf.Deg2Rad) * p.leafLength;
+
+            for (int i = 0; i < leaflets; i++)
+            {
+                float angle = i / (float)leaflets * Mathf.PI * 2f + rng.Range(-0.12f, 0.12f);
+                var outward = new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle));
+                var side = new Vector3(-outward.z, 0f, outward.x);
+
+                float length = p.leafLength * rng.Range(0.88f, 1.12f);
+                float halfWidth = p.leafWidth * 0.5f * rng.Range(0.88f, 1.12f);
+
+                AddCloverLeaflet(buffer, p, top, outward, side, length, halfWidth, droop, leaf, rim, rootData);
+            }
+
+            return buffer.ToMesh("SabaFoliage_Clover", height * 0.4f);
+        }
+
+        private static void AddCloverStem(
+            FoliageMeshBuffer buffer, CloverParams p,
+            Vector3 leanDir, Vector3 top, float height, Color color, Vector4 rootData)
+        {
+            var side = new Vector3(-leanDir.z, 0f, leanDir.x);
+            float halfWidth = p.stemWidth * 0.5f;
+
+            Color rootColor = color;
+            float occlusion = 1f - p.rootOcclusion;
+            rootColor.r *= occlusion;
+            rootColor.g *= occlusion;
+            rootColor.b *= occlusion;
+
+            Vector3 normal = Vector3.Cross(side, (top - Vector3.zero).normalized).normalized;
+            if (normal.sqrMagnitude < 1e-6f)
+            {
+                normal = Vector3.up;
+            }
+
+            int baseLeft = buffer.AddVertex(-side * halfWidth, normal, rootColor, new Vector2(0f, 0f), rootData);
+            int baseRight = buffer.AddVertex(side * halfWidth, normal, rootColor, new Vector2(1f, 0f), rootData);
+            int topLeft = buffer.AddVertex(top - side * halfWidth, normal, color, new Vector2(0f, 1f), rootData);
+            int topRight = buffer.AddVertex(top + side * halfWidth, normal, color, new Vector2(1f, 1f), rootData);
+
+            buffer.AddQuad(baseLeft, baseRight, topRight, topLeft);
+        }
+
+        /// <summary>
+        /// One heart-shaped leaflet, fanned from the stem tip. Every vertex sits
+        /// at the top of the bend mask and carries the stem's stiffness, so the
+        /// leaflet cannot drift away from the stem it grows out of.
+        /// </summary>
+        private static void AddCloverLeaflet(
+            FoliageMeshBuffer buffer, CloverParams p,
+            Vector3 top, Vector3 outward, Vector3 side,
+            float length, float halfWidth, float droop,
+            Color leaf, Color rim, Vector4 rootData)
+        {
+            Vector3 fall = Vector3.down * droop;
+
+            Vector3 waist = top + outward * (length * 0.45f) + fall * 0.45f;
+            Vector3 lobe = top + outward * (length * 0.95f) + fall;
+            Vector3 notch = top + outward * (length * (0.95f - p.notch)) + fall * 0.95f;
+
+            Vector3 spine = (lobe - top).normalized;
+            Vector3 face = Vector3.Cross(side, spine).normalized;
+            if (face.y < 0f)
+            {
+                face = -face;
+            }
+
+            Vector3 normal = Vector3.Slerp(face, Vector3.up, 0.6f).normalized;
+
+            var uv = new Vector2(0.5f, 1f);
+
+            int baseIndex = buffer.AddVertex(top, normal, leaf, uv, rootData);
+            int waistLeft = buffer.AddVertex(waist - side * halfWidth, normal, leaf, new Vector2(0f, 1f), rootData);
+            int waistRight = buffer.AddVertex(waist + side * halfWidth, normal, leaf, new Vector2(1f, 1f), rootData);
+            int lobeLeft = buffer.AddVertex(lobe - side * (halfWidth * 0.62f), normal, rim, new Vector2(0.2f, 1f), rootData);
+            int lobeRight = buffer.AddVertex(lobe + side * (halfWidth * 0.62f), normal, rim, new Vector2(0.8f, 1f), rootData);
+            int notchIndex = buffer.AddVertex(notch, normal, rim, uv, rootData);
+
+            buffer.AddTriangle(baseIndex, waistLeft, lobeLeft);
+            buffer.AddTriangle(baseIndex, lobeLeft, notchIndex);
+            buffer.AddTriangle(baseIndex, notchIndex, lobeRight);
+            buffer.AddTriangle(baseIndex, lobeRight, waistRight);
+        }
+
+        // ------------------------------------------------------------------
+        // Reed
+        // ------------------------------------------------------------------
+
+        public static Mesh BuildReed(ReedParams p, int seed)
+        {
+            var rng = new FoliageRandom(seed);
+            var buffer = new FoliageMeshBuffer();
+
+            var shape = new BladeShape
+            {
+                Segments = p.segments,
+                Taper = p.taper,
+                NormalUpBlend = p.normalUpBlend,
+                RootOcclusion = p.rootOcclusion,
+                Stiffness = p.stiffness,
+            };
+
+            int bladeCount = Mathf.Max(1, p.bladeCount);
+            float tallest = 0f;
+
+            Vector3 tallestTop = Vector3.zero;
+            Vector3 tallestDir = Vector3.forward;
+            Vector3 tallestRoot = Vector3.zero;
+            float tallestSeed = 0f;
+
+            for (int i = 0; i < bladeCount; i++)
+            {
+                float angle = rng.Range(0f, Mathf.PI * 2f);
+                float distance = Mathf.Sqrt(rng.Value01()) * p.clumpRadius;
+                var root = new Vector3(Mathf.Cos(angle) * distance, 0f, Mathf.Sin(angle) * distance);
+
+                float facing = angle + rng.Range(-0.7f, 0.7f);
+                var bendDir = new Vector3(Mathf.Cos(facing), 0f, Mathf.Sin(facing));
+
+                float height = p.height * rng.Range(1f - p.heightVariance, 1f + p.heightVariance);
+                float width = p.width * rng.Range(1f - p.widthVariance, 1f + p.widthVariance);
+                float bend = p.spread * height * rng.Range(0.4f, 1.3f);
+                float elementSeed = rng.Value01();
+
+                AddBlade(buffer, shape, root, bendDir, height, width, bend, elementSeed, p.rootColor, p.tipColor);
+
+                if (height > tallest)
+                {
+                    tallest = height;
+                    tallestTop = BladePoint(root, bendDir, height, bend, 1f);
+                    tallestDir = bendDir;
+                    // The spike must sway with the blade it sits on, not with a
+                    // phase of its own, or it detaches at the tip.
+                    tallestSeed = elementSeed;
+                    tallestRoot = root;
+                }
+            }
+
+            if (p.spike && bladeCount > 0)
+            {
+                AddReedSpike(buffer, p, tallestTop, tallestDir, tallestRoot, tallestSeed);
+            }
+
+            return buffer.ToMesh("SabaFoliage_Reed", tallest * 0.35f);
+        }
+
+        private static void AddReedSpike(
+            FoliageMeshBuffer buffer, ReedParams p,
+            Vector3 attach, Vector3 bendDir, Vector3 root, float elementSeed)
+        {
+            // Two crossed strips, the same trick the sunflower stem uses.
+            var axes = new[]
+            {
+                new Vector3(-bendDir.z, 0f, bendDir.x),
+                bendDir,
+            };
+
+            Vector3 tip = attach + Vector3.up * p.spikeLength + bendDir * (p.spikeLength * 0.18f);
+            var rootData = new Vector4(root.x, root.y, root.z, p.stiffness);
+
+            Color color = p.spikeColor;
+            color.a = elementSeed;
+
+            foreach (Vector3 side in axes)
+            {
+                Vector3 normal = Vector3.Cross(side, (tip - attach).normalized).normalized;
+                if (normal.sqrMagnitude < 1e-6f)
+                {
+                    normal = Vector3.up;
+                }
+
+                normal = Vector3.Slerp(normal, Vector3.up, p.normalUpBlend).normalized;
+
+                float halfWidth = p.spikeWidth * 0.5f;
+
+                // The base sits exactly on the blade tip, which is at the top of
+                // the bend mask, so the two move as one.
+                int baseLeft = buffer.AddVertex(attach - side * (halfWidth * 0.45f), normal, color, new Vector2(0f, 1f), rootData);
+                int baseRight = buffer.AddVertex(attach + side * (halfWidth * 0.45f), normal, color, new Vector2(1f, 1f), rootData);
+                int midLeft = buffer.AddVertex(attach + (tip - attach) * 0.45f - side * halfWidth, normal, color, new Vector2(0f, 1f), rootData);
+                int midRight = buffer.AddVertex(attach + (tip - attach) * 0.45f + side * halfWidth, normal, color, new Vector2(1f, 1f), rootData);
+                int tipIndex = buffer.AddVertex(tip, normal, color, new Vector2(0.5f, 1f), rootData);
+
+                buffer.AddQuad(baseLeft, baseRight, midRight, midLeft);
+                buffer.AddTriangle(midLeft, midRight, tipIndex);
             }
         }
 

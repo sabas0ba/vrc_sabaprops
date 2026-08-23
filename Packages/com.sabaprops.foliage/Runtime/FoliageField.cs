@@ -131,6 +131,9 @@ namespace SabaProps.Foliage
         [Header("Species")]
         public List<FoliageSpecies> species = new List<FoliageSpecies>();
 
+        [Tooltip("Species と同じ並びの出現比率。0 以下、または未設定の要素は Species 側の Placement Weight を使います。")]
+        public List<float> speciesWeights = new List<float>();
+
         [Header("Output")]
         public FoliageOutputMode outputMode = FoliageOutputMode.GpuInstanced;
 
@@ -159,6 +162,27 @@ namespace SabaProps.Foliage
 
                 return buildId;
             }
+        }
+
+        /// <summary>
+        /// Placement weight for the species at <paramref name="index"/>, taken
+        /// from this field when it sets one and from the species asset when it
+        /// does not. A field that never touches these keeps behaving exactly as
+        /// it did before per-field weights existed.
+        /// </summary>
+        public float PlacementWeightAt(int index)
+        {
+            if (species == null || index < 0 || index >= species.Count || species[index] == null)
+            {
+                return 0f;
+            }
+
+            if (speciesWeights != null && index < speciesWeights.Count && speciesWeights[index] > 0f)
+            {
+                return speciesWeights[index];
+            }
+
+            return Mathf.Max(0f, species[index].placementWeight);
         }
 
         /// <summary>Area extents in local space, as a half-size on X and Z.</summary>

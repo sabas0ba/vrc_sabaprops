@@ -49,7 +49,7 @@ namespace SabaProps.Foliage.Editors
                 return results;
             }
 
-            float[] cumulativeWeights = BuildCumulativeWeights(validSpecies);
+            float[] cumulativeWeights = BuildCumulativeWeights(field, validSpecies);
             if (cumulativeWeights[cumulativeWeights.Length - 1] <= 0f)
             {
                 error = "すべての Species の Placement Weight が 0 です。";
@@ -216,14 +216,16 @@ namespace SabaProps.Foliage.Editors
             return valid;
         }
 
-        private static float[] BuildCumulativeWeights(List<FoliageSpecies> species)
+        private static float[] BuildCumulativeWeights(FoliageField field, List<FoliageSpecies> species)
         {
             var cumulative = new float[species.Count];
             float total = 0f;
 
             for (int i = 0; i < species.Count; i++)
             {
-                total += Mathf.Max(0f, species[i].placementWeight);
+                // valid species keep the field's order but may skip entries, so
+                // the weight has to be looked up by the species' own slot.
+                total += Mathf.Max(0f, field.PlacementWeightAt(field.species.IndexOf(species[i])));
                 cumulative[i] = total;
             }
 

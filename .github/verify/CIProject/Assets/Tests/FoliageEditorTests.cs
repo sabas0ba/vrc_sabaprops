@@ -239,6 +239,64 @@ namespace SabaProps.Foliage.CITests
         }
 
         [Test]
+        public void EverySpeciesKindBuildsAWellFormedMesh()
+        {
+            foreach (FoliageSpeciesKind kind in FoliageAssetLibrary.AllKinds)
+            {
+                var species = ScriptableObject.CreateInstance<FoliageSpecies>();
+                try
+                {
+                    species.kind = kind;
+
+                    Mesh mesh = FoliageMeshBuilder.Build(species);
+                    AssertMeshIsWellFormed(mesh, kind.ToString());
+
+                    // Mass placement is the whole point, so no stock species may
+                    // quietly become expensive.
+                    Assert.Less(mesh.triangles.Length / 3, 400, $"{kind} is unexpectedly heavy");
+
+                    Object.DestroyImmediate(mesh);
+                }
+                finally
+                {
+                    Object.DestroyImmediate(species);
+                }
+            }
+        }
+
+        [Test]
+        public void SingleStemmedSpeciesShareOneWindPhase()
+        {
+            // A grass or reed clump is separate blades that may sway out of step.
+            // A clover or a sunflower is one plant, and parts of one plant that
+            // move out of step come apart at the joints.
+            foreach (FoliageSpeciesKind kind in new[] { FoliageSpeciesKind.Clover, FoliageSpeciesKind.Sunflower })
+            {
+                var species = ScriptableObject.CreateInstance<FoliageSpecies>();
+                try
+                {
+                    species.kind = kind;
+
+                    Mesh mesh = FoliageMeshBuilder.Build(species);
+
+                    var phases = new HashSet<float>();
+                    foreach (Color color in mesh.colors)
+                    {
+                        phases.Add(color.a);
+                    }
+
+                    Assert.AreEqual(1, phases.Count, $"{kind} must sway with a single wind phase");
+
+                    Object.DestroyImmediate(mesh);
+                }
+                finally
+                {
+                    Object.DestroyImmediate(species);
+                }
+            }
+        }
+
+        [Test]
         public void SameSeedProducesIdenticalGeometry()
         {
             var a = ScriptableObject.CreateInstance<FoliageSpecies>();
@@ -483,8 +541,8 @@ namespace SabaProps.Foliage.CITests
                 meadowMeshes.Add(filter.sharedMesh);
             }
 
-            Assert.AreEqual(2, meadowMeshes.Count,
-                "the meadow should place exactly two species, each with one shared mesh");
+            Assert.AreEqual(3, meadowMeshes.Count,
+                "the meadow should place exactly three species, each with one shared mesh");
 
             Assert.Less(clearing.lastBuildStats.rendererCount, clearing.lastBuildStats.instanceCount,
                 "the clearing should merge instances into fewer renderers");
