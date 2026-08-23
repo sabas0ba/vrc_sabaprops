@@ -30,7 +30,7 @@ set -euo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO="$(cd "$HERE/../.." && pwd)"
-PACKAGE="${1:-$REPO/Packages/com.sabaprops.foliage}"
+PACKAGE="${1:-$REPO/Packages/io.github.sabas0ba.sabaprops.foliage}"
 
 WORK="${VERIFY_WORK_DIR:-$REPO/.verify}"
 REFS="$WORK/refs"

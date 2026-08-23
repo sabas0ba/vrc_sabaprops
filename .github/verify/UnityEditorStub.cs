@@ -1,5 +1,5 @@
-// Minimal UnityEditor surface used by com.sabaprops.foliage, so the Editor
-// assembly can be compiled outside Unity.
+// Minimal UnityEditor surface used by io.github.sabas0ba.sabaprops.foliage,
+// so the Editor assembly can be compiled outside Unity.
 //
 // CAVEAT: these signatures are written by hand. They verify that the package's
 // own code is internally consistent and syntactically valid, and (because the

@@ -1,6 +1,6 @@
 {
   "name": "SabaProps",
-  "id": "com.sabaprops.vpm",
+  "id": "io.github.sabas0ba.sabaprops",
   "url": "https://sabas0ba.github.io/vrc_sabaprops/index.json",
   "author": "sabas0ba",
   "description": "VRChat 向けのアバター／ワールドアセット集。",
@@ -11,6 +11,6 @@
   "bannerUrl": "",
   "githubRepo": "sabas0ba/vrc_sabaprops",
   "packages": [
-    "com.sabaprops.foliage"
+    "io.github.sabas0ba.sabaprops.foliage"
   ]
 }

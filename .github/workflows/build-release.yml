@@ -2,7 +2,7 @@ name: Build Release
 
 # Tag formats:
 #   v0.1.0                            -> the only package under Packages/
-#   com.sabaprops.foliage/v0.1.0      -> that specific package
+#   io.github.sabas0ba.sabaprops.foliage/v0.1.0      -> that specific package
 on:
   push:
     tags:
@@ -11,7 +11,7 @@ on:
   workflow_dispatch:
     inputs:
       package:
-        description: "Package id (e.g. com.sabaprops.foliage). Leave empty to auto-detect."
+        description: "Package id (e.g. io.github.sabas0ba.sabaprops.foliage). Leave empty to auto-detect."
         required: false
         default: ""
 
@@ -25,7 +25,7 @@ jobs:
       package: ${{ steps.resolve.outputs.package }}
       version: ${{ steps.resolve.outputs.version }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
       - name: Resolve package and version
         id: resolve

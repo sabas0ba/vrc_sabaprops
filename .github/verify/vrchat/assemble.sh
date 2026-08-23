@@ -19,7 +19,7 @@ set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO="$(cd "$HERE/../../.." && pwd)"
 CIPROJECT="$REPO/.github/verify/CIProject"
-PACKAGE="$REPO/Packages/com.sabaprops.foliage"
+PACKAGE="$REPO/Packages/io.github.sabas0ba.sabaprops.foliage"
 
 PROJECT="${1:-$REPO/build/WorldProject}"
 VPM="${VPM_DIR:-$REPO/build/vpm}"
@@ -59,7 +59,7 @@ replace "$HERE/Setup" "$PROJECT/Assets/WorldSetup"
 
 # Embedded packages resolve against the working tree and pull their own
 # registry dependencies, so nothing has to be listed in manifest.json.
-replace "$PACKAGE" "$PROJECT/Packages/com.sabaprops.foliage"
+replace "$PACKAGE" "$PROJECT/Packages/io.github.sabas0ba.sabaprops.foliage"
 replace "$VPM/com.vrchat.base" "$PROJECT/Packages/com.vrchat.base"
 replace "$VPM/com.vrchat.worlds" "$PROJECT/Packages/com.vrchat.worlds"
 

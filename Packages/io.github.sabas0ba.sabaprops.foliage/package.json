@@ -1,5 +1,5 @@
 {
-  "name": "com.sabaprops.foliage",
+  "name": "io.github.sabas0ba.sabaprops.foliage",
   "displayName": "SabaProps Foliage",
   "version": "0.1.0",
   "unity": "2022.3",
@@ -10,8 +10,8 @@
   },
   "license": "MIT",
   "licensesUrl": "https://github.com/sabas0ba/vrc_sabaprops/blob/main/LICENSE",
-  "documentationUrl": "https://github.com/sabas0ba/vrc_sabaprops/blob/main/Packages/com.sabaprops.foliage/README.md",
-  "changelogUrl": "https://github.com/sabas0ba/vrc_sabaprops/blob/main/Packages/com.sabaprops.foliage/CHANGELOG.md",
+  "documentationUrl": "https://github.com/sabas0ba/vrc_sabaprops/blob/main/Packages/io.github.sabas0ba.sabaprops.foliage/README.md",
+  "changelogUrl": "https://github.com/sabas0ba/vrc_sabaprops/blob/main/Packages/io.github.sabas0ba.sabaprops.foliage/CHANGELOG.md",
   "vpmDependencies": {},
   "keywords": [
     "vrchat",

@@ -25,7 +25,7 @@ https://sabas0ba.github.io/vrc_sabaprops/index.json
 
 | Package ID | 名前 | 概要 |
 | --- | --- | --- |
-| `com.sabaprops.foliage` | SabaProps Foliage | GPU インスタンシング対応の草木スキャッタリングツール。グラスシード／ひまわりをプロシージャル生成し、大量配置しても軽量。 |
+| `io.github.sabas0ba.sabaprops.foliage` | SabaProps Foliage | GPU インスタンシング対応の草木スキャッタリングツール。グラスシード／ひまわりをプロシージャル生成し、大量配置しても軽量。 |
 
 各パッケージの詳細は `Packages/<package-id>/README.md` を参照してください。
 
@@ -40,7 +40,7 @@ VRChat Worlds SDK が入っているプロジェクトでは `VRCSceneDescriptor
 ```
 .
 ├── Packages/                       # 配布する VPM パッケージ群（1 フォルダ = 1 パッケージ）
-│   └── com.sabaprops.foliage/
+│   └── io.github.sabas0ba.sabaprops.foliage/
 │       ├── package.json            # VPM マニフェスト
 │       ├── Runtime/                # シーンに残る最小限のコンポーネントとシェーダー
 │       ├── Editor/                 # 生成・配置ツール（ビルドには含まれない）
@@ -61,20 +61,20 @@ VRChat Worlds SDK が入っているプロジェクトでは `VRCSceneDescriptor
 ### 1. Unity プロジェクトで編集する
 
 このリポジトリ自体は Unity プロジェクトではありません。開発時は VCC で作った Unity プロジェクトの
-`Packages/` 配下にこのリポジトリの `Packages/com.sabaprops.foliage` をシンボリックリンク（または
+`Packages/` 配下にこのリポジトリの `Packages/io.github.sabas0ba.sabaprops.foliage` をシンボリックリンク（または
 クローンごと配置）してください。
 
 ```bash
 # 例: macOS / Linux
-ln -s /path/to/vrc_sabaprops/Packages/com.sabaprops.foliage \
-      /path/to/UnityProject/Packages/com.sabaprops.foliage
+ln -s /path/to/vrc_sabaprops/Packages/io.github.sabas0ba.sabaprops.foliage \
+      /path/to/UnityProject/Packages/io.github.sabas0ba.sabaprops.foliage
 ```
 
 ```powershell
 # 例: Windows (管理者 PowerShell)
 New-Item -ItemType Junction `
-  -Path "C:\UnityProject\Packages\com.sabaprops.foliage" `
-  -Target "C:\dev\vrc_sabaprops\Packages\com.sabaprops.foliage"
+  -Path "C:\UnityProject\Packages\io.github.sabas0ba.sabaprops.foliage" `
+  -Target "C:\dev\vrc_sabaprops\Packages\io.github.sabas0ba.sabaprops.foliage"
 ```
 
 Unity が生成した `.meta` ファイルは **必ずコミット**してください。GUID が変わるとユーザー側の参照が壊れます。
@@ -93,7 +93,7 @@ git push origin v0.1.0
 `build-release.yml` が zip を作って Release を発行し、続けて `build-listing.yml` が
 `index.json` を再生成して GitHub Pages に反映します。
 
-> 複数パッケージになったら、タグは `com.sabaprops.foliage/v0.2.0` の形式でも受け付けます。
+> 複数パッケージになったら、タグは `io.github.sabas0ba.sabaprops.foliage/v0.2.0` の形式でも受け付けます。
 
 ### 3. 手動でリスティングだけ作り直す
 
@@ -193,7 +193,7 @@ Unity のライセンスをリポジトリの Secrets に登録してくださ�
 `.ulf` の取得手順は [GameCI の Activation ドキュメント](https://game.ci/docs/github/activation) を参照してください。
 
 CI 用の Unity プロジェクトは `.github/verify/CIProject/` にあります。ワークフローがこれをコピーし、
-`Packages/com.sabaprops.foliage` を embedded package として配置してから Unity を起動します。
+`Packages/io.github.sabas0ba.sabaprops.foliage` を embedded package として配置してから Unity を起動します。
 Unity のバージョンは `.github/verify/CIProject/ProjectSettings/ProjectVersion.txt` で決まります。
 
 ---

@@ -44,7 +44,7 @@ namespace SabaProps.Foliage.Editors
         [MenuItem("Tools/SabaProps/Foliage/Documentation", false, 100)]
         public static void OpenDocumentation()
         {
-            Application.OpenURL("https://github.com/sabas0ba/vrc_sabaprops/blob/main/Packages/com.sabaprops.foliage/README.md");
+            Application.OpenURL("https://github.com/sabas0ba/vrc_sabaprops/blob/main/Packages/io.github.sabas0ba.sabaprops.foliage/README.md");
         }
     }
 }

@@ -1,5 +1,5 @@
 {
-  "//": "Unity built-in modules for the VRChat world verification project. The CI project's manifest carries only what com.sabaprops.foliage needs; the Worlds SDK needs the set a real world project gets from Unity's 3D template, and reports the shortfall as CS1069 rather than as a missing dependency.",
+  "//": "Unity built-in modules for the VRChat world verification project. The CI project's manifest carries only what io.github.sabas0ba.sabaprops.foliage needs; the Worlds SDK needs the set a real world project gets from Unity's 3D template, and reports the shortfall as CS1069 rather than as a missing dependency.",
   "dependencies": {
     "com.unity.test-framework": "1.1.33",
     "com.unity.modules.ai": "1.0.0",
