@@ -6,6 +6,11 @@
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-08-23
+
+`v0.1.0` はリスティングへ公開されないまま終わったため、実質的にこれが最初の公開版です。
+以下は `0.1.0` のタグ以降ではなく、`0.1.0` の CHANGELOG に記載が無かった分をまとめたものです。
+
 ### Added
 
 - サンプルシーン生成: `Tools/SabaProps/Foliage/Create Sample Scene`
@@ -71,5 +76,6 @@
 - `FoliageSpecies` ScriptableObject による種別プリセット
 - セットアップメニュー: `Tools/SabaProps/Foliage/Create Default Assets`
 
-[Unreleased]: https://github.com/sabas0ba/vrc_sabaprops/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/sabas0ba/vrc_sabaprops/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/sabas0ba/vrc_sabaprops/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/sabas0ba/vrc_sabaprops/releases/tag/v0.1.0
