@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Compile-verify the package without a Unity installation.
+# Verify the package without a Unity installation.
 #
 # What this proves:
 #   * the Runtime assembly compiles against REAL UnityEngine reference
@@ -8,6 +8,9 @@
 #   * the Editor assembly compiles, with its UnityEngine usage checked against
 #     those same real assemblies
 #   * the shader's HLSL type-checks in all four shader_feature combinations
+#   * mesh generation RUNS, and the geometry it produces holds up: topology,
+#     finiteness, determinism, the UV3/COLOR channels the shader reads, and the
+#     wind-joint rules that stop a plant coming apart. See offline/.
 #
 # What this does NOT prove:
 #   * UnityEditor API signatures. UnityEditor.dll is not redistributable, so
@@ -15,8 +18,12 @@
 #   * that Unity's surface shader generator accepts the #pragma configuration,
 #     or that the generated variants compile. Only the shader's own code is
 #     checked here.
+#   * anything that needs the editor at runtime: scattering (it raycasts),
+#     asset writing, the sample scene, the VRChat world path.
+#   * numeric agreement with Unity's own maths. The offline run uses a
+#     reimplementation, so it asserts structure rather than exact values.
 #
-# Closing those two gaps needs a real Unity install; see README.md.
+# Closing those gaps needs a real Unity install; see README.md.
 #
 # Requirements: dotnet SDK 8+, glslangValidator, curl, unzip, python3.
 set -euo pipefail
@@ -179,6 +186,54 @@ for variant in "${variants[@]}"; do
         fail "shader variant failed: $label"
     fi
 done
+
+# ---------------------------------------------------------------------------
+log "Running mesh generation (no Unity)"
+# ---------------------------------------------------------------------------
+# Everything above proves the package compiles. This runs it: the real mesh
+# generators against a small runnable stand-in for UnityEngine's maths, so a
+# pull request exercises the code that produces geometry rather than only
+# parsing it. Structural properties only — see offline/UnityEngineShim.cs for
+# why, and .github/workflows/unity.yml for the tier that has real Unity.
+OFFLINE="$HERE/offline"
+OFFLINE_OUT="$OUT/offline"
+mkdir -p "$OFFLINE_OUT"
+
+# Targets the .NET runtime that is present, not net35 like the steps above:
+# these assemblies have to execute, and the shim replaces UnityEngine entirely.
+# `dotnet --list-runtimes` prints "<name> <version> [<path>]"; the last
+# Microsoft.NETCore.App entry is the newest installed shared framework, and its
+# assemblies are what this executable both compiles against and runs on.
+RUNTIME_DIR="$(dotnet --list-runtimes \
+    | awk '/^Microsoft.NETCore.App /{ gsub(/[][]/, "", $3); dir=$3 "/" $2 } END { print dir }')"
+[ -d "$RUNTIME_DIR" ] || fail "could not locate a Microsoft.NETCore.App shared framework"
+
+RUNTIME_ARGS=()
+for name in System.Runtime System.Private.CoreLib System.Collections System.Console System.Linq; do
+    RUNTIME_ARGS+=(-r:"$RUNTIME_DIR/$name.dll")
+done
+
+csc -nologo -langversion:9.0 -target:exe -nostdlib+ -noconfig \
+    "${RUNTIME_ARGS[@]}" \
+    -out:"$OFFLINE_OUT/OfflineMeshTests.dll" \
+    "$OFFLINE/UnityEngineShim.cs" \
+    "$OFFLINE/OfflineMeshTests.cs" \
+    "$PACKAGE/Runtime/FoliageRandom.cs" \
+    "$PACKAGE/Runtime/FoliageSpecies.cs" \
+    "$PACKAGE/Editor/FoliageMeshBuffer.cs" \
+    "$PACKAGE/Editor/FoliageMeshBuilder.cs"
+
+cat > "$OFFLINE_OUT/OfflineMeshTests.runtimeconfig.json" <<'JSON'
+{
+  "runtimeOptions": {
+    "tfm": "net8.0",
+    "framework": { "name": "Microsoft.NETCore.App", "version": "8.0.0" },
+    "rollForward": "latestMajor"
+  }
+}
+JSON
+
+dotnet "$OFFLINE_OUT/OfflineMeshTests.dll" || fail "offline mesh checks failed"
 
 # ---------------------------------------------------------------------------
 log "Validating manifests"
