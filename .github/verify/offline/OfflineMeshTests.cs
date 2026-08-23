@@ -43,6 +43,7 @@ internal static class OfflineMeshTests
         Run("autumn warms and winter drains the colour", SeasonsMoveInTheRightDirection);
         Run("a season keeps the root-to-tip gradient", SeasonsPreserveTheGradient);
         Run("season weight holds a colour back", SeasonWeightHoldsColourBack);
+        Run("a dormant flower drops its petals", DormantFlowersDropTheirPetals);
 
         Run("degenerate parameters stay finite", DegenerateParametersStayFinite);
         Run("merging preserves counts and moves the wind pivots", MergePreservesChannels);
@@ -410,6 +411,46 @@ internal static class OfflineMeshTests
         Require(Distance(held, petal) > 1e-4f, "a held-back vertex did not move at all");
 
         Require(full.a == petal.a && held.a == petal.a, "the wind phase did not survive the recolour");
+    }
+
+    private static void DormantFlowersDropTheirPetals()
+    {
+        // Recolouring a flower in full bloom to straw produces a thing that
+        // does not exist. A sunflower in winter is a seed head on a dry stalk,
+        // which means the petals have to actually not be built.
+        Mesh bloom = Build(FoliageSpeciesKind.Sunflower, 7);
+
+        var dormant = new FoliageSpecies
+        {
+            kind = FoliageSpeciesKind.Sunflower,
+            meshSeed = 7,
+            season = FoliageSeason.Winter,
+        };
+        dormant.seasonPalette.winter.appearance = SeasonAppearance.Dormant;
+
+        Mesh spent = FoliageMeshBuilder.Build(dormant);
+        AssertWellFormed(spent, "dormant sunflower");
+
+        // Each petal is a quad and a tip triangle. Everything else -- stem,
+        // leaves, seed head -- has to survive, so the difference is exact.
+        int petals = Math.Max(4, dormant.sunflower.petalCount);
+        int dropped = bloom.triangles.Length / 3 - spent.triangles.Length / 3;
+
+        Require(dropped == petals * 3,
+            $"a dormant sunflower dropped {dropped} triangles, expected {petals * 3} (the petals)");
+
+        // The appearance is what gates this, not the season: a species told to
+        // stay in bloom through the winter keeps its petals and only recolours.
+        var blooming = new FoliageSpecies
+        {
+            kind = FoliageSpeciesKind.Sunflower,
+            meshSeed = 7,
+            season = FoliageSeason.Winter,
+        };
+        blooming.seasonPalette.winter.appearance = SeasonAppearance.Full;
+
+        Require(FoliageMeshBuilder.Build(blooming).triangles.Length == bloom.triangles.Length,
+            "a winter sunflower left as Full lost geometry anyway");
     }
 
     private static void DegenerateParametersStayFinite()

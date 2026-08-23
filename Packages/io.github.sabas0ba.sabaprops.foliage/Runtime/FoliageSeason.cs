@@ -19,17 +19,44 @@ namespace SabaProps.Foliage
         Winter = 3,
     }
 
+    /// <summary>What is left of a plant in a given season.</summary>
+    public enum SeasonAppearance
+    {
+        /// <summary>The whole plant. Only its colours change.</summary>
+        Full = 0,
+
+        /// <summary>
+        /// The parts that do not last a year are not generated: petals go, the
+        /// stem, leaves and seed head stay. A flower recoloured to straw but
+        /// still in bloom is a thing that does not exist.
+        /// </summary>
+        Dormant = 1,
+
+        /// <summary>
+        /// Not placed at all. An annual is simply gone for part of the year, and
+        /// a dead stalk would be a worse answer than nothing.
+        /// </summary>
+        Absent = 2,
+    }
+
     /// <summary>
-    /// How one season shifts a species' vertex colours.
+    /// How one season changes a species: what of the plant is there, and what
+    /// colour it is.
     /// <para>
-    /// The shift is applied when the mesh is generated, so it costs nothing at
-    /// runtime and is reproducible from the species asset alone. Only RGB is
-    /// touched: the alpha channel carries the per-element wind phase.
+    /// Both are resolved when the mesh is generated, so they cost nothing at
+    /// runtime and are reproducible from the species asset alone. Of the
+    /// colours, only RGB is touched: the alpha channel carries the per-element
+    /// wind phase.
     /// </para>
     /// </summary>
     [Serializable]
-    public class SeasonTint
+    public class SeasonStyle
     {
+        [Tooltip(
+            "この季節の姿。Dormant は花弁など一年で落ちる部位を生成しません。"
+            + "Absent はその季節に配置しません。")]
+        public SeasonAppearance appearance = SeasonAppearance.Full;
+
         [Tooltip("この季節で寄せる色。色相と彩度がこの色へ向かいます。")]
         public Color target = new Color(0.290f, 0.443f, 0.161f, 1f);
 
@@ -66,7 +93,7 @@ namespace SabaProps.Foliage
     public class SeasonPalette
     {
         [Tooltip("春。若葉寄りの明るい緑。")]
-        public SeasonTint spring = new SeasonTint
+        public SeasonStyle spring = new SeasonStyle
         {
             target = new Color(0.478f, 0.678f, 0.243f, 1f),
             blend = 0.35f,
@@ -75,7 +102,7 @@ namespace SabaProps.Foliage
         };
 
         [Tooltip("夏。既定では Species の色をそのまま使います。")]
-        public SeasonTint summer = new SeasonTint
+        public SeasonStyle summer = new SeasonStyle
         {
             target = new Color(0.290f, 0.443f, 0.161f, 1f),
             blend = 0f,
@@ -84,7 +111,7 @@ namespace SabaProps.Foliage
         };
 
         [Tooltip("秋。琥珀色へ寄せます。")]
-        public SeasonTint autumn = new SeasonTint
+        public SeasonStyle autumn = new SeasonStyle
         {
             target = new Color(0.718f, 0.443f, 0.129f, 1f),
             blend = 0.6f,
@@ -93,7 +120,7 @@ namespace SabaProps.Foliage
         };
 
         [Tooltip("冬。枯草色へ寄せ、彩度を落とします。")]
-        public SeasonTint winter = new SeasonTint
+        public SeasonStyle winter = new SeasonStyle
         {
             target = new Color(0.573f, 0.510f, 0.376f, 1f),
             blend = 0.8f,
@@ -102,7 +129,7 @@ namespace SabaProps.Foliage
         };
 
         /// <summary>The tint for one season, or null if that entry is missing.</summary>
-        public SeasonTint For(FoliageSeason season)
+        public SeasonStyle For(FoliageSeason season)
         {
             switch (season)
             {

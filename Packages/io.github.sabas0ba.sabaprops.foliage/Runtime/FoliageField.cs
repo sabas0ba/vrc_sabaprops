@@ -183,6 +183,15 @@ namespace SabaProps.Foliage
                 return 0f;
             }
 
+            // An annual is simply not there for part of the year. Handled as a
+            // weight of zero rather than as a special case in the scatterer, so
+            // the remaining species share the field's density between them the
+            // way they would if it had never been listed.
+            if (species[index].ActiveAppearance == SeasonAppearance.Absent)
+            {
+                return 0f;
+            }
+
             if (speciesWeights != null && index < speciesWeights.Count && speciesWeights[index] > 0f)
             {
                 return speciesWeights[index];

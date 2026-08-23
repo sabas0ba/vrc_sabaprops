@@ -343,6 +343,13 @@ namespace SabaProps.Foliage.Editors
                 species.faceSun = true;
                 species.faceSunJitter = 16f;
 
+                // A sunflower is an annual: it flowers once, sheds its petals
+                // and stands through the winter as a seed head on a dry stalk.
+                // Recolouring a flower in full bloom to straw would produce
+                // something that does not exist.
+                species.seasonPalette.autumn.appearance = SeasonAppearance.Dormant;
+                species.seasonPalette.winter.appearance = SeasonAppearance.Dormant;
+
                 // Sunflowers are sparse and tall enough to be worth a shadow.
                 species.castShadows = true;
                 return;

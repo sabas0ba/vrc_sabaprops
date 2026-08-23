@@ -4,7 +4,7 @@ using UnityEngine;
 namespace SabaProps.Foliage.Editors
 {
     /// <summary>
-    /// Applies a <see cref="SeasonTint"/> to the vertex colours of a mesh under
+    /// Applies a <see cref="SeasonStyle"/> to the vertex colours of a mesh under
     /// construction.
     /// <para>
     /// Runs once, at generation time, at the single point every species passes
@@ -26,7 +26,7 @@ namespace SabaProps.Foliage.Editors
         /// Recolours a buffer in place. Vertices keep their alpha, which carries
         /// the per-element wind phase rather than opacity.
         /// </summary>
-        internal static void Apply(FoliageMeshBuffer buffer, SeasonTint tint)
+        internal static void Apply(FoliageMeshBuffer buffer, SeasonStyle tint)
         {
             if (buffer == null || tint == null || tint.IsIdentity)
             {
@@ -56,7 +56,7 @@ namespace SabaProps.Foliage.Editors
         /// moves the average while leaving the relative differences intact.
         /// </para>
         /// </summary>
-        private static float ValueScale(List<Color> colors, List<float> weights, SeasonTint tint)
+        private static float ValueScale(List<Color> colors, List<float> weights, SeasonStyle tint)
         {
             float sum = 0f;
             float total = 0f;
@@ -89,7 +89,7 @@ namespace SabaProps.Foliage.Editors
         /// so a petal marked 0.3 keeps most of the colour that makes it
         /// recognisable while the leaves around it turn fully.
         /// </summary>
-        public static Color Apply(Color source, SeasonTint tint, float valueScale, float weight)
+        public static Color Apply(Color source, SeasonStyle tint, float valueScale, float weight)
         {
             weight = Mathf.Clamp01(weight);
             if (tint == null || weight <= 0f)

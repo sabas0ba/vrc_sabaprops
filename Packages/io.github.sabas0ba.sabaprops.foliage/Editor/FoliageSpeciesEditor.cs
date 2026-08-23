@@ -63,12 +63,12 @@ namespace SabaProps.Foliage.Editors
             {
                 foreach (FoliageSeason entry in FoliageAssetLibrary.AllSeasons)
                 {
-                    DrawSeasonTint(palette, entry);
+                    DrawSeasonStyle(palette, entry);
                 }
             }
             else
             {
-                DrawSeasonTint(palette, (FoliageSeason)season.enumValueIndex);
+                DrawSeasonStyle(palette, (FoliageSeason)season.enumValueIndex);
             }
 
             using (new EditorGUI.DisabledScope(season.hasMultipleDifferentValues))
@@ -77,7 +77,7 @@ namespace SabaProps.Foliage.Editors
             }
         }
 
-        private static void DrawSeasonTint(SerializedProperty palette, FoliageSeason season)
+        private static void DrawSeasonStyle(SerializedProperty palette, FoliageSeason season)
         {
             SerializedProperty tint =
                 palette.FindPropertyRelative(FoliageAssetLibrary.SeasonProperty(season));

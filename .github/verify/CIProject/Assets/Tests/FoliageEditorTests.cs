@@ -497,6 +497,44 @@ namespace SabaProps.Foliage.CITests
                 Assert.AreEqual(firstPositions[i].z, secondPositions[i].z, 1e-4f);
             }
         }
+
+        [Test]
+        public void AbsentSpecies_IsNotPlacedForItsSeason()
+        {
+            // An annual marked Absent is gone for that part of the year. The
+            // rest of the field has to carry on as if it had never been listed,
+            // rather than the field placing fewer plants overall.
+            FoliageField field = CreateField(FoliageOutputMode.GpuInstanced);
+
+            var sunflower = ScriptableObject.CreateInstance<FoliageSpecies>();
+            sunflower.name = "CI Absent Sunflower";
+            sunflower.kind = FoliageSpeciesKind.Sunflower;
+            sunflower.material = FoliageAssetLibrary.CreateOrLoadDefaultMaterial();
+            sunflower.season = FoliageSeason.Winter;
+            sunflower.seasonPalette.winter.appearance = SeasonAppearance.Absent;
+            sunflower.placementWeight = 1f;
+
+            try
+            {
+                field.species.Add(sunflower);
+
+                FoliageBuildStats stats = FoliageFieldBuilder.Build(field);
+
+                Assert.IsNotNull(stats);
+                Assert.Greater(stats.instanceCount, 0,
+                    "the absent species took the whole field down with it");
+
+                foreach (MeshFilter filter in field.GetComponentsInChildren<MeshFilter>())
+                {
+                    Assert.AreNotEqual(sunflower.name, filter.gameObject.name,
+                        "a species marked Absent for its season was placed anyway");
+                }
+            }
+            finally
+            {
+                Object.DestroyImmediate(sunflower);
+            }
+        }
     }
 
     /// <summary>
@@ -682,7 +720,7 @@ namespace SabaProps.Foliage.CITests
         }
 
         [Test]
-        public void SampleScene_SeasonSectionDiffersOnlyInColour()
+        public void SampleScene_SeasonSectionVariesOnlyBySeason()
         {
             GameObject seasons = FindRootObject(_scene, FoliageSampleScene.SeasonRoot);
             Assert.IsNotNull(seasons, "the demo has no season section");
@@ -699,9 +737,11 @@ namespace SabaProps.Foliage.CITests
             {
                 AssertBuilt(plot, FoliageOutputMode.MergedChunks);
 
-                // Same seed, same species, same ground: anything other than
-                // colour differing between the plots would make the comparison
-                // meaningless.
+                // Same seed, same species, same ground. The stock presets keep
+                // every species present in every season -- the sunflower goes
+                // dormant rather than absent -- so the four plots must place the
+                // same plants in the same places, or the comparison is between
+                // two different fields rather than between two seasons.
                 Assert.AreEqual(reference.lastBuildStats.instanceCount, plot.lastBuildStats.instanceCount,
                     $"'{plot.name}' placed a different number of plants than '{reference.name}'");
 

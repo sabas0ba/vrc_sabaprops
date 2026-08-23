@@ -260,9 +260,23 @@ namespace SabaProps.Foliage
         /// palette. A null tint means "leave the colours alone", which is what an
         /// asset authored before seasons existed expects.
         /// </summary>
-        public SeasonTint ActiveSeasonTint
+        public SeasonStyle ActiveSeasonStyle
         {
             get { return seasonPalette != null ? seasonPalette.For(season) : null; }
+        }
+
+        /// <summary>
+        /// What is left of this species in the selected season. Defaults to
+        /// <see cref="SeasonAppearance.Full"/> when the asset has no palette,
+        /// which is what an asset authored before seasons existed expects.
+        /// </summary>
+        public SeasonAppearance ActiveAppearance
+        {
+            get
+            {
+                SeasonStyle style = ActiveSeasonStyle;
+                return style != null ? style.appearance : SeasonAppearance.Full;
+            }
         }
 
         /// <summary>

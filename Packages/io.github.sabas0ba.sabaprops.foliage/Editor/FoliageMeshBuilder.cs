@@ -25,17 +25,23 @@ namespace SabaProps.Foliage.Editors
 
             // Every species reaches the season pass through here, so a new
             // generator gets all four seasons without knowing they exist.
-            FoliageSeasonPass.Apply(built.Buffer, species.ActiveSeasonTint);
+            FoliageSeasonPass.Apply(built.Buffer, species.ActiveSeasonStyle);
 
             return built.ToMesh();
         }
 
         private static BuiltMesh BuildBuffer(FoliageSpecies species)
         {
+            // Dormant drops the parts of a plant that do not last a year.
+            // Species with nothing to drop ignore it and differ by colour alone,
+            // which is the correct answer for grass: it browns, it does not
+            // disappear.
+            bool dormant = species.ActiveAppearance != SeasonAppearance.Full;
+
             switch (species.kind)
             {
                 case FoliageSpeciesKind.Sunflower:
-                    return BuildSunflowerBuffer(species.sunflower, species.meshSeed);
+                    return BuildSunflowerBuffer(species.sunflower, species.meshSeed, dormant);
 
                 case FoliageSpeciesKind.Clover:
                     return BuildCloverBuffer(species.clover, species.meshSeed);
@@ -221,10 +227,15 @@ namespace SabaProps.Foliage.Editors
 
         public static Mesh BuildSunflower(SunflowerParams p, int seed)
         {
-            return BuildSunflowerBuffer(p, seed).ToMesh();
+            return BuildSunflowerBuffer(p, seed, false).ToMesh();
         }
 
-        private static BuiltMesh BuildSunflowerBuffer(SunflowerParams p, int seed)
+        /// <summary>
+        /// <paramref name="dormant"/> builds the plant after its petals have
+        /// gone: stem, leaves and the seed head it leaves behind, hanging
+        /// further over than a flower in bloom does.
+        /// </summary>
+        private static BuiltMesh BuildSunflowerBuffer(SunflowerParams p, int seed, bool dormant)
         {
             var rng = new FoliageRandom(seed);
             var buffer = new FoliageMeshBuffer();
@@ -243,7 +254,7 @@ namespace SabaProps.Foliage.Editors
 
             AddStem(buffer, p, leanDir, height, lean, plantSeed);
             AddLeaves(buffer, p, ref rng, leanDir, height, lean, plantSeed);
-            AddHead(buffer, p, ref rng, leanDir, height, lean, plantSeed);
+            AddHead(buffer, p, ref rng, leanDir, height, lean, plantSeed, dormant);
 
             return new BuiltMesh
             {
@@ -367,7 +378,7 @@ namespace SabaProps.Foliage.Editors
 
         private static void AddHead(
             FoliageMeshBuffer buffer, SunflowerParams p, ref FoliageRandom rng,
-            Vector3 leanDir, float height, float lean, float plantSeed)
+            Vector3 leanDir, float height, float lean, float plantSeed, bool dormant)
         {
             Vector3 top = StemPoint(leanDir, height, lean, 1f);
 
@@ -379,7 +390,12 @@ namespace SabaProps.Foliage.Editors
                 tiltAxis = Vector3.forward;
             }
 
-            Vector3 headNormal = (Quaternion.AngleAxis(p.headTilt, tiltAxis.normalized) * Vector3.up).normalized;
+            // A spent head is heavy and no longer tracks anything, so it hangs
+            // rather than faces. Tilted further over than the parameter asks
+            // for, never less: a species already drooping stays as it was.
+            float headTilt = dormant ? Mathf.Max(p.headTilt, 74f) : p.headTilt;
+
+            Vector3 headNormal = (Quaternion.AngleAxis(headTilt, tiltAxis.normalized) * Vector3.up).normalized;
 
             Vector3 tangentA = Vector3.Cross(headNormal, Vector3.up);
             if (tangentA.sqrMagnitude < 1e-6f)
@@ -443,6 +459,14 @@ namespace SabaProps.Foliage.Editors
             }
 
             // --- petals -----------------------------------------------------
+            if (dormant)
+            {
+                // Nothing else to add: the seed head above is what a sunflower
+                // is once the petals have gone.
+                buffer.SeasonWeight = 1f;
+                return;
+            }
+
             // Petals hold most of their own colour through the year. A sunflower
             // whose petals bleach to straw along with the grass around it is no
             // longer identifiable as one.
