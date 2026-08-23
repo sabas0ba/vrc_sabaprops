@@ -45,6 +45,24 @@ SDK 自身のテストアセンブリも同じプロジェクトに存在しま�
 本パッケージとは無関係な理由で 2 件失敗する（ランダム生成の JSON ファズケースと、
 docs.microsoft.com の URL 到達性を検証するもの）ため、終了コードを意味のあるものにするためです。
 
+## テストの構成
+
+| アセンブリ | 種別 | 内容 |
+| --- | --- | --- |
+| `SabaProps.Foliage.CITests` | EditMode | シーンが正しく作られているか。SDK の有無で期待値が切り替わります |
+| `SabaProps.Foliage.WorldTests` | PlayMode | ClientSim でワールドとして実行し、プレイヤーが Spawn するか |
+
+`WorldTests` は SDK を参照するため CI プロジェクト側には置けません。`Tests/` にあり、
+`assemble.sh` がワールドプロジェクトへコピーします。
+
+ClientSim は VRChat クライアントのエディタ内ランタイムです。`VRCSceneDescriptor` を読んで
+ローカルプレイヤーを生成するため、descriptor の設定が間違っていればプレイヤーは出ません。
+
+なお ClientSim は起動時、入力システムが注入される前に `ClientSimPlayerController.Update` が走り、
+`NullReferenceException` を毎回 1 回出します（その直後に `ClientSim Initialized` に到達します）。
+SDK 側の起動順の問題でこちらから直せないため、ワールドが立ち上がるまでの区間に限って
+`LogAssert.ignoreFailingMessages` で許容しています。
+
 ## これで検証できること
 
 `FoliageVrcWorld` が SDK を見つけ、`VRCWorld` ルートと Spawn を作り、

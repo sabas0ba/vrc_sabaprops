@@ -1,13 +1,19 @@
 #!/usr/bin/env bash
 #
 # Assembles a Unity project that holds the package and the VRChat Worlds SDK
-# side by side, so the EditMode tests take the SDK-present branch of
-# FoliageVrcWorld instead of the "no SDK, skip it" one.
+# side by side, so the tests take the SDK-present branch of FoliageVrcWorld
+# instead of the "no SDK, skip it" one.
 #
 # The SDK comes from fetch.sh, which pins it by hash and runs in a container.
 # Only the Unity Editor itself is taken from the host.
 #
-# Usage: assemble.sh [project-directory]   (default: <repo>/build/WorldProject)
+# Re-running refreshes just the directories this script owns. Everything else
+# is left alone, because the SDK generates assets of its own on first import
+# (Assets/UdonSharp) that Unity's import cache then expects to still be there.
+# Pass --clean to start over from nothing.
+#
+# Usage: assemble.sh [project-directory] [--clean]
+#        (default project: <repo>/build/WorldProject)
 set -euo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -18,26 +24,40 @@ PACKAGE="$REPO/Packages/com.sabaprops.foliage"
 PROJECT="${1:-$REPO/build/WorldProject}"
 VPM="${VPM_DIR:-$REPO/build/vpm}"
 
+if [ "${2:-}" = "--clean" ]; then
+    rm -rf "$PROJECT"
+fi
+
 if [ ! -d "$VPM/com.vrchat.worlds" ] || [ ! -d "$VPM/com.vrchat.base" ]; then
     echo "fetching the pinned VRChat SDK"
     "$HERE/fetch.sh" "$VPM"
 fi
 
-rm -rf "$PROJECT"
 mkdir -p "$PROJECT/Packages" "$PROJECT/ProjectSettings" "$PROJECT/Assets"
 
+# Replace a directory we own, leaving the rest of the project untouched.
+replace() {
+    local source="$1" target="$2"
+    rm -rf "$target"
+    cp -r "$source" "$target"
+}
+
 cp "$CIPROJECT/ProjectSettings/ProjectVersion.txt" "$PROJECT/ProjectSettings/"
-cp -r "$CIPROJECT/Assets/Tests" "$PROJECT/Assets/Tests"
 
 # Not the CI project's manifest: the SDK needs the built-in module set a real
 # world project gets from Unity's 3D template.
 cp "$HERE/manifest.json" "$PROJECT/Packages/manifest.json"
 
+replace "$CIPROJECT/Assets/Tests" "$PROJECT/Assets/Tests"
+
+# PlayMode tests that need the SDK, so they cannot live in the CI project.
+replace "$HERE/Tests" "$PROJECT/Assets/WorldTests"
+
 # Embedded packages resolve against the working tree and pull their own
 # registry dependencies, so nothing has to be listed in manifest.json.
-cp -r "$PACKAGE" "$PROJECT/Packages/com.sabaprops.foliage"
-cp -r "$VPM/com.vrchat.base" "$PROJECT/Packages/com.vrchat.base"
-cp -r "$VPM/com.vrchat.worlds" "$PROJECT/Packages/com.vrchat.worlds"
+replace "$PACKAGE" "$PROJECT/Packages/com.sabaprops.foliage"
+replace "$VPM/com.vrchat.base" "$PROJECT/Packages/com.vrchat.base"
+replace "$VPM/com.vrchat.worlds" "$PROJECT/Packages/com.vrchat.worlds"
 
 echo "assembled $PROJECT"
-find "$PROJECT" -maxdepth 2 -not -path '*/.*' | sort
+find "$PROJECT" -maxdepth 2 -not -path '*/.*' -not -name Library -not -name Temp | sort

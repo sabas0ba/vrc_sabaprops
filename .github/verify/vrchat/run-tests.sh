@@ -1,7 +1,10 @@
 #!/usr/bin/env bash
 #
-# Runs the package's EditMode tests inside the world verification project, so
-# the VRChat branch of FoliageVrcWorld is exercised for real.
+# Runs the package's tests inside the world verification project, so the
+# VRChat branch of FoliageVrcWorld is exercised for real: the EditMode tests
+# check the scene is authored correctly, and SabaProps.Foliage.WorldTests
+# enters play mode under ClientSim to check the result actually runs as a
+# world.
 #
 # Assembles the project first if it is not there. The Unity Editor comes from
 # the host: running it in a container needs a licence, which is the same
@@ -71,7 +74,7 @@ set +e
     -batchmode \
     -projectPath "$(to_native "$PROJECT")" \
     -runTests -testPlatform EditMode \
-    -testFilter "SabaProps.Foliage.CITests" \
+    -testFilter "SabaProps.Foliage.CITests;SabaProps.Foliage.WorldTests" \
     -testResults "$(to_native "$RESULTS")" \
     -logFile "$(to_native "$LOG")"
 set -e
