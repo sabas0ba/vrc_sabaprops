@@ -174,6 +174,25 @@ Unity のバージョンは `.github/verify/CIProject/ProjectSettings/ProjectVer
 
 ---
 
+## 検証 (VRChat Worlds SDK)
+
+サンプルシーンの `VRCSceneDescriptor` 配置はリフレクションで SDK を参照しているため、
+SDK が無い環境ではコンパイルエラーにならず、検証されないまま通ります。
+この分岐を実際に実行するための手順が `.github/verify/vrchat/` にあります。
+
+```sh
+./.github/verify/vrchat/run-tests.sh
+```
+
+SDK の取得はコンテナ内で行い、ローカルの VCC / ALCOM のキャッシュには依存しません。
+バージョン・URL・SHA256 は `.github/verify/vrchat/packages.lock` に固定してあり、
+ダウンロード環境の alpine イメージも digest で固定しています。
+組み上がったプロジェクトに対して、ホストの Unity で EditMode テストを実行します。
+
+詳細は [`.github/verify/vrchat/README.md`](.github/verify/vrchat/README.md) を参照してください。
+
+---
+
 ## ライセンス
 
 MIT License. 詳細は [LICENSE](LICENSE) を参照してください。

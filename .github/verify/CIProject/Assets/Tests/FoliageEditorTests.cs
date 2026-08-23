@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Reflection;
 using NUnit.Framework;
 using SabaProps.Foliage;
 using SabaProps.Foliage.Editors;
@@ -440,21 +441,31 @@ namespace SabaProps.Foliage.CITests
             }
 
             Assert.IsNotNull(world, "the Worlds SDK is installed but the demo has no world root");
-            Assert.IsNotNull(world.transform.Find(FoliageVrcWorld.SpawnObjectName),
-                "the world root has no spawn point");
 
-            // The descriptor is bound by reflection, so the useful assertion is
-            // that a component of that type actually landed on the object.
-            bool hasDescriptor = false;
+            Transform spawn = world.transform.Find(FoliageVrcWorld.SpawnObjectName);
+            Assert.IsNotNull(spawn, "the world root has no spawn point");
+
+            Component descriptor = null;
             foreach (Component component in world.GetComponents<Component>())
             {
                 if (component != null && component.GetType().FullName == FoliageVrcWorld.DescriptorTypeName)
                 {
-                    hasDescriptor = true;
+                    descriptor = component;
                 }
             }
 
-            Assert.IsTrue(hasDescriptor, $"{FoliageVrcWorld.DescriptorTypeName} was not added");
+            Assert.IsNotNull(descriptor, $"{FoliageVrcWorld.DescriptorTypeName} was not added");
+
+            // FoliageVrcWorld assigns these by reflection, so a member the SDK
+            // has renamed would leave the descriptor silently unconfigured and
+            // the world unspawnable. Read them back the same way.
+            FieldInfo spawnsField = descriptor.GetType()
+                .GetField("spawns", BindingFlags.Public | BindingFlags.Instance);
+            Assert.IsNotNull(spawnsField, "VRCSceneDescriptor no longer has a 'spawns' field");
+
+            var spawns = spawnsField.GetValue(descriptor) as Transform[];
+            Assert.IsNotNull(spawns, "'spawns' was not assigned");
+            Assert.Contains(spawn, spawns, "the spawn point is not registered on the descriptor");
         }
 
         private static FoliageField FindField(Scene scene, string name)
