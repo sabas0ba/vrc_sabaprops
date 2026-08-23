@@ -167,10 +167,31 @@ jobs:
           cat "build/$JSON_NAME"
           gh release upload "$TAG" "build/$JSON_NAME" --clobber
 
+  # Asks the listing workflow to run on the default branch rather than calling
+  # it from here.
+  #
+  # A reusable workflow inherits the caller's ref, so calling it from a tag push
+  # made the Pages deployment come from refs/tags/v0.1.0. The github-pages
+  # environment only allows main, so it was rejected before a step ran:
+  #
+  #   Tag "v0.1.0" is not allowed to deploy to github-pages
+  #   due to environment protection rules.
+  #
+  # Dispatching on main is also the more correct ref: the listing is built from
+  # the Releases API, while the page around it comes from Website/, and that
+  # should be main's copy rather than whatever the tag happened to freeze.
+  #
+  # Loosening the environment to accept v* tags would have worked too, at the
+  # cost of widening what may deploy the site.
   listing:
     needs: release
+    runs-on: ubuntu-latest
     permissions:
-      contents: read
-      pages: write
-      id-token: write
-    uses: ./.github/workflows/build-listing.yml
+      actions: write
+    steps:
+      - name: Rebuild the VPM listing
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          gh workflow run build-listing.yml --repo "$GITHUB_REPOSITORY" --ref "$DEFAULT_BRANCH"
