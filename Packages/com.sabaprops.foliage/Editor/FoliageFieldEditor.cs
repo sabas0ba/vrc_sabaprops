@@ -377,5 +377,19 @@ namespace SabaProps.Foliage.Editors
                 }
             }
         }
+
+        /// <summary>
+        /// Floats each field's name over it in the scene view, selected or not.
+        /// A scene with a dozen plots in it is unreadable otherwise, and a label
+        /// drawn from the editor costs the built world nothing.
+        /// </summary>
+        [DrawGizmo(GizmoType.NotInSelectionHierarchy | GizmoType.InSelectionHierarchy)]
+        private static void DrawLabel(FoliageField field, GizmoType gizmoType)
+        {
+            Vector2 extents = field.LocalExtents;
+            Vector3 anchor = field.transform.TransformPoint(new Vector3(0f, 0f, -extents.y));
+
+            Handles.Label(anchor + Vector3.up * 0.35f, field.name, EditorStyles.whiteBoldLabel);
+        }
     }
 }

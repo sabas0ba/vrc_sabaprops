@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Text;
 using UnityEditor;
@@ -11,6 +12,12 @@ namespace SabaProps.Foliage.Editors
     /// Generates a demo scene that is already built and already looks like
     /// something.
     /// <para>
+    /// Laid out as a garden of plots rather than one big field: each plot
+    /// changes exactly one thing from its neighbour, so the effect of a species,
+    /// a parameter, the ground underneath or the output mode can be read by
+    /// walking from one to the next.
+    /// </para>
+    /// <para>
     /// The scene is generated rather than shipped inside the package for two
     /// reasons: a built field is thousands of GameObjects or a pile of merged
     /// mesh binaries, neither of which belongs in a texture-free package, and
@@ -23,12 +30,30 @@ namespace SabaProps.Foliage.Editors
         public const string SampleFolder = FoliageAssetLibrary.RootFolder + "/Samples";
         public const string ScenePath = SampleFolder + "/FoliageDemo.unity";
         public const string GroundMaterialPath = SampleFolder + "/DemoGround.mat";
+        public const string VariantFolder = SampleFolder + "/Species";
 
-        public const string MeadowName = "Meadow (GPU Instanced)";
-        public const string ClearingName = "Clearing (Merged Chunks)";
+        // Section roots. Numbered so the hierarchy reads in walking order, and
+        // named as constants because the tests navigate by them.
+        public const string SingleSpeciesRoot = "1 Single Species";
+        public const string VariantRoot = "2 Parameter Variants";
+        public const string TerrainRoot = "3 Terrain";
+        public const string MixRoot = "4 Combinations";
+        public const string OutputRoot = "5 Output Modes";
+        public const string GroundRoot = "Ground";
 
-        /// <summary>Player spawn, on the flat ground and facing both fields.</summary>
-        public static readonly Vector3 SpawnPosition = new Vector3(0f, 0.05f, -14f);
+        public const string InstancedPlotName = "GPU Instanced";
+        public const string MergedPlotName = "Merged Chunks";
+
+        /// <summary>Player spawn, on the flat ground and facing up the garden.</summary>
+        public static readonly Vector3 SpawnPosition = new Vector3(0f, 0.05f, -7f);
+
+        /// <summary>Plot side length, and the spacing between plot centres.</summary>
+        private const float PlotSize = 7f;
+        private const float Pitch = 9f;
+        private const float PlotDensity = 10f;
+
+        /// <summary>Column centres, four across.</summary>
+        private static readonly float[] Columns = { -13.5f, -4.5f, 4.5f, 13.5f };
 
         [MenuItem("Tools/SabaProps/Foliage/Create Sample Scene", false, 1)]
         public static void CreateAndOpen()
@@ -47,19 +72,19 @@ namespace SabaProps.Foliage.Editors
             SceneView view = SceneView.lastActiveSceneView;
             if (view != null)
             {
-                view.LookAt(new Vector3(0f, 0.5f, 0f), Quaternion.Euler(16f, 22f, 0f), 28f);
+                view.LookAt(new Vector3(0f, 0.5f, 16f), Quaternion.Euler(38f, 0f, 0f), 44f);
             }
         }
 
         /// <summary>
-        /// Replaces the open scene with the demo, builds both fields and saves
-        /// the result to <see cref="ScenePath"/>. Prompt free, so tests and
-        /// batch mode can call it directly.
+        /// Replaces the open scene with the demo, builds every plot and saves the
+        /// result to <see cref="ScenePath"/>. Prompt free, so tests and batch
+        /// mode can call it directly.
         /// </summary>
         public static Scene Create()
         {
-            List<FoliageSpecies> species = FoliageAssetLibrary.CreateOrLoadDefaults(out Material material);
-            if (material == null || species == null || species.Count == 0)
+            List<FoliageSpecies> stock = FoliageAssetLibrary.CreateOrLoadDefaults(out Material material);
+            if (material == null || stock == null || stock.Count == 0)
             {
                 return default;
             }
@@ -68,19 +93,23 @@ namespace SabaProps.Foliage.Editors
 
             ConfigureLight();
             ConfigureCamera();
-            BuildGround(CreateOrLoadGroundMaterial());
 
-            FoliageField meadow = CreateMeadow(
-                Of(species, FoliageSpeciesKind.GrassClump),
-                Of(species, FoliageSpeciesKind.Clover),
-                Of(species, FoliageSpeciesKind.Sunflower));
+            Material ground = CreateOrLoadGroundMaterial();
+            BuildGround(ground);
 
-            FoliageField clearing = CreateClearing(
-                Of(species, FoliageSpeciesKind.GrassClump),
-                Of(species, FoliageSpeciesKind.Reed));
+            var fields = new List<FoliageField>();
 
-            FoliageBuildStats meadowStats = FoliageFieldBuilder.Build(meadow);
-            FoliageBuildStats clearingStats = FoliageFieldBuilder.Build(clearing);
+            BuildSingleSpecies(stock, fields);
+            BuildVariants(material, fields);
+            BuildTerrain(stock, fields);
+            BuildMixes(stock, fields);
+            BuildOutputModes(stock, fields);
+
+            var stats = new List<FoliageBuildStats>(fields.Count);
+            foreach (FoliageField field in fields)
+            {
+                stats.Add(FoliageFieldBuilder.Build(field));
+            }
 
             GameObject world = FoliageVrcWorld.TryCreateWorld(
                 SpawnPosition, Quaternion.identity, Camera.main);
@@ -88,15 +117,307 @@ namespace SabaProps.Foliage.Editors
             FoliageAssetLibrary.EnsureFolder(SampleFolder);
             EditorSceneManager.SaveScene(scene, ScenePath);
 
-            Debug.Log(Summarise(meadowStats, clearingStats, world != null));
+            Debug.Log(Summarise(fields, stats, world != null));
             return scene;
         }
 
         // ------------------------------------------------------------------
+        // Sections
+        // ------------------------------------------------------------------
+
+        /// <summary>
+        /// One plot per species, same size, density and seed. The only variable
+        /// is the species, which is what makes them comparable.
+        /// </summary>
+        private static void BuildSingleSpecies(List<FoliageSpecies> stock, List<FoliageField> fields)
+        {
+            Transform root = CreateRoot(SingleSpeciesRoot);
+
+            for (int i = 0; i < FoliageAssetLibrary.AllKinds.Length && i < Columns.Length; i++)
+            {
+                FoliageSpeciesKind kind = FoliageAssetLibrary.AllKinds[i];
+                FoliageSpecies species = Of(stock, kind);
+                if (species == null)
+                {
+                    continue;
+                }
+
+                FoliageField field = CreatePlot(
+                    root, FoliageAssetLibrary.DisplayName(kind),
+                    new Vector3(Columns[i], 0f, 0f),
+                    DensityFor(kind), 3001 + i, FoliageOutputMode.MergedChunks);
+
+                AddSpecies(field, species, 1f);
+                fields.Add(field);
+            }
+        }
+
+        /// <summary>
+        /// The same four species with one parameter block pushed somewhere else.
+        /// Written to their own assets under the sample folder so the stock
+        /// presets keep whatever the user has tuned them to.
+        /// </summary>
+        private static void BuildVariants(Material material, List<FoliageField> fields)
+        {
+            Transform root = CreateRoot(VariantRoot);
+            FoliageAssetLibrary.EnsureFolder(VariantFolder);
+
+            FoliageSpecies tallGrass = CreateVariant("GrassSeed_Tall", FoliageSpeciesKind.GrassClump, material,
+                species =>
+                {
+                    species.grass.height = 1.05f;
+                    species.grass.bladeCount = 5;
+                    species.grass.width = 0.03f;
+                    species.grass.bend = 0.75f;
+                    species.grass.clumpRadius = 0.12f;
+                    species.minSpacing = 0.12f;
+                });
+
+            FoliageSpecies wideClover = CreateVariant("Clover_Broad", FoliageSpeciesKind.Clover, material,
+                species =>
+                {
+                    species.clover.leafletCount = 4;
+                    species.clover.height = 0.19f;
+                    species.clover.leafLength = 0.085f;
+                    species.clover.leafWidth = 0.095f;
+                    species.clover.notch = 0.34f;
+                });
+
+            FoliageSpecies dwarfSunflower = CreateVariant("Sunflower_Dwarf", FoliageSpeciesKind.Sunflower, material,
+                species =>
+                {
+                    species.sunflower.height = 0.55f;
+                    species.sunflower.headRadius = 0.11f;
+                    species.sunflower.petalCount = 22;
+                    species.sunflower.petalLength = 0.09f;
+                    species.sunflower.headTilt = 18f;
+                    species.minSpacing = 0.25f;
+                });
+
+            FoliageSpecies bareReed = CreateVariant("Reed_Splayed", FoliageSpeciesKind.Reed, material,
+                species =>
+                {
+                    species.reed.bladeCount = 6;
+                    species.reed.height = 0.7f;
+                    species.reed.spread = 0.45f;
+                    species.reed.spike = false;
+                    species.reed.clumpRadius = 0.07f;
+                    species.minSpacing = 0.18f;
+                });
+
+            AddVariantPlot(root, fields, "Grass - Tall", 0, tallGrass, 6f);
+            AddVariantPlot(root, fields, "Clover - Broad", 1, wideClover, 9f);
+            AddVariantPlot(root, fields, "Sunflower - Dwarf", 2, dwarfSunflower, 3.5f);
+            AddVariantPlot(root, fields, "Reed - Splayed", 3, bareReed, 5f);
+        }
+
+        private static void AddVariantPlot(
+            Transform root, List<FoliageField> fields,
+            string name, int column, FoliageSpecies species, float density)
+        {
+            if (species == null)
+            {
+                return;
+            }
+
+            FoliageField field = CreatePlot(
+                root, name, new Vector3(Columns[column], 0f, Pitch),
+                density, 3101 + column, FoliageOutputMode.MergedChunks);
+
+            AddSpecies(field, species, 1f);
+            fields.Add(field);
+        }
+
+        /// <summary>
+        /// The same mix over three kinds of ground. What changes between these
+        /// plots is underneath them, not in the field settings.
+        /// </summary>
+        private static void BuildTerrain(List<FoliageSpecies> stock, List<FoliageField> fields)
+        {
+            Transform root = CreateRoot(TerrainRoot);
+
+            FoliageSpecies grass = Of(stock, FoliageSpeciesKind.GrassClump);
+            FoliageSpecies clover = Of(stock, FoliageSpeciesKind.Clover);
+            FoliageSpecies sunflower = Of(stock, FoliageSpeciesKind.Sunflower);
+
+            string[] names = { "Mound", "Ramp", "Terrace" };
+
+            for (int i = 0; i < names.Length; i++)
+            {
+                FoliageField field = CreatePlot(
+                    root, names[i], new Vector3(Columns[i], 0f, Pitch * 2f),
+                    PlotDensity, 3201 + i, FoliageOutputMode.MergedChunks);
+
+                // The ramp is steeper than the sunflower's slope limit, so the
+                // same mix comes out grass and clover only. That difference is
+                // the point of the plot.
+                AddSpecies(field, grass, 1f);
+                AddSpecies(field, clover, 0.5f);
+                AddSpecies(field, sunflower, 0.1f);
+
+                fields.Add(field);
+            }
+        }
+
+        /// <summary>Three mixes of the same stock species.</summary>
+        private static void BuildMixes(List<FoliageSpecies> stock, List<FoliageField> fields)
+        {
+            Transform root = CreateRoot(MixRoot);
+
+            FoliageSpecies grass = Of(stock, FoliageSpeciesKind.GrassClump);
+            FoliageSpecies clover = Of(stock, FoliageSpeciesKind.Clover);
+            FoliageSpecies sunflower = Of(stock, FoliageSpeciesKind.Sunflower);
+            FoliageSpecies reed = Of(stock, FoliageSpeciesKind.Reed);
+
+            FoliageField meadow = CreatePlot(
+                root, "Meadow", new Vector3(Columns[0], 0f, Pitch * 3f),
+                PlotDensity, 3301, FoliageOutputMode.MergedChunks);
+            AddSpecies(meadow, grass, 1f);
+            AddSpecies(meadow, clover, 0.45f);
+            AddSpecies(meadow, sunflower, 0.06f);
+            fields.Add(meadow);
+
+            FoliageField waterside = CreatePlot(
+                root, "Waterside", new Vector3(Columns[1], 0f, Pitch * 3f),
+                PlotDensity, 3302, FoliageOutputMode.MergedChunks);
+            AddSpecies(waterside, grass, 1f);
+            AddSpecies(waterside, reed, 0.22f);
+            fields.Add(waterside);
+
+            FoliageField flowerbed = CreatePlot(
+                root, "Flowerbed", new Vector3(Columns[2], 0f, Pitch * 3f),
+                PlotDensity, 3303, FoliageOutputMode.MergedChunks);
+            AddSpecies(flowerbed, clover, 1f);
+            AddSpecies(flowerbed, sunflower, 0.3f);
+            fields.Add(flowerbed);
+        }
+
+        /// <summary>
+        /// The same field twice, differing only in output mode, so the renderer
+        /// and draw call counts in the two inspectors can be read side by side.
+        /// </summary>
+        private static void BuildOutputModes(List<FoliageSpecies> stock, List<FoliageField> fields)
+        {
+            Transform root = CreateRoot(OutputRoot);
+
+            FoliageSpecies grass = Of(stock, FoliageSpeciesKind.GrassClump);
+            FoliageSpecies clover = Of(stock, FoliageSpeciesKind.Clover);
+
+            var modes = new[] { FoliageOutputMode.GpuInstanced, FoliageOutputMode.MergedChunks };
+            var names = new[] { InstancedPlotName, MergedPlotName };
+
+            for (int i = 0; i < modes.Length; i++)
+            {
+                FoliageField field = CreatePlot(
+                    root, names[i], new Vector3(Columns[i], 0f, Pitch * 4f),
+                    PlotDensity, 3401, modes[i]);
+
+                AddSpecies(field, grass, 1f);
+                AddSpecies(field, clover, 0.4f);
+                fields.Add(field);
+            }
+        }
+
+        // ------------------------------------------------------------------
+        // Plot and species helpers
+        // ------------------------------------------------------------------
+
+        private static float DensityFor(FoliageSpeciesKind kind)
+        {
+            switch (kind)
+            {
+                case FoliageSpeciesKind.Sunflower: return 2.5f;
+                case FoliageSpeciesKind.Reed: return 4f;
+                case FoliageSpeciesKind.Clover: return 14f;
+                case FoliageSpeciesKind.GrassClump:
+                default: return PlotDensity;
+            }
+        }
+
+        private static Transform CreateRoot(string name)
+        {
+            return new GameObject(name).transform;
+        }
+
+        private static FoliageField CreatePlot(
+            Transform parent, string name, Vector3 position,
+            float density, int seed, FoliageOutputMode mode)
+        {
+            var go = new GameObject(name);
+            go.transform.SetParent(parent, false);
+            go.transform.position = position;
+
+            var field = go.AddComponent<FoliageField>();
+            field.shape = FoliageAreaShape.Rectangle;
+            field.size = new Vector2(PlotSize, PlotSize);
+            field.density = density;
+            field.seed = seed;
+            field.chunkSize = 4f;
+            field.outputMode = mode;
+
+            return field;
+        }
+
+        /// <summary>The stock species of a given kind, or null if it is missing.</summary>
+        private static FoliageSpecies Of(List<FoliageSpecies> species, FoliageSpeciesKind kind)
+        {
+            return species.Find(entry => entry != null && entry.kind == kind);
+        }
+
+        private static void AddSpecies(FoliageField field, FoliageSpecies species, float weight)
+        {
+            if (species == null)
+            {
+                return;
+            }
+
+            field.species.Add(species);
+            field.speciesWeights.Add(weight);
+        }
+
+        /// <summary>
+        /// A species asset that starts from the stock preset for its kind and
+        /// then has one thing changed. Lives under the sample folder so the
+        /// user's own presets are left alone.
+        /// </summary>
+        private static FoliageSpecies CreateVariant(
+            string assetName, FoliageSpeciesKind kind, Material material, Action<FoliageSpecies> configure)
+        {
+            string path = $"{VariantFolder}/{assetName}.asset";
+
+            var species = AssetDatabase.LoadAssetAtPath<FoliageSpecies>(path);
+            bool created = species == null;
+
+            if (created)
+            {
+                species = ScriptableObject.CreateInstance<FoliageSpecies>();
+                species.name = assetName;
+            }
+
+            species.kind = kind;
+            species.material = material;
+            configure(species);
+
+            if (created)
+            {
+                AssetDatabase.CreateAsset(species, path);
+            }
+            else
+            {
+                EditorUtility.SetDirty(species);
+            }
+
+            FoliageAssetLibrary.WriteSpeciesMesh(species);
+            return species;
+        }
+
+        // ------------------------------------------------------------------
+        // Scene furniture
+        // ------------------------------------------------------------------
 
         private static void ConfigureLight()
         {
-            Light light = Object.FindObjectOfType<Light>();
+            Light light = UnityEngine.Object.FindObjectOfType<Light>();
             if (light == null)
             {
                 var go = new GameObject("Directional Light");
@@ -119,7 +440,7 @@ namespace SabaProps.Foliage.Editors
             }
 
             camera.transform.SetPositionAndRotation(
-                new Vector3(0f, 6.5f, -24f), Quaternion.Euler(11f, 0f, 0f));
+                new Vector3(0f, 9f, -17f), Quaternion.Euler(16f, 0f, 0f));
             camera.farClipPlane = 300f;
         }
 
@@ -152,19 +473,35 @@ namespace SabaProps.Foliage.Editors
 
         private static void BuildGround(Material material)
         {
-            var root = new GameObject("Ground");
+            var root = new GameObject(GroundRoot);
 
+            // Covers every plot with room to walk between them.
             CreateGroundPiece(root.transform, PrimitiveType.Plane, "Flat",
-                new Vector3(0f, 0f, 0f), Quaternion.identity, new Vector3(4f, 1f, 4f), material);
+                new Vector3(0f, 0f, 16f), Quaternion.identity, new Vector3(4.2f, 1f, 5.6f), material);
 
+            // --- section 3's ground -----------------------------------------
+            float z = Pitch * 2f;
+
+            // A gentle ellipsoid: shows ground snapping and normal alignment.
             CreateGroundPiece(root.transform, PrimitiveType.Sphere, "Mound",
-                new Vector3(-9f, -3.1f, 3f), Quaternion.identity, new Vector3(14f, 8f, 14f), material);
+                new Vector3(Columns[0], -2.4f, z), Quaternion.identity, new Vector3(10f, 6f, 10f), material);
 
-            // 30 degrees sits past the sunflower slope limit but inside the
-            // grass one, so the ramp comes out grass-only with no per-object
-            // setup — the slope filter demonstrating itself.
+            // 28 degrees is past the sunflower's slope limit and inside the grass
+            // and clover ones, so the slope filter demonstrates itself.
+            //
+            // Deep enough to carry the whole plot: 7 m of plot laid on a 28
+            // degree slope needs 7 / cos(28) ≈ 7.9 m of ramp, and anything the
+            // ramp does not cover falls through to the flat plane, where the
+            // filter has nothing to do.
             CreateGroundPiece(root.transform, PrimitiveType.Cube, "Ramp",
-                new Vector3(-9f, 0.6f, -6f), Quaternion.Euler(-30f, 0f, 0f), new Vector3(10f, 0.4f, 7f), material);
+                new Vector3(Columns[1], 2.3f, z), Quaternion.Euler(-28f, 0f, 0f), new Vector3(8f, 0.4f, 8.6f), material);
+
+            for (int step = 0; step < 3; step++)
+            {
+                CreateGroundPiece(root.transform, PrimitiveType.Cube, $"Terrace_{step}",
+                    new Vector3(Columns[2], 0.15f + step * 0.3f, z - 2.4f + step * 2.4f),
+                    Quaternion.identity, new Vector3(7f, 0.3f + step * 0.6f, 2.4f), material);
+            }
         }
 
         private static void CreateGroundPiece(
@@ -183,71 +520,44 @@ namespace SabaProps.Foliage.Editors
             }
         }
 
-        /// <summary>The stock species of a given kind, or null if it is missing.</summary>
-        private static FoliageSpecies Of(List<FoliageSpecies> species, FoliageSpeciesKind kind)
-        {
-            return species.Find(entry => entry != null && entry.kind == kind);
-        }
+        // ------------------------------------------------------------------
 
-        private static void AddSpecies(FoliageField field, FoliageSpecies species, float weight)
-        {
-            if (species == null)
-            {
-                return;
-            }
-
-            field.species.Add(species);
-            field.speciesWeights.Add(weight);
-        }
-
-        private static FoliageField CreateMeadow(
-            FoliageSpecies grass, FoliageSpecies clover, FoliageSpecies sunflower)
-        {
-            var go = new GameObject(MeadowName);
-            go.transform.position = new Vector3(-9f, 0f, 0f);
-
-            var field = go.AddComponent<FoliageField>();
-            field.shape = FoliageAreaShape.Rectangle;
-            field.size = new Vector2(18f, 18f);
-            field.density = 12f;
-            field.seed = 1024;
-            field.chunkSize = 6f;
-            field.outputMode = FoliageOutputMode.GpuInstanced;
-
-            // Weights live on the field, not on the shared species assets, so the
-            // clearing next door can use a different mix of the same presets.
-            AddSpecies(field, grass, 1f);
-            AddSpecies(field, clover, 0.45f);
-            AddSpecies(field, sunflower, 0.06f);
-
-            return field;
-        }
-
-        private static FoliageField CreateClearing(FoliageSpecies grass, FoliageSpecies reed)
-        {
-            var go = new GameObject(ClearingName);
-            go.transform.position = new Vector3(9f, 0f, 0f);
-
-            var field = go.AddComponent<FoliageField>();
-            field.shape = FoliageAreaShape.Circle;
-            field.radius = 7f;
-            field.density = 20f;
-            field.seed = 2048;
-            field.chunkSize = 5f;
-            field.outputMode = FoliageOutputMode.MergedChunks;
-
-            AddSpecies(field, grass, 1f);
-            AddSpecies(field, reed, 0.1f);
-
-            return field;
-        }
-
-        private static string Summarise(FoliageBuildStats meadow, FoliageBuildStats clearing, bool worldCreated)
+        private static string Summarise(
+            List<FoliageField> fields, List<FoliageBuildStats> stats, bool worldCreated)
         {
             var text = new StringBuilder();
             text.AppendLine($"[SabaProps Foliage] サンプルシーンを {ScenePath} に作成しました。");
-            AppendStats(text, MeadowName, meadow);
-            AppendStats(text, ClearingName, clearing);
+
+            int instances = 0;
+            int renderers = 0;
+            int triangles = 0;
+            float seconds = 0f;
+
+            for (int i = 0; i < fields.Count; i++)
+            {
+                FoliageBuildStats entry = stats[i];
+                string section = fields[i].transform.parent != null
+                    ? fields[i].transform.parent.name
+                    : "-";
+
+                if (entry == null)
+                {
+                    text.AppendLine($"  {section} / {fields[i].name}: ビルドに失敗しました。");
+                    continue;
+                }
+
+                instances += entry.instanceCount;
+                renderers += entry.rendererCount;
+                triangles += entry.triangleCount;
+                seconds += entry.buildSeconds;
+
+                text.AppendLine(
+                    $"  {section} / {fields[i].name}: {entry.instanceCount:N0} 個体 / " +
+                    $"{entry.rendererCount:N0} Renderer / 推定 {entry.EstimatedDrawCalls:N0} ドローコール");
+            }
+
+            text.AppendLine(
+                $"  合計: {instances:N0} 個体 / {renderers:N0} Renderer / {triangles:N0} 三角形 / {seconds:0.00} 秒");
 
             text.AppendLine(worldCreated
                 ? "  VRChat: VRCSceneDescriptor と Spawn を配置しました。そのままアップロードできます。"
@@ -255,20 +565,6 @@ namespace SabaProps.Foliage.Editors
                   + " SDK を導入してから再実行すると追加されます。");
 
             return text.ToString().TrimEnd();
-        }
-
-        private static void AppendStats(StringBuilder text, string name, FoliageBuildStats stats)
-        {
-            if (stats == null)
-            {
-                text.AppendLine($"  {name}: ビルドに失敗しました。Console のエラーを確認してください。");
-                return;
-            }
-
-            text.AppendLine(
-                $"  {name}: {stats.instanceCount:N0} 個体 / {stats.rendererCount:N0} Renderer / " +
-                $"{stats.triangleCount:N0} 三角形 / 推定 {stats.EstimatedDrawCalls:N0} ドローコール / " +
-                $"{stats.buildSeconds:0.00} 秒");
         }
     }
 }

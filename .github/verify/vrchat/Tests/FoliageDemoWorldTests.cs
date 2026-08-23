@@ -117,8 +117,17 @@ namespace SabaProps.Foliage.WorldTests
             Assert.Greater(position.y, -1f, $"the player fell out of the world to y={position.y}");
 
             int visible = 0;
+            int placed = 0;
+            int plots = 0;
+
             foreach (FoliageField field in Object.FindObjectsOfType<FoliageField>())
             {
+                plots++;
+                if (field.lastBuildStats != null)
+                {
+                    placed += field.lastBuildStats.instanceCount;
+                }
+
                 foreach (MeshFilter filter in field.GetComponentsInChildren<MeshFilter>())
                 {
                     var renderer = filter.GetComponent<MeshRenderer>();
@@ -130,10 +139,17 @@ namespace SabaProps.Foliage.WorldTests
                 }
             }
 
+            // Counted separately on purpose. Renderers are not instances: most
+            // of the demo is merged, where thousands of instances collapse into
+            // a handful of renderers, so a renderer threshold would say nothing
+            // about how much foliage is actually there.
+            Assert.Greater(plots, 8, "the demo lost most of its plots on the way into play mode");
+            Assert.Greater(placed, 2000, "the demo placed far less foliage than it should have");
+
             // Exact counts are the EditMode tests' job; this only has to show
             // the baked hierarchy survived into play mode, which is what will
             // happen in the uploaded world.
-            Assert.Greater(visible, 1000, "the foliage did not survive into play mode");
+            Assert.Greater(visible, 50, "the foliage did not survive into play mode");
         }
     }
 }

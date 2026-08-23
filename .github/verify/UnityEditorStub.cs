@@ -49,6 +49,24 @@ namespace UnityEditor
         public int userData;
     }
 
+    [Flags]
+    public enum GizmoType
+    {
+        Pickable = 1,
+        NotInSelectionHierarchy = 2,
+        Selected = 4,
+        Active = 8,
+        InSelectionHierarchy = 16,
+        NonSelected = 32,
+    }
+
+    [AttributeUsage(AttributeTargets.Method)]
+    public sealed class DrawGizmoAttribute : Attribute
+    {
+        public DrawGizmoAttribute(GizmoType gizmo) { }
+        public DrawGizmoAttribute(GizmoType gizmo, Type drawnGizmoType) { }
+    }
+
     public class SerializedProperty
     {
         public int enumValueIndex { get; set; }
@@ -117,6 +135,7 @@ namespace UnityEditor
         public static GUIStyle miniLabel => null;
         public static GUIStyle miniBoldLabel => null;
         public static GUIStyle wordWrappedMiniLabel => null;
+        public static GUIStyle whiteBoldLabel => null;
         public static GUIStyle helpBox => null;
         public static GUIStyle foldoutHeader => null;
         public static GUIStyle label => null;
@@ -199,6 +218,8 @@ namespace UnityEditor
         public static Matrix4x4 matrix { get; set; }
 
         public static void DrawWireCube(Vector3 center, Vector3 size) { }
+        public static void Label(Vector3 position, string text) { }
+        public static void Label(Vector3 position, string text, GUIStyle style) { }
         public static void DrawLine(Vector3 p1, Vector3 p2) { }
 
         public static float RadiusHandle(Quaternion rotation, Vector3 position, float radius) => radius;

@@ -35,13 +35,27 @@ VRChat のワールドとアバターでは、**実行時に C# が動きませ�
 地面・起伏・傾斜・ライト・カメラと、出力モードの異なる 2 つのフィールドを含むデモシーンを生成し、
 **ビルドまで済ませた状態**で開きます。保存先は `Assets/SabaProps/Foliage/Samples/FoliageDemo.unity` です。
 
-| フィールド | モード | 内容 |
-| --- | --- | --- |
-| Meadow | GPU Instanced | 草＋クローバー＋ひまわり。3,115 個体、Renderer 3,115、推定 7 ドローコール |
-| Clearing | Merged Chunks | 草＋葦。2,732 個体を 16 Renderer に結合 |
+シーンは 7 m 角の区画を並べた庭のような構成です。隣り合う区画は 1 つだけ条件が違うので、
+歩いて見比べれば何がどう効くのかが分かります。Scene ビューでは各区画の名前がその場に表示されます。
 
-Ramp は傾斜 30 度で、ひまわりの傾斜上限 25 度を超えるため草だけが生えます。
-Mound では地面法線への追従が確認できます。どちらも追加設定なしで、傾斜フィルタと地面吸着がそのまま見える配置です。
+| セクション | 区画 | 変えているもの |
+| --- | --- | --- |
+| 1 Single Species | Grass / Clover / Sunflower / Reed | 種のみ。サイズ・シードは共通 |
+| 2 Parameter Variants | Grass - Tall / Clover - Broad / Sunflower - Dwarf / Reed - Splayed | 同じ種の形状パラメータ |
+| 3 Terrain | Mound / Ramp / Terrace | 地面の形だけ。フィールド設定は共通 |
+| 4 Combinations | Meadow / Waterside / Flowerbed | 種の組み合わせと比率 |
+| 5 Output Modes | GPU Instanced / Merged Chunks | 出力モードのみ |
+
+合計 6,170 個体、585 Renderer、生成に 3 秒です。
+
+セクション 3 の Ramp は傾斜 28 度で、ひまわりの傾斜上限 25 度を超えるため草とクローバーだけが残ります。
+Mound では地面法線への追従、Terrace では段差への吸着が見えます。いずれも追加設定はしていません。
+
+セクション 5 は同じ設定・同じシードの区画を 2 つ並べてあるので、
+Inspector の統計で Renderer 数と推定ドローコールの差をそのまま比較できます。
+
+セクション 2 が使う Species アセットは `Assets/SabaProps/Foliage/Samples/Species/` に別途作られます。
+既定のプリセットは書き換えません。
 
 VRChat Worlds SDK が入っているプロジェクトでは、`VRCSceneDescriptor` と Spawn を持つ `VRCWorld` も配置されます。
 そのままアップロードして実機で確認できます。SDK が無いプロジェクトではこの部分だけスキップされ、通常の Unity シーンとして生成されます。
@@ -136,6 +150,10 @@ Species は「1 つのメッシュ ＝ 1 つのインスタンシングバッチ
 
 フィールド側の **Mix** に 0 より大きい値を入れると、そのフィールドではこちらが優先されます。
 同じ Species アセットを使いながらフィールドごとに違う構成にできます。
+
+`Min Spacing` は**同じ種どうし**の最小距離です。他の種との距離には影響しません。
+種をまたいで判定すると、密なグラウンドカバーの平均間隔が背の高い種の `Min Spacing` を下回った時点で、
+少数派の種がほぼ配置されなくなるためです。種どうしの粗密は `Density` と比率で決めてください。
 
 ---
 

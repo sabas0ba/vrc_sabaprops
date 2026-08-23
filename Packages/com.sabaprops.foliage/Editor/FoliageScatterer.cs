@@ -79,7 +79,15 @@ namespace SabaProps.Foliage.Editors
             Matrix4x4 localToWorld = fieldTransform.localToWorldMatrix;
 
             var rng = new FoliageRandom(field.seed);
-            var spacingGrid = new SpacingGrid(LargestMinSpacing(validSpecies));
+            // One grid per species. Min Spacing means "keep this species apart
+            // from itself": checking it against every other species as well let
+            // dense ground cover crowd out anything sparse, so a sunflower mixed
+            // into grass at a low weight would place almost nowhere.
+            var spacingGrids = new SpacingGrid[validSpecies.Count];
+            for (int i = 0; i < validSpecies.Count; i++)
+            {
+                spacingGrids[i] = new SpacingGrid(validSpecies[i].minSpacing);
+            }
 
             for (int cz = 0; cz < cellsZ; cz++)
             {
@@ -150,7 +158,7 @@ namespace SabaProps.Foliage.Editors
                         continue;
                     }
 
-                    if (!spacingGrid.TryPlace(position, species.minSpacing))
+                    if (!spacingGrids[speciesIndex].TryPlace(position, species.minSpacing))
                     {
                         continue;
                     }
@@ -248,17 +256,6 @@ namespace SabaProps.Foliage.Editors
             return cumulativeWeights.Length - 1;
         }
 
-        private static float LargestMinSpacing(List<FoliageSpecies> species)
-        {
-            float largest = 0f;
-            foreach (FoliageSpecies s in species)
-            {
-                largest = Mathf.Max(largest, s.minSpacing);
-            }
-
-            return largest;
-        }
-
         private static Quaternion BuildRotation(FoliageSpecies species, Vector3 groundNormal, ref FoliageRandom rng)
         {
             Vector3 up = Vector3.Slerp(Vector3.up, groundNormal, species.alignToGroundNormal).normalized;
@@ -334,10 +331,10 @@ namespace SabaProps.Foliage.Editors
             private readonly float _cellSize;
             private readonly bool _enabled;
 
-            public SpacingGrid(float largestSpacing)
+            public SpacingGrid(float spacing)
             {
-                _enabled = largestSpacing > 0f;
-                _cellSize = Mathf.Max(0.01f, largestSpacing);
+                _enabled = spacing > 0f;
+                _cellSize = Mathf.Max(0.01f, spacing);
             }
 
             public bool TryPlace(Vector3 position, float minSpacing)
@@ -350,8 +347,8 @@ namespace SabaProps.Foliage.Editors
                 Vector3Int cell = ToCell(position);
                 float sqrSpacing = minSpacing * minSpacing;
 
-                // The grid uses the largest spacing of any species, so a single
-                // ring of neighbours is guaranteed to cover the search radius.
+                // The cell size is this species' own spacing, so a single ring
+                // of neighbours is guaranteed to cover the search radius.
                 for (int dx = -1; dx <= 1; dx++)
                 {
                     for (int dz = -1; dz <= 1; dz++)

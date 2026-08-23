@@ -507,7 +507,21 @@ namespace SabaProps.Foliage.CITests
     /// </summary>
     public class FoliageSampleSceneTests
     {
-        [TearDown]
+        private Scene _scene;
+
+        /// <summary>
+        /// Built once for the whole fixture. Generating the demo writes a merged
+        /// mesh asset per chunk per species across sixteen plots, and every one
+        /// is an AssetDatabase import: doing that per test costs minutes.
+        /// Nothing here modifies the scene, so one build serves them all.
+        /// </summary>
+        [OneTimeSetUp]
+        public void BuildSampleScene()
+        {
+            _scene = FoliageSampleScene.Create();
+        }
+
+        [OneTimeTearDown]
         public void RestoreEmptyScene()
         {
             EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
@@ -521,39 +535,152 @@ namespace SabaProps.Foliage.CITests
         [Test]
         public void SampleScene_IsBuiltAndSaved()
         {
-            Scene scene = FoliageSampleScene.Create();
+            Scene scene = _scene;
 
             Assert.IsTrue(scene.IsValid(), "sample scene was not created");
             Assert.IsNotNull(AssetDatabase.LoadAssetAtPath<SceneAsset>(FoliageSampleScene.ScenePath),
                 $"sample scene was not saved to {FoliageSampleScene.ScenePath}");
 
-            FoliageField meadow = FindField(scene, FoliageSampleScene.MeadowName);
-            FoliageField clearing = FindField(scene, FoliageSampleScene.ClearingName);
+            // Every plot in the demo, whatever section it belongs to, has to have
+            // placed something: an empty plot in a showcase reads as a broken
+            // package, and one silently empty plot is easy to miss by eye.
+            var fields = new List<FoliageField>(Object.FindObjectsOfType<FoliageField>());
+            Assert.Greater(fields.Count, 8, "the demo should lay out a garden of plots, not one field");
 
-            AssertBuilt(meadow, FoliageOutputMode.GpuInstanced);
-            AssertBuilt(clearing, FoliageOutputMode.MergedChunks);
-
-            // The meadow mixes grass and sunflowers; one shared mesh per species
-            // is what makes each of them a single instancing batch.
-            var meadowMeshes = new HashSet<Mesh>();
-            foreach (MeshFilter filter in meadow.GetComponentsInChildren<MeshFilter>())
+            foreach (FoliageField field in fields)
             {
-                meadowMeshes.Add(filter.sharedMesh);
+                AssertBuilt(field, field.outputMode);
+            }
+        }
+
+        [Test]
+        public void SampleScene_SectionsShowWhatTheyClaimTo()
+        {
+            Scene scene = _scene;
+
+            // Section 1 varies only the species, so each plot must place exactly
+            // one, and between them they must cover every kind the package has.
+            GameObject singles = FindRootObject(scene, FoliageSampleScene.SingleSpeciesRoot);
+            Assert.IsNotNull(singles, "the demo has no single-species section");
+
+            var covered = new HashSet<string>();
+            int plots = 0;
+
+            foreach (FoliageField field in singles.GetComponentsInChildren<FoliageField>())
+            {
+                Assert.AreEqual(1, CountPlacedSpecies(field),
+                    $"'{field.name}' is in the single-species section but places more than one species");
+
+                covered.UnionWith(PlacedSpecies(field));
+                plots++;
             }
 
-            Assert.AreEqual(3, meadowMeshes.Count,
-                "the meadow should place exactly three species, each with one shared mesh");
+            Assert.AreEqual(FoliageAssetLibrary.AllKinds.Length, plots,
+                "the single-species section should have one plot per species kind");
+            Assert.AreEqual(FoliageAssetLibrary.AllKinds.Length, covered.Count,
+                "two single-species plots ended up showing the same species");
 
-            Assert.Less(clearing.lastBuildStats.rendererCount, clearing.lastBuildStats.instanceCount,
-                "the clearing should merge instances into fewer renderers");
+            // Section 4 exists to show mixing, so at least one of its plots has
+            // to actually place more than one species.
+            GameObject mixes = FindRootObject(scene, FoliageSampleScene.MixRoot);
+            Assert.IsNotNull(mixes, "the demo has no combinations section");
+
+            bool anyMixed = false;
+            foreach (FoliageField field in mixes.GetComponentsInChildren<FoliageField>())
+            {
+                anyMixed |= CountPlacedSpecies(field) > 1;
+            }
+
+            Assert.IsTrue(anyMixed, "no plot in the combinations section actually mixes species");
+
+            // Section 5 is the output-mode comparison: same settings, and the
+            // merged plot has to come out with fewer renderers or it is not
+            // demonstrating anything.
+            GameObject output = FindRootObject(scene, FoliageSampleScene.OutputRoot);
+            Assert.IsNotNull(output, "the demo has no output-mode section");
+
+            FoliageField instanced = FindChildField(output, FoliageSampleScene.InstancedPlotName);
+            FoliageField merged = FindChildField(output, FoliageSampleScene.MergedPlotName);
+
+            Assert.AreEqual(FoliageOutputMode.GpuInstanced, instanced.outputMode);
+            Assert.AreEqual(FoliageOutputMode.MergedChunks, merged.outputMode);
+
+            Assert.AreEqual(instanced.lastBuildStats.instanceCount, merged.lastBuildStats.instanceCount,
+                "the two output-mode plots must place the same instances to be comparable");
+            Assert.Less(merged.lastBuildStats.rendererCount, instanced.lastBuildStats.rendererCount,
+                "merging did not reduce the renderer count");
+        }
+
+        [Test]
+        public void SampleScene_TerrainSectionFiltersBySlope()
+        {
+            Scene scene = _scene;
+
+            GameObject terrain = FindRootObject(scene, FoliageSampleScene.TerrainRoot);
+            Assert.IsNotNull(terrain, "the demo has no terrain section");
+
+            var plots = new List<FoliageField>(terrain.GetComponentsInChildren<FoliageField>());
+            Assert.Greater(plots.Count, 1, "the terrain section needs more than one kind of ground to compare");
+
+            // The ramp is steeper than the sunflower's slope limit and inside the
+            // grass one, so it must end up carrying fewer species than the flat
+            // mound plot built from the same mix.
+            FoliageField mound = plots.Find(field => field.name == "Mound");
+            FoliageField ramp = plots.Find(field => field.name == "Ramp");
+
+            Assert.IsNotNull(mound, "the terrain section has no mound plot");
+            Assert.IsNotNull(ramp, "the terrain section has no ramp plot");
+
+            Assert.Less(CountPlacedSpecies(ramp), CountPlacedSpecies(mound),
+                "the ramp should carry fewer species than the mound: the slope filter is what it demonstrates");
+        }
+
+        /// <summary>
+        /// Species a field actually placed, read from the names the builder gives
+        /// its renderers.
+        /// <para>
+        /// Counting distinct meshes would not work: merged chunks produce one
+        /// mesh per chunk per species, so a single-species plot split into four
+        /// chunks owns four meshes. The renderer name is the species in both
+        /// output modes.
+        /// </para>
+        /// </summary>
+        private static HashSet<string> PlacedSpecies(FoliageField field)
+        {
+            var names = new HashSet<string>();
+            foreach (MeshFilter filter in field.GetComponentsInChildren<MeshFilter>())
+            {
+                names.Add(filter.gameObject.name);
+            }
+
+            return names;
+        }
+
+        private static int CountPlacedSpecies(FoliageField field)
+        {
+            return PlacedSpecies(field).Count;
+        }
+
+        private static FoliageField FindChildField(GameObject root, string name)
+        {
+            foreach (FoliageField field in root.GetComponentsInChildren<FoliageField>())
+            {
+                if (field.name == name)
+                {
+                    return field;
+                }
+            }
+
+            Assert.Fail($"'{name}' is missing from '{root.name}'");
+            return null;
         }
 
         [Test]
         public void SampleScene_HasGroundToStandOn()
         {
-            Scene scene = FoliageSampleScene.Create();
+            Scene scene = _scene;
 
-            GameObject ground = FindRootObject(scene, "Ground");
+            GameObject ground = FindRootObject(scene, FoliageSampleScene.GroundRoot);
             Assert.IsNotNull(ground, "the demo has no ground object");
             Assert.Greater(ground.GetComponentsInChildren<Collider>().Length, 0,
                 "ground needs colliders or the scatterer has nothing to raycast against");
@@ -564,7 +691,7 @@ namespace SabaProps.Foliage.CITests
         [Test]
         public void SampleScene_MatchesTheVrchatSdkThatIsInstalled()
         {
-            Scene scene = FoliageSampleScene.Create();
+            Scene scene = _scene;
             GameObject world = FindRootObject(scene, FoliageVrcWorld.WorldObjectName);
 
             if (!FoliageVrcWorld.IsSdkPresent)
@@ -600,16 +727,6 @@ namespace SabaProps.Foliage.CITests
             var spawns = spawnsField.GetValue(descriptor) as Transform[];
             Assert.IsNotNull(spawns, "'spawns' was not assigned");
             Assert.Contains(spawn, spawns, "the spawn point is not registered on the descriptor");
-        }
-
-        private static FoliageField FindField(Scene scene, string name)
-        {
-            GameObject go = FindRootObject(scene, name);
-            Assert.IsNotNull(go, $"'{name}' is missing from the sample scene");
-
-            var field = go.GetComponent<FoliageField>();
-            Assert.IsNotNull(field, $"'{name}' has no FoliageField component");
-            return field;
         }
 
         private static GameObject FindRootObject(Scene scene, string name)

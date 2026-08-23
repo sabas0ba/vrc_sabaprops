@@ -206,7 +206,7 @@ namespace SabaProps.Foliage
         [Tooltip("複数種を混ぜたときの出現比率。")]
         [Min(0f)] public float placementWeight = 1f;
 
-        [Tooltip("他の個体とこれ以上近づけない距離 (m)。0 で無効。")]
+        [Tooltip("同じ種の個体どうしをこれ以上近づけない距離 (m)。0 で無効。他の種との距離には影響しません。")]
         [Min(0f)] public float minSpacing = 0.05f;
 
         [Tooltip("個体ごとのスケール範囲（等倍スケールのみ）。")]
