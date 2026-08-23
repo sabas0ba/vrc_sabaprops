@@ -60,17 +60,21 @@ host_path() {
 
 RUN_ARGS=(--rm -v "$(host_path "$REPO"):/repo" -w /repo)
 
-# On Linux the container would otherwise write root-owned files into the work
-# tree. Windows engines map the user themselves, and passing a Windows uid
-# through would only confuse them.
-case "$(uname -s)" in
-    MINGW* | MSYS* | CYGWIN*) ;;
-    *)
-        if command -v id >/dev/null 2>&1; then
-            RUN_ARGS+=(--user "$(id -u):$(id -g)")
-        fi
-        ;;
-esac
+# Who the container writes as, which decides whether the files it leaves in the
+# work tree belong to the caller.
+#
+# Rootless podman already maps container root onto the invoking user, so it
+# needs nothing — and passing --user actively breaks it, because that uid is
+# then mapped again into the user namespace and lands on a subuid that owns
+# none of the mounted files.
+#
+# Docker runs the container as real root, so it needs to be told.
+if [ "$ENGINE" = "docker" ] && command -v id >/dev/null 2>&1; then
+    case "$(uname -s)" in
+        MINGW* | MSYS* | CYGWIN*) ;;
+        *) RUN_ARGS+=(--user "$(id -u):$(id -g)") ;;
+    esac
+fi
 
 # Forwarded so build_listing.py can authenticate against the GitHub API. Passed
 # by name, so the value never appears in the command line or the logs.
