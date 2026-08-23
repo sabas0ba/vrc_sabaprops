@@ -113,6 +113,22 @@ namespace SabaProps.Foliage.CITests
                 Assert.AreEqual(expectedVertices, mesh.vertexCount, "grass vertex count");
                 Assert.AreEqual(expectedTriangles, mesh.triangles.Length / 3, "grass triangle count");
 
+                // Measured on the raw geometry, not on mesh.bounds, which is
+                // padded for wind and would hide a change in blade height. Bend
+                // only displaces a blade horizontally, so the tallest vertex is
+                // the tallest blade.
+                float tallest = 0f;
+                foreach (Vector3 vertex in mesh.vertices)
+                {
+                    tallest = Mathf.Max(tallest, vertex.y);
+                }
+
+                // An absolute guard rail, not a spec: ankle-high grass reads as
+                // moss from standing height in VR, which is the mistake this
+                // default has already been corrected for once.
+                Assert.Greater(tallest, 0.4f, "default grass is unexpectedly short");
+                Assert.Less(tallest, 1.5f, "default grass is unexpectedly tall");
+
                 Object.DestroyImmediate(mesh);
             }
             finally
