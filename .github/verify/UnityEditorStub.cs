@@ -71,11 +71,13 @@ namespace UnityEditor
     {
         public int enumValueIndex { get; set; }
         public int arraySize { get; set; }
+        public bool hasMultipleDifferentValues { get; set; }
         public UnityEngine.Object objectReferenceValue { get; set; }
         public bool boolValue { get; set; }
         public float floatValue { get; set; }
         public int intValue { get; set; }
         public string stringValue { get; set; }
+        public SerializedProperty FindPropertyRelative(string relativePropertyPath) => null;
         public SerializedProperty GetArrayElementAtIndex(int index) => null;
         public void InsertArrayElementAtIndex(int index) { }
         public void DeleteArrayElementAtIndex(int index) { }
@@ -281,6 +283,8 @@ namespace UnityEditor
 
         public static bool PropertyField(SerializedProperty property, params GUILayoutOption[] options) => false;
         public static bool PropertyField(SerializedProperty property, bool includeChildren, params GUILayoutOption[] options) => false;
+        public static bool PropertyField(SerializedProperty property, GUIContent label, params GUILayoutOption[] options) => false;
+        public static bool PropertyField(SerializedProperty property, GUIContent label, bool includeChildren, params GUILayoutOption[] options) => false;
 
         public static void HelpBox(string message, MessageType type) { }
         public static void HelpBox(string message, MessageType type, bool wide) { }
