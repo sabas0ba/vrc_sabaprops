@@ -124,10 +124,15 @@ namespace SabaProps.Foliage.Editors
             GameObject world = FoliageVrcWorld.TryCreateWorld(
                 SpawnPosition, Quaternion.identity, Camera.main);
 
+            // Only when the movement sample has been imported. VRChat's defaults
+            // walk at 2 m/s and cannot jump, which makes a garden this size
+            // tedious to look around.
+            bool movement = FoliageVrcWorld.TryAddDemoMovement(world);
+
             FoliageAssetLibrary.EnsureFolder(SampleFolder);
             EditorSceneManager.SaveScene(scene, ScenePath);
 
-            Debug.Log(Summarise(fields, stats, world != null));
+            Debug.Log(Summarise(fields, stats, world != null, movement));
             return scene;
         }
 
@@ -739,7 +744,8 @@ namespace SabaProps.Foliage.Editors
         // ------------------------------------------------------------------
 
         private static string Summarise(
-            List<FoliageField> fields, List<FoliageBuildStats> stats, bool worldCreated)
+            List<FoliageField> fields, List<FoliageBuildStats> stats,
+            bool worldCreated, bool movementAdded)
         {
             var text = new StringBuilder();
             text.AppendLine($"[SabaProps Foliage] サンプルシーンを {ScenePath} に作成しました。");
@@ -779,6 +785,14 @@ namespace SabaProps.Foliage.Editors
                 ? "  VRChat: VRCSceneDescriptor と Spawn を配置しました。そのままアップロードできます。"
                 : "  VRChat: Worlds SDK が見つからないため VRCSceneDescriptor は配置していません。"
                   + " SDK を導入してから再実行すると追加されます。");
+
+            if (worldCreated)
+            {
+                text.AppendLine(movementAdded
+                    ? "  移動設定: FoliageDemoMovement を配置しました。歩行 4 m/s・走行 9 m/s・ジャンプ可です。"
+                    : "  移動設定: 未導入です。VRChat の既定は歩行 2 m/s・ジャンプ不可なので、"
+                      + " Tools > SabaProps > Foliage > Import VRChat Demo Movement のあと再実行すると追加されます。");
+            }
 
             return text.ToString().TrimEnd();
         }

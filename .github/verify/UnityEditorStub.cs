@@ -177,6 +177,7 @@ namespace UnityEditor
         public static string AssetPathToGUID(string path) => string.Empty;
         public static void SaveAssets() { }
         public static void Refresh() { }
+        public static void ImportAsset(string path) { }
         public static void StartAssetEditing() { }
         public static void StopAssetEditing() { }
         public static void AddObjectToAsset(UnityEngine.Object objectToAdd, UnityEngine.Object assetObject) { }
@@ -408,5 +409,20 @@ namespace NUnit.Framework
         public static void Greater(double arg1, double arg2, string message) { }
         public static void Less(double arg1, double arg2) { }
         public static void Less(double arg1, double arg2, string message) { }
+    }
+}
+
+namespace UnityEditor.PackageManager
+{
+    /// <summary>
+    /// Only what PackagePath() needs: where this package resolved to on disk.
+    /// FindForAssembly returns null here, which is the "package not found" path
+    /// the caller already has to handle.
+    /// </summary>
+    public class PackageInfo
+    {
+        public string resolvedPath { get; set; }
+
+        public static PackageInfo FindForAssembly(System.Reflection.Assembly assembly) => null;
     }
 }

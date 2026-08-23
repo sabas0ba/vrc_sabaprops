@@ -121,6 +121,16 @@ namespace SabaProps.Foliage.WorldTests
 
             LogAssert.ignoreFailingMessages = false;
 
+            // The demo raises these through Udon, because VRCSceneDescriptor has
+            // no movement fields to raise them with. Read back from the player
+            // rather than from the component: what matters is that the Udon
+            // behaviour ran and VRChat accepted the values, not that a proxy
+            // component is sitting in the scene with the right numbers on it.
+            Assert.Greater(player.GetWalkSpeed(), 2f,
+                "the demo's movement behaviour did not raise the walk speed");
+            Assert.Greater(player.GetJumpImpulse(), 0f,
+                "the demo's movement behaviour did not enable jumping");
+
             Vector3 position = player.GetPosition();
 
             // Compared on the ground plane only: the controller settles to its

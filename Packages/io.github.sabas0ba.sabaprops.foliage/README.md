@@ -62,6 +62,14 @@ Inspector の統計で Renderer 数と推定ドローコールの差をそのま
 セクション 2 が使う Species アセットは `Assets/SabaProps/Foliage/Samples/Species/` に別途作られます。
 既定のプリセットは書き換えません。
 
+**移動が遅いと感じたら**: `Tools > SabaProps > Foliage > Import VRChat Demo Movement` を一度実行し、
+コンパイル後に Create Sample Scene をやり直してください。歩行 4 m/s・走行 9 m/s・ジャンプ可になります。
+
+VRChat の既定は歩行 2 m/s、ジャンプ不可です。これらは `VRCSceneDescriptor` の項目ではなく
+`VRCPlayerApi` を実行時に呼んで設定する仕様なので、変更には Udon が必要です。
+そのためスクリプトは `Samples~` に置いてあり、取り込みは任意の操作にしています。
+取り込まなければ、このパッケージが UdonSharp に依存することはありません。
+
 VRChat Worlds SDK が入っているプロジェクトでは、`VRCSceneDescriptor` と Spawn を持つ `VRCWorld` も配置されます。
 そのままアップロードして実機で確認できます。SDK が無いプロジェクトではこの部分だけスキップされ、通常の Unity シーンとして生成されます。
 このパッケージ自体は VRChat SDK に依存しません。

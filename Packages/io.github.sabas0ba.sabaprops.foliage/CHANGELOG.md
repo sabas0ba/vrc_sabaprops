@@ -28,6 +28,10 @@
     倒す量は風と同じ bend マスクから決まるため、接合部の関係は崩れません
 - サンプルシーンにセクション 6 `Seasons` を追加しました。種・比率・シードが共通で、季節だけが違う 4 区画です
 - [拡充ロードマップ](Documentation~/roadmap.md): 種と樹木、ツタまでの計画と、その過程での設計上の線引きを記録しています
+- `Tools/SabaProps/Foliage/Import VRChat Demo Movement`: デモ用の移動設定（歩行 4 m/s・走行 9 m/s・ジャンプ可）を
+  取り込みます。VRChat の既定は歩行 2 m/s・ジャンプ不可で、これらは `VRCSceneDescriptor` の項目ではなく
+  `VRCPlayerApi` を実行時に呼ぶ仕様のため Udon が必要です。スクリプトは `Samples~` に置き、
+  取り込みを任意の操作にしています。取り込まない限り UdonSharp への依存は発生しません
 
 ### Changed
 

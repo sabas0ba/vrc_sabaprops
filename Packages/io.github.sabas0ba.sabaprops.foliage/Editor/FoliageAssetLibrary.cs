@@ -21,6 +21,28 @@ namespace SabaProps.Foliage.Editors
 
         public const string ShaderName = "SabaProps/Foliage";
 
+        /// <summary>
+        /// Absolute path to a file inside this package, or null if the package
+        /// cannot be located.
+        /// <para>
+        /// Resolved from the assembly rather than hard-coded, so it holds
+        /// whether the package is embedded under Packages/ or installed by VCC
+        /// into the project's package cache.
+        /// </para>
+        /// </summary>
+        public static string PackagePath(string relativePath)
+        {
+            UnityEditor.PackageManager.PackageInfo info =
+                UnityEditor.PackageManager.PackageInfo.FindForAssembly(typeof(FoliageAssetLibrary).Assembly);
+
+            if (info == null || string.IsNullOrEmpty(info.resolvedPath))
+            {
+                return null;
+            }
+
+            return Path.Combine(info.resolvedPath, relativePath.Replace('/', Path.DirectorySeparatorChar));
+        }
+
         /// <summary>Creates every folder along an "Assets/a/b/c" style path.</summary>
         public static void EnsureFolder(string folderPath)
         {

@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.IO;
 using UnityEditor;
 using UnityEngine;
 
@@ -33,6 +34,60 @@ namespace SabaProps.Foliage.Editors
 
             Debug.Log(
                 $"[SabaProps Foliage] {species.Count} 種のデフォルトアセットを {FoliageAssetLibrary.RootFolder} に作成しました。");
+        }
+
+        /// <summary>
+        /// Copies the demo movement behaviour into the project.
+        /// <para>
+        /// An opt-in step rather than part of the sample scene, because the file
+        /// is an UdonSharp behaviour: importing it is what makes the project's
+        /// compilation depend on UdonSharp, and a foliage package has no
+        /// business doing that to a project that never asked. It is also why the
+        /// source sits under <c>Samples~</c>, which Unity does not import.
+        /// </para>
+        /// <para>
+        /// Unity compiles the file after this returns, so the behaviour can only
+        /// be attached to a scene generated after that — run Create Sample Scene
+        /// again once the editor has finished compiling.
+        /// </para>
+        /// </summary>
+        [MenuItem("Tools/SabaProps/Foliage/Import VRChat Demo Movement", false, 2)]
+        public static void ImportDemoMovement()
+        {
+            if (!FoliageVrcWorld.IsSdkPresent)
+            {
+                EditorUtility.DisplayDialog(
+                    "SabaProps Foliage",
+                    "VRChat Worlds SDK が見つかりません。移動設定は Udon で動くため、SDK のあるプロジェクトでのみ使えます。",
+                    "OK");
+                return;
+            }
+
+            string source = FoliageAssetLibrary.PackagePath(
+                "Samples~/VRChatDemoMovement/FoliageDemoMovement.cs");
+
+            if (source == null || !File.Exists(source))
+            {
+                Debug.LogError(
+                    "[SabaProps Foliage] サンプルのスクリプトが見つかりません: " + (source ?? "(パス不明)"));
+                return;
+            }
+
+            FoliageAssetLibrary.EnsureFolder(FoliageSampleScene.SampleFolder);
+            string destination = FoliageSampleScene.SampleFolder + "/FoliageDemoMovement.cs";
+
+            if (File.Exists(destination))
+            {
+                Debug.Log($"[SabaProps Foliage] {destination} は既にあります。上書きしていません。");
+                return;
+            }
+
+            File.Copy(source, destination);
+            AssetDatabase.ImportAsset(destination);
+
+            Debug.Log(
+                $"[SabaProps Foliage] {destination} を作成しました。"
+                + "コンパイルが終わったら Create Sample Scene を実行し直すと、デモに移動設定が付きます。");
         }
 
         [MenuItem("GameObject/SabaProps/Foliage Field", false, 10)]

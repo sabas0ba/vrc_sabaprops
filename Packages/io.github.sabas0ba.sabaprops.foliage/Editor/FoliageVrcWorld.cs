@@ -57,6 +57,58 @@ namespace SabaProps.Foliage.Editors
             return world;
         }
 
+        /// <summary>Type name of the sample movement behaviour, once imported.</summary>
+        public const string MovementTypeName = "FoliageDemoMovement";
+
+        /// <summary>
+        /// Adds the demo movement behaviour to the world root, if the sample has
+        /// been imported into the project.
+        /// <para>
+        /// Movement speed and jumping are not fields on the scene descriptor:
+        /// VRChat applies them through VRCPlayerApi at runtime, so a world that
+        /// wants them needs Udon. The behaviour therefore ships in Samples~ and
+        /// is imported on request — see
+        /// <c>Tools > SabaProps > Foliage > Import VRChat Demo Movement</c>.
+        /// Absent, this does nothing and the demo walks at VRChat's defaults.
+        /// </para>
+        /// </summary>
+        /// <returns>True when the behaviour was added.</returns>
+        public static bool TryAddDemoMovement(GameObject world)
+        {
+            if (world == null)
+            {
+                return false;
+            }
+
+            Type behaviourType = FindType(MovementTypeName);
+            Type utility = FindType("UdonSharpEditor.UdonSharpEditorUtility");
+
+            if (behaviourType == null || utility == null)
+            {
+                return false;
+            }
+
+            // AddUdonSharpComponent, rather than AddComponent: an UdonSharp
+            // behaviour on its own is an inert proxy. The utility is what pairs
+            // it with the UdonBehaviour that actually runs.
+            MethodInfo add = utility.GetMethod(
+                "AddUdonSharpComponent",
+                BindingFlags.Public | BindingFlags.Static,
+                null,
+                new[] { typeof(GameObject), typeof(Type) },
+                null);
+
+            if (add == null)
+            {
+                Debug.LogWarning(
+                    "[SabaProps Foliage] UdonSharpEditorUtility.AddUdonSharpComponent が見つかりません。"
+                    + "UdonSharp のバージョン差の可能性があります。移動設定は追加していません。");
+                return false;
+            }
+
+            return add.Invoke(null, new object[] { world, behaviourType }) != null;
+        }
+
         private static Type FindType(string fullName)
         {
             foreach (Assembly assembly in AppDomain.CurrentDomain.GetAssemblies())
