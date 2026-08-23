@@ -395,6 +395,8 @@ namespace NUnit.Framework
         public static void AreEqual(object expected, object actual, string message) { }
         public static void AreEqual(double expected, double actual, double delta) { }
         public static void AreEqual(double expected, double actual, double delta, string message) { }
+        public static void AreNotEqual(object expected, object actual) { }
+        public static void AreNotEqual(object expected, object actual, string message) { }
 
         public static void AreSame(object expected, object actual) { }
         public static void AreSame(object expected, object actual, string message) { }
