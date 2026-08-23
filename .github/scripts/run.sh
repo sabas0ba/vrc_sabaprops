@@ -60,6 +60,15 @@ host_path() {
 
 RUN_ARGS=(--rm -v "$(host_path "$REPO"):/repo" -w /repo)
 
+# No network unless the caller asks for it. Only build_listing.py talks to the
+# GitHub API; the rest read and write local files. Denying the socket by
+# default means the step that carries a token is the only step that could send
+# one anywhere, which is a smaller thing to reason about than trusting every
+# step not to.
+if [ "${CONTAINER_NETWORK:-none}" = "none" ]; then
+    RUN_ARGS+=(--network=none)
+fi
+
 # Who the container writes as, which decides whether the files it leaves in the
 # work tree belong to the caller.
 #
@@ -76,11 +85,17 @@ if [ "$ENGINE" = "docker" ] && command -v id >/dev/null 2>&1; then
     esac
 fi
 
-# Forwarded so build_listing.py can authenticate against the GitHub API. Passed
-# by name, so the value never appears in the command line or the logs.
-if [ -n "${GITHUB_TOKEN:-}" ]; then
-    RUN_ARGS+=(-e GITHUB_TOKEN)
-fi
+# What build_listing.py needs from the workflow: a token to authenticate with
+# and the repository to query. A container starts with an empty environment, so
+# anything a script reads from os.environ has to be named here — the runner's
+# variables are not inherited the way they were before.
+#
+# Passed by name, so values never appear in the command line or the logs.
+for name in GITHUB_TOKEN GH_TOKEN GITHUB_REPOSITORY; do
+    if [ -n "${!name:-}" ]; then
+        RUN_ARGS+=(-e "$name")
+    fi
+done
 
 # Absolute paths into the repository become their container equivalent. A
 # caller that assembled a path from $PWD would otherwise hand the container a
