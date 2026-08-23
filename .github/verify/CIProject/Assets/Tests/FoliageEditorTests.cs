@@ -3,8 +3,10 @@ using NUnit.Framework;
 using SabaProps.Foliage;
 using SabaProps.Foliage.Editors;
 using UnityEditor;
+using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.Rendering;
+using UnityEngine.SceneManagement;
 
 namespace SabaProps.Foliage.CITests
 {
@@ -342,6 +344,112 @@ namespace SabaProps.Foliage.CITests
             {
                 Assert.AreEqual(firstPositions[i].x, secondPositions[i].x, 1e-4f);
                 Assert.AreEqual(firstPositions[i].z, secondPositions[i].z, 1e-4f);
+            }
+        }
+    }
+
+    /// <summary>
+    /// The sample scene is the package's first impression, so it is worth a test
+    /// of its own: it exercises both output modes, both species and the ground
+    /// raycast in one pass, and a broken one is the most visible failure the
+    /// package can ship.
+    /// </summary>
+    public class FoliageSampleSceneTests
+    {
+        [TearDown]
+        public void RestoreEmptyScene()
+        {
+            EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
+
+            if (AssetDatabase.IsValidFolder("Assets/SabaProps"))
+            {
+                AssetDatabase.DeleteAsset("Assets/SabaProps");
+            }
+        }
+
+        [Test]
+        public void SampleScene_IsBuiltAndSaved()
+        {
+            Scene scene = FoliageSampleScene.Create();
+
+            Assert.IsTrue(scene.IsValid(), "sample scene was not created");
+            Assert.IsNotNull(AssetDatabase.LoadAssetAtPath<SceneAsset>(FoliageSampleScene.ScenePath),
+                $"sample scene was not saved to {FoliageSampleScene.ScenePath}");
+
+            FoliageField meadow = FindField(scene, FoliageSampleScene.MeadowName);
+            FoliageField clearing = FindField(scene, FoliageSampleScene.ClearingName);
+
+            AssertBuilt(meadow, FoliageOutputMode.GpuInstanced);
+            AssertBuilt(clearing, FoliageOutputMode.MergedChunks);
+
+            // The meadow mixes grass and sunflowers; one shared mesh per species
+            // is what makes each of them a single instancing batch.
+            var meadowMeshes = new HashSet<Mesh>();
+            foreach (MeshFilter filter in meadow.GetComponentsInChildren<MeshFilter>())
+            {
+                meadowMeshes.Add(filter.sharedMesh);
+            }
+
+            Assert.AreEqual(2, meadowMeshes.Count,
+                "the meadow should place exactly two species, each with one shared mesh");
+
+            Assert.Less(clearing.lastBuildStats.rendererCount, clearing.lastBuildStats.instanceCount,
+                "the clearing should merge instances into fewer renderers");
+        }
+
+        [Test]
+        public void SampleScene_HasGroundToStandOn()
+        {
+            Scene scene = FoliageSampleScene.Create();
+
+            GameObject ground = FindRootObject(scene, "Ground");
+            Assert.IsNotNull(ground, "the demo has no ground object");
+            Assert.Greater(ground.GetComponentsInChildren<Collider>().Length, 0,
+                "ground needs colliders or the scatterer has nothing to raycast against");
+
+            Assert.IsNotNull(Camera.main, "the demo has no camera to look through");
+        }
+
+        private static FoliageField FindField(Scene scene, string name)
+        {
+            GameObject go = FindRootObject(scene, name);
+            Assert.IsNotNull(go, $"'{name}' is missing from the sample scene");
+
+            var field = go.GetComponent<FoliageField>();
+            Assert.IsNotNull(field, $"'{name}' has no FoliageField component");
+            return field;
+        }
+
+        private static GameObject FindRootObject(Scene scene, string name)
+        {
+            foreach (GameObject root in scene.GetRootGameObjects())
+            {
+                if (root.name == name)
+                {
+                    return root;
+                }
+            }
+
+            return null;
+        }
+
+        private static void AssertBuilt(FoliageField field, FoliageOutputMode expectedMode)
+        {
+            Assert.AreEqual(expectedMode, field.outputMode, $"'{field.name}' uses the wrong output mode");
+            Assert.IsNotNull(field.lastBuildStats, $"'{field.name}' was never built");
+            Assert.Greater(field.lastBuildStats.instanceCount, 0, $"'{field.name}' placed nothing");
+
+            var renderers = field.GetComponentsInChildren<MeshRenderer>();
+            Assert.AreEqual(field.lastBuildStats.rendererCount, renderers.Length);
+
+            foreach (MeshRenderer renderer in renderers)
+            {
+                Assert.IsNotNull(renderer.sharedMaterial, $"'{field.name}' produced a renderer with no material");
+            }
+
+            foreach (MeshFilter filter in field.GetComponentsInChildren<MeshFilter>())
+            {
+                Assert.IsNotNull(filter.sharedMesh, $"'{field.name}' produced a renderer with no mesh");
             }
         }
     }

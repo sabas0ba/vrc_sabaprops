@@ -206,7 +206,10 @@ namespace UnityEditor
         public static SceneView lastActiveSceneView => null;
         public Vector3 pivot { get; set; }
         public void Repaint() { }
+        public void LookAt(Vector3 point, Quaternion direction, float newSize) { }
     }
+
+    public class SceneAsset : UnityEngine.Object { }
 
     public static class EditorGUI
     {
@@ -266,9 +269,16 @@ namespace UnityEditor
 
 namespace UnityEditor.SceneManagement
 {
+    public enum NewSceneSetup { EmptyScene = 0, DefaultGameObjects = 1 }
+
+    public enum NewSceneMode { Single = 0, Additive = 1 }
+
     public static class EditorSceneManager
     {
         public static bool MarkSceneDirty(Scene scene) => false;
+        public static Scene NewScene(NewSceneSetup setup, NewSceneMode mode) => default;
+        public static bool SaveScene(Scene scene, string dstScenePath) => false;
+        public static bool SaveCurrentModifiedScenesIfUserWantsTo() => false;
     }
 }
 

@@ -154,6 +154,31 @@ namespace SabaProps.Foliage.Editors
             return material;
         }
 
+        /// <summary>
+        /// Creates, or loads, the shared material and both stock species along
+        /// with their meshes. Returns false when the shader is missing, which is
+        /// the only failure a caller can do anything about.
+        /// </summary>
+        public static bool CreateOrLoadDefaults(
+            out Material material, out FoliageSpecies grass, out FoliageSpecies sunflower)
+        {
+            material = CreateOrLoadDefaultMaterial();
+            grass = null;
+            sunflower = null;
+
+            if (material == null)
+            {
+                return false;
+            }
+
+            grass = CreateOrLoadDefaultSpecies(FoliageSpeciesKind.GrassClump, material);
+            sunflower = CreateOrLoadDefaultSpecies(FoliageSpeciesKind.Sunflower, material);
+
+            WriteSpeciesMesh(grass);
+            WriteSpeciesMesh(sunflower);
+            return true;
+        }
+
         /// <summary>Creates the two built-in species presets if they are missing.</summary>
         public static FoliageSpecies CreateOrLoadDefaultSpecies(FoliageSpeciesKind kind, Material material)
         {

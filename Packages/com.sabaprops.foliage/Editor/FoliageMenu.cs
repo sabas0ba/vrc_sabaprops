@@ -59,20 +59,7 @@ namespace SabaProps.Foliage.Editors
 
         private static void EnsureDefaults(out Material material, out FoliageSpecies grass, out FoliageSpecies sunflower)
         {
-            material = FoliageAssetLibrary.CreateOrLoadDefaultMaterial();
-            grass = null;
-            sunflower = null;
-
-            if (material == null)
-            {
-                return;
-            }
-
-            grass = FoliageAssetLibrary.CreateOrLoadDefaultSpecies(FoliageSpeciesKind.GrassClump, material);
-            sunflower = FoliageAssetLibrary.CreateOrLoadDefaultSpecies(FoliageSpeciesKind.Sunflower, material);
-
-            FoliageAssetLibrary.WriteSpeciesMesh(grass);
-            FoliageAssetLibrary.WriteSpeciesMesh(sunflower);
+            FoliageAssetLibrary.CreateOrLoadDefaults(out material, out grass, out sunflower);
         }
     }
 }

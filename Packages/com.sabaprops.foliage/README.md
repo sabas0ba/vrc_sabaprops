@@ -28,6 +28,25 @@ VRChat のワールドとアバターでは、**実行時に C# が動きませ�
 
 ## クイックスタート
 
+### まず動くものを見る
+
+`Tools > SabaProps > Foliage > Create Sample Scene`
+
+地面・起伏・傾斜・ライト・カメラと、出力モードの異なる 2 つのフィールドを含むデモシーンを生成し、
+**ビルドまで済ませた状態**で開きます。保存先は `Assets/SabaProps/Foliage/Samples/FoliageDemo.unity` です。
+
+| フィールド | モード | 内容 |
+| --- | --- | --- |
+| Meadow | GPU Instanced | 草＋ひまわり。約 1,200 個体、Renderer 1,188、推定 3 ドローコール |
+| Clearing | Merged Chunks | 草のみ。約 1,200 個体を 12 Renderer に結合 |
+
+Ramp は傾斜 30 度で、ひまわりの傾斜上限 25 度を超えるため草だけが生えます。
+Mound では地面法線への追従が確認できます。どちらも追加設定なしで、傾斜フィルタと地面吸着がそのまま見える配置です。
+
+現在開いているシーンは置き換えられます。未保存の変更があるときは確認ダイアログが出ます。
+
+### 自分のシーンに置く
+
 1. `Tools > SabaProps > Foliage > Create Default Assets`
    `Assets/SabaProps/Foliage/` にマテリアルと 2 種類の Species（GrassSeed / Sunflower）が作られます。
 2. 地面に Collider を付ける
@@ -153,6 +172,7 @@ Built-in RP のサーフェスシェーダーです。
 | `Assets/SabaProps/Foliage/Species/` | Species プリセット |
 | `Assets/SabaProps/Foliage/Generated/Species/` | Species ごとのメッシュ（再ビルドで上書き。GUID は維持されます） |
 | `Assets/SabaProps/Foliage/Generated/Merged/<field>/` | Merged Chunks モードの結合メッシュ。Clear で削除されます |
+| `Assets/SabaProps/Foliage/Samples/` | `Create Sample Scene` が作るデモシーンと地面マテリアル |
 
 生成物はパッケージフォルダの外に置かれます。VCC はアップグレード時にパッケージフォルダを丸ごと置き換えるためです。
 

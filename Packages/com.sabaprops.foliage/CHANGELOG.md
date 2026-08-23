@@ -6,6 +6,14 @@
 
 ## [Unreleased]
 
+### Added
+
+- サンプルシーン生成: `Tools/SabaProps/Foliage/Create Sample Scene`
+  - 地面・起伏・傾斜・ライト・カメラと、GPU Instanced / Merged Chunks 両モードのフィールドを含むデモを生成し、
+    ビルドまで済ませた状態で `Assets/SabaProps/Foliage/Samples/FoliageDemo.unity` に保存します
+  - シーンも生成メッシュもプロジェクト側に書き出されるため、パッケージにバイナリアセットは増えません
+- `FoliageAssetLibrary.CreateOrLoadDefaults()`: 共有マテリアルと 2 種の Species をまとめて用意する API
+
 ## [0.1.0] - 2026-07-26
 
 ### Added

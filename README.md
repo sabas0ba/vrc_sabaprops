@@ -29,6 +29,9 @@ https://sabas0ba.github.io/vrc_sabaprops/index.json
 
 各パッケージの詳細は `Packages/<package-id>/README.md` を参照してください。
 
+導入後に動作を確認する最短手順は `Tools > SabaProps > Foliage > Create Sample Scene` です。
+地面・ライト・カメラと 2 種類の出力モードのフィールドを含むデモシーンが、ビルド済みの状態で生成されます。
+
 ---
 
 ## リポジトリ構成
