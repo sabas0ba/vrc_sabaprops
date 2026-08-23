@@ -12,6 +12,41 @@ using UnityEngine.SceneManagement;
 namespace SabaProps.Foliage.CITests
 {
     /// <summary>
+    /// Cleanup shared by the fixtures that write into the project.
+    /// </summary>
+    internal static class FoliageTestAssets
+    {
+        /// <summary>
+        /// Removes what the package generates, and only that.
+        /// <para>
+        /// Deleting Assets/SabaProps wholesale is the obvious thing and the
+        /// wrong one: the demo movement sample is imported into the same tree,
+        /// and it is a compiled UdonSharp behaviour. Taking its program asset
+        /// out from under a type that is still loaded leaves every later scene
+        /// build failing on "Unable to find valid U# program asset", in tests
+        /// that never went near Udon.
+        /// </para>
+        /// </summary>
+        public static void DeleteGenerated()
+        {
+            string[] paths =
+            {
+                FoliageAssetLibrary.GeneratedFolder,
+                FoliageAssetLibrary.SpeciesFolder,
+                FoliageAssetLibrary.MaterialsFolder,
+                FoliageSampleScene.VariantFolder,
+                FoliageSampleScene.ScenePath,
+                FoliageSampleScene.GroundMaterialPath,
+            };
+
+            foreach (string path in paths)
+            {
+                AssetDatabase.DeleteAsset(path);
+            }
+        }
+    }
+
+    /// <summary>
     /// Verifies the one thing no offline harness can: that Unity itself accepts
     /// the surface shader. A syntax error, a bad #pragma, or a variant that
     /// fails to generate all surface here.
@@ -362,10 +397,7 @@ namespace SabaProps.Foliage.CITests
         [OneTimeTearDown]
         public void DeleteGeneratedAssets()
         {
-            if (AssetDatabase.IsValidFolder("Assets/SabaProps"))
-            {
-                AssetDatabase.DeleteAsset("Assets/SabaProps");
-            }
+            FoliageTestAssets.DeleteGenerated();
         }
 
         private FoliageField CreateField(FoliageOutputMode mode)
@@ -564,10 +596,7 @@ namespace SabaProps.Foliage.CITests
         {
             EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
 
-            if (AssetDatabase.IsValidFolder("Assets/SabaProps"))
-            {
-                AssetDatabase.DeleteAsset("Assets/SabaProps");
-            }
+            FoliageTestAssets.DeleteGenerated();
         }
 
         [Test]

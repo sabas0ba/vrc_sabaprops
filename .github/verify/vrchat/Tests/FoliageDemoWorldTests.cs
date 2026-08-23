@@ -65,9 +65,23 @@ namespace SabaProps.Foliage.WorldTests
             EditorSettings.enterPlayModeOptions = _restoreOptions;
             EditorSettings.enterPlayModeOptionsEnabled = _restoreOptionsEnabled;
 
-            if (AssetDatabase.IsValidFolder("Assets/SabaProps"))
+            // What the demo generated, and not the movement sample sitting in
+            // the same tree: that is a compiled UdonSharp behaviour, and taking
+            // its program asset out from under a type that is still loaded
+            // breaks every scene built afterwards.
+            string[] generated =
             {
-                AssetDatabase.DeleteAsset("Assets/SabaProps");
+                FoliageAssetLibrary.GeneratedFolder,
+                FoliageAssetLibrary.SpeciesFolder,
+                FoliageAssetLibrary.MaterialsFolder,
+                FoliageSampleScene.VariantFolder,
+                FoliageSampleScene.ScenePath,
+                FoliageSampleScene.GroundMaterialPath,
+            };
+
+            foreach (string path in generated)
+            {
+                AssetDatabase.DeleteAsset(path);
             }
         }
 
