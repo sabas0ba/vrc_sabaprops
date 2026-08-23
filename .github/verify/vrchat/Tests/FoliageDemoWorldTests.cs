@@ -27,6 +27,26 @@ namespace SabaProps.Foliage.WorldTests
     /// One test, not several: entering and leaving play mode is per-fixture
     /// state, and a second test's setup would run before the first had left it.
     /// </para>
+    /// <para>
+    /// <b>Known failure on a clean checkout.</b> The first time a project runs
+    /// this, entering play mode compiles the play-mode assemblies, and the
+    /// domain reload that follows clears
+    /// <c>LogAssert.ignoreFailingMessages</c> — static state — while this
+    /// coroutine is suspended inside <c>EnterPlayMode</c>. ClientSim's startup
+    /// exception then lands with nothing tolerating it and fails the test.
+    /// Running the suite a second time passes, because by then there is nothing
+    /// left to compile.
+    /// </para>
+    /// <para>
+    /// Ruled out: an extra import-only editor session beforehand, saving a
+    /// scene in the setup session, waiting on
+    /// <c>EditorApplication.isCompiling</c> before entering play mode, and
+    /// re-asserting the flag every frame in the wait loops. None of them help —
+    /// the reload happens inside <c>EnterPlayMode</c>, where this test cannot
+    /// reach. A fix would have to restore the flag from something that survives
+    /// the reload, such as an <c>[InitializeOnLoadMethod]</c> keyed off
+    /// <c>SessionState</c>.
+    /// </para>
     /// </summary>
     public class FoliageDemoWorldTests
     {
