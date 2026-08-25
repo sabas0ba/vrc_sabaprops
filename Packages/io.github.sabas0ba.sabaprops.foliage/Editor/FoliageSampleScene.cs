@@ -65,6 +65,39 @@ namespace SabaProps.Foliage.Editors
         /// </summary>
         private static readonly float[] WideColumns = { -18f, -9f, 0f, 9f, 18f };
 
+        /// <summary>
+        /// Rows the single-species section needs to show every species.
+        /// <para>
+        /// The section that grows is the one at the front, so everything behind
+        /// it is pushed back rather than a species falling off the end of a row
+        /// and quietly not being shown.
+        /// </para>
+        /// </summary>
+        private static int SingleSpeciesRows
+        {
+            get
+            {
+                return Mathf.Max(1,
+                    Mathf.CeilToInt(FoliageAssetLibrary.AllKinds.Length / (float)WideColumns.Length));
+            }
+        }
+
+        /// <summary>
+        /// Where a section starts, counting from the spawn end of the garden.
+        /// Section 0 is the single-species block; the rest follow whatever depth
+        /// it turned out to need.
+        /// </summary>
+        private static float SectionZ(int section)
+        {
+            return section == 0 ? 0f : (SingleSpeciesRows - 1 + section) * Pitch;
+        }
+
+        /// <summary>Far edge of the last section, used to size the ground.</summary>
+        private static float GardenBack
+        {
+            get { return SectionZ(5) + PlotSize; }
+        }
+
         [MenuItem("Tools/SabaProps/Foliage/Create Sample Scene", false, 1)]
         public static void CreateAndOpen()
         {
@@ -82,7 +115,7 @@ namespace SabaProps.Foliage.Editors
             SceneView view = SceneView.lastActiveSceneView;
             if (view != null)
             {
-                view.LookAt(new Vector3(0f, 0.5f, 20f), Quaternion.Euler(38f, 0f, 0f), 52f);
+                view.LookAt(new Vector3(0f, 0.5f, GardenBack * 0.5f), Quaternion.Euler(38f, 0f, 0f), GardenBack + 8f);
             }
         }
 
@@ -149,7 +182,7 @@ namespace SabaProps.Foliage.Editors
         {
             Transform root = CreateRoot(SingleSpeciesRoot);
 
-            for (int i = 0; i < FoliageAssetLibrary.AllKinds.Length && i < WideColumns.Length; i++)
+            for (int i = 0; i < FoliageAssetLibrary.AllKinds.Length; i++)
             {
                 FoliageSpeciesKind kind = FoliageAssetLibrary.AllKinds[i];
                 FoliageSpecies species = Of(stock, kind);
@@ -160,7 +193,7 @@ namespace SabaProps.Foliage.Editors
 
                 FoliageField field = CreatePlot(
                     root, FoliageAssetLibrary.DisplayName(kind),
-                    new Vector3(WideColumns[i], 0f, 0f),
+                    new Vector3(WideColumns[i % WideColumns.Length], 0f, (i / WideColumns.Length) * Pitch),
                     DensityFor(kind), 3001 + i, FoliageOutputMode.MergedChunks);
 
                 AddSpecies(field, species, 1f);
@@ -237,7 +270,7 @@ namespace SabaProps.Foliage.Editors
             }
 
             FoliageField field = CreatePlot(
-                root, name, new Vector3(Columns[column], 0f, Pitch),
+                root, name, new Vector3(Columns[column], 0f, SectionZ(1)),
                 density, 3101 + column, FoliageOutputMode.MergedChunks);
 
             AddSpecies(field, species, 1f);
@@ -261,7 +294,7 @@ namespace SabaProps.Foliage.Editors
             for (int i = 0; i < names.Length; i++)
             {
                 FoliageField field = CreatePlot(
-                    root, names[i], new Vector3(Columns[i], 0f, Pitch * 2f),
+                    root, names[i], new Vector3(Columns[i], 0f, SectionZ(2)),
                     PlotDensity, 3201 + i, FoliageOutputMode.MergedChunks);
 
                 // The ramp is steeper than the sunflower's slope limit, so the
@@ -311,7 +344,7 @@ namespace SabaProps.Foliage.Editors
             FoliageSpecies smallFlower = Of(stock, FoliageSpeciesKind.SmallFlower);
 
             FoliageField meadow = CreatePlot(
-                root, "Meadow", new Vector3(Columns[0], 0f, Pitch * 3f),
+                root, "Meadow", new Vector3(Columns[0], 0f, SectionZ(3)),
                 PlotDensity, 3301, FoliageOutputMode.MergedChunks);
             AddSpecies(meadow, grass, 1f);
             AddSpecies(meadow, clover, 0.45f);
@@ -319,14 +352,14 @@ namespace SabaProps.Foliage.Editors
             fields.Add(meadow);
 
             FoliageField waterside = CreatePlot(
-                root, "Waterside", new Vector3(Columns[1], 0f, Pitch * 3f),
+                root, "Waterside", new Vector3(Columns[1], 0f, SectionZ(3)),
                 PlotDensity, 3302, FoliageOutputMode.MergedChunks);
             AddSpecies(waterside, grass, 1f);
             AddSpecies(waterside, reed, 0.22f);
             fields.Add(waterside);
 
             FoliageField flowerbed = CreatePlot(
-                root, "Flowerbed", new Vector3(Columns[2], 0f, Pitch * 3f),
+                root, "Flowerbed", new Vector3(Columns[2], 0f, SectionZ(3)),
                 PlotDensity, 3303, FoliageOutputMode.MergedChunks);
             AddSpecies(flowerbed, clover, 1f);
             AddSpecies(flowerbed, sunflower, 0.3f);
@@ -336,7 +369,7 @@ namespace SabaProps.Foliage.Editors
             // rather than as an accent scattered through one. Grass is the
             // minority here, which is the whole difference from the meadow.
             FoliageField flowerField = CreatePlot(
-                root, "Flower Field", new Vector3(Columns[3], 0f, Pitch * 3f),
+                root, "Flower Field", new Vector3(Columns[3], 0f, SectionZ(3)),
                 PlotDensity, 3304, FoliageOutputMode.MergedChunks);
             AddSpecies(flowerField, smallFlower, 1f);
             AddSpecies(flowerField, grass, 0.3f);
@@ -360,7 +393,7 @@ namespace SabaProps.Foliage.Editors
             for (int i = 0; i < modes.Length; i++)
             {
                 FoliageField field = CreatePlot(
-                    root, names[i], new Vector3(Columns[i], 0f, Pitch * 4f),
+                    root, names[i], new Vector3(Columns[i], 0f, SectionZ(4)),
                     PlotDensity, 3401, modes[i]);
 
                 AddSpecies(field, grass, 1f);
@@ -384,7 +417,7 @@ namespace SabaProps.Foliage.Editors
                 // One seed for every plot: each clump stands where its
                 // neighbour's does, so what is left to see is the season alone.
                 FoliageField field = CreatePlot(
-                    root, season.ToString(), new Vector3(WideColumns[i], 0f, Pitch * 5f),
+                    root, season.ToString(), new Vector3(WideColumns[i], 0f, SectionZ(5)),
                     PlotDensity, 3501, FoliageOutputMode.MergedChunks);
 
                 AddSpecies(field, SeasonalSpecies(FoliageSpeciesKind.GrassClump, season, material), 1f);
@@ -570,15 +603,23 @@ namespace SabaProps.Foliage.Editors
         {
             var root = new GameObject(GroundRoot);
 
-            // Covers every plot with room to walk between them. A Plane primitive
-            // is 10 m square before scaling, so this reaches from z = -12 to
-            // z = 52 and from x = -23 to x = 23 — the last row of plots sits at
-            // z = 45, and the season row reaches out to x = 18 plus half a plot.
+            // Covers every plot with room to walk between them, and follows the
+            // layout rather than restating it: adding a species lengthens the
+            // garden, and ground that did not grow with it would leave the last
+            // row raycasting into nothing.
+            //
+            // A Plane primitive is 10 m square before scaling. The front edge
+            // clears the spawn at z = -7; the sides clear the season row, which
+            // reaches out to x = 18 plus half a plot.
+            const float front = -12f;
+            float back = GardenBack + 5f;
+
             CreateGroundPiece(root.transform, PrimitiveType.Plane, "Flat",
-                new Vector3(0f, 0f, 20f), Quaternion.identity, new Vector3(4.6f, 1f, 6.4f), material);
+                new Vector3(0f, 0f, (front + back) * 0.5f), Quaternion.identity,
+                new Vector3(4.6f, 1f, (back - front) * 0.1f), material);
 
             // --- section 3's ground -----------------------------------------
-            float z = Pitch * 2f;
+            float z = SectionZ(2);
 
             // A gentle ellipsoid: shows ground snapping and normal alignment.
             CreateGroundPiece(root.transform, PrimitiveType.Sphere, "Mound",
