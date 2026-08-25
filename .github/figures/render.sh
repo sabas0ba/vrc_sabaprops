@@ -73,9 +73,11 @@ dotnet "$CSC_DLL" -nologo -langversion:9.0 -target:exe -nostdlib+ -noconfig \
     "$REPO/.github/verify/offline/UnityEngineShim.cs" \
     "$HERE/DumpFigures.cs" \
     "$PACKAGE/Runtime/FoliageRandom.cs" \
+    "$PACKAGE/Runtime/FoliageSeason.cs" \
     "$PACKAGE/Runtime/FoliageSpecies.cs" \
     "$PACKAGE/Editor/FoliageMeshBuffer.cs" \
-    "$PACKAGE/Editor/FoliageMeshBuilder.cs"
+    "$PACKAGE/Editor/FoliageMeshBuilder.cs" \
+    "$PACKAGE/Editor/FoliageSeasonPass.cs"
 
 cat > "$WORK/DumpFigures.runtimeconfig.json" <<'JSON'
 {
