@@ -6,6 +6,8 @@
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-08-26
+
 ### Added
 
 - `Small Flower`: 汎用の小花。茎・葉と 1 株あたり複数の花からなり、花弁の枚数・丸み・色でネモフィラやジャガイモの花などを作り分けます
@@ -136,7 +138,8 @@
 - `FoliageSpecies` ScriptableObject による種別プリセット
 - セットアップメニュー: `Tools/SabaProps/Foliage/Create Default Assets`
 
-[Unreleased]: https://github.com/sabas0ba/vrc_sabaprops/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/sabas0ba/vrc_sabaprops/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/sabas0ba/vrc_sabaprops/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/sabas0ba/vrc_sabaprops/compare/v0.1.1...v0.2.0
 [0.1.1]: https://github.com/sabas0ba/vrc_sabaprops/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/sabas0ba/vrc_sabaprops/releases/tag/v0.1.0
