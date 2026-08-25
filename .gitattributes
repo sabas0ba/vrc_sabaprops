@@ -10,3 +10,8 @@
 *.asmdef text eol=lf
 *.shader text eol=lf
 *.cginc text eol=lf
+
+# The documentation figures are generated and then compared byte for byte
+# against the generator's output in CI. A CRLF checkout would fail that check
+# on Windows even with nothing changed.
+*.svg text eol=lf
