@@ -1,13 +1,13 @@
 # SabaProps Foliage
 
 GPU インスタンシング前提の、軽量な草木スキャッタリングツールです。
-草叢・クローバー・ひまわり・葦・小花・雑草をプロシージャルに生成し、広い範囲に大量配置できます。
+草叢・クローバー・ひまわり・葦・小花・雑草・穀物をプロシージャルに生成し、広い範囲に大量配置できます。
 
 - テクスチャ不要（頂点カラー駆動）。パッケージにバイナリアセットを含みません
 - ワールド座標ハッシュによる個体差なので、per-instance データの送信が一切不要です
 - Built-in Render Pipeline / Unity 2022.3 / VRChat ワールド・アバターの両方で使えます
 
-![草叢・クローバー・ひまわり・葦・小花・雑草を同じ縮尺で並べた比較図](Documentation~/images/generated/species-overview.svg)
+![草叢・クローバー・ひまわり・葦・小花・雑草・穀物を同じ縮尺で並べた比較図](Documentation~/images/generated/species-overview.svg)
 
 図はすべて実際の生成器の出力です。パラメータを変えると形状がどう動くかは [パラメータと見た目の対応](Documentation~/parameters.md) に一覧があります。
 
@@ -44,8 +44,8 @@ VRChat のワールドとアバターでは、**実行時に C# が動きませ�
 
 | セクション | 区画 | 変えているもの |
 | --- | --- | --- |
-| 1 Single Species | Grass / Clover / Sunflower / Reed / Small Flower / Weed | 種のみ。サイズ・シードは共通 |
-| 2 Parameter Variants | Grass - Tall / Clover - Broad / Sunflower - Dwarf / Reed - Splayed | 同じ種の形状パラメータ |
+| 1 Single Species | Grass / Clover / Sunflower / Reed / Small Flower / Weed / Grain | 種のみ。サイズ・シードは共通 |
+| 2 Parameter Variants | Grass - Tall / Clover - Broad / Sunflower - Dwarf / Reed - Splayed / Grain - Rice | 同じ種の形状パラメータ |
 | 3 Terrain | Mound / Ramp / Terrace / Skinned Mesh | 地面の形だけ。フィールド設定は共通 |
 | 4 Combinations | Meadow / Waterside / Flowerbed / Flower Field | 種の組み合わせと比率 |
 | 5 Output Modes | GPU Instanced / Merged Chunks | 出力モードのみ |
@@ -169,6 +169,7 @@ Species は「1 つのメッシュ ＝ 1 つのインスタンシングバッチ
 | **Reed** | ブレード枚数、高さ、先端の開き、クランプ半径、穂の有無と長さ、色 | 直立した縦のシルエット |
 | **Small Flower** | 草丈、葉の枚数、1 株あたりの花数、花弁の枚数・長さ・幅・丸み、花の傾き、花芯の半径、色 | 一面の花畑。ネモフィラやジャガイモの花など |
 | **Weed** | 葉の枚数、長さ・幅とそのばらつき、寝かせ具合、花茎の本数と高さ、色 | 手入れされていない地面。草より不揃いで葉が広い |
+| **Grain** | 葉の枚数、高さ、開き、穂の長さ・幅・段数、垂れ具合、芒の長さと本数、色 | 麦畑・稲田。垂れ具合と芒で麦と稲を作り分けます |
 
 主なパラメータが見た目にどう効くかは [パラメータと見た目の対応](Documentation~/parameters.md) に生成結果を並べてあります。値を決める前にそちらを見た方が早いはずです。
 

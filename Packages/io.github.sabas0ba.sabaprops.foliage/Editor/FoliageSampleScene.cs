@@ -254,10 +254,29 @@ namespace SabaProps.Foliage.Editors
                     species.minSpacing = 0.18f;
                 });
 
+            FoliageSpecies rice = CreateVariant("Grain_Rice", FoliageSpeciesKind.Grain, material,
+                species =>
+                {
+                    // The same generator as the wheat next to it. Rice bows under
+                    // the weight of its grain and carries no awns, and that is
+                    // the whole of the difference.
+                    species.grain.earDroop = 0.85f;
+                    species.grain.awnLength = 0f;
+                    species.grain.earLength = 0.14f;
+                    species.grain.earWidth = 0.022f;
+                    species.grain.grainRows = 6;
+                    species.grain.height = 0.72f;
+                    species.grain.rootColor = new Color(0.298f, 0.396f, 0.180f, 1f);
+                    species.grain.tipColor = new Color(0.573f, 0.596f, 0.298f, 1f);
+                    species.grain.earColor = new Color(0.678f, 0.639f, 0.361f, 1f);
+                    species.minSpacing = 0.1f;
+                });
+
             AddVariantPlot(root, fields, "Grass - Tall", 0, tallGrass, 6f);
             AddVariantPlot(root, fields, "Clover - Broad", 1, wideClover, 9f);
             AddVariantPlot(root, fields, "Sunflower - Dwarf", 2, dwarfSunflower, 3.5f);
             AddVariantPlot(root, fields, "Reed - Splayed", 3, bareReed, 5f);
+            AddVariantPlot(root, fields, "Grain - Rice", 4, rice, 9f);
         }
 
         private static void AddVariantPlot(
@@ -270,7 +289,7 @@ namespace SabaProps.Foliage.Editors
             }
 
             FoliageField field = CreatePlot(
-                root, name, new Vector3(Columns[column], 0f, SectionZ(1)),
+                root, name, new Vector3(WideColumns[column], 0f, SectionZ(1)),
                 density, 3101 + column, FoliageOutputMode.MergedChunks);
 
             AddSpecies(field, species, 1f);
@@ -458,6 +477,7 @@ namespace SabaProps.Foliage.Editors
                 case FoliageSpeciesKind.Clover: return 14f;
                 case FoliageSpeciesKind.SmallFlower: return 12f;
                 case FoliageSpeciesKind.Weed: return 6f;
+                case FoliageSpeciesKind.Grain: return 9f;
                 case FoliageSpeciesKind.GrassClump:
                 default: return PlotDensity;
             }

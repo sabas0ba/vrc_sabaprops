@@ -186,6 +186,7 @@ namespace SabaProps.Foliage.Editors
             FoliageSpeciesKind.Reed,
             FoliageSpeciesKind.SmallFlower,
             FoliageSpeciesKind.Weed,
+            FoliageSpeciesKind.Grain,
         };
 
         /// <summary>Asset file name, and inspector label, for a species kind.</summary>
@@ -198,6 +199,7 @@ namespace SabaProps.Foliage.Editors
                 case FoliageSpeciesKind.Reed: return "Reed";
                 case FoliageSpeciesKind.SmallFlower: return "SmallFlower";
                 case FoliageSpeciesKind.Weed: return "Weed";
+                case FoliageSpeciesKind.Grain: return "Grain";
                 case FoliageSpeciesKind.GrassClump:
                 default: return "GrassSeed";
             }
@@ -251,6 +253,7 @@ namespace SabaProps.Foliage.Editors
                 case FoliageSpeciesKind.Reed: return "reed";
                 case FoliageSpeciesKind.SmallFlower: return "smallFlower";
                 case FoliageSpeciesKind.Weed: return "weed";
+                case FoliageSpeciesKind.Grain: return "grain";
                 case FoliageSpeciesKind.GrassClump:
                 default: return "grass";
             }
@@ -356,6 +359,29 @@ namespace SabaProps.Foliage.Editors
                 species.alignToGroundNormal = 0.1f;
                 species.slopeLimits = new Vector2(0f, 18f);
                 species.castShadows = true;
+                return;
+            }
+
+            if (kind == FoliageSpeciesKind.Grain)
+            {
+                species.meshSeed = 57;
+
+                // A crop, so it is planted rather than scattered: packed tight,
+                // barely tilted, and only on ground flat enough to farm.
+                species.placementWeight = 0.5f;
+                species.minSpacing = 0.1f;
+                species.scaleRange = new Vector2(0.85f, 1.15f);
+                species.maxTilt = 4f;
+                species.alignToGroundNormal = 0.1f;
+                species.slopeLimits = new Vector2(0f, 15f);
+
+                // Tall and sparse enough to be worth a shadow, like the reed.
+                species.castShadows = true;
+
+                // Harvested rather than dormant: what stands in a winter field
+                // is stubble, which is not this mesh.
+                species.seasonPalette.winterSnow.appearance = SeasonAppearance.Absent;
+                species.seasonPalette.winterBare.appearance = SeasonAppearance.Absent;
                 return;
             }
 

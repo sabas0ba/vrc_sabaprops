@@ -47,6 +47,7 @@ internal static class OfflineMeshTests
         Run("a dormant flower drops its petals", DormantFlowersDropTheirPetals);
         Run("the small flower carries its flowers", SmallFlowerCarriesItsFlowers);
         Run("weed leaves are broad and uneven", WeedLeavesAreBroadAndUneven);
+        Run("the grain ear bows under its droop", GrainEarBowsUnderItsDroop);
 
         Run("degenerate parameters stay finite", DegenerateParametersStayFinite);
         Run("merging preserves counts and moves the wind pivots", MergePreservesChannels);
@@ -663,6 +664,66 @@ internal static class OfflineMeshTests
         return nearest > 1e-4f ? furthest / nearest : 1f;
     }
 
+    private static void GrainEarBowsUnderItsDroop()
+    {
+        // Wheat and rice come from one generator, and earDroop is what tells
+        // them apart. If it stopped working the two would be the same plant in
+        // two colours, and nothing else in the suite would notice.
+        var wheat = new FoliageSpecies { kind = FoliageSpeciesKind.Grain, meshSeed = 57 };
+        wheat.grain.earDroop = 0f;
+
+        var rice = new FoliageSpecies { kind = FoliageSpeciesKind.Grain, meshSeed = 57 };
+        rice.grain.earDroop = 1f;
+        rice.grain.awnLength = 0f;
+
+        Mesh upright = FoliageMeshBuilder.Build(wheat);
+        Mesh bowed = FoliageMeshBuilder.Build(rice);
+
+        AssertWellFormed(upright, "wheat");
+        AssertWellFormed(bowed, "rice");
+
+        Require(Tallest(bowed) < Tallest(upright),
+            $"a fully drooping ear stands as tall as an upright one "
+            + $"({Tallest(bowed):0.000} m against {Tallest(upright):0.000} m)");
+
+        // Awns are the other half of the difference, and they are geometry.
+        Require(upright.triangles.Length > bowed.triangles.Length,
+            "the awns cost nothing, so awnLength is not building them");
+
+        // The ear has to stay rigid with the stalk however far it hangs: one
+        // phase, and the top of the bend mask everywhere. A drooping ear that
+        // swayed on its own would swing off the neck.
+        var uv0 = new List<Vector2>();
+        bowed.GetUVs(0, uv0);
+
+        float top = Tallest(bowed);
+        var phases = new HashSet<float>();
+
+        for (int i = 0; i < bowed.vertexCount; i++)
+        {
+            if (bowed.vertices[i].y > top - rice.grain.earLength)
+            {
+                phases.Add(bowed.colors[i].a);
+                Require(uv0[i].y > 0.99f,
+                    $"ear vertex {i} sits below the top of the bend mask ({uv0[i].y:0.000})");
+            }
+        }
+
+        Require(phases.Count == 1,
+            $"the ear sways with {phases.Count} phases; it must share the stalk's");
+    }
+
+    private static float Tallest(Mesh mesh)
+    {
+        float tallest = 0f;
+        foreach (Vector3 v in mesh.vertices)
+        {
+            tallest = Mathf.Max(tallest, v.y);
+        }
+
+        return tallest;
+    }
+
     private static void DegenerateParametersStayFinite()
     {
         // Values a user can dial in from the inspector that collapse a basis
@@ -746,6 +807,7 @@ internal static class OfflineMeshTests
         FoliageSpeciesKind.Reed,
         FoliageSpeciesKind.SmallFlower,
         FoliageSpeciesKind.Weed,
+        FoliageSpeciesKind.Grain,
     };
 
     private static FoliageSeason[] AllSeasons() => new[]

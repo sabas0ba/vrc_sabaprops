@@ -16,6 +16,7 @@ namespace SabaProps.Foliage.Editors
             "reed",
             "smallFlower",
             "weed",
+            "grain",
             "seasonPalette",
             "generatedMesh",
         };

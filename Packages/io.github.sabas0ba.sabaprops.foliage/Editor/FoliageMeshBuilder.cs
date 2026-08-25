@@ -55,6 +55,9 @@ namespace SabaProps.Foliage.Editors
                 case FoliageSpeciesKind.Weed:
                     return BuildWeedBuffer(species.weed, species.meshSeed);
 
+                case FoliageSpeciesKind.Grain:
+                    return BuildGrainBuffer(species.grain, species.meshSeed);
+
                 case FoliageSpeciesKind.GrassClump:
                 default:
                     return BuildGrassClumpBuffer(species.grass, species.meshSeed);
@@ -1267,6 +1270,227 @@ namespace SabaProps.Foliage.Editors
                 Name = "SabaFoliage_Weed",
                 BoundsPadding = tallest * 0.35f,
             };
+        }
+
+
+        // ------------------------------------------------------------------
+        // Grain
+        // ------------------------------------------------------------------
+
+        public static Mesh BuildGrain(GrainParams p, int seed)
+        {
+            return BuildGrainBuffer(p, seed).ToMesh();
+        }
+
+        /// <summary>
+        /// A cereal stalk: upright leaves with a seed ear on the tallest.
+        /// <para>
+        /// Wheat and rice are the same plant here. What tells them apart in a
+        /// field is how far the ear hangs over -- rice bows under the weight of
+        /// its grain, wheat stands up -- and whether it carries awns. Both are
+        /// parameters, so the difference costs a preset rather than a generator.
+        /// </para>
+        /// </summary>
+        private static BuiltMesh BuildGrainBuffer(GrainParams p, int seed)
+        {
+            var rng = new FoliageRandom(seed);
+            var buffer = new FoliageMeshBuffer();
+
+            var shape = new BladeShape
+            {
+                Segments = p.segments,
+                Taper = p.taper,
+                NormalUpBlend = p.normalUpBlend,
+                RootOcclusion = p.rootOcclusion,
+                Stiffness = p.stiffness,
+            };
+
+            int bladeCount = Mathf.Max(1, p.bladeCount);
+            float tallest = 0f;
+
+            Vector3 tallestTop = Vector3.zero;
+            Vector3 tallestDir = Vector3.forward;
+            Vector3 tallestRoot = Vector3.zero;
+            float tallestSeed = 0f;
+
+            for (int i = 0; i < bladeCount; i++)
+            {
+                float angle = rng.Range(0f, Mathf.PI * 2f);
+                float distance = Mathf.Sqrt(rng.Value01()) * p.clumpRadius;
+                var root = new Vector3(Mathf.Cos(angle) * distance, 0f, Mathf.Sin(angle) * distance);
+
+                float facing = angle + rng.Range(-0.8f, 0.8f);
+                var bendDir = new Vector3(Mathf.Cos(facing), 0f, Mathf.Sin(facing));
+
+                float height = p.height * rng.Range(1f - p.heightVariance, 1f + p.heightVariance);
+                float width = p.width * rng.Range(1f - p.widthVariance, 1f + p.widthVariance);
+                float bend = p.spread * height * rng.Range(0.4f, 1.3f);
+                float elementSeed = rng.Value01();
+
+                AddBlade(buffer, shape, root, bendDir, height, width, bend, elementSeed, p.rootColor, p.tipColor);
+
+                if (height > tallest)
+                {
+                    tallest = height;
+                    tallestTop = BladePoint(root, bendDir, height, bend, 1f);
+                    tallestDir = bendDir;
+
+                    // The ear has to sway with the stalk it sits on rather than
+                    // with a phase of its own, or it comes off at the neck.
+                    tallestSeed = elementSeed;
+                    tallestRoot = root;
+                }
+            }
+
+            if (bladeCount > 0)
+            {
+                AddGrainEar(buffer, p, ref rng, tallestTop, tallestDir, tallestRoot, tallestSeed);
+            }
+
+            return new BuiltMesh
+            {
+                Buffer = buffer,
+                Name = "SabaFoliage_Grain",
+                BoundsPadding = tallest * 0.35f,
+            };
+        }
+
+        /// <summary>
+        /// The seed ear, built as two crossed strips that bend over along their
+        /// length, with optional awns fanning from the tip.
+        /// <para>
+        /// Every vertex sits at the top of the bend mask and carries the
+        /// stalk's stiffness, so the ear and the stalk move as one piece
+        /// however far the ear hangs.
+        /// </para>
+        /// </summary>
+        private static void AddGrainEar(
+            FoliageMeshBuffer buffer, GrainParams p, ref FoliageRandom rng,
+            Vector3 attach, Vector3 bendDir, Vector3 root, float elementSeed)
+        {
+            int rows = Mathf.Max(2, p.grainRows);
+            var rootData = new Vector4(root.x, root.y, root.z, p.stiffness);
+            var uv = new Vector2(0.5f, 1f);
+
+            // Already the colour of dry grain, so a season has less to do to it
+            // than to a leaf.
+            buffer.SeasonWeight = 0.5f;
+
+            Color ear = p.earColor;
+            ear.a = elementSeed;
+
+            // Where the ear's centreline runs. Droop sweeps it over quadratically
+            // -- the neck stays straight and the weight tells at the tip, which
+            // is how a ripe head actually hangs.
+            float droop = Mathf.Clamp01(p.earDroop);
+
+            Vector3 Centre(float t)
+            {
+                float fall = droop * p.earLength * t * t;
+                return attach
+                    + Vector3.up * (p.earLength * t * (1f - droop * 0.55f))
+                    + bendDir * (fall * 0.85f)
+                    - Vector3.up * (fall * 0.75f);
+            }
+
+            var axes = new[]
+            {
+                new Vector3(-bendDir.z, 0f, bendDir.x),
+                bendDir,
+            };
+
+            foreach (Vector3 side in axes)
+            {
+                int previousLeft = -1;
+                int previousRight = -1;
+
+                for (int r = 0; r <= rows; r++)
+                {
+                    float t = r / (float)rows;
+                    Vector3 centre = Centre(t);
+
+                    // Fat in the middle, pinched at both ends: an ear is a
+                    // spindle, not a cylinder, and the alternating step is what
+                    // reads as rows of grain rather than a smooth pod.
+                    float profile = Mathf.Sin(Mathf.PI * Mathf.Clamp01(t * 0.85f + 0.08f));
+                    float step = r % 2 == 0 ? 1f : 0.78f;
+                    float halfWidth = p.earWidth * 0.5f * profile * step;
+
+                    Vector3 along = (Centre(Mathf.Min(1f, t + 0.05f)) - Centre(Mathf.Max(0f, t - 0.05f))).normalized;
+                    Vector3 normal = Vector3.Cross(side, along).normalized;
+                    if (normal.sqrMagnitude < 1e-6f)
+                    {
+                        normal = Vector3.up;
+                    }
+
+                    normal = Vector3.Slerp(normal, Vector3.up, p.normalUpBlend * 0.5f).normalized;
+
+                    int left = buffer.AddVertex(centre - side * halfWidth, normal, ear, uv, rootData);
+                    int right = buffer.AddVertex(centre + side * halfWidth, normal, ear, uv, rootData);
+
+                    if (r > 0)
+                    {
+                        buffer.AddQuad(previousLeft, previousRight, right, left);
+                    }
+
+                    previousLeft = left;
+                    previousRight = right;
+                }
+            }
+
+            // --- awns ---------------------------------------------------------
+            int awnCount = Mathf.Max(0, p.awnCount);
+            if (p.awnLength > 1e-4f && awnCount > 0)
+            {
+                Color awn = p.awnColor;
+                awn.a = elementSeed;
+
+                Vector3 tip = Centre(1f);
+                Vector3 tipDir = (tip - Centre(0.8f)).normalized;
+                Vector3 sideA = Vector3.Cross(tipDir, Vector3.up);
+                if (sideA.sqrMagnitude < 1e-6f)
+                {
+                    sideA = Vector3.right;
+                }
+
+                sideA.Normalize();
+                Vector3 sideB = Vector3.Cross(tipDir, sideA).normalized;
+
+                for (int i = 0; i < awnCount; i++)
+                {
+                    // Fanned from the last third of the ear rather than all from
+                    // the tip: awns come off the grain, and a bundle springing
+                    // from one point reads as a brush.
+                    float along = Mathf.Lerp(0.62f, 1f, (i + 0.5f) / awnCount);
+                    Vector3 origin = Centre(along);
+
+                    float angle = i / (float)awnCount * Mathf.PI * 2f + rng.Range(-0.2f, 0.2f);
+                    Vector3 outward = (sideA * Mathf.Cos(angle) + sideB * Mathf.Sin(angle)).normalized;
+
+                    float length = p.awnLength * rng.Range(0.7f, 1.25f);
+                    Vector3 end = origin + tipDir * length + outward * (length * 0.22f);
+
+                    // A hair, drawn as the thinnest triangle that still has area:
+                    // anything with width would be geometry spent on something
+                    // seen from metres away.
+                    Vector3 across = outward * (p.earWidth * 0.12f);
+                    Vector3 normal = Vector3.Cross(across.normalized, (end - origin).normalized).normalized;
+                    if (normal.sqrMagnitude < 1e-6f)
+                    {
+                        normal = Vector3.up;
+                    }
+
+                    normal = Vector3.Slerp(normal, Vector3.up, 0.5f).normalized;
+
+                    int a = buffer.AddVertex(origin - across, normal, ear, uv, rootData);
+                    int b = buffer.AddVertex(origin + across, normal, ear, uv, rootData);
+                    int c = buffer.AddVertex(end, normal, awn, uv, rootData);
+
+                    buffer.AddTriangle(a, b, c);
+                }
+            }
+
+            buffer.SeasonWeight = 1f;
         }
 
         // ------------------------------------------------------------------

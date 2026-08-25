@@ -32,6 +32,13 @@ namespace SabaProps.Foliage
         /// it from grass is not the blade but the unevenness.
         /// </summary>
         Weed = 5,
+
+        /// <summary>
+        /// A cereal stalk: upright leaves and a seed ear. Wheat and rice are
+        /// the same plant here, separated by how far the ear hangs over and
+        /// whether it carries awns.
+        /// </summary>
+        Grain = 6,
     }
 
     /// <summary>Parameters for <see cref="FoliageSpeciesKind.GrassClump"/>.</summary>
@@ -305,6 +312,59 @@ namespace SabaProps.Foliage
         [Range(0f, 1f)] public float stiffness = 0.9f;
     }
 
+    /// <summary>Parameters for <see cref="FoliageSpeciesKind.Grain"/>.</summary>
+    [Serializable]
+    public class GrainParams
+    {
+        [Header("Stalk")]
+        [Tooltip("1 株あたりの葉の枚数。穂は最も高い葉の先に付きます。")]
+        [Range(1, 8)] public int bladeCount = 3;
+
+        [Range(2, 6)] public int segments = 3;
+
+        [Min(0.05f)] public float height = 0.85f;
+        [Range(0f, 0.9f)] public float heightVariance = 0.2f;
+
+        [Min(0.002f)] public float width = 0.015f;
+        [Range(0f, 0.9f)] public float widthVariance = 0.18f;
+
+        [Tooltip("葉の開き (m)。穀物は葦より開きます。")]
+        [Range(0f, 0.8f)] public float spread = 0.24f;
+
+        [Min(0f)] public float clumpRadius = 0.03f;
+
+        [Range(0.2f, 3f)] public float taper = 1f;
+        [Range(0f, 1f)] public float normalUpBlend = 0.6f;
+
+        public Color rootColor = new Color(0.463f, 0.451f, 0.216f, 1f);
+        public Color tipColor = new Color(0.706f, 0.647f, 0.322f, 1f);
+
+        [Range(0f, 1f)] public float rootOcclusion = 0.28f;
+
+        [Header("Ear")]
+        [Min(0.01f)] public float earLength = 0.17f;
+        [Min(0.002f)] public float earWidth = 0.026f;
+
+        [Tooltip("穂の段数。粒の並びの粗さになります。")]
+        [Range(2, 10)] public int grainRows = 5;
+
+        [Tooltip(
+            "穂の垂れ具合。0 で直立し（麦）、1 で首を垂れます（稲）。"
+            + "麦と稲を分けているのは主にこの値です。")]
+        [Range(0f, 1f)] public float earDroop = 0.15f;
+
+        [Tooltip("芒（のぎ）の長さ (m)。0 で芒なしになり、稲や裸麦の姿になります。")]
+        [Min(0f)] public float awnLength = 0.1f;
+
+        [Range(0, 12)] public int awnCount = 6;
+
+        public Color earColor = new Color(0.769f, 0.671f, 0.353f, 1f);
+        public Color awnColor = new Color(0.812f, 0.749f, 0.478f, 1f);
+
+        [Header("Wind")]
+        [Range(0f, 1f)] public float stiffness = 0.5f;
+    }
+
     /// <summary>
     /// A reusable foliage preset: how the mesh is generated and how instances of
     /// it are placed. One species maps to exactly one mesh, and therefore to one
@@ -372,6 +432,7 @@ namespace SabaProps.Foliage
         public ReedParams reed = new ReedParams();
         public SmallFlowerParams smallFlower = new SmallFlowerParams();
         public WeedParams weed = new WeedParams();
+        public GrainParams grain = new GrainParams();
 
         [Header("Generated (read only)")]
         [Tooltip("ビルド時に自動生成・上書きされるメッシュアセット。")]
