@@ -49,6 +49,9 @@ namespace SabaProps.Foliage.Editors
                 case FoliageSpeciesKind.Reed:
                     return BuildReedBuffer(species.reed, species.meshSeed);
 
+                case FoliageSpeciesKind.SmallFlower:
+                    return BuildSmallFlowerBuffer(species.smallFlower, species.meshSeed, dormant);
+
                 case FoliageSpeciesKind.GrassClump:
                 default:
                     return BuildGrassClumpBuffer(species.grass, species.meshSeed);
@@ -758,6 +761,371 @@ namespace SabaProps.Foliage.Editors
 
                 buffer.AddQuad(baseLeft, baseRight, midRight, midLeft);
                 buffer.AddTriangle(midLeft, midRight, tipIndex);
+            }
+
+            buffer.SeasonWeight = 1f;
+        }
+
+        // ------------------------------------------------------------------
+        // Small flower
+        // ------------------------------------------------------------------
+
+        public static Mesh BuildSmallFlower(SmallFlowerParams p, int seed)
+        {
+            return BuildSmallFlowerBuffer(p, seed, false).ToMesh();
+        }
+
+        /// <summary>
+        /// A stem, a few leaves and one or more open flowers.
+        /// <para>
+        /// Deliberately one generator for the whole family. Nemophila and a
+        /// potato flower are both five rounded petals around a pale eye on a
+        /// short stem; what separates them is colour and proportion, and a
+        /// second generator would only be the first one with different
+        /// constants in it.
+        /// </para>
+        /// <para>
+        /// <paramref name="dormant"/> leaves out the flowers. What remains is
+        /// the stem and leaves, which is what a small annual looks like before
+        /// it opens and after it is spent.
+        /// </para>
+        /// </summary>
+        private static BuiltMesh BuildSmallFlowerBuffer(SmallFlowerParams p, int seed, bool dormant)
+        {
+            var rng = new FoliageRandom(seed);
+            var buffer = new FoliageMeshBuffer();
+
+            float height = p.height * rng.Range(1f - p.heightVariance, 1f + p.heightVariance);
+
+            // Leans along object-space +Z, the convention the sunflower already
+            // uses: per-instance yaw is randomised at placement, so fixing the
+            // direction here costs nothing and keeps Face Sun usable.
+            Vector3 leanDir = Vector3.forward;
+            float lean = p.lean * rng.Range(0.4f, 1.6f);
+
+            // One phase for the whole plant. Stem, leaves and flowers are rigidly
+            // joined, and parts of one plant that sway out of step come apart.
+            float plantSeed = rng.Value01();
+
+            AddSmallFlowerStem(buffer, p, leanDir, height, lean, plantSeed);
+            AddSmallFlowerLeaves(buffer, p, ref rng, leanDir, height, lean, plantSeed);
+
+            if (!dormant)
+            {
+                AddSmallFlowerHeads(buffer, p, ref rng, leanDir, height, lean, plantSeed);
+            }
+
+            return new BuiltMesh
+            {
+                Buffer = buffer,
+                Name = "SabaFoliage_SmallFlower",
+                BoundsPadding = height * 0.35f,
+            };
+        }
+
+        private static Vector3 SmallFlowerStemPoint(Vector3 leanDir, float height, float lean, float t)
+        {
+            return new Vector3(leanDir.x * lean * t * t, height * t, leanDir.z * lean * t * t);
+        }
+
+        private static void AddSmallFlowerStem(
+            FoliageMeshBuffer buffer, SmallFlowerParams p,
+            Vector3 leanDir, float height, float lean, float plantSeed)
+        {
+            // Two crossed strips, so the stem reads as round from every angle
+            // for four triangles. A single strip disappears edge-on, which on a
+            // plant this thin is the difference between a flower on a stem and a
+            // flower floating in the air.
+            var axes = new[]
+            {
+                new Vector3(-leanDir.z, 0f, leanDir.x),
+                leanDir,
+            };
+
+            var rootData = new Vector4(0f, 0f, 0f, p.stiffness);
+            const int segments = 2;
+
+            foreach (Vector3 side in axes)
+            {
+                int previousLeft = -1;
+                int previousRight = -1;
+
+                for (int s = 0; s <= segments; s++)
+                {
+                    float t = s / (float)segments;
+                    Vector3 center = SmallFlowerStemPoint(leanDir, height, lean, t);
+
+                    float halfWidth = p.stemWidth * 0.5f * Mathf.Lerp(1f, 0.7f, t);
+
+                    Vector3 tangent = (Vector3.up * height + leanDir * (2f * lean * t)).normalized;
+                    Vector3 normal = Vector3.Cross(side, tangent).normalized;
+
+                    Color color = p.stemColor;
+                    float occlusion = Mathf.Lerp(0.72f, 1f, t);
+                    color.r *= occlusion;
+                    color.g *= occlusion;
+                    color.b *= occlusion;
+                    color.a = plantSeed;
+
+                    int left = buffer.AddVertex(center - side * halfWidth, normal, color, new Vector2(0f, t), rootData);
+                    int right = buffer.AddVertex(center + side * halfWidth, normal, color, new Vector2(1f, t), rootData);
+
+                    if (s > 0)
+                    {
+                        buffer.AddQuad(previousLeft, previousRight, right, left);
+                    }
+
+                    previousLeft = left;
+                    previousRight = right;
+                }
+            }
+        }
+
+        private static void AddSmallFlowerLeaves(
+            FoliageMeshBuffer buffer, SmallFlowerParams p, ref FoliageRandom rng,
+            Vector3 leanDir, float height, float lean, float plantSeed)
+        {
+            int leafCount = Mathf.Max(0, p.leafCount);
+            if (leafCount == 0)
+            {
+                return;
+            }
+
+            var rootData = new Vector4(0f, 0f, 0f, p.stiffness);
+
+            for (int i = 0; i < leafCount; i++)
+            {
+                float t = leafCount == 1 ? 0.35f : Mathf.Lerp(0.14f, 0.62f, i / (float)(leafCount - 1));
+                Vector3 attach = SmallFlowerStemPoint(leanDir, height, lean, t);
+
+                float angle = i * 2.399963f + rng.Range(-0.35f, 0.35f);
+                var outward = new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle));
+
+                float length = p.leafLength * rng.Range(0.8f, 1.2f);
+                float width = p.leafWidth * rng.Range(0.8f, 1.2f);
+                float droop = Mathf.Tan(p.leafDroop * Mathf.Deg2Rad) * length;
+
+                Vector3 tip = attach + outward * length - Vector3.up * droop;
+                Vector3 mid = attach + outward * (length * 0.45f) - Vector3.up * (droop * 0.25f);
+                var side = new Vector3(-outward.z, 0f, outward.x);
+
+                Vector3 spine = (tip - attach).normalized;
+                Vector3 normal = Vector3.Cross(side, spine).normalized;
+                if (normal.y < 0f)
+                {
+                    normal = -normal;
+                }
+
+                normal = Vector3.Slerp(normal, Vector3.up, 0.55f).normalized;
+
+                Color color = JitterColor(p.leafColor, ref rng, 0.09f);
+                color.a = plantSeed;
+
+                // The base takes the stem's own mask at the attachment point, or
+                // the leaf lifts off the stem as the plant sways.
+                int baseIndex = buffer.AddVertex(attach, normal, color, new Vector2(0.5f, t), rootData);
+                int leftIndex = buffer.AddVertex(mid - side * (width * 0.5f), normal, color, new Vector2(0f, Mathf.Clamp01(t + 0.05f)), rootData);
+                int rightIndex = buffer.AddVertex(mid + side * (width * 0.5f), normal, color, new Vector2(1f, Mathf.Clamp01(t + 0.05f)), rootData);
+                int tipIndex = buffer.AddVertex(tip, normal, color, new Vector2(0.5f, Mathf.Clamp01(t + 0.12f)), rootData);
+
+                buffer.AddTriangle(baseIndex, leftIndex, tipIndex);
+                buffer.AddTriangle(baseIndex, tipIndex, rightIndex);
+            }
+        }
+
+        private static void AddSmallFlowerHeads(
+            FoliageMeshBuffer buffer, SmallFlowerParams p, ref FoliageRandom rng,
+            Vector3 leanDir, float height, float lean, float plantSeed)
+        {
+            int flowerCount = Mathf.Max(1, p.flowerCount);
+
+            for (int i = 0; i < flowerCount; i++)
+            {
+                // The first flower crowns the stem; the rest branch off below it
+                // on short pedicels, which is how a plant carrying several small
+                // flowers actually arranges them.
+                bool crown = i == 0;
+                float attachT = crown ? 1f : Mathf.Lerp(0.62f, 0.88f, (i - 1) / Mathf.Max(1f, flowerCount - 1f));
+
+                Vector3 attach = SmallFlowerStemPoint(leanDir, height, lean, attachT);
+
+                float angle = i * 2.399963f + rng.Range(-0.4f, 0.4f);
+                var outward = new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle));
+
+                Vector3 center = attach;
+                float mask = attachT;
+
+                if (!crown)
+                {
+                    float pedicel = height * rng.Range(0.14f, 0.24f);
+                    center = attach + outward * (pedicel * 0.7f) + Vector3.up * (pedicel * 0.7f);
+
+                    // The flower sits at the far end of the pedicel, so it has to
+                    // sway by more than its attachment point does. One value for
+                    // the pedicel tip and the whole flower, never a gradient
+                    // across the joint.
+                    mask = Mathf.Clamp01(attachT + 0.1f);
+
+                    AddSmallFlowerPedicel(buffer, p, attach, center, attachT, mask, plantSeed);
+                }
+
+                AddSmallFlowerHead(buffer, p, ref rng, center, outward, mask, plantSeed);
+            }
+        }
+
+        private static void AddSmallFlowerPedicel(
+            FoliageMeshBuffer buffer, SmallFlowerParams p,
+            Vector3 attach, Vector3 tip, float attachMask, float tipMask, float plantSeed)
+        {
+            Vector3 along = tip - attach;
+            if (along.sqrMagnitude < 1e-8f)
+            {
+                return;
+            }
+
+            var side = Vector3.Cross(along.normalized, Vector3.up);
+            if (side.sqrMagnitude < 1e-6f)
+            {
+                side = Vector3.right;
+            }
+
+            side.Normalize();
+
+            Vector3 normal = Vector3.Cross(side, along.normalized).normalized;
+            float halfWidth = p.stemWidth * 0.35f;
+
+            Color color = p.stemColor;
+            color.a = plantSeed;
+
+            var attachData = new Vector4(0f, 0f, 0f, p.stiffness);
+
+            int baseLeft = buffer.AddVertex(attach - side * halfWidth, normal, color, new Vector2(0f, attachMask), attachData);
+            int baseRight = buffer.AddVertex(attach + side * halfWidth, normal, color, new Vector2(1f, attachMask), attachData);
+            int tipLeft = buffer.AddVertex(tip - side * halfWidth, normal, color, new Vector2(0f, tipMask), attachData);
+            int tipRight = buffer.AddVertex(tip + side * halfWidth, normal, color, new Vector2(1f, tipMask), attachData);
+
+            buffer.AddQuad(baseLeft, baseRight, tipRight, tipLeft);
+        }
+
+        /// <summary>
+        /// One open flower: a small eye with petals fanned around it.
+        /// <para>
+        /// Every vertex carries the same bend mask and the same wind phase, so
+        /// the flower travels as one rigid piece. Only the petal tips carry a
+        /// higher stiffness, which is what lets them move without pulling away
+        /// from the eye they grow out of.
+        /// </para>
+        /// </summary>
+        private static void AddSmallFlowerHead(
+            FoliageMeshBuffer buffer, SmallFlowerParams p, ref FoliageRandom rng,
+            Vector3 center, Vector3 outward, float mask, float plantSeed)
+        {
+            Vector3 tiltAxis = Vector3.Cross(Vector3.up, outward);
+            if (tiltAxis.sqrMagnitude < 1e-6f)
+            {
+                tiltAxis = Vector3.forward;
+            }
+
+            Vector3 faceNormal = (Quaternion.AngleAxis(p.flowerTilt, tiltAxis.normalized) * Vector3.up).normalized;
+
+            Vector3 tangentA = Vector3.Cross(faceNormal, Vector3.up);
+            if (tangentA.sqrMagnitude < 1e-6f)
+            {
+                tangentA = Vector3.right;
+            }
+
+            tangentA.Normalize();
+            Vector3 tangentB = Vector3.Cross(faceNormal, tangentA).normalized;
+
+            var headData = new Vector4(0f, 0f, 0f, p.stiffness);
+
+            // The same reasoning as the sunflower: a petal tip may travel a
+            // little further than the eye it grows from, and that difference is
+            // all a petal a centimetre long can afford.
+            float petalTip = Mathf.Lerp(p.stiffness, Mathf.Max(p.stiffness, p.petalStiffness), 0.3f);
+            var petalTipData = new Vector4(0f, 0f, 0f, petalTip);
+
+            var uv = new Vector2(0.5f, mask);
+            int petalCount = Mathf.Max(3, p.petalCount);
+
+            // --- eye ---------------------------------------------------------
+            // Already the colour that names the flower, so a season has less to
+            // do to it than to a leaf.
+            buffer.SeasonWeight = 0.55f;
+
+            Color eyeColor = p.centerColor;
+            eyeColor.a = plantSeed;
+
+            int centerIndex = buffer.AddVertex(center, faceNormal, eyeColor, uv, headData);
+
+            var ring = new int[petalCount];
+            for (int i = 0; i < petalCount; i++)
+            {
+                float angle = i / (float)petalCount * Mathf.PI * 2f;
+                Vector3 offset = (tangentA * Mathf.Cos(angle) + tangentB * Mathf.Sin(angle)) * p.centerRadius;
+
+                ring[i] = buffer.AddVertex(center + offset, faceNormal, eyeColor, uv, headData);
+            }
+
+            for (int i = 0; i < petalCount; i++)
+            {
+                buffer.AddTriangle(centerIndex, ring[i], ring[(i + 1) % petalCount]);
+            }
+
+            // --- petals ------------------------------------------------------
+            // A flower recoloured out of its own colour stops being that flower,
+            // so the petals resist the season far more than the leaves do.
+            buffer.SeasonWeight = 0.3f;
+
+            Color baseColor = p.petalBaseColor;
+            Color tipColor = p.petalTipColor;
+            baseColor.a = plantSeed;
+            tipColor.a = plantSeed;
+
+            float outerRadius = p.centerRadius + p.petalLength;
+
+            for (int i = 0; i < petalCount; i++)
+            {
+                float angle = i / (float)petalCount * Mathf.PI * 2f + rng.Range(-0.06f, 0.06f);
+                Vector3 radial = (tangentA * Mathf.Cos(angle) + tangentB * Mathf.Sin(angle)).normalized;
+                Vector3 across = Vector3.Cross(faceNormal, radial).normalized;
+
+                float halfWidth = p.petalWidth * 0.5f * rng.Range(0.88f, 1.12f);
+                float length = outerRadius * rng.Range(0.92f, 1.08f);
+
+                Vector3 inner = center + radial * (p.centerRadius * 0.9f);
+                Vector3 shoulder = center + radial * (length * 0.62f);
+                Vector3 tip = center + radial * length;
+
+                // Rounding widens the petal where a pointed one would already be
+                // tapering. At this size that is the whole visible difference
+                // between a nemophila and a daisy.
+                float shoulderWidth = halfWidth * Mathf.Lerp(0.85f, 1f, p.petalRounding);
+                float tipWidth = halfWidth * Mathf.Lerp(0f, 0.55f, p.petalRounding);
+
+                Vector3 normal = Vector3.Slerp(faceNormal, radial, 0.12f).normalized;
+
+                Color midColor = Color.Lerp(baseColor, tipColor, 0.55f);
+
+                int innerLeft = buffer.AddVertex(inner - across * (halfWidth * 0.45f), normal, baseColor, uv, headData);
+                int innerRight = buffer.AddVertex(inner + across * (halfWidth * 0.45f), normal, baseColor, uv, headData);
+                int shoulderLeft = buffer.AddVertex(shoulder - across * shoulderWidth, normal, midColor, uv, headData);
+                int shoulderRight = buffer.AddVertex(shoulder + across * shoulderWidth, normal, midColor, uv, headData);
+
+                buffer.AddQuad(innerLeft, innerRight, shoulderRight, shoulderLeft);
+
+                if (tipWidth > 1e-5f)
+                {
+                    int tipLeft = buffer.AddVertex(tip - across * tipWidth, normal, tipColor, uv, petalTipData);
+                    int tipRight = buffer.AddVertex(tip + across * tipWidth, normal, tipColor, uv, petalTipData);
+
+                    buffer.AddQuad(shoulderLeft, shoulderRight, tipRight, tipLeft);
+                }
+                else
+                {
+                    int tipIndex = buffer.AddVertex(tip, normal, tipColor, uv, petalTipData);
+                    buffer.AddTriangle(shoulderLeft, shoulderRight, tipIndex);
+                }
             }
 
             buffer.SeasonWeight = 1f;

@@ -58,11 +58,12 @@ namespace SabaProps.Foliage.Editors
         private static readonly float[] Columns = { -13.5f, -4.5f, 4.5f, 13.5f };
 
         /// <summary>
-        /// The season row is five wide rather than four — winter is two states,
-        /// not one — so it gets its own centres instead of stretching the grid
-        /// every other section is laid out on.
+        /// Five centres, for the rows that need one column per species or
+        /// per season. Both outgrew the four-wide grid the rest of the
+        /// garden is laid out on, and stretching that grid would have moved
+        /// every other section for the sake of two.
         /// </summary>
-        private static readonly float[] SeasonColumns = { -18f, -9f, 0f, 9f, 18f };
+        private static readonly float[] WideColumns = { -18f, -9f, 0f, 9f, 18f };
 
         [MenuItem("Tools/SabaProps/Foliage/Create Sample Scene", false, 1)]
         public static void CreateAndOpen()
@@ -148,7 +149,7 @@ namespace SabaProps.Foliage.Editors
         {
             Transform root = CreateRoot(SingleSpeciesRoot);
 
-            for (int i = 0; i < FoliageAssetLibrary.AllKinds.Length && i < Columns.Length; i++)
+            for (int i = 0; i < FoliageAssetLibrary.AllKinds.Length && i < WideColumns.Length; i++)
             {
                 FoliageSpeciesKind kind = FoliageAssetLibrary.AllKinds[i];
                 FoliageSpecies species = Of(stock, kind);
@@ -159,7 +160,7 @@ namespace SabaProps.Foliage.Editors
 
                 FoliageField field = CreatePlot(
                     root, FoliageAssetLibrary.DisplayName(kind),
-                    new Vector3(Columns[i], 0f, 0f),
+                    new Vector3(WideColumns[i], 0f, 0f),
                     DensityFor(kind), 3001 + i, FoliageOutputMode.MergedChunks);
 
                 AddSpecies(field, species, 1f);
@@ -307,6 +308,7 @@ namespace SabaProps.Foliage.Editors
             FoliageSpecies clover = Of(stock, FoliageSpeciesKind.Clover);
             FoliageSpecies sunflower = Of(stock, FoliageSpeciesKind.Sunflower);
             FoliageSpecies reed = Of(stock, FoliageSpeciesKind.Reed);
+            FoliageSpecies smallFlower = Of(stock, FoliageSpeciesKind.SmallFlower);
 
             FoliageField meadow = CreatePlot(
                 root, "Meadow", new Vector3(Columns[0], 0f, Pitch * 3f),
@@ -329,6 +331,16 @@ namespace SabaProps.Foliage.Editors
             AddSpecies(flowerbed, clover, 1f);
             AddSpecies(flowerbed, sunflower, 0.3f);
             fields.Add(flowerbed);
+
+            // The case the small flower exists for: flowers as the ground cover
+            // rather than as an accent scattered through one. Grass is the
+            // minority here, which is the whole difference from the meadow.
+            FoliageField flowerField = CreatePlot(
+                root, "Flower Field", new Vector3(Columns[3], 0f, Pitch * 3f),
+                PlotDensity, 3304, FoliageOutputMode.MergedChunks);
+            AddSpecies(flowerField, smallFlower, 1f);
+            AddSpecies(flowerField, grass, 0.3f);
+            fields.Add(flowerField);
         }
 
         /// <summary>
@@ -365,14 +377,14 @@ namespace SabaProps.Foliage.Editors
         {
             Transform root = CreateRoot(SeasonRoot);
 
-            for (int i = 0; i < FoliageAssetLibrary.AllSeasons.Length && i < SeasonColumns.Length; i++)
+            for (int i = 0; i < FoliageAssetLibrary.AllSeasons.Length && i < WideColumns.Length; i++)
             {
                 FoliageSeason season = FoliageAssetLibrary.AllSeasons[i];
 
                 // One seed for every plot: each clump stands where its
                 // neighbour's does, so what is left to see is the season alone.
                 FoliageField field = CreatePlot(
-                    root, season.ToString(), new Vector3(SeasonColumns[i], 0f, Pitch * 5f),
+                    root, season.ToString(), new Vector3(WideColumns[i], 0f, Pitch * 5f),
                     PlotDensity, 3501, FoliageOutputMode.MergedChunks);
 
                 AddSpecies(field, SeasonalSpecies(FoliageSpeciesKind.GrassClump, season, material), 1f);
@@ -411,6 +423,7 @@ namespace SabaProps.Foliage.Editors
                 case FoliageSpeciesKind.Sunflower: return 2.5f;
                 case FoliageSpeciesKind.Reed: return 4f;
                 case FoliageSpeciesKind.Clover: return 14f;
+                case FoliageSpeciesKind.SmallFlower: return 12f;
                 case FoliageSpeciesKind.GrassClump:
                 default: return PlotDensity;
             }

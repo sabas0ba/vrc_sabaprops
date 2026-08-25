@@ -45,6 +45,7 @@ internal static class OfflineMeshTests
         Run("a season keeps the root-to-tip gradient", SeasonsPreserveTheGradient);
         Run("season weight holds a colour back", SeasonWeightHoldsColourBack);
         Run("a dormant flower drops its petals", DormantFlowersDropTheirPetals);
+        Run("the small flower carries its flowers", SmallFlowerCarriesItsFlowers);
 
         Run("degenerate parameters stay finite", DegenerateParametersStayFinite);
         Run("merging preserves counts and moves the wind pivots", MergePreservesChannels);
@@ -192,7 +193,7 @@ internal static class OfflineMeshTests
         // A clump is separate blades that may sway out of step. A clover or a
         // sunflower is one plant, and parts of one plant that move out of step
         // come apart at the joints.
-        foreach (FoliageSpeciesKind kind in new[] { FoliageSpeciesKind.Clover, FoliageSpeciesKind.Sunflower })
+        foreach (FoliageSpeciesKind kind in new[] { FoliageSpeciesKind.Clover, FoliageSpeciesKind.Sunflower, FoliageSpeciesKind.SmallFlower })
         {
             Mesh mesh = Build(kind, 3);
 
@@ -518,6 +519,62 @@ internal static class OfflineMeshTests
             "a winter sunflower left as Full lost geometry anyway");
     }
 
+    private static void SmallFlowerCarriesItsFlowers()
+    {
+        // The species exists to fill a field with flowers, so "it has flowers"
+        // is the property worth pinning down rather than a vertex count.
+        var species = new FoliageSpecies { kind = FoliageSpeciesKind.SmallFlower, meshSeed = 31 };
+        SmallFlowerParams p = species.smallFlower;
+
+        Mesh mesh = FoliageMeshBuilder.Build(species);
+        AssertWellFormed(mesh, "small flower");
+
+        // Petal colours are what a flower is recognised by, and they are the
+        // one thing in this mesh that is not some shade of green.
+        int petalish = 0;
+        foreach (Color c in mesh.colors)
+        {
+            if (c.b > c.g)
+            {
+                petalish++;
+            }
+        }
+
+        Require(petalish > 0, "the small flower grew no petals in its petal colours");
+
+        // Several flowers per plant is what stops a field of these reading as a
+        // grid of single dots.
+        var species2 = new FoliageSpecies { kind = FoliageSpeciesKind.SmallFlower, meshSeed = 31 };
+        species2.smallFlower.flowerCount = 1;
+
+        Mesh single = FoliageMeshBuilder.Build(species2);
+
+        Require(mesh.triangles.Length > single.triangles.Length,
+            $"flowerCount {p.flowerCount} produced no more geometry than a single flower");
+
+        // Dormant is the same plant with the flowers left out: stem and leaves
+        // survive, so it is still a plant rather than nothing.
+        var dormant = new FoliageSpecies
+        {
+            kind = FoliageSpeciesKind.SmallFlower,
+            meshSeed = 31,
+            season = FoliageSeason.Autumn,
+        };
+        dormant.seasonPalette.autumn.appearance = SeasonAppearance.Dormant;
+
+        Mesh spent = FoliageMeshBuilder.Build(dormant);
+        AssertWellFormed(spent, "dormant small flower");
+
+        Require(spent.triangles.Length < mesh.triangles.Length,
+            "a dormant small flower kept its flowers");
+
+        foreach (Color c in spent.colors)
+        {
+            Require(c.b <= c.g + 1e-4f,
+                "a dormant small flower still carries a petal colour");
+        }
+    }
+
     private static void DegenerateParametersStayFinite()
     {
         // Values a user can dial in from the inspector that collapse a basis
@@ -599,6 +656,7 @@ internal static class OfflineMeshTests
         FoliageSpeciesKind.Clover,
         FoliageSpeciesKind.Sunflower,
         FoliageSpeciesKind.Reed,
+        FoliageSpeciesKind.SmallFlower,
     };
 
     private static FoliageSeason[] AllSeasons() => new[]

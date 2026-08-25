@@ -14,6 +14,7 @@ namespace SabaProps.Foliage.Editors
             "sunflower",
             "clover",
             "reed",
+            "smallFlower",
             "seasonPalette",
             "generatedMesh",
         };

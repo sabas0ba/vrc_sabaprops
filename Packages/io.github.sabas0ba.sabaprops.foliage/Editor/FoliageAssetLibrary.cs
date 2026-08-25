@@ -184,6 +184,7 @@ namespace SabaProps.Foliage.Editors
             FoliageSpeciesKind.Clover,
             FoliageSpeciesKind.Sunflower,
             FoliageSpeciesKind.Reed,
+            FoliageSpeciesKind.SmallFlower,
         };
 
         /// <summary>Asset file name, and inspector label, for a species kind.</summary>
@@ -194,6 +195,7 @@ namespace SabaProps.Foliage.Editors
                 case FoliageSpeciesKind.Sunflower: return "Sunflower";
                 case FoliageSpeciesKind.Clover: return "Clover";
                 case FoliageSpeciesKind.Reed: return "Reed";
+                case FoliageSpeciesKind.SmallFlower: return "SmallFlower";
                 case FoliageSpeciesKind.GrassClump:
                 default: return "GrassSeed";
             }
@@ -245,6 +247,7 @@ namespace SabaProps.Foliage.Editors
                 case FoliageSpeciesKind.Sunflower: return "sunflower";
                 case FoliageSpeciesKind.Clover: return "clover";
                 case FoliageSpeciesKind.Reed: return "reed";
+                case FoliageSpeciesKind.SmallFlower: return "smallFlower";
                 case FoliageSpeciesKind.GrassClump:
                 default: return "grass";
             }
@@ -350,6 +353,28 @@ namespace SabaProps.Foliage.Editors
                 species.alignToGroundNormal = 0.1f;
                 species.slopeLimits = new Vector2(0f, 18f);
                 species.castShadows = true;
+                return;
+            }
+
+            if (kind == FoliageSpeciesKind.SmallFlower)
+            {
+                species.meshSeed = 31;
+
+                // Weighted for the case this species exists to serve: a field of
+                // flowers, not a lawn with a few in it. Still under the grass so
+                // that a default mix reads as a meadow rather than a flowerbed.
+                species.placementWeight = 0.45f;
+                species.minSpacing = 0.08f;
+                species.scaleRange = new Vector2(0.85f, 1.25f);
+                species.maxTilt = 11f;
+                species.alignToGroundNormal = 0.5f;
+                species.slopeLimits = new Vector2(0f, 38f);
+                species.castShadows = false;
+
+                // An annual, like the sunflower: spent by autumn, gone by winter.
+                species.seasonPalette.autumn.appearance = SeasonAppearance.Dormant;
+                species.seasonPalette.winterSnow.appearance = SeasonAppearance.Absent;
+                species.seasonPalette.winterBare.appearance = SeasonAppearance.Absent;
                 return;
             }
 

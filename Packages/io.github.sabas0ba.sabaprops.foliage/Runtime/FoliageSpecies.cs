@@ -17,6 +17,14 @@ namespace SabaProps.Foliage
 
         /// <summary>A tall, near-vertical blade cluster with a seed spike.</summary>
         Reed = 3,
+
+        /// <summary>
+        /// A small flowering plant: a thin stem, a few leaves and one or more
+        /// open flowers. One generator rather than one per flower — nemophila
+        /// and a potato flower differ in petal shape and colour, not in how
+        /// they are built.
+        /// </summary>
+        SmallFlower = 4,
     }
 
     /// <summary>Parameters for <see cref="FoliageSpeciesKind.GrassClump"/>.</summary>
@@ -185,6 +193,60 @@ namespace SabaProps.Foliage
         [Range(0f, 1f)] public float stiffness = 0.55f;
     }
 
+    /// <summary>Parameters for <see cref="FoliageSpeciesKind.SmallFlower"/>.</summary>
+    [Serializable]
+    public class SmallFlowerParams
+    {
+        [Header("Plant")]
+        [Min(0.01f)] public float height = 0.17f;
+        [Range(0f, 0.9f)] public float heightVariance = 0.3f;
+        [Min(0.001f)] public float stemWidth = 0.005f;
+
+        [Tooltip("茎の傾き (m)。株ごとに横へ広がり、群生させたときの単調さが消えます。")]
+        [Range(0f, 0.3f)] public float lean = 0.045f;
+
+        public Color stemColor = new Color(0.243f, 0.376f, 0.153f, 1f);
+
+        [Header("Leaves")]
+        [Range(0, 6)] public int leafCount = 3;
+        [Min(0.005f)] public float leafLength = 0.05f;
+        [Min(0.003f)] public float leafWidth = 0.022f;
+
+        [Tooltip("葉の垂れ下がり角度 (度)。")]
+        [Range(-60f, 60f)] public float leafDroop = 18f;
+
+        public Color leafColor = new Color(0.278f, 0.435f, 0.180f, 1f);
+
+        [Header("Flowers")]
+        [Tooltip("1 株あたりの花の数。2 以上にすると短い花柄で枝分かれします。")]
+        [Range(1, 5)] public int flowerCount = 2;
+
+        [Tooltip("花弁の枚数。ネモフィラもジャガイモも 5 枚です。")]
+        [Range(3, 12)] public int petalCount = 5;
+
+        [Min(0.003f)] public float petalLength = 0.024f;
+        [Min(0.002f)] public float petalWidth = 0.020f;
+
+        [Tooltip("花弁の丸み。1 で先端が丸く、0 で尖ります。")]
+        [Range(0f, 1f)] public float petalRounding = 0.75f;
+
+        [Tooltip("花の傾き (度)。0 で真上を向きます。")]
+        [Range(0f, 90f)] public float flowerTilt = 22f;
+
+        [Tooltip("花芯の半径 (m)。花弁とは別の色で塗る中央の円です。")]
+        [Min(0.001f)] public float centerRadius = 0.005f;
+
+        public Color centerColor = new Color(0.965f, 0.949f, 0.831f, 1f);
+        public Color petalBaseColor = new Color(0.929f, 0.949f, 0.980f, 1f);
+        public Color petalTipColor = new Color(0.451f, 0.616f, 0.878f, 1f);
+
+        [Header("Wind")]
+        [Range(0f, 1f)] public float stiffness = 0.8f;
+
+        [Tooltip("花弁の柔らかさ。茎より大きくすると先端がそよぎます。")]
+        [Range(0f, 1f)] public float petalStiffness = 0.9f;
+    }
+
     /// <summary>
     /// A reusable foliage preset: how the mesh is generated and how instances of
     /// it are placed. One species maps to exactly one mesh, and therefore to one
@@ -250,6 +312,7 @@ namespace SabaProps.Foliage
         public SunflowerParams sunflower = new SunflowerParams();
         public CloverParams clover = new CloverParams();
         public ReedParams reed = new ReedParams();
+        public SmallFlowerParams smallFlower = new SmallFlowerParams();
 
         [Header("Generated (read only)")]
         [Tooltip("ビルド時に自動生成・上書きされるメッシュアセット。")]

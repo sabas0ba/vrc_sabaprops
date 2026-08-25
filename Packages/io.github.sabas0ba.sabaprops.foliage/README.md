@@ -1,7 +1,7 @@
 # SabaProps Foliage
 
 GPU インスタンシング前提の、軽量な草木スキャッタリングツールです。
-草叢・クローバー・ひまわり・葦をプロシージャルに生成し、広い範囲に大量配置できます。
+草叢・クローバー・ひまわり・葦・小花をプロシージャルに生成し、広い範囲に大量配置できます。
 
 - テクスチャ不要（頂点カラー駆動）。パッケージにバイナリアセットを含みません
 - ワールド座標ハッシュによる個体差なので、per-instance データの送信が一切不要です
@@ -44,10 +44,10 @@ VRChat のワールドとアバターでは、**実行時に C# が動きませ�
 
 | セクション | 区画 | 変えているもの |
 | --- | --- | --- |
-| 1 Single Species | Grass / Clover / Sunflower / Reed | 種のみ。サイズ・シードは共通 |
+| 1 Single Species | Grass / Clover / Sunflower / Reed / Small Flower | 種のみ。サイズ・シードは共通 |
 | 2 Parameter Variants | Grass - Tall / Clover - Broad / Sunflower - Dwarf / Reed - Splayed | 同じ種の形状パラメータ |
 | 3 Terrain | Mound / Ramp / Terrace / Skinned Mesh | 地面の形だけ。フィールド設定は共通 |
-| 4 Combinations | Meadow / Waterside / Flowerbed | 種の組み合わせと比率 |
+| 4 Combinations | Meadow / Waterside / Flowerbed / Flower Field | 種の組み合わせと比率 |
 | 5 Output Modes | GPU Instanced / Merged Chunks | 出力モードのみ |
 | 6 Seasons | Spring / Summer / Autumn / Winter Snow / Winter Bare | 季節のみ。種・比率・シードは共通 |
 
@@ -167,6 +167,7 @@ Species は「1 つのメッシュ ＝ 1 つのインスタンシングバッチ
 | **Clover** | 小葉の枚数、茎の高さ、葉の長さ・幅、垂れ、先端の切れ込み、色 | 草の隙間を埋める低いグラウンドカバー |
 | **Sunflower** | 茎の高さ・傾き、葉の枚数と垂れ、花芯の半径とチルト、花弁の枚数・長さ・反り、色 | まばらに置く背の高いアクセント |
 | **Reed** | ブレード枚数、高さ、先端の開き、クランプ半径、穂の有無と長さ、色 | 直立した縦のシルエット |
+| **Small Flower** | 草丈、葉の枚数、1 株あたりの花数、花弁の枚数・長さ・幅・丸み、花の傾き、花芯の半径、色 | 一面の花畑。ネモフィラやジャガイモの花など |
 
 主なパラメータが見た目にどう効くかは [パラメータと見た目の対応](Documentation~/parameters.md) に生成結果を並べてあります。値を決める前にそちらを見た方が早いはずです。
 
