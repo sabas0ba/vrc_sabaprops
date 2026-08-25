@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="496" height="426" viewBox="0 0 496 426" role="img" aria-label="メッシュのチャンネル規約">
+<svg xmlns="http://www.w3.org/2000/svg" width="496" height="445" viewBox="0 0 496 445" role="img" aria-label="メッシュのチャンネル規約">
 <style>
   .plate { fill: #f6f7f4; }
   .panel { fill: #ffffff; stroke: #e2e5de; }
@@ -14,7 +14,7 @@
     .rule  { stroke: #4a5245; }
   }
 </style>
-<rect class="plate" width="496" height="426"/>
+<rect class="plate" width="496" height="445"/>
 <g font-family="system-ui, -apple-system, 'Noto Sans JP', 'Hiragino Sans', Meiryo, sans-serif">
 <text class="title" x="18" y="32" font-size="15">メッシュのチャンネル規約</text>
 <rect class="panel" x="121.5" y="48" width="121.5" height="250" rx="6"/>
@@ -206,5 +206,6 @@
 <rect x="473" y="348" width="5.6" height="8" fill="#f5d45e"/>
 <text class="muted" x="482" y="356" font-size="12">1</text>
 <text class="muted" x="18" y="370" font-size="12.5">左は UV0.y（根元 0 / 先端 1）、右は UV3.w（風に対する柔らかさ）です。風</text>
-<text class="muted" x="18" y="389" font-size="12.5">の揺れ量はこの 2 つの積で決まるため、茎は動かず花弁だけがそよぎます。</text>
+<text class="muted" x="18" y="389" font-size="12.5">の揺れ量は UV0.y を Bend Falloff 乗した値と UV3.w の積なので、茎は動か</text>
+<text class="muted" x="18" y="408" font-size="12.5">ず花弁だけがそよぎます。</text>
 </g></svg>

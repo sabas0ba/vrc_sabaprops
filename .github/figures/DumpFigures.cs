@@ -202,7 +202,8 @@ internal static class DumpFigures
             Title = "メッシュのチャンネル規約",
             Caption =
                 "左は UV0.y（根元 0 / 先端 1）、右は UV3.w（風に対する柔らかさ）です。"
-                + "風の揺れ量はこの 2 つの積で決まるため、茎は動かず花弁だけがそよぎます。",
+                + "風の揺れ量は UV0.y を Bend Falloff 乗した値と UV3.w の積なので、"
+                + "茎は動かず花弁だけがそよぎます。",
         };
 
         Mesh mesh = FoliageMeshBuilder.Build(
