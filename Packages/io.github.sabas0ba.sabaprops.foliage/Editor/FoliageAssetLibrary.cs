@@ -21,6 +21,28 @@ namespace SabaProps.Foliage.Editors
 
         public const string ShaderName = "SabaProps/Foliage";
 
+        /// <summary>
+        /// Absolute path to a file inside this package, or null if the package
+        /// cannot be located.
+        /// <para>
+        /// Resolved from the assembly rather than hard-coded, so it holds
+        /// whether the package is embedded under Packages/ or installed by VCC
+        /// into the project's package cache.
+        /// </para>
+        /// </summary>
+        public static string PackagePath(string relativePath)
+        {
+            UnityEditor.PackageManager.PackageInfo info =
+                UnityEditor.PackageManager.PackageInfo.FindForAssembly(typeof(FoliageAssetLibrary).Assembly);
+
+            if (info == null || string.IsNullOrEmpty(info.resolvedPath))
+            {
+                return null;
+            }
+
+            return Path.Combine(info.resolvedPath, relativePath.Replace('/', Path.DirectorySeparatorChar));
+        }
+
         /// <summary>Creates every folder along an "Assets/a/b/c" style path.</summary>
         public static void EnsureFolder(string folderPath)
         {
@@ -177,6 +199,44 @@ namespace SabaProps.Foliage.Editors
             }
         }
 
+        /// <summary>Every season, in calendar order.</summary>
+        public static readonly FoliageSeason[] AllSeasons =
+        {
+            FoliageSeason.Spring,
+            FoliageSeason.Summer,
+            FoliageSeason.Autumn,
+            FoliageSeason.WinterSnow,
+            FoliageSeason.WinterBare,
+        };
+
+        /// <summary>
+        /// Asset file name for a seasonal variant of a species.
+        /// <para>
+        /// Summer carries no suffix. It is the season a species is authored in,
+        /// and leaving its name alone keeps every asset and scene reference from
+        /// before seasons existed pointing at the same file.
+        /// </para>
+        /// </summary>
+        public static string DisplayName(FoliageSpeciesKind kind, FoliageSeason season)
+        {
+            string baseName = DisplayName(kind);
+            return season == FoliageSeason.Summer ? baseName : baseName + "_" + season;
+        }
+
+        /// <summary>Name of the serialised tint a season reads from.</summary>
+        public static string SeasonProperty(FoliageSeason season)
+        {
+            switch (season)
+            {
+                case FoliageSeason.Spring: return "spring";
+                case FoliageSeason.Autumn: return "autumn";
+                case FoliageSeason.WinterSnow: return "winterSnow";
+                case FoliageSeason.WinterBare: return "winterBare";
+                case FoliageSeason.Summer:
+                default: return "summer";
+            }
+        }
+
         /// <summary>Name of the serialised parameter block a kind reads from.</summary>
         public static string ParameterProperty(FoliageSpeciesKind kind)
         {
@@ -225,12 +285,13 @@ namespace SabaProps.Foliage.Editors
             return species;
         }
 
-        /// <summary>Creates the two built-in species presets if they are missing.</summary>
-        public static FoliageSpecies CreateOrLoadDefaultSpecies(FoliageSpeciesKind kind, Material material)
+        /// <summary>Creates a built-in species preset if it is missing.</summary>
+        public static FoliageSpecies CreateOrLoadDefaultSpecies(
+            FoliageSpeciesKind kind, Material material, FoliageSeason season = FoliageSeason.Summer)
         {
             EnsureFolder(SpeciesFolder);
 
-            string assetName = DisplayName(kind);
+            string assetName = DisplayName(kind, season);
             string path = $"{SpeciesFolder}/{assetName}.asset";
 
             var existing = AssetDatabase.LoadAssetAtPath<FoliageSpecies>(path);
@@ -249,6 +310,7 @@ namespace SabaProps.Foliage.Editors
             species.name = assetName;
             species.kind = kind;
             species.material = material;
+            species.season = season;
 
             ApplyPreset(species, kind);
 
@@ -304,6 +366,14 @@ namespace SabaProps.Foliage.Editors
                 // Heliotropism: a field of sunflowers all faces the same way.
                 species.faceSun = true;
                 species.faceSunJitter = 16f;
+
+                // A sunflower is an annual. In autumn it has shed its petals and
+                // stands as a seed head on a drying stalk; by winter it is gone
+                // altogether. Recolouring a flower in full bloom to straw would
+                // produce something that does not exist.
+                species.seasonPalette.autumn.appearance = SeasonAppearance.Dormant;
+                species.seasonPalette.winterSnow.appearance = SeasonAppearance.Absent;
+                species.seasonPalette.winterBare.appearance = SeasonAppearance.Absent;
 
                 // Sunflowers are sparse and tall enough to be worth a shadow.
                 species.castShadows = true;

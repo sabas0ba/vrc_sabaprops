@@ -6,12 +6,40 @@
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-08-23
+
 ### Added
 
+- `Season`: 春夏秋冬の色をメッシュ生成時に頂点カラーへ焼き込みます。実行時のコストはありません
+  - 寄せ方（目標色・寄せる割合・彩度・明度）は Species ごとに `Season Palette` として持ちます。
+    同じ秋でも種ごとに違う枯れ方をさせられます
+  - `Summer` は何も変えません。既存の Species アセットは `Summer` として読み込まれるため、
+    生成されるメッシュはこれまでと同一です
+  - 花弁など、季節が変わっても色を保つべき部位は生成側で効き方を弱めています
+    （ひまわりの花弁 30 %、花芯 55 %、葦の穂 50 %）
+  - 季節は 5 つです。冬は「雪の下の枯野」と「雪の無い寒い日の枯野」で見え方が別物なので、
+    `Winter Snow`（白っぽく退色）と `Winter Bare`（黒に近い茶）に分けています
+  - 季節ごとに姿も指定できます。`Dormant` は一年で落ちる部位を生成せず、`Absent` はその季節に配置しません。
+    ひまわりは既定で秋が `Dormant`（花弁を落とした種頭だけ）、冬が `Absent`（一年草なので姿を消す）です。
+    枯草色に染めただけの満開のひまわりは実在しないためです。
+    `Absent` は配置の重みを 0 として扱うので、他の種の密度は変わりません
+  - `Wind Scale` と `Droop`: 水分の抜けた株は風でしなりにくく、根元から先端へ向けて倒れます。
+    `Droop` は横へずらすのではなく根元まわりの回転なので茎の長さが変わらず、法線も同じ回転で追従します。
+    倒す量は風と同じ bend マスクから決まるため、接合部の関係は崩れません
+- サンプルシーンにセクション 6 `Seasons` を追加しました。種・比率・シードが共通で、季節だけが違う 5 区画です
+- [拡充ロードマップ](Documentation~/roadmap.md): 種と樹木、ツタまでの計画と、その過程での設計上の線引きを記録しています
+- `Tools/SabaProps/Foliage/Import VRChat Demo Movement`: デモ用の移動設定（歩行 4 m/s・走行 9 m/s・ジャンプ可）を
+  取り込みます。VRChat の既定は歩行 2 m/s・ジャンプ不可で、これらは `VRCSceneDescriptor` の項目ではなく
+  `VRCPlayerApi` を実行時に呼ぶ仕様のため Udon が必要です。スクリプトは `Samples~` に置き、
+  取り込みを任意の操作にしています。取り込まない限り UdonSharp への依存は発生しません
 - ドキュメントにレンダリング図を追加しました。パラメータごとの形状の違いを、実際のメッシュ生成器の出力を並べた図で示します
   - 図は `Documentation~/images/generated/` にあり、`.github/figures/render.sh` が生成します。CI が生成結果との一致を検査するため、生成器を変えて図を作り直し忘れると Pull Request が落ちます
   - 一覧は `Documentation~/parameters.md`（ドキュメントサイトの `parameters` ページ）にまとまっています
   - 図はパッケージの zip には含まれません。導入したプロジェクトの容量は増えません
+
+### Changed
+
+- サンプルシーンの地面を、追加した 6 番目の区画列まで届くように広げました
 
 ## [0.1.1] - 2026-08-23
 
@@ -83,6 +111,7 @@
 - `FoliageSpecies` ScriptableObject による種別プリセット
 - セットアップメニュー: `Tools/SabaProps/Foliage/Create Default Assets`
 
-[Unreleased]: https://github.com/sabas0ba/vrc_sabaprops/compare/v0.1.1...HEAD
+[Unreleased]: https://github.com/sabas0ba/vrc_sabaprops/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/sabas0ba/vrc_sabaprops/compare/v0.1.1...v0.2.0
 [0.1.1]: https://github.com/sabas0ba/vrc_sabaprops/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/sabas0ba/vrc_sabaprops/releases/tag/v0.1.0

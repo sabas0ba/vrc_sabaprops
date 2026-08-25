@@ -246,9 +246,11 @@ csc -nologo -langversion:9.0 -target:exe -nostdlib+ -noconfig \
     "$OFFLINE/UnityEngineShim.cs" \
     "$OFFLINE/OfflineMeshTests.cs" \
     "$PACKAGE/Runtime/FoliageRandom.cs" \
+    "$PACKAGE/Runtime/FoliageSeason.cs" \
     "$PACKAGE/Runtime/FoliageSpecies.cs" \
     "$PACKAGE/Editor/FoliageMeshBuffer.cs" \
-    "$PACKAGE/Editor/FoliageMeshBuilder.cs"
+    "$PACKAGE/Editor/FoliageMeshBuilder.cs" \
+    "$PACKAGE/Editor/FoliageSeasonPass.cs"
 
 cat > "$OFFLINE_OUT/OfflineMeshTests.runtimeconfig.json" <<'JSON'
 {

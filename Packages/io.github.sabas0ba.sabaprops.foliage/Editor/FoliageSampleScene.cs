@@ -39,6 +39,7 @@ namespace SabaProps.Foliage.Editors
         public const string TerrainRoot = "3 Terrain";
         public const string MixRoot = "4 Combinations";
         public const string OutputRoot = "5 Output Modes";
+        public const string SeasonRoot = "6 Seasons";
         public const string GroundRoot = "Ground";
 
         public const string InstancedPlotName = "GPU Instanced";
@@ -55,6 +56,13 @@ namespace SabaProps.Foliage.Editors
 
         /// <summary>Column centres, four across.</summary>
         private static readonly float[] Columns = { -13.5f, -4.5f, 4.5f, 13.5f };
+
+        /// <summary>
+        /// The season row is five wide rather than four — winter is two states,
+        /// not one — so it gets its own centres instead of stretching the grid
+        /// every other section is laid out on.
+        /// </summary>
+        private static readonly float[] SeasonColumns = { -18f, -9f, 0f, 9f, 18f };
 
         [MenuItem("Tools/SabaProps/Foliage/Create Sample Scene", false, 1)]
         public static void CreateAndOpen()
@@ -73,7 +81,7 @@ namespace SabaProps.Foliage.Editors
             SceneView view = SceneView.lastActiveSceneView;
             if (view != null)
             {
-                view.LookAt(new Vector3(0f, 0.5f, 16f), Quaternion.Euler(38f, 0f, 0f), 44f);
+                view.LookAt(new Vector3(0f, 0.5f, 20f), Quaternion.Euler(38f, 0f, 0f), 52f);
             }
         }
 
@@ -105,6 +113,7 @@ namespace SabaProps.Foliage.Editors
             BuildTerrain(stock, fields);
             BuildMixes(stock, fields);
             BuildOutputModes(stock, fields);
+            BuildSeasons(material, fields);
 
             var stats = new List<FoliageBuildStats>(fields.Count);
             foreach (FoliageField field in fields)
@@ -115,10 +124,15 @@ namespace SabaProps.Foliage.Editors
             GameObject world = FoliageVrcWorld.TryCreateWorld(
                 SpawnPosition, Quaternion.identity, Camera.main);
 
+            // Only when the movement sample has been imported. VRChat's defaults
+            // walk at 2 m/s and cannot jump, which makes a garden this size
+            // tedious to look around.
+            bool movement = FoliageVrcWorld.TryAddDemoMovement(world);
+
             FoliageAssetLibrary.EnsureFolder(SampleFolder);
             EditorSceneManager.SaveScene(scene, ScenePath);
 
-            Debug.Log(Summarise(fields, stats, world != null));
+            Debug.Log(Summarise(fields, stats, world != null, movement));
             return scene;
         }
 
@@ -343,6 +357,49 @@ namespace SabaProps.Foliage.Editors
             }
         }
 
+        /// <summary>
+        /// The same mix, the same seed, four times over. Only the season differs,
+        /// so the four plots are one comparison rather than four fields.
+        /// </summary>
+        private static void BuildSeasons(Material material, List<FoliageField> fields)
+        {
+            Transform root = CreateRoot(SeasonRoot);
+
+            for (int i = 0; i < FoliageAssetLibrary.AllSeasons.Length && i < SeasonColumns.Length; i++)
+            {
+                FoliageSeason season = FoliageAssetLibrary.AllSeasons[i];
+
+                // One seed for every plot: each clump stands where its
+                // neighbour's does, so what is left to see is the season alone.
+                FoliageField field = CreatePlot(
+                    root, season.ToString(), new Vector3(SeasonColumns[i], 0f, Pitch * 5f),
+                    PlotDensity, 3501, FoliageOutputMode.MergedChunks);
+
+                AddSpecies(field, SeasonalSpecies(FoliageSpeciesKind.GrassClump, season, material), 1f);
+                AddSpecies(field, SeasonalSpecies(FoliageSpeciesKind.Clover, season, material), 0.45f);
+                AddSpecies(field, SeasonalSpecies(FoliageSpeciesKind.Sunflower, season, material), 0.06f);
+
+                fields.Add(field);
+            }
+        }
+
+        /// <summary>
+        /// The stock preset for a kind in one season, created on demand. Summer
+        /// resolves to the plain preset rather than a copy of it.
+        /// </summary>
+        private static FoliageSpecies SeasonalSpecies(
+            FoliageSpeciesKind kind, FoliageSeason season, Material material)
+        {
+            FoliageSpecies species = FoliageAssetLibrary.CreateOrLoadDefaultSpecies(kind, material, season);
+            if (species == null)
+            {
+                return null;
+            }
+
+            FoliageAssetLibrary.WriteSpeciesMesh(species);
+            return species;
+        }
+
         // ------------------------------------------------------------------
         // Plot and species helpers
         // ------------------------------------------------------------------
@@ -500,9 +557,12 @@ namespace SabaProps.Foliage.Editors
         {
             var root = new GameObject(GroundRoot);
 
-            // Covers every plot with room to walk between them.
+            // Covers every plot with room to walk between them. A Plane primitive
+            // is 10 m square before scaling, so this reaches from z = -12 to
+            // z = 52 and from x = -23 to x = 23 — the last row of plots sits at
+            // z = 45, and the season row reaches out to x = 18 plus half a plot.
             CreateGroundPiece(root.transform, PrimitiveType.Plane, "Flat",
-                new Vector3(0f, 0f, 16f), Quaternion.identity, new Vector3(4.2f, 1f, 5.6f), material);
+                new Vector3(0f, 0f, 20f), Quaternion.identity, new Vector3(4.6f, 1f, 6.4f), material);
 
             // --- section 3's ground -----------------------------------------
             float z = Pitch * 2f;
@@ -684,7 +744,8 @@ namespace SabaProps.Foliage.Editors
         // ------------------------------------------------------------------
 
         private static string Summarise(
-            List<FoliageField> fields, List<FoliageBuildStats> stats, bool worldCreated)
+            List<FoliageField> fields, List<FoliageBuildStats> stats,
+            bool worldCreated, bool movementAdded)
         {
             var text = new StringBuilder();
             text.AppendLine($"[SabaProps Foliage] サンプルシーンを {ScenePath} に作成しました。");
@@ -724,6 +785,14 @@ namespace SabaProps.Foliage.Editors
                 ? "  VRChat: VRCSceneDescriptor と Spawn を配置しました。そのままアップロードできます。"
                 : "  VRChat: Worlds SDK が見つからないため VRCSceneDescriptor は配置していません。"
                   + " SDK を導入してから再実行すると追加されます。");
+
+            if (worldCreated)
+            {
+                text.AppendLine(movementAdded
+                    ? "  移動設定: FoliageDemoMovement を配置しました。歩行 4 m/s・走行 9 m/s・ジャンプ可です。"
+                    : "  移動設定: 未導入です。VRChat の既定は歩行 2 m/s・ジャンプ不可なので、"
+                      + " Tools > SabaProps > Foliage > Import VRChat Demo Movement のあと再実行すると追加されます。");
+            }
 
             return text.ToString().TrimEnd();
         }

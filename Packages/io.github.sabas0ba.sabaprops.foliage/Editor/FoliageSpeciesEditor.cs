@@ -14,8 +14,11 @@ namespace SabaProps.Foliage.Editors
             "sunflower",
             "clover",
             "reed",
+            "seasonPalette",
             "generatedMesh",
         };
+
+        private bool showEverySeason;
 
         public override void OnInspectorGUI()
         {
@@ -29,10 +32,60 @@ namespace SabaProps.Foliage.Editors
             EditorGUILayout.PropertyField(
                 serializedObject.FindProperty(FoliageAssetLibrary.ParameterProperty(kind)), true);
 
+            DrawSeasonSection();
+
             serializedObject.ApplyModifiedProperties();
 
             EditorGUILayout.Space(8f);
             DrawMeshSection();
+        }
+
+        /// <summary>
+        /// Shows the tint for the selected season only. All four at once is four
+        /// colour pickers and twelve sliders, of which eleven do nothing to the
+        /// mesh in front of the user.
+        /// </summary>
+        private void DrawSeasonSection()
+        {
+            SerializedProperty palette = serializedObject.FindProperty("seasonPalette");
+            SerializedProperty season = serializedObject.FindProperty("season");
+
+            if (palette == null || season == null)
+            {
+                return;
+            }
+
+            EditorGUILayout.Space(6f);
+
+            bool showAll = showEverySeason || season.hasMultipleDifferentValues;
+
+            if (showAll)
+            {
+                foreach (FoliageSeason entry in FoliageAssetLibrary.AllSeasons)
+                {
+                    DrawSeasonStyle(palette, entry);
+                }
+            }
+            else
+            {
+                DrawSeasonStyle(palette, (FoliageSeason)season.enumValueIndex);
+            }
+
+            using (new EditorGUI.DisabledScope(season.hasMultipleDifferentValues))
+            {
+                showEverySeason = EditorGUILayout.ToggleLeft("すべての季節の設定を表示", showEverySeason);
+            }
+        }
+
+        private static void DrawSeasonStyle(SerializedProperty palette, FoliageSeason season)
+        {
+            SerializedProperty tint =
+                palette.FindPropertyRelative(FoliageAssetLibrary.SeasonProperty(season));
+
+            if (tint != null)
+            {
+                EditorGUILayout.PropertyField(tint, new GUIContent(season.ToString()), true);
+            }
         }
 
         private void DrawMeshSection()

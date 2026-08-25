@@ -20,6 +20,24 @@ namespace SabaProps.Foliage.Editors
 
         public readonly List<int> Triangles = new List<int>();
 
+        /// <summary>
+        /// Per-vertex susceptibility to the seasonal colour shift. Not written to
+        /// the mesh: it is consumed by <see cref="FoliageSeasonPass"/> before the
+        /// buffer is baked.
+        /// </summary>
+        public readonly List<float> SeasonWeights = new List<float>();
+
+        /// <summary>
+        /// The season weight recorded for vertices added from now on.
+        /// <para>
+        /// Leaves and stems take the full shift and stay at 1. Petals are the
+        /// reason this exists: a flower whose petals bleach to straw along with
+        /// its leaves stops being that flower, so a generator lowers this before
+        /// adding them.
+        /// </para>
+        /// </summary>
+        public float SeasonWeight = 1f;
+
         public int VertexCount
         {
             get { return Positions.Count; }
@@ -37,6 +55,7 @@ namespace SabaProps.Foliage.Editors
             Colors.Add(color);
             Uv0.Add(uv0);
             Uv3.Add(uv3);
+            SeasonWeights.Add(SeasonWeight);
             return Positions.Count - 1;
         }
 
@@ -74,6 +93,11 @@ namespace SabaProps.Foliage.Editors
                 Vector4 uv3 = source.Uv3[i];
                 Vector3 root = trs.MultiplyPoint3x4(new Vector3(uv3.x, uv3.y, uv3.z));
                 Uv3.Add(new Vector4(root.x, root.y, root.z, uv3.w));
+
+                // The season is already baked into the colours by the time
+                // instances are merged. Kept in step only so the list stays as
+                // long as the others.
+                SeasonWeights.Add(0f);
             }
 
             for (int i = 0; i < source.Triangles.Length; i++)

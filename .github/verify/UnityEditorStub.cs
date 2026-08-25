@@ -71,11 +71,13 @@ namespace UnityEditor
     {
         public int enumValueIndex { get; set; }
         public int arraySize { get; set; }
+        public bool hasMultipleDifferentValues { get; set; }
         public UnityEngine.Object objectReferenceValue { get; set; }
         public bool boolValue { get; set; }
         public float floatValue { get; set; }
         public int intValue { get; set; }
         public string stringValue { get; set; }
+        public SerializedProperty FindPropertyRelative(string relativePropertyPath) => null;
         public SerializedProperty GetArrayElementAtIndex(int index) => null;
         public void InsertArrayElementAtIndex(int index) { }
         public void DeleteArrayElementAtIndex(int index) { }
@@ -115,6 +117,17 @@ namespace UnityEditor
         public void ShowUtility() { }
         public void Close() { }
         public void Repaint() { }
+    }
+
+    public class MonoScript : TextAsset { }
+
+    [Flags]
+    public enum ImportAssetOptions
+    {
+        Default = 0,
+        ForceUpdate = 1,
+        ForceSynchronousImport = 8,
+        ImportRecursive = 256,
     }
 
     public class MaterialProperty { }
@@ -175,6 +188,8 @@ namespace UnityEditor
         public static string AssetPathToGUID(string path) => string.Empty;
         public static void SaveAssets() { }
         public static void Refresh() { }
+        public static void ImportAsset(string path) { }
+        public static void ImportAsset(string path, ImportAssetOptions options) { }
         public static void StartAssetEditing() { }
         public static void StopAssetEditing() { }
         public static void AddObjectToAsset(UnityEngine.Object objectToAdd, UnityEngine.Object assetObject) { }
@@ -281,6 +296,8 @@ namespace UnityEditor
 
         public static bool PropertyField(SerializedProperty property, params GUILayoutOption[] options) => false;
         public static bool PropertyField(SerializedProperty property, bool includeChildren, params GUILayoutOption[] options) => false;
+        public static bool PropertyField(SerializedProperty property, GUIContent label, params GUILayoutOption[] options) => false;
+        public static bool PropertyField(SerializedProperty property, GUIContent label, bool includeChildren, params GUILayoutOption[] options) => false;
 
         public static void HelpBox(string message, MessageType type) { }
         public static void HelpBox(string message, MessageType type, bool wide) { }
@@ -391,6 +408,8 @@ namespace NUnit.Framework
         public static void AreEqual(object expected, object actual, string message) { }
         public static void AreEqual(double expected, double actual, double delta) { }
         public static void AreEqual(double expected, double actual, double delta, string message) { }
+        public static void AreNotEqual(object expected, object actual) { }
+        public static void AreNotEqual(object expected, object actual, string message) { }
 
         public static void AreSame(object expected, object actual) { }
         public static void AreSame(object expected, object actual, string message) { }
@@ -402,5 +421,20 @@ namespace NUnit.Framework
         public static void Greater(double arg1, double arg2, string message) { }
         public static void Less(double arg1, double arg2) { }
         public static void Less(double arg1, double arg2, string message) { }
+    }
+}
+
+namespace UnityEditor.PackageManager
+{
+    /// <summary>
+    /// Only what PackagePath() needs: where this package resolved to on disk.
+    /// FindForAssembly returns null here, which is the "package not found" path
+    /// the caller already has to handle.
+    /// </summary>
+    public class PackageInfo
+    {
+        public string resolvedPath { get; set; }
+
+        public static PackageInfo FindForAssembly(System.Reflection.Assembly assembly) => null;
     }
 }

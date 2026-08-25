@@ -12,6 +12,41 @@ using UnityEngine.SceneManagement;
 namespace SabaProps.Foliage.CITests
 {
     /// <summary>
+    /// Cleanup shared by the fixtures that write into the project.
+    /// </summary>
+    internal static class FoliageTestAssets
+    {
+        /// <summary>
+        /// Removes what the package generates, and only that.
+        /// <para>
+        /// Deleting Assets/SabaProps wholesale is the obvious thing and the
+        /// wrong one: the demo movement sample is imported into the same tree,
+        /// and it is a compiled UdonSharp behaviour. Taking its program asset
+        /// out from under a type that is still loaded leaves every later scene
+        /// build failing on "Unable to find valid U# program asset", in tests
+        /// that never went near Udon.
+        /// </para>
+        /// </summary>
+        public static void DeleteGenerated()
+        {
+            string[] paths =
+            {
+                FoliageAssetLibrary.GeneratedFolder,
+                FoliageAssetLibrary.SpeciesFolder,
+                FoliageAssetLibrary.MaterialsFolder,
+                FoliageSampleScene.VariantFolder,
+                FoliageSampleScene.ScenePath,
+                FoliageSampleScene.GroundMaterialPath,
+            };
+
+            foreach (string path in paths)
+            {
+                AssetDatabase.DeleteAsset(path);
+            }
+        }
+    }
+
+    /// <summary>
     /// Verifies the one thing no offline harness can: that Unity itself accepts
     /// the surface shader. A syntax error, a bad #pragma, or a variant that
     /// fails to generate all surface here.
@@ -362,10 +397,7 @@ namespace SabaProps.Foliage.CITests
         [OneTimeTearDown]
         public void DeleteGeneratedAssets()
         {
-            if (AssetDatabase.IsValidFolder("Assets/SabaProps"))
-            {
-                AssetDatabase.DeleteAsset("Assets/SabaProps");
-            }
+            FoliageTestAssets.DeleteGenerated();
         }
 
         private FoliageField CreateField(FoliageOutputMode mode)
@@ -497,6 +529,44 @@ namespace SabaProps.Foliage.CITests
                 Assert.AreEqual(firstPositions[i].z, secondPositions[i].z, 1e-4f);
             }
         }
+
+        [Test]
+        public void AbsentSpecies_IsNotPlacedForItsSeason()
+        {
+            // An annual marked Absent is gone for that part of the year. The
+            // rest of the field has to carry on as if it had never been listed,
+            // rather than the field placing fewer plants overall.
+            FoliageField field = CreateField(FoliageOutputMode.GpuInstanced);
+
+            var sunflower = ScriptableObject.CreateInstance<FoliageSpecies>();
+            sunflower.name = "CI Absent Sunflower";
+            sunflower.kind = FoliageSpeciesKind.Sunflower;
+            sunflower.material = FoliageAssetLibrary.CreateOrLoadDefaultMaterial();
+            sunflower.season = FoliageSeason.WinterSnow;
+            sunflower.seasonPalette.winterSnow.appearance = SeasonAppearance.Absent;
+            sunflower.placementWeight = 1f;
+
+            try
+            {
+                field.species.Add(sunflower);
+
+                FoliageBuildStats stats = FoliageFieldBuilder.Build(field);
+
+                Assert.IsNotNull(stats);
+                Assert.Greater(stats.instanceCount, 0,
+                    "the absent species took the whole field down with it");
+
+                foreach (MeshFilter filter in field.GetComponentsInChildren<MeshFilter>())
+                {
+                    Assert.AreNotEqual(sunflower.name, filter.gameObject.name,
+                        "a species marked Absent for its season was placed anyway");
+                }
+            }
+            finally
+            {
+                Object.DestroyImmediate(sunflower);
+            }
+        }
     }
 
     /// <summary>
@@ -526,10 +596,7 @@ namespace SabaProps.Foliage.CITests
         {
             EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
 
-            if (AssetDatabase.IsValidFolder("Assets/SabaProps"))
-            {
-                AssetDatabase.DeleteAsset("Assets/SabaProps");
-            }
+            FoliageTestAssets.DeleteGenerated();
         }
 
         [Test]
@@ -679,6 +746,103 @@ namespace SabaProps.Foliage.CITests
             Assert.Less(lowest, float.MaxValue, "the skinned plot has no geometry to measure");
             Assert.Greater(lowest, 0.05f,
                 "foliage landed at plane height, so the rays missed the skinned surface");
+        }
+
+        [Test]
+        public void SampleScene_SeasonSectionVariesOnlyBySeason()
+        {
+            GameObject seasons = FindRootObject(_scene, FoliageSampleScene.SeasonRoot);
+            Assert.IsNotNull(seasons, "the demo has no season section");
+
+            var plots = new List<FoliageField>(seasons.GetComponentsInChildren<FoliageField>());
+            Assert.AreEqual(FoliageAssetLibrary.AllSeasons.Length, plots.Count,
+                "the season section should have one plot per season");
+
+            var colours = new List<Color>();
+
+            foreach (FoliageField plot in plots)
+            {
+                AssertBuilt(plot, FoliageOutputMode.MergedChunks);
+                colours.Add(MeanColour(plot));
+            }
+
+            // Same seed, same species, same ground: the seasons in which every
+            // species is present must place the same plants in the same places.
+            // The sunflower goes dormant in autumn rather than absent, so it is
+            // still one of them -- it just has no petals.
+            FoliageField spring = FindChildField(seasons, FoliageSeason.Spring.ToString());
+            FoliageField summer = FindChildField(seasons, FoliageSeason.Summer.ToString());
+            FoliageField autumn = FindChildField(seasons, FoliageSeason.Autumn.ToString());
+
+            Assert.AreEqual(summer.lastBuildStats.instanceCount, spring.lastBuildStats.instanceCount,
+                "spring and summer place every species, so they must place the same plants");
+            Assert.AreEqual(summer.lastBuildStats.instanceCount, autumn.lastBuildStats.instanceCount,
+                "a dormant species is still placed; autumn should differ from summer in what it grows, not where");
+
+            // The sunflower is an annual and is marked absent for both winters,
+            // so those plots have to come out with fewer plants -- and with the
+            // same number as each other, since they differ only in colour.
+            FoliageField snow = FindChildField(seasons, FoliageSeason.WinterSnow.ToString());
+            FoliageField bare = FindChildField(seasons, FoliageSeason.WinterBare.ToString());
+
+            Assert.Less(snow.lastBuildStats.instanceCount, summer.lastBuildStats.instanceCount,
+                "the winter plots still grow sunflowers; Absent did not take effect");
+            Assert.AreEqual(snow.lastBuildStats.instanceCount, bare.lastBuildStats.instanceCount,
+                "the two winters place different plants, so they are not comparable");
+
+            // Every plot has to look different from every other, or a season is
+            // silently doing nothing.
+            for (int i = 0; i < colours.Count; i++)
+            {
+                for (int j = i + 1; j < colours.Count; j++)
+                {
+                    Assert.Greater(ColourDistance(colours[i], colours[j]), 0.02f,
+                        $"'{plots[i].name}' ({colours[i]}) and '{plots[j].name}' ({colours[j]}) "
+                        + "came out the same colour");
+                }
+            }
+        }
+
+        /// <summary>
+        /// Mean vertex colour over everything a field grew. Enough to tell two
+        /// seasons apart without asserting a particular shade.
+        /// <para>
+        /// The whole colour, not a single axis such as red-minus-blue: spring's
+        /// bright yellow-green and autumn's dark brown happen to sit at nearly
+        /// the same distance between red and blue, and a test that looked only
+        /// there called two plainly different plots identical.
+        /// </para>
+        /// </summary>
+        private static Color MeanColour(FoliageField field)
+        {
+            float r = 0f;
+            float g = 0f;
+            float b = 0f;
+            int count = 0;
+
+            foreach (MeshFilter filter in field.GetComponentsInChildren<MeshFilter>())
+            {
+                if (filter.sharedMesh == null)
+                {
+                    continue;
+                }
+
+                foreach (Color color in filter.sharedMesh.colors)
+                {
+                    r += color.r;
+                    g += color.g;
+                    b += color.b;
+                    count++;
+                }
+            }
+
+            Assert.Greater(count, 0, $"'{field.name}' has no vertex colours to measure");
+            return new Color(r / count, g / count, b / count, 1f);
+        }
+
+        private static float ColourDistance(Color a, Color b)
+        {
+            return Mathf.Abs(a.r - b.r) + Mathf.Abs(a.g - b.g) + Mathf.Abs(a.b - b.b);
         }
 
         [Test]

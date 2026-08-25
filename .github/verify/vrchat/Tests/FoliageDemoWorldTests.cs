@@ -27,6 +27,26 @@ namespace SabaProps.Foliage.WorldTests
     /// One test, not several: entering and leaving play mode is per-fixture
     /// state, and a second test's setup would run before the first had left it.
     /// </para>
+    /// <para>
+    /// <b>Known failure on a clean checkout.</b> The first time a project runs
+    /// this, entering play mode compiles the play-mode assemblies, and the
+    /// domain reload that follows clears
+    /// <c>LogAssert.ignoreFailingMessages</c> — static state — while this
+    /// coroutine is suspended inside <c>EnterPlayMode</c>. ClientSim's startup
+    /// exception then lands with nothing tolerating it and fails the test.
+    /// Running the suite a second time passes, because by then there is nothing
+    /// left to compile.
+    /// </para>
+    /// <para>
+    /// Ruled out: an extra import-only editor session beforehand, saving a
+    /// scene in the setup session, waiting on
+    /// <c>EditorApplication.isCompiling</c> before entering play mode, and
+    /// re-asserting the flag every frame in the wait loops. None of them help —
+    /// the reload happens inside <c>EnterPlayMode</c>, where this test cannot
+    /// reach. A fix would have to restore the flag from something that survives
+    /// the reload, such as an <c>[InitializeOnLoadMethod]</c> keyed off
+    /// <c>SessionState</c>.
+    /// </para>
     /// </summary>
     public class FoliageDemoWorldTests
     {
@@ -45,9 +65,23 @@ namespace SabaProps.Foliage.WorldTests
             EditorSettings.enterPlayModeOptions = _restoreOptions;
             EditorSettings.enterPlayModeOptionsEnabled = _restoreOptionsEnabled;
 
-            if (AssetDatabase.IsValidFolder("Assets/SabaProps"))
+            // What the demo generated, and not the movement sample sitting in
+            // the same tree: that is a compiled UdonSharp behaviour, and taking
+            // its program asset out from under a type that is still loaded
+            // breaks every scene built afterwards.
+            string[] generated =
             {
-                AssetDatabase.DeleteAsset("Assets/SabaProps");
+                FoliageAssetLibrary.GeneratedFolder,
+                FoliageAssetLibrary.SpeciesFolder,
+                FoliageAssetLibrary.MaterialsFolder,
+                FoliageSampleScene.VariantFolder,
+                FoliageSampleScene.ScenePath,
+                FoliageSampleScene.GroundMaterialPath,
+            };
+
+            foreach (string path in generated)
+            {
+                AssetDatabase.DeleteAsset(path);
             }
         }
 
@@ -100,6 +134,16 @@ namespace SabaProps.Foliage.WorldTests
             }
 
             LogAssert.ignoreFailingMessages = false;
+
+            // The demo raises these through Udon, because VRCSceneDescriptor has
+            // no movement fields to raise them with. Read back from the player
+            // rather than from the component: what matters is that the Udon
+            // behaviour ran and VRChat accepted the values, not that a proxy
+            // component is sitting in the scene with the right numbers on it.
+            Assert.Greater(player.GetWalkSpeed(), 2f,
+                "the demo's movement behaviour did not raise the walk speed");
+            Assert.Greater(player.GetJumpImpulse(), 0f,
+                "the demo's movement behaviour did not enable jumping");
 
             Vector3 position = player.GetPosition();
 
