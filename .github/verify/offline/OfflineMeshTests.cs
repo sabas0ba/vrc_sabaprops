@@ -596,8 +596,15 @@ internal static class OfflineMeshTests
     }
 
     /// <summary>
-    /// Widest gap between any two vertices that share a height band. Stands in
-    /// for "how broad is a leaf" without the mesh saying where its leaves are.
+    /// Widest a single blade gets.
+    /// <para>
+    /// The two sides of a blade are added as a pair, left then right, and the
+    /// blade code writes UV0.x = 0 on one and 1 on the other. That pairing is
+    /// what identifies them: every blade in a mesh shares the same UV0.y values,
+    /// so matching on height alone measures the gap between two different
+    /// leaves instead — which is how this check first passed for the wrong
+    /// reason and then failed for it.
+    /// </para>
     /// </summary>
     private static float WidestSpan(Mesh mesh)
     {
@@ -606,22 +613,15 @@ internal static class OfflineMeshTests
 
         float widest = 0f;
 
-        for (int i = 0; i < mesh.vertexCount; i++)
+        for (int i = 0; i + 1 < mesh.vertexCount; i++)
         {
-            for (int j = i + 1; j < mesh.vertexCount; j++)
-            {
-                // Same point along a blade, and close enough together to be the
-                // two sides of one -- not two different leaves.
-                if (Math.Abs(uv0[i].y - uv0[j].y) > 1e-4f)
-                {
-                    continue;
-                }
+            bool pair = uv0[i].x < 1e-4f
+                && uv0[i + 1].x > 1f - 1e-4f
+                && Math.Abs(uv0[i].y - uv0[i + 1].y) < 1e-4f;
 
-                float span = (mesh.vertices[i] - mesh.vertices[j]).magnitude;
-                if (span < 0.2f)
-                {
-                    widest = Mathf.Max(widest, span);
-                }
+            if (pair)
+            {
+                widest = Mathf.Max(widest, (mesh.vertices[i] - mesh.vertices[i + 1]).magnitude);
             }
         }
 
