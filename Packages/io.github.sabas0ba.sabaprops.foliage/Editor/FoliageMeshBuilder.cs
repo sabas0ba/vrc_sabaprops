@@ -1393,40 +1393,75 @@ namespace SabaProps.Foliage.Editors
                     - Vector3.up * (fall * 0.75f);
             }
 
-            var axes = new[]
-            {
-                new Vector3(-bendDir.z, 0f, bendDir.x),
-                bendDir,
-            };
+            // Two crossed strips, built on the ear's own frame rather than on
+            // world axes.
+            //
+            // The obvious arrangement -- one strip across bendDir, one along it,
+            // as the reed spike uses -- collapses here. The centreline curves
+            // within the plane bendDir and up span, so the strip lying in that
+            // plane has its width running the same way the centreline travels,
+            // and wherever the centreline momentarily moves along that axis
+            // alone the quad becomes three collinear points. The droop profile
+            // rises then falls, so there is always such a place; with a droop of
+            // 1 and five rows it landed exactly on one.
+            //
+            // Both sides perpendicular to the local tangent has no such case: the
+            // centreline moves along the tangent, and neither width direction
+            // ever points that way.
+            var centres = new Vector3[rows + 1];
+            var sideA = new Vector3[rows + 1];
+            var sideB = new Vector3[rows + 1];
+            var normals = new Vector3[rows + 1];
+            var halfWidths = new float[rows + 1];
 
-            foreach (Vector3 side in axes)
+            // Perpendicular to the plane the ear bends in. Constant, because it
+            // is derived from the plane rather than from the tangent: taken per
+            // row it would flip sign the moment the ear passes horizontal, and
+            // the strip would come out with a half turn in it.
+            Vector3 across = Vector3.Cross(Vector3.up, bendDir);
+            if (across.sqrMagnitude < 1e-6f)
+            {
+                across = Vector3.right;
+            }
+
+            across.Normalize();
+
+            for (int r = 0; r <= rows; r++)
+            {
+                float t = r / (float)rows;
+                centres[r] = Centre(t);
+
+                Vector3 along = (Centre(Mathf.Min(1f, t + 0.05f)) - Centre(Mathf.Max(0f, t - 0.05f))).normalized;
+                if (along.sqrMagnitude < 1e-6f)
+                {
+                    along = Vector3.up;
+                }
+
+                sideA[r] = across;
+                sideB[r] = Vector3.Cross(along, across).normalized;
+
+                // Fat in the middle, pinched at both ends: an ear is a spindle,
+                // not a cylinder, and the alternating step is what reads as rows
+                // of grain rather than a smooth pod.
+                float profile = Mathf.Sin(Mathf.PI * Mathf.Clamp01(t * 0.85f + 0.08f));
+                float step = r % 2 == 0 ? 1f : 0.78f;
+                halfWidths[r] = p.earWidth * 0.5f * profile * step;
+
+                normals[r] = Vector3.Slerp(sideB[r], Vector3.up, p.normalUpBlend * 0.5f).normalized;
+            }
+
+            for (int axis = 0; axis < 2; axis++)
             {
                 int previousLeft = -1;
                 int previousRight = -1;
 
                 for (int r = 0; r <= rows; r++)
                 {
-                    float t = r / (float)rows;
-                    Vector3 centre = Centre(t);
+                    Vector3 side = axis == 0 ? sideA[r] : sideB[r];
+                    Vector3 normal = axis == 0 ? normals[r] : sideA[r];
 
-                    // Fat in the middle, pinched at both ends: an ear is a
-                    // spindle, not a cylinder, and the alternating step is what
-                    // reads as rows of grain rather than a smooth pod.
-                    float profile = Mathf.Sin(Mathf.PI * Mathf.Clamp01(t * 0.85f + 0.08f));
-                    float step = r % 2 == 0 ? 1f : 0.78f;
-                    float halfWidth = p.earWidth * 0.5f * profile * step;
-
-                    Vector3 along = (Centre(Mathf.Min(1f, t + 0.05f)) - Centre(Mathf.Max(0f, t - 0.05f))).normalized;
-                    Vector3 normal = Vector3.Cross(side, along).normalized;
-                    if (normal.sqrMagnitude < 1e-6f)
-                    {
-                        normal = Vector3.up;
-                    }
-
-                    normal = Vector3.Slerp(normal, Vector3.up, p.normalUpBlend * 0.5f).normalized;
-
-                    int left = buffer.AddVertex(centre - side * halfWidth, normal, ear, uv, rootData);
-                    int right = buffer.AddVertex(centre + side * halfWidth, normal, ear, uv, rootData);
+                    int left = buffer.AddVertex(centres[r] - side * halfWidths[r], normal, ear, uv, rootData);
+                    int right = buffer.AddVertex(centres[r] + side * halfWidths[r], normal, ear, uv, rootData);
 
                     if (r > 0)
                     {
@@ -1447,14 +1482,14 @@ namespace SabaProps.Foliage.Editors
 
                 Vector3 tip = Centre(1f);
                 Vector3 tipDir = (tip - Centre(0.8f)).normalized;
-                Vector3 sideA = Vector3.Cross(tipDir, Vector3.up);
-                if (sideA.sqrMagnitude < 1e-6f)
+                Vector3 fanA = Vector3.Cross(tipDir, Vector3.up);
+                if (fanA.sqrMagnitude < 1e-6f)
                 {
-                    sideA = Vector3.right;
+                    fanA = Vector3.right;
                 }
 
-                sideA.Normalize();
-                Vector3 sideB = Vector3.Cross(tipDir, sideA).normalized;
+                fanA.Normalize();
+                Vector3 fanB = Vector3.Cross(tipDir, fanA).normalized;
 
                 for (int i = 0; i < awnCount; i++)
                 {
@@ -1465,7 +1500,7 @@ namespace SabaProps.Foliage.Editors
                     Vector3 origin = Centre(along);
 
                     float angle = i / (float)awnCount * Mathf.PI * 2f + rng.Range(-0.2f, 0.2f);
-                    Vector3 outward = (sideA * Mathf.Cos(angle) + sideB * Mathf.Sin(angle)).normalized;
+                    Vector3 outward = (fanA * Mathf.Cos(angle) + fanB * Mathf.Sin(angle)).normalized;
 
                     float length = p.awnLength * rng.Range(0.7f, 1.25f);
                     Vector3 end = origin + tipDir * length + outward * (length * 0.22f);
@@ -1473,8 +1508,8 @@ namespace SabaProps.Foliage.Editors
                     // A hair, drawn as the thinnest triangle that still has area:
                     // anything with width would be geometry spent on something
                     // seen from metres away.
-                    Vector3 across = outward * (p.earWidth * 0.12f);
-                    Vector3 normal = Vector3.Cross(across.normalized, (end - origin).normalized).normalized;
+                    Vector3 spread = outward * (p.earWidth * 0.12f);
+                    Vector3 normal = Vector3.Cross(spread.normalized, (end - origin).normalized).normalized;
                     if (normal.sqrMagnitude < 1e-6f)
                     {
                         normal = Vector3.up;
@@ -1482,8 +1517,8 @@ namespace SabaProps.Foliage.Editors
 
                     normal = Vector3.Slerp(normal, Vector3.up, 0.5f).normalized;
 
-                    int a = buffer.AddVertex(origin - across, normal, ear, uv, rootData);
-                    int b = buffer.AddVertex(origin + across, normal, ear, uv, rootData);
+                    int a = buffer.AddVertex(origin - spread, normal, ear, uv, rootData);
+                    int b = buffer.AddVertex(origin + spread, normal, ear, uv, rootData);
                     int c = buffer.AddVertex(end, normal, awn, uv, rootData);
 
                     buffer.AddTriangle(a, b, c);
