@@ -202,7 +202,7 @@ namespace SabaProps.Foliage.Editors
         }
 
         /// <summary>
-        /// The same four species with one parameter block pushed somewhere else.
+        /// Five species with one parameter block pushed somewhere else.
         /// Written to their own assets under the sample folder so the stock
         /// presets keep whatever the user has tuned them to.
         /// </summary>
@@ -351,7 +351,7 @@ namespace SabaProps.Foliage.Editors
             return null;
         }
 
-        /// <summary>Three mixes of the same stock species.</summary>
+        /// <summary>Four mixes of the stock species.</summary>
         private static void BuildMixes(List<FoliageSpecies> stock, List<FoliageField> fields)
         {
             Transform root = CreateRoot(MixRoot);

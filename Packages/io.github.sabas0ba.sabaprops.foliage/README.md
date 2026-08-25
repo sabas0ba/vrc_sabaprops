@@ -40,7 +40,7 @@ VRChat のワールドとアバターでは、**実行時に C# が動きませ�
 
 `Tools > SabaProps > Foliage > Create Sample Scene`
 
-地面・起伏・傾斜・ライト・カメラと 20 の区画からなるデモシーンを生成し、
+地面・起伏・傾斜・ライト・カメラと 28 の区画からなるデモシーンを生成し、
 **ビルドまで済ませた状態**で開きます。保存先は `Assets/SabaProps/Foliage/Samples/FoliageDemo.unity` です。
 
 シーンは 7 m 角の区画を並べた庭のような構成です。隣り合う区画は 1 つだけ条件が違うので、
@@ -55,7 +55,8 @@ VRChat のワールドとアバターでは、**実行時に C# が動きませ�
 | 5 Output Modes | GPU Instanced / Merged Chunks | 出力モードのみ |
 | 6 Seasons | Spring / Summer / Autumn / Winter Snow / Winter Bare | 季節のみ。種・比率・シードは共通 |
 
-合計 9,095 個体、649 Renderer、243,167 三角形、生成に 4.0 秒です。
+合計 11,522 個体、677 Renderer、376,648 三角形です。
+Unity 2022.3.22f1 の検証環境では生成に約 5.3 秒かかりました（生成時間は環境に依存します）。
 
 セクション 6 は同じシードなので、5 区画は同じ位置に生えています。違うのは季節だけです。
 使う Species アセット（`GrassSeed_Autumn` など）は `Assets/SabaProps/Foliage/Species/` に作られます。
