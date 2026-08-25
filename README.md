@@ -122,6 +122,11 @@ https://sabas0ba.github.io/vrc_sabaprops/docs/
 （`.github/scripts/run.sh`）。ホストの `python3` へフォールバックはしません。
 黙って手元の処理系を使うと再現性が失われるためです。
 
+公開は `Build VPM Listing` ワークフローが担当します。リリース発行時のほか、main へ push された変更が
+サイトの素材（`source.json` / `Website/` / パッケージの Markdown・`package.json`・`Documentation~/` /
+`build_docs.py` / `check_docs.py`）に触れていれば起動します。手動で流したいときは Actions から
+`workflow_dispatch` で実行してください。
+
 ### ドキュメントの図
 
 パラメータごとの形状の違いは、実際のメッシュ生成器の出力を並べた図で示しています。

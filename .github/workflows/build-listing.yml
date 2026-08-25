@@ -6,10 +6,20 @@ on:
   push:
     branches:
       - main
+    # This job deploys both halves of the site, so both halves' sources belong
+    # here. The documentation half is generated from the packages themselves --
+    # their Markdown, their manifests and the figures under Documentation~ --
+    # and without those paths a documentation change lands on main and is never
+    # published.
     paths:
       - "source.json"
       - "Website/**"
+      - "Packages/**/*.md"
+      - "Packages/**/package.json"
+      - "Packages/**/Documentation~/**"
       - ".github/scripts/build_listing.py"
+      - ".github/scripts/build_docs.py"
+      - ".github/scripts/check_docs.py"
       - ".github/workflows/build-listing.yml"
 
 permissions:
