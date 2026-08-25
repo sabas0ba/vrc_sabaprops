@@ -39,6 +39,13 @@ namespace SabaProps.Foliage
         /// whether it carries awns.
         /// </summary>
         Grain = 6,
+
+        /// <summary>
+        /// A flat rosette of toothed leaves with a flower or a seed head on a
+        /// bare stalk. A perennial: the leaves stay through the year, and only
+        /// the head comes and goes.
+        /// </summary>
+        Dandelion = 7,
     }
 
     /// <summary>Parameters for <see cref="FoliageSpeciesKind.GrassClump"/>.</summary>
@@ -365,6 +372,73 @@ namespace SabaProps.Foliage
         [Range(0f, 1f)] public float stiffness = 0.5f;
     }
 
+    /// <summary>Parameters for <see cref="FoliageSpeciesKind.Dandelion"/>.</summary>
+    [Serializable]
+    public class DandelionParams
+    {
+        [Header("Rosette")]
+        [Range(1, 12)] public int leafCount = 6;
+
+        [Tooltip("葉 1 枚あたりの分割数。鋸歯は分割の境目に出るので、少ないと歯が見えません。")]
+        [Range(2, 8)] public int segments = 5;
+
+        [Min(0f)] public float clumpRadius = 0.03f;
+
+        [Min(0.01f)] public float height = 0.14f;
+        [Range(0f, 0.9f)] public float heightVariance = 0.35f;
+
+        [Min(0.003f)] public float width = 0.042f;
+        [Range(0f, 0.9f)] public float widthVariance = 0.25f;
+
+        [Tooltip("葉がどれだけ寝るか。たんぽぽの葉は地面に張り付きます。")]
+        [Range(0f, 2.5f)] public float bend = 1.35f;
+
+        [Tooltip("鋸歯の深さ。0 で縁が滑らかになります。")]
+        [Range(0f, 0.8f)] public float toothDepth = 0.4f;
+
+        [Range(0.2f, 3f)] public float taper = 0.85f;
+        [Range(0f, 1f)] public float normalUpBlend = 0.7f;
+
+        public Color rootColor = new Color(0.157f, 0.243f, 0.106f, 1f);
+        public Color tipColor = new Color(0.318f, 0.435f, 0.169f, 1f);
+
+        [Range(0f, 1f)] public float rootOcclusion = 0.32f;
+        [Range(0f, 0.5f)] public float perLeafTintJitter = 0.09f;
+
+        [Header("Stalk")]
+        [Range(0, 4)] public int stalkCount = 1;
+        [Min(0.01f)] public float stalkHeight = 0.24f;
+        [Range(0f, 0.9f)] public float stalkHeightVariance = 0.3f;
+        [Min(0.001f)] public float stalkWidth = 0.007f;
+
+        public Color stalkColor = new Color(0.310f, 0.408f, 0.176f, 1f);
+
+        [Header("Head")]
+        [Tooltip(
+            "ON で綿毛、OFF で花になります。"
+            + "綿毛は放射状の細い三角形なので、花より三角形数は少なく済みます。")]
+        public bool seedHead = false;
+
+        [Min(0.003f)] public float headRadius = 0.026f;
+
+        [Tooltip("花なら小花の枚数、綿毛なら冠毛の本数。")]
+        [Range(6, 64)] public int rayCount = 18;
+
+        public Color flowerColor = new Color(0.973f, 0.784f, 0.169f, 1f);
+        public Color flowerRimColor = new Color(0.937f, 0.639f, 0.106f, 1f);
+
+        [Tooltip("綿毛 1 本の長さ (m)。頭の半径に足されます。")]
+        [Min(0.003f)] public float seedLength = 0.022f;
+
+        public Color seedColor = new Color(0.902f, 0.902f, 0.867f, 1f);
+
+        [Header("Wind")]
+        [Range(0f, 1f)] public float stiffness = 0.75f;
+
+        [Tooltip("花茎の柔らかさ。葉より大きくすると頭だけがそよぎます。")]
+        [Range(0f, 1f)] public float stalkStiffness = 0.9f;
+    }
+
     /// <summary>
     /// A reusable foliage preset: how the mesh is generated and how instances of
     /// it are placed. One species maps to exactly one mesh, and therefore to one
@@ -433,6 +507,7 @@ namespace SabaProps.Foliage
         public SmallFlowerParams smallFlower = new SmallFlowerParams();
         public WeedParams weed = new WeedParams();
         public GrainParams grain = new GrainParams();
+        public DandelionParams dandelion = new DandelionParams();
 
         [Header("Generated (read only)")]
         [Tooltip("ビルド時に自動生成・上書きされるメッシュアセット。")]

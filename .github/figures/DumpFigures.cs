@@ -111,7 +111,7 @@ internal static class DumpFigures
         var figure = new Figure
         {
             Id = "species-overview",
-            Title = "収録している 7 種",
+            Title = "収録している 8 種",
             Caption = "すべて既定パラメータ、同じ縮尺です。ひまわりと葦が草の 2 倍前後の背丈になります。",
         };
 
@@ -122,6 +122,7 @@ internal static class DumpFigures
         AddTile(figure, "Small Flower", FoliageSpeciesKind.SmallFlower);
         AddTile(figure, "Weed", FoliageSpeciesKind.Weed);
         AddTile(figure, "Grain", FoliageSpeciesKind.Grain);
+        AddTile(figure, "Dandelion", FoliageSpeciesKind.Dandelion);
 
         return figure;
     }

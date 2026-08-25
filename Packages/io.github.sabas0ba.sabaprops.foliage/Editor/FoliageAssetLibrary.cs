@@ -187,6 +187,7 @@ namespace SabaProps.Foliage.Editors
             FoliageSpeciesKind.SmallFlower,
             FoliageSpeciesKind.Weed,
             FoliageSpeciesKind.Grain,
+            FoliageSpeciesKind.Dandelion,
         };
 
         /// <summary>Asset file name, and inspector label, for a species kind.</summary>
@@ -200,6 +201,7 @@ namespace SabaProps.Foliage.Editors
                 case FoliageSpeciesKind.SmallFlower: return "SmallFlower";
                 case FoliageSpeciesKind.Weed: return "Weed";
                 case FoliageSpeciesKind.Grain: return "Grain";
+                case FoliageSpeciesKind.Dandelion: return "Dandelion";
                 case FoliageSpeciesKind.GrassClump:
                 default: return "GrassSeed";
             }
@@ -254,6 +256,7 @@ namespace SabaProps.Foliage.Editors
                 case FoliageSpeciesKind.SmallFlower: return "smallFlower";
                 case FoliageSpeciesKind.Weed: return "weed";
                 case FoliageSpeciesKind.Grain: return "grain";
+                case FoliageSpeciesKind.Dandelion: return "dandelion";
                 case FoliageSpeciesKind.GrassClump:
                 default: return "grass";
             }
@@ -359,6 +362,30 @@ namespace SabaProps.Foliage.Editors
                 species.alignToGroundNormal = 0.1f;
                 species.slopeLimits = new Vector2(0f, 18f);
                 species.castShadows = true;
+                return;
+            }
+
+            if (kind == FoliageSpeciesKind.Dandelion)
+            {
+                species.meshSeed = 68;
+
+                // Turns up in lawns and verges the way the weed does, but the
+                // flower is the point, so it is spaced to be seen individually
+                // rather than packed.
+                species.placementWeight = 0.22f;
+                species.minSpacing = 0.16f;
+                species.scaleRange = new Vector2(0.85f, 1.25f);
+                species.maxTilt = 8f;
+                species.alignToGroundNormal = 0.55f;
+                species.slopeLimits = new Vector2(0f, 45f);
+                species.castShadows = false;
+
+                // A perennial, unlike the sunflower and the small flower: the
+                // rosette sits out the year flattened against the ground and
+                // only the head comes and goes. Dormant, never absent.
+                species.seasonPalette.autumn.appearance = SeasonAppearance.Dormant;
+                species.seasonPalette.winterSnow.appearance = SeasonAppearance.Dormant;
+                species.seasonPalette.winterBare.appearance = SeasonAppearance.Dormant;
                 return;
             }
 

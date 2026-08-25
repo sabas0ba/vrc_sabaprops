@@ -48,6 +48,7 @@ internal static class OfflineMeshTests
         Run("the small flower carries its flowers", SmallFlowerCarriesItsFlowers);
         Run("weed leaves are broad and uneven", WeedLeavesAreBroadAndUneven);
         Run("the grain ear bows under its droop", GrainEarBowsUnderItsDroop);
+        Run("the dandelion keeps its rosette when the head goes", DandelionKeepsItsRosetteWhenTheHeadGoes);
 
         Run("degenerate parameters stay finite", DegenerateParametersStayFinite);
         Run("merging preserves counts and moves the wind pivots", MergePreservesChannels);
@@ -737,6 +738,73 @@ internal static class OfflineMeshTests
         return tallest;
     }
 
+    private static void DandelionKeepsItsRosetteWhenTheHeadGoes()
+    {
+        var flower = new FoliageSpecies { kind = FoliageSpeciesKind.Dandelion, meshSeed = 68 };
+
+        var clock = new FoliageSpecies { kind = FoliageSpeciesKind.Dandelion, meshSeed = 68 };
+        clock.dandelion.seedHead = true;
+
+        Mesh inFlower = FoliageMeshBuilder.Build(flower);
+        Mesh inSeed = FoliageMeshBuilder.Build(clock);
+
+        AssertWellFormed(inFlower, "dandelion in flower");
+        AssertWellFormed(inSeed, "dandelion clock");
+
+        // The claim made in the documentation: opaque geometry makes the clock
+        // the cheaper of the two, which is the opposite of what alpha-tested
+        // billboards would cost. Worth pinning, because it is the reason the
+        // seed head is affordable at all.
+        Require(inSeed.triangles.Length < inFlower.triangles.Length,
+            $"the clock costs {inSeed.triangles.Length / 3} triangles against the flower's "
+            + $"{inFlower.triangles.Length / 3}; the documented tradeoff no longer holds");
+
+        // A clock has no front. A ring of spokes would vanish edge-on, so the
+        // pappus directions have to cover a sphere -- checked as "some of them
+        // point below the head as well as above".
+        float top = 0f;
+        float bottom = float.MaxValue;
+
+        var uv0 = new List<Vector2>();
+        inSeed.GetUVs(0, uv0);
+
+        for (int i = 0; i < inSeed.vertexCount; i++)
+        {
+            if (uv0[i].y > 0.99f)
+            {
+                top = Mathf.Max(top, inSeed.vertices[i].y);
+                bottom = Mathf.Min(bottom, inSeed.vertices[i].y);
+            }
+        }
+
+        Require(top - bottom > clock.dandelion.headRadius,
+            "the clock's pappus lies in a plane; it needs to cover a sphere");
+
+        // A perennial: the leaves stay when the head goes. Every other flowering
+        // species here vanishes instead, and the difference is the whole reason
+        // the dandelion is dormant rather than absent in winter.
+        var dormant = new FoliageSpecies
+        {
+            kind = FoliageSpeciesKind.Dandelion,
+            meshSeed = 68,
+            season = FoliageSeason.WinterBare,
+        };
+        dormant.seasonPalette.winterBare.appearance = SeasonAppearance.Dormant;
+
+        Mesh rosette = FoliageMeshBuilder.Build(dormant);
+        AssertWellFormed(rosette, "dormant dandelion");
+
+        Require(rosette.triangles.Length < inFlower.triangles.Length,
+            "a dormant dandelion kept its head");
+
+        int expectedLeafTriangles =
+            flower.dandelion.leafCount * ((flower.dandelion.segments - 1) * 2 + 1);
+
+        Require(rosette.triangles.Length / 3 == expectedLeafTriangles,
+            $"a dormant dandelion has {rosette.triangles.Length / 3} triangles, expected the "
+            + $"{expectedLeafTriangles} of its rosette alone");
+    }
+
     private static void DegenerateParametersStayFinite()
     {
         // Values a user can dial in from the inspector that collapse a basis
@@ -821,6 +889,7 @@ internal static class OfflineMeshTests
         FoliageSpeciesKind.SmallFlower,
         FoliageSpeciesKind.Weed,
         FoliageSpeciesKind.Grain,
+        FoliageSpeciesKind.Dandelion,
     };
 
     private static FoliageSeason[] AllSeasons() => new[]

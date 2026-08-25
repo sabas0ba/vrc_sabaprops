@@ -58,6 +58,9 @@ namespace SabaProps.Foliage.Editors
                 case FoliageSpeciesKind.Grain:
                     return BuildGrainBuffer(species.grain, species.meshSeed);
 
+                case FoliageSpeciesKind.Dandelion:
+                    return BuildDandelionBuffer(species.dandelion, species.meshSeed, dormant);
+
                 case FoliageSpeciesKind.GrassClump:
                 default:
                     return BuildGrassClumpBuffer(species.grass, species.meshSeed);
@@ -101,6 +104,13 @@ namespace SabaProps.Foliage.Editors
             /// leaves grass and reeds generating exactly what they did.
             /// </summary>
             public float Bulge;
+
+            /// <summary>
+            /// Depth of the notches cut into the edge, as a fraction of the
+            /// half-width. 0 leaves a smooth blade, which is what everything
+            /// but the dandelion wants.
+            /// </summary>
+            public float Teeth;
         }
 
         // ------------------------------------------------------------------
@@ -218,19 +228,32 @@ namespace SabaProps.Foliage.Editors
         /// </summary>
         private static float BladeProfile(BladeShape p, float t)
         {
-            float taper = Mathf.Pow(1f - t, p.Taper);
+            float profile = Mathf.Pow(1f - t, p.Taper);
 
-            if (p.Bulge <= 0f)
+            if (p.Bulge > 0f)
             {
-                return taper;
+                // Never reaches zero at the base: a leaf that pinched to nothing
+                // where it meets the crown would be a degenerate quad, and the
+                // tip is already a single converged vertex.
+                float bulge = Mathf.Lerp(0.45f, 1f, Mathf.Sin(Mathf.PI * Mathf.Clamp01(t)));
+                profile = Mathf.Lerp(profile, bulge, Mathf.Clamp01(p.Bulge));
             }
 
-            // Never reaches zero at the base: a leaf that pinched to nothing
-            // where it meets the crown would be a degenerate quad, and the tip
-            // is already a single converged vertex.
-            float bulge = Mathf.Lerp(0.45f, 1f, Mathf.Sin(Mathf.PI * Mathf.Clamp01(t)));
+            if (p.Teeth > 1e-4f)
+            {
+                // Applied last, so it bites into whichever profile the blade
+                // ended up with. Alternate segments pull in, which is all a
+                // strip can do to read as toothed -- the notches land on segment
+                // boundaries, so a blade needs several segments before they are
+                // visible at all.
+                int step = Mathf.RoundToInt(t * Mathf.Max(1, p.Segments));
+                if (step % 2 != 0)
+                {
+                    profile *= 1f - Mathf.Clamp01(p.Teeth);
+                }
+            }
 
-            return Mathf.Lerp(taper, bulge, Mathf.Clamp01(p.Bulge));
+            return profile;
         }
 
         private static Vector3 BladePoint(Vector3 root, Vector3 bendDir, float height, float bend, float t)
@@ -1523,6 +1546,286 @@ namespace SabaProps.Foliage.Editors
 
                     buffer.AddTriangle(a, b, c);
                 }
+            }
+
+            buffer.SeasonWeight = 1f;
+        }
+
+
+        // ------------------------------------------------------------------
+        // Dandelion
+        // ------------------------------------------------------------------
+
+        public static Mesh BuildDandelion(DandelionParams p, int seed)
+        {
+            return BuildDandelionBuffer(p, seed, false).ToMesh();
+        }
+
+        /// <summary>
+        /// A flat rosette of toothed leaves, with a flower or a seed head on a
+        /// bare stalk.
+        /// <para>
+        /// A perennial, unlike the other flowering species here. Its leaves sit
+        /// out the year flattened against the ground, and only the head comes
+        /// and goes -- so <paramref name="dormant"/> removes the stalk and the
+        /// head and leaves the rosette, which is what a lawn in November has in
+        /// it.
+        /// </para>
+        /// </summary>
+        private static BuiltMesh BuildDandelionBuffer(DandelionParams p, int seed, bool dormant)
+        {
+            var rng = new FoliageRandom(seed);
+            var buffer = new FoliageMeshBuffer();
+
+            var leafShape = new BladeShape
+            {
+                Segments = p.segments,
+                Taper = p.taper,
+                NormalUpBlend = p.normalUpBlend,
+                RootOcclusion = p.rootOcclusion,
+                Stiffness = p.stiffness,
+                Bulge = 1f,
+                Teeth = p.toothDepth,
+            };
+
+            int leafCount = Mathf.Max(1, p.leafCount);
+            float tallest = 0f;
+
+            for (int i = 0; i < leafCount; i++)
+            {
+                float angle = i / (float)leafCount * Mathf.PI * 2f + rng.Range(-0.3f, 0.3f);
+
+                float distance = Mathf.Sqrt(rng.Value01()) * p.clumpRadius;
+                var root = new Vector3(Mathf.Cos(angle) * distance, 0f, Mathf.Sin(angle) * distance);
+                var bendDir = new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle));
+
+                float height = p.height * rng.Range(1f - p.heightVariance, 1f + p.heightVariance);
+                float width = p.width * rng.Range(1f - p.widthVariance, 1f + p.widthVariance);
+                float bend = p.bend * height * rng.Range(0.8f, 1.2f);
+                float elementSeed = rng.Value01();
+
+                Color rootColor = JitterColor(p.rootColor, ref rng, p.perLeafTintJitter);
+                Color tipColor = JitterColor(p.tipColor, ref rng, p.perLeafTintJitter);
+
+                AddBlade(buffer, leafShape, root, bendDir, height, width, bend, elementSeed, rootColor, tipColor);
+                tallest = Mathf.Max(tallest, height);
+            }
+
+            if (!dormant)
+            {
+                int stalkCount = Mathf.Max(0, p.stalkCount);
+                for (int i = 0; i < stalkCount; i++)
+                {
+                    float height = p.stalkHeight
+                        * rng.Range(1f - p.stalkHeightVariance, 1f + p.stalkHeightVariance);
+
+                    float angle = rng.Range(0f, Mathf.PI * 2f);
+                    float distance = Mathf.Sqrt(rng.Value01()) * (p.clumpRadius * 0.6f);
+                    var root = new Vector3(Mathf.Cos(angle) * distance, 0f, Mathf.Sin(angle) * distance);
+
+                    float lean = height * rng.Range(0.04f, 0.18f);
+                    var leanDir = new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle));
+
+                    float plantSeed = rng.Value01();
+
+                    Vector3 top = AddDandelionStalk(buffer, p, root, leanDir, height, lean, plantSeed);
+                    AddDandelionHead(buffer, p, ref rng, top, root, plantSeed);
+
+                    tallest = Mathf.Max(tallest, height);
+                }
+            }
+
+            return new BuiltMesh
+            {
+                Buffer = buffer,
+                Name = "SabaFoliage_Dandelion",
+                BoundsPadding = tallest * 0.4f,
+            };
+        }
+
+        /// <summary>The bare stalk, as two crossed strips. Returns its top.</summary>
+        private static Vector3 AddDandelionStalk(
+            FoliageMeshBuffer buffer, DandelionParams p,
+            Vector3 root, Vector3 leanDir, float height, float lean, float plantSeed)
+        {
+            var axes = new[]
+            {
+                new Vector3(-leanDir.z, 0f, leanDir.x),
+                leanDir,
+            };
+
+            var rootData = new Vector4(root.x, root.y, root.z, p.stalkStiffness);
+            const int segments = 2;
+
+            Vector3 Point(float t)
+            {
+                return root + Vector3.up * (height * t) + leanDir * (lean * t * t);
+            }
+
+            foreach (Vector3 side in axes)
+            {
+                int previousLeft = -1;
+                int previousRight = -1;
+
+                for (int s = 0; s <= segments; s++)
+                {
+                    float t = s / (float)segments;
+                    Vector3 centre = Point(t);
+                    float halfWidth = p.stalkWidth * 0.5f * Mathf.Lerp(1f, 0.8f, t);
+
+                    Vector3 tangent = (Vector3.up * height + leanDir * (2f * lean * t)).normalized;
+                    Vector3 normal = Vector3.Cross(side, tangent).normalized;
+
+                    Color color = p.stalkColor;
+                    float occlusion = Mathf.Lerp(0.75f, 1f, t);
+                    color.r *= occlusion;
+                    color.g *= occlusion;
+                    color.b *= occlusion;
+                    color.a = plantSeed;
+
+                    int left = buffer.AddVertex(centre - side * halfWidth, normal, color, new Vector2(0f, t), rootData);
+                    int right = buffer.AddVertex(centre + side * halfWidth, normal, color, new Vector2(1f, t), rootData);
+
+                    if (s > 0)
+                    {
+                        buffer.AddQuad(previousLeft, previousRight, right, left);
+                    }
+
+                    previousLeft = left;
+                    previousRight = right;
+                }
+            }
+
+            return Point(1f);
+        }
+
+        /// <summary>
+        /// The flower, or the seed head that replaces it.
+        /// <para>
+        /// The seed head is the cheaper of the two, which is the opposite of
+        /// what an alpha-tested one would cost: each pappus is a single thin
+        /// triangle pointing out of the centre, and a sphere of them reads as a
+        /// clock from any angle. The flower needs a disc as well as its florets.
+        /// </para>
+        /// <para>
+        /// Every vertex sits at the top of the bend mask and carries the
+        /// stalk's stiffness, so the head rides the stalk as one piece.
+        /// </para>
+        /// </summary>
+        private static void AddDandelionHead(
+            FoliageMeshBuffer buffer, DandelionParams p, ref FoliageRandom rng,
+            Vector3 centre, Vector3 root, float plantSeed)
+        {
+            var headData = new Vector4(root.x, root.y, root.z, p.stalkStiffness);
+            var uv = new Vector2(0.5f, 1f);
+            int rays = Mathf.Max(6, p.rayCount);
+
+            if (p.seedHead)
+            {
+                // Already almost white, so a season has little to do to it.
+                buffer.SeasonWeight = 0.4f;
+
+                Color seed = p.seedColor;
+                seed.a = plantSeed;
+
+                Color core = p.stalkColor;
+                core.a = plantSeed;
+
+                float reach = p.headRadius + p.seedLength;
+
+                for (int i = 0; i < rays; i++)
+                {
+                    // Spread over a sphere rather than a ring: a clock has no
+                    // front, and a ring of spokes disappears when seen edge-on.
+                    // The golden angle against a linear sweep in height is the
+                    // cheapest even covering there is.
+                    float y = 1f - 2f * (i + 0.5f) / rays;
+                    float radius = Mathf.Sqrt(Mathf.Max(0f, 1f - y * y));
+                    float theta = i * 2.399963f;
+
+                    var direction = new Vector3(
+                        Mathf.Cos(theta) * radius,
+                        y,
+                        Mathf.Sin(theta) * radius);
+
+                    Vector3 tip = centre + direction * reach;
+
+                    Vector3 across = Vector3.Cross(direction, Vector3.up);
+                    if (across.sqrMagnitude < 1e-6f)
+                    {
+                        across = Vector3.right;
+                    }
+
+                    across = across.normalized * (p.seedLength * 0.28f);
+
+                    Vector3 normal = Vector3.Cross(across.normalized, direction).normalized;
+                    if (normal.sqrMagnitude < 1e-6f)
+                    {
+                        normal = Vector3.up;
+                    }
+
+                    // The wide end points outwards: a pappus is a tuft carried
+                    // at the far end of the seed, not a spike growing from the
+                    // middle.
+                    int apex = buffer.AddVertex(centre, normal, core, uv, headData);
+                    int a = buffer.AddVertex(tip - across, normal, seed, uv, headData);
+                    int b = buffer.AddVertex(tip + across, normal, seed, uv, headData);
+
+                    buffer.AddTriangle(apex, a, b);
+                }
+
+                buffer.SeasonWeight = 1f;
+                return;
+            }
+
+            // --- flower -------------------------------------------------------
+            // The yellow is what the plant is recognised by, so it resists the
+            // season as hard as any other petal.
+            buffer.SeasonWeight = 0.3f;
+
+            Color petal = p.flowerColor;
+            Color rim = p.flowerRimColor;
+            petal.a = plantSeed;
+            rim.a = plantSeed;
+
+            // Faces up, always. A dandelion flower is a flat disc held level,
+            // and tilting it would only make it read as something else.
+            Vector3 faceNormal = Vector3.up;
+            Vector3 tangentA = Vector3.right;
+            Vector3 tangentB = Vector3.forward;
+
+            int centreIndex = buffer.AddVertex(
+                centre + faceNormal * (p.headRadius * 0.12f), faceNormal, petal, uv, headData);
+
+            var ring = new int[rays];
+            for (int i = 0; i < rays; i++)
+            {
+                float angle = i / (float)rays * Mathf.PI * 2f;
+                Vector3 offset = (tangentA * Mathf.Cos(angle) + tangentB * Mathf.Sin(angle)) * p.headRadius;
+
+                ring[i] = buffer.AddVertex(centre + offset, faceNormal, rim, uv, headData);
+            }
+
+            for (int i = 0; i < rays; i++)
+            {
+                buffer.AddTriangle(centreIndex, ring[i], ring[(i + 1) % rays]);
+            }
+
+            // Ray florets: a fringe of narrow tongues past the disc, which is
+            // what gives the outline its raggedness at this size.
+            for (int i = 0; i < rays; i++)
+            {
+                float angle = i / (float)rays * Mathf.PI * 2f + rng.Range(-0.05f, 0.05f);
+                Vector3 radial = (tangentA * Mathf.Cos(angle) + tangentB * Mathf.Sin(angle)).normalized;
+                Vector3 across = Vector3.Cross(faceNormal, radial).normalized * (p.headRadius * 0.16f);
+
+                Vector3 tip = centre + radial * (p.headRadius * rng.Range(1.25f, 1.5f));
+
+                int a = buffer.AddVertex(centre + radial * (p.headRadius * 0.9f) - across, faceNormal, petal, uv, headData);
+                int b = buffer.AddVertex(centre + radial * (p.headRadius * 0.9f) + across, faceNormal, petal, uv, headData);
+                int c = buffer.AddVertex(tip, faceNormal, rim, uv, headData);
+
+                buffer.AddTriangle(a, b, c);
             }
 
             buffer.SeasonWeight = 1f;
