@@ -115,7 +115,7 @@ internal static class DumpFigures
             Id = "foliage-demo-overview",
             Title = "8 種を混植した FoliageDemo",
             Caption =
-                "実際の生成器から作った 115 株を決定論的に配置し、"
+                "実際の生成器から作った 320 株を決定論的に配置し、"
                 + "シェーダーと同じ風の式を固定時刻で評価したオフラインレンダリングです。",
             Layout = "Hero",
             Tiles = new List<Tile>
@@ -153,7 +153,7 @@ internal static class DumpFigures
         var buffer = new FoliageMeshBuffer();
         var random = new FoliageRandom(30403);
 
-        for (int i = 0; i < 115; i++)
+        for (int i = 0; i < 320; i++)
         {
             float choice = random.Value01();
             FoliageSpeciesKind kind;

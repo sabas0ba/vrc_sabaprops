@@ -42,7 +42,7 @@
 
 ただし、シェーダーの挙動そのものを図にしているものが 3 つあります。いずれも規約として文書化済みの入力だけを使っています。
 
-- `foliage-demo-overview` — 115 株を決定論的に配置し、ワールド座標 hash による色差と wind deformation を固定時刻で評価した overview。ライティングと地面はオフライン近似です
+- `foliage-demo-overview` — 320 株を決定論的に配置し、ワールド座標 hash による色差と wind deformation を固定時刻で評価した overview。ライティングと地面はオフライン近似です
 - `distance-shrink` — 頂点を `UV3.xyz`（要素の根元）へ寄せる縮退。シェーダーと同じ `lerp` を `DumpFigures.cs` で適用しています
 - `mesh-channels` — `UV0.y` と `UV3.w` をそのまま色に割り当てたもの
 
