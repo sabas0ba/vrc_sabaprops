@@ -28,6 +28,7 @@ internal static class OfflineMeshTests
         Run("FoliageRandom diverges for neighbouring seeds", NeighbouringSeedsDiverge);
 
         Run("every species builds a well-formed mesh", EverySpeciesIsWellFormed);
+        Run("legacy assets initialize new parameter blocks", LegacyAssetsInitializeNewParameterBlocks);
         Run("every species is deterministic for a seed", EverySpeciesIsDeterministic);
         Run("mesh seeds actually change the geometry", SeedsChangeGeometry);
 
@@ -117,6 +118,32 @@ internal static class OfflineMeshTests
             int triangles = mesh.triangles.Length / 3;
             Require(triangles < 400, $"{kind} costs {triangles} triangles; mass placement needs it cheap");
         }
+    }
+
+    private static void LegacyAssetsInitializeNewParameterBlocks()
+    {
+        // Unity leaves newly added serializable reference fields null when it
+        // loads an asset written before those fields existed. Switching such a
+        // 0.2 asset to a 0.3 species must create the new block before dispatch.
+        var smallFlower = new FoliageSpecies { kind = FoliageSpeciesKind.SmallFlower };
+        smallFlower.smallFlower = null;
+        AssertWellFormed(FoliageMeshBuilder.Build(smallFlower), "upgraded small flower");
+        Require(smallFlower.smallFlower != null, "small flower parameters stayed null");
+
+        var weed = new FoliageSpecies { kind = FoliageSpeciesKind.Weed };
+        weed.weed = null;
+        AssertWellFormed(FoliageMeshBuilder.Build(weed), "upgraded weed");
+        Require(weed.weed != null, "weed parameters stayed null");
+
+        var grain = new FoliageSpecies { kind = FoliageSpeciesKind.Grain };
+        grain.grain = null;
+        AssertWellFormed(FoliageMeshBuilder.Build(grain), "upgraded grain");
+        Require(grain.grain != null, "grain parameters stayed null");
+
+        var dandelion = new FoliageSpecies { kind = FoliageSpeciesKind.Dandelion };
+        dandelion.dandelion = null;
+        AssertWellFormed(FoliageMeshBuilder.Build(dandelion), "upgraded dandelion");
+        Require(dandelion.dandelion != null, "dandelion parameters stayed null");
     }
 
     private static void EverySpeciesIsDeterministic()

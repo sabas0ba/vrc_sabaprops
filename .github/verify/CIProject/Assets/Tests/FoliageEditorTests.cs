@@ -322,6 +322,46 @@ namespace SabaProps.Foliage.CITests
         }
 
         [Test]
+        public void UpgradedAssetsInitializeNewSpeciesParameterBlocks()
+        {
+            var species = ScriptableObject.CreateInstance<FoliageSpecies>();
+            try
+            {
+                species.kind = FoliageSpeciesKind.SmallFlower;
+                species.smallFlower = null;
+                Mesh smallFlower = FoliageMeshBuilder.Build(species);
+                AssertMeshIsWellFormed(smallFlower, "upgraded small flower");
+                Assert.IsNotNull(species.smallFlower);
+                Object.DestroyImmediate(smallFlower);
+
+                species.kind = FoliageSpeciesKind.Weed;
+                species.weed = null;
+                Mesh weed = FoliageMeshBuilder.Build(species);
+                AssertMeshIsWellFormed(weed, "upgraded weed");
+                Assert.IsNotNull(species.weed);
+                Object.DestroyImmediate(weed);
+
+                species.kind = FoliageSpeciesKind.Grain;
+                species.grain = null;
+                Mesh grain = FoliageMeshBuilder.Build(species);
+                AssertMeshIsWellFormed(grain, "upgraded grain");
+                Assert.IsNotNull(species.grain);
+                Object.DestroyImmediate(grain);
+
+                species.kind = FoliageSpeciesKind.Dandelion;
+                species.dandelion = null;
+                Mesh dandelion = FoliageMeshBuilder.Build(species);
+                AssertMeshIsWellFormed(dandelion, "upgraded dandelion");
+                Assert.IsNotNull(species.dandelion);
+                Object.DestroyImmediate(dandelion);
+            }
+            finally
+            {
+                Object.DestroyImmediate(species);
+            }
+        }
+
+        [Test]
         public void SingleStemmedSpeciesShareOneWindPhase()
         {
             // A grass or reed clump is separate blades that may sway out of step.

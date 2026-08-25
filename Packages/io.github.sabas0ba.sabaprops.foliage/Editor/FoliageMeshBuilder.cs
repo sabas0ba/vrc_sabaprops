@@ -38,6 +38,9 @@ namespace SabaProps.Foliage.Editors
             // disappear.
             bool dormant = species.ActiveAppearance != SeasonAppearance.Full;
 
+            // Unity leaves serializable reference fields added in a later
+            // package version null on existing assets. The four 0.3 parameter
+            // blocks are therefore initialized at their first use.
             switch (species.kind)
             {
                 case FoliageSpeciesKind.Sunflower:
@@ -50,15 +53,31 @@ namespace SabaProps.Foliage.Editors
                     return BuildReedBuffer(species.reed, species.meshSeed);
 
                 case FoliageSpeciesKind.SmallFlower:
+                    if (species.smallFlower == null)
+                    {
+                        species.smallFlower = new SmallFlowerParams();
+                    }
                     return BuildSmallFlowerBuffer(species.smallFlower, species.meshSeed, dormant);
 
                 case FoliageSpeciesKind.Weed:
+                    if (species.weed == null)
+                    {
+                        species.weed = new WeedParams();
+                    }
                     return BuildWeedBuffer(species.weed, species.meshSeed);
 
                 case FoliageSpeciesKind.Grain:
+                    if (species.grain == null)
+                    {
+                        species.grain = new GrainParams();
+                    }
                     return BuildGrainBuffer(species.grain, species.meshSeed);
 
                 case FoliageSpeciesKind.Dandelion:
+                    if (species.dandelion == null)
+                    {
+                        species.dandelion = new DandelionParams();
+                    }
                     return BuildDandelionBuffer(species.dandelion, species.meshSeed, dormant);
 
                 case FoliageSpeciesKind.GrassClump:
