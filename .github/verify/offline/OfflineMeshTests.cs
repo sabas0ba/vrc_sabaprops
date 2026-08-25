@@ -588,11 +588,12 @@ internal static class OfflineMeshTests
             $"weed leaves ({WidestSpan(weed):0.000} m) are no broader than grass blades "
             + $"({WidestSpan(grass):0.000} m)");
 
-        // Uneven length is the other half. Measured as the spread of how far
-        // each vertex reaches from the crown, which needs no knowledge of which
-        // vertices belong to which leaf.
-        Require(ReachSpread(weed) > ReachSpread(grass),
-            "weed leaves come out as even in length as grass blades");
+        // Uneven length is the other half, measured as the longest blade
+        // against the shortest so that the answer does not depend on how
+        // tall the species is.
+        Require(ReachRatio(weed) > ReachRatio(grass),
+            $"weed leaves are as even in length as grass blades "
+            + $"({ReachRatio(weed):0.00}x against {ReachRatio(grass):0.00}x longest to shortest)");
     }
 
     /// <summary>
@@ -628,8 +629,17 @@ internal static class OfflineMeshTests
         return widest;
     }
 
-    /// <summary>Difference between the furthest and the nearest vertex reach.</summary>
-    private static float ReachSpread(Mesh mesh)
+    /// <summary>
+    /// How far the longest blade reaches compared with the shortest.
+    /// <para>
+    /// A ratio rather than a difference, because the species being compared are
+    /// different sizes: grass stands twice as tall as a weed leaf, so its tips
+    /// are further apart in metres while being no less even. What is being
+    /// asked is whether the blades in one plant match each other, and that
+    /// question has no units.
+    /// </para>
+    /// </summary>
+    private static float ReachRatio(Mesh mesh)
     {
         float nearest = float.MaxValue;
         float furthest = 0f;
@@ -650,7 +660,7 @@ internal static class OfflineMeshTests
             furthest = Mathf.Max(furthest, reach);
         }
 
-        return nearest < float.MaxValue ? furthest - nearest : 0f;
+        return nearest > 1e-4f ? furthest / nearest : 1f;
     }
 
     private static void DegenerateParametersStayFinite()
