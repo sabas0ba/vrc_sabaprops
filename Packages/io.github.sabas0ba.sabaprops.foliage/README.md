@@ -7,7 +7,7 @@ GPU インスタンシング前提の、軽量な草木スキャッタリング�
 - ワールド座標ハッシュによる個体差なので、per-instance データの送信が一切不要です
 - Built-in Render Pipeline / Unity 2022.3 / VRChat ワールド・アバターの両方で使えます
 
-![草叢・クローバー・ひまわり・葦を同じ縮尺で並べた比較図](Documentation~/images/generated/species-overview.svg)
+![草叢・クローバー・ひまわり・葦・小花を同じ縮尺で並べた比較図](Documentation~/images/generated/species-overview.svg)
 
 図はすべて実際の生成器の出力です。パラメータを変えると形状がどう動くかは [パラメータと見た目の対応](Documentation~/parameters.md) に一覧があります。
 

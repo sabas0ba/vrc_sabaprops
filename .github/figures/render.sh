@@ -41,58 +41,27 @@ esac
 log() { printf '\n\033[1m== %s\033[0m\n' "$1"; }
 fail() { printf '\033[31merror: %s\033[0m\n' "$1" >&2; exit 1; }
 
-command -v dotnet >/dev/null 2>&1 || fail "dotnet is required but not installed"
-
 mkdir -p "$WORK"
-
-# ---------------------------------------------------------------------------
-log "Building the geometry dump"
-# ---------------------------------------------------------------------------
-
-SDK_ROOT="$(dotnet --list-sdks | tail -1 | sed -E 's/^[^ ]+ \[(.*)\]$/\1/')"
-[ -d "$SDK_ROOT" ] || fail "could not determine the .NET SDK root from 'dotnet --list-sdks'"
-
-CSC_DLL="$(find "$SDK_ROOT" -name csc.dll -path '*bincore*' 2>/dev/null | head -1)"
-[ -n "$CSC_DLL" ] || fail "could not locate the Roslyn compiler (csc.dll) under $SDK_ROOT"
-
-# Same arrangement as the offline mesh checks in ../verify/verify.sh: the shim
-# replaces UnityEngine entirely, so this targets the installed runtime rather
-# than the net35 Unity references.
-RUNTIME_DIR="$(dotnet --list-runtimes \
-    | awk '/^Microsoft.NETCore.App /{ gsub(/[][]/, "", $3); dir=$3 "/" $2 } END { print dir }')"
-[ -d "$RUNTIME_DIR" ] || fail "could not locate a Microsoft.NETCore.App shared framework"
-
-RUNTIME_ARGS=()
-for name in System.Runtime System.Private.CoreLib System.Collections System.Console System.Linq; do
-    RUNTIME_ARGS+=(-r:"$RUNTIME_DIR/$name.dll")
-done
-
-dotnet "$CSC_DLL" -nologo -langversion:9.0 -target:exe -nostdlib+ -noconfig \
-    "${RUNTIME_ARGS[@]}" \
-    -out:"$WORK/DumpFigures.dll" \
-    "$REPO/.github/verify/offline/UnityEngineShim.cs" \
-    "$HERE/DumpFigures.cs" \
-    "$PACKAGE/Runtime/FoliageRandom.cs" \
-    "$PACKAGE/Runtime/FoliageSeason.cs" \
-    "$PACKAGE/Runtime/FoliageSpecies.cs" \
-    "$PACKAGE/Editor/FoliageMeshBuffer.cs" \
-    "$PACKAGE/Editor/FoliageMeshBuilder.cs" \
-    "$PACKAGE/Editor/FoliageSeasonPass.cs"
-
-cat > "$WORK/DumpFigures.runtimeconfig.json" <<'JSON'
-{
-  "runtimeOptions": {
-    "tfm": "net8.0",
-    "framework": { "name": "Microsoft.NETCore.App", "version": "8.0.0" },
-    "rollForward": "latestMajor"
-  }
-}
-JSON
 
 # ---------------------------------------------------------------------------
 log "Running the mesh generators"
 # ---------------------------------------------------------------------------
-dotnet "$WORK/DumpFigures.dll" > "$WORK/figures.json" || fail "the geometry dump failed"
+# The C# half lives in dump.sh so that it can run either here or inside the
+# pinned SDK container without changing. CI has a dotnet and takes the first
+# path; a contributor with only a container engine takes the second and gets
+# the same compiler, because the image is pinned by digest.
+if command -v dotnet >/dev/null 2>&1; then
+    "$HERE/dump.sh" "$REPO" "$WORK"
+else
+    case "$WORK" in
+        "$REPO"/*) ;;
+        *) fail "VERIFY_WORK_DIR must be inside the repository when dotnet is not installed, so the container can see it" ;;
+    esac
+
+    "$REPO/.github/scripts/dotnet.sh" \
+        bash /repo/.github/figures/dump.sh /repo "/repo/${WORK#"$REPO"/}"
+fi
+
 echo "ok: $(wc -c < "$WORK/figures.json") bytes"
 
 # ---------------------------------------------------------------------------
