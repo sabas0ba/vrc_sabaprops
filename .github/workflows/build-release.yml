@@ -118,7 +118,12 @@ jobs:
           set -euo pipefail
           mkdir -p build
           # package.json must sit at the root of the archive for VCC.
-          ( cd "Packages/$PACKAGE" && zip -q -r "$GITHUB_WORKSPACE/build/$ZIP_NAME" . -x '.git/*' '.gitignore' )
+          #
+          # Documentation~/images is excluded: the figures are for the README on
+          # GitHub and for the documentation site, and shipping them would put
+          # them in every project that installs the package for nothing.
+          ( cd "Packages/$PACKAGE" && zip -q -r "$GITHUB_WORKSPACE/build/$ZIP_NAME" . \
+              -x '.git/*' '.gitignore' 'Documentation~/images/*' )
           unzip -l "build/$ZIP_NAME" | head -n 40
 
       - name: Create or update release

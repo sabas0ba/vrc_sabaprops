@@ -6,6 +6,10 @@ hand-written converter is not a crash, it is a page that renders but has raw
 syntax sitting in the text, or a link that quietly points nowhere. Both look
 fine to the build and wrong to a reader, so they are checked here instead.
 
+Figures fail the same quiet way: an image whose file was never copied into the
+site is a broken icon on the page and a clean exit here, so every <img> is
+resolved as well, and every one of them has to carry alt text.
+
 Run after build_docs.py, against the same output directory.
 """
 
@@ -22,6 +26,7 @@ from html.parser import HTMLParser
 # survives into visible text, either the document used something outside the
 # supported subset or the renderer has a hole.
 LEFTOVERS = [
+    (re.compile(r"!\[[^\]]*\]\([^)]+\)"), "unrendered image"),
     (re.compile(r"\*\*"), "unrendered bold (**)"),
     (re.compile(r"^\s*\|.*\|\s*$", re.MULTILINE), "unrendered table row"),
     (re.compile(r"^\s*#{1,6}\s"), "unrendered heading"),
@@ -39,6 +44,7 @@ class Extractor(HTMLParser):
         self.text: list[str] = []
         self.links: list[str] = []
         self.stylesheets: list[str] = []
+        self.images: list[tuple[str, str]] = []
         self._depth_code = 0
 
     def handle_starttag(self, tag, attrs):
@@ -48,6 +54,8 @@ class Extractor(HTMLParser):
             self._depth_code += 1
         elif tag == "a" and attributes.get("href"):
             self.links.append(attributes["href"])
+        elif tag == "img":
+            self.images.append((attributes.get("src", ""), attributes.get("alt", "")))
         elif tag == "link" and attributes.get("rel") == "stylesheet":
             self.stylesheets.append(attributes.get("href", ""))
 
@@ -104,6 +112,18 @@ def main() -> int:
                 if problem:
                     problems.append(f"{relative}: {problem}")
 
+            for src, alt in extractor.images:
+                if not src:
+                    problems.append(f"{relative}: image without a source")
+                    continue
+
+                problem = check_link(src, path, out)
+                if problem:
+                    problems.append(f"{relative}: {problem.replace('link', 'image')}")
+
+                if not alt.strip():
+                    problems.append(f"{relative}: image without alt text: {src!r}")
+
     if not pages:
         problems.append("no pages were generated")
 
@@ -120,6 +140,17 @@ def main() -> int:
                 continue
             if html.escape(package_id) not in listed:
                 problems.append(f"docs/index.html does not link {package_id}")
+
+            # The listing page links every package card straight at this path,
+            # and it is only written when the package has a README.md. A
+            # package that has a CHANGELOG or Documentation~ but no README
+            # still produces a site the index can link, so nothing else here
+            # would notice the card going nowhere.
+            if not os.path.isfile(os.path.join(docs, package_id, "index.html")):
+                problems.append(
+                    f"docs/{package_id}/index.html is missing: the package needs a README.md, "
+                    "which is what the listing page's card links to"
+                )
 
     if problems:
         for problem in problems:

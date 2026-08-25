@@ -11,8 +11,9 @@
 #   * mesh generation RUNS, and the geometry it produces holds up: topology,
 #     finiteness, determinism, the UV3/COLOR channels the shader reads, and the
 #     wind-joint rules that stop a plant coming apart. See offline/.
-#   * the documentation site renders, with no raw Markdown left in the text
-#     and no broken internal links
+#   * the documentation figures still match what the generators produce, and
+#     the site renders, with no raw Markdown left in the text, no broken
+#     internal links and no missing images
 #
 # What this does NOT prove:
 #   * UnityEditor API signatures. UnityEditor.dll is not redistributable, so
@@ -136,6 +137,25 @@ csc "${COMMON[@]}" "${BCL[@]}" "${UNITY_ARGS[@]}" \
 echo "ok: ${#EDITOR_SOURCES[@]} file(s)"
 
 # ---------------------------------------------------------------------------
+log "Compiling the documentation capture tool"
+# ---------------------------------------------------------------------------
+# .github/figures/capture/ is not shipped, so nothing else would ever compile
+# it -- and it is exactly the kind of code that rots quietly, because it is run
+# by hand every few releases. Compiled here against the same real UnityEngine
+# references as the package.
+CAPTURE="$REPO/.github/figures/capture/FoliageDocsCapture.cs"
+if [ -f "$CAPTURE" ]; then
+    csc "${COMMON[@]}" "${BCL[@]}" "${UNITY_ARGS[@]}" \
+        -r:"$OUT/SabaProps.Foliage.Runtime.dll" \
+        -r:"$OUT/SabaProps.Foliage.Editor.dll" \
+        -r:"$OUT/UnityEditor.dll" \
+        -out:"$OUT/SabaProps.Foliage.DocsCapture.dll" "$CAPTURE"
+    echo "ok"
+else
+    echo "skipped: no capture tool"
+fi
+
+# ---------------------------------------------------------------------------
 log "Compiling CI EditMode tests"
 # ---------------------------------------------------------------------------
 # These run for real inside Unity via .github/workflows/unity.yml. Compiling
@@ -243,6 +263,15 @@ cat > "$OFFLINE_OUT/OfflineMeshTests.runtimeconfig.json" <<'JSON'
 JSON
 
 dotnet "$OFFLINE_OUT/OfflineMeshTests.dll" || fail "offline mesh checks failed"
+
+# ---------------------------------------------------------------------------
+log "Checking the documentation figures"
+# ---------------------------------------------------------------------------
+# The figures in the documentation are drawn from the output of the generators
+# above, and committed. Regenerating them here is what stops the two from
+# drifting: a change to a mesh generator that nobody re-rendered fails the pull
+# request instead of leaving the documentation showing last month's shapes.
+"$REPO/.github/figures/render.sh" --check
 
 # ---------------------------------------------------------------------------
 log "Rendering documentation"

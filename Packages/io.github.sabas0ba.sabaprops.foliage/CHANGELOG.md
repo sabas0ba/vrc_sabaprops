@@ -26,12 +26,16 @@
   - `Wind Scale` と `Droop`: 水分の抜けた株は風でしなりにくく、根元から先端へ向けて倒れます。
     `Droop` は横へずらすのではなく根元まわりの回転なので茎の長さが変わらず、法線も同じ回転で追従します。
     倒す量は風と同じ bend マスクから決まるため、接合部の関係は崩れません
-- サンプルシーンにセクション 6 `Seasons` を追加しました。種・比率・シードが共通で、季節だけが違う 4 区画です
+- サンプルシーンにセクション 6 `Seasons` を追加しました。種・比率・シードが共通で、季節だけが違う 5 区画です
 - [拡充ロードマップ](Documentation~/roadmap.md): 種と樹木、ツタまでの計画と、その過程での設計上の線引きを記録しています
 - `Tools/SabaProps/Foliage/Import VRChat Demo Movement`: デモ用の移動設定（歩行 4 m/s・走行 9 m/s・ジャンプ可）を
   取り込みます。VRChat の既定は歩行 2 m/s・ジャンプ不可で、これらは `VRCSceneDescriptor` の項目ではなく
   `VRCPlayerApi` を実行時に呼ぶ仕様のため Udon が必要です。スクリプトは `Samples~` に置き、
   取り込みを任意の操作にしています。取り込まない限り UdonSharp への依存は発生しません
+- ドキュメントにレンダリング図を追加しました。パラメータごとの形状の違いを、実際のメッシュ生成器の出力を並べた図で示します
+  - 図は `Documentation~/images/generated/` にあり、`.github/figures/render.sh` が生成します。CI が生成結果との一致を検査するため、生成器を変えて図を作り直し忘れると Pull Request が落ちます
+  - 一覧は `Documentation~/parameters.md`（ドキュメントサイトの `parameters` ページ）にまとまっています
+  - 図はパッケージの zip には含まれません。導入したプロジェクトの容量は増えません
 
 ### Changed
 

@@ -49,6 +49,7 @@ VRChat Worlds SDK が入っているプロジェクトでは `VRCSceneDescriptor
 ├── source.json                     # VPM リスティングのメタ情報
 └── .github/
     ├── scripts/build_listing.py    # Releases → index.json 生成
+    ├── figures/                    # ドキュメントの図の生成器（下記）
     └── workflows/
         ├── build-release.yml       # タグを打つと zip を作って Release を発行
         └── build-listing.yml       # Release 発行時にリスティングを再生成して Pages へ
@@ -121,14 +122,41 @@ https://sabas0ba.github.io/vrc_sabaprops/docs/
 （`.github/scripts/run.sh`）。ホストの `python3` へフォールバックはしません。
 黙って手元の処理系を使うと再現性が失われるためです。
 
+公開は `Build VPM Listing` ワークフローが担当します。リリース発行時のほか、main へ push された変更が
+サイトの素材（`source.json` / `Website/` / パッケージの Markdown・`package.json`・`Documentation~/` /
+`build_docs.py` / `check_docs.py`）に触れていれば起動します。手動で流したいときは Actions から
+`workflow_dispatch` で実行してください。
+
+### ドキュメントの図
+
+パラメータごとの形状の違いは、実際のメッシュ生成器の出力を並べた図で示しています。
+
+```bash
+./.github/figures/render.sh            # 図を生成して Documentation~/images/generated/ に置く
+./.github/figures/render.sh --check    # 生成結果と committed の図の一致を検査する（CI と同じ）
+```
+
+図は 2 段で作ります。パッケージのメッシュ生成器を `.github/verify/offline/` のシムの上で実行して形状を書き出し、
+それを Python が SVG に描きます。図に出るのは常に実際の生成結果で、図のために描いた形ではありません。
+`Verify` ワークフローが `--check` を実行するため、生成器を変えて図を作り直し忘れると PR が落ちます。
+
+実際の見た目（風・透過光・影・数千個体）は実物の Unity でしか撮れないので、そちらは
+`.github/figures/capture/` の Editor スクリプトで手元から撮ってコミットします。詳細は
+[`.github/figures/README.md`](.github/figures/README.md) を参照してください。
+
+図はパッケージの zip には含めていません（`build-release.yml` が `Documentation~/images/*` を除外します）。
+VCC 利用者の取得サイズは増えません。
+
+### Markdown 変換
+
 Markdown 変換は `build_listing.py` と同じ方針で自前実装です。CI で動くものの可動部を増やさないためで、
 対応しているのはリポジトリ内の文書が実際に使っている構文（見出し・段落・箇条書き・表・コードブロック・
 引用・水平線・強調・リンク）に限ります。
 
 手書きの変換器が壊れるときはクラッシュではなく「見た目は出るが本文に生の記法が残る」「リンクが黙って
 どこにも行かない」という形になるため、`check_docs.py` がその 2 つを検査します。
-生成物のテキストノードに未変換の記法が残っていないか、サイト内リンクが実在するか、
-全パッケージが索引から辿れるかを確認し、1 つでも該当すれば非ゼロで終了します。
+生成物のテキストノードに未変換の記法が残っていないか、サイト内リンクと画像が実在するか、
+すべての画像に alt があるか、全パッケージが索引から辿れるかを確認し、1 つでも該当すれば非ゼロで終了します。
 `Verify` ワークフローでも実行しているので、文書の不備は公開時ではなく PR で落ちます。
 
 ---
@@ -153,6 +181,8 @@ Markdown 変換は `build_listing.py` と同じ方針で自前実装です。CI 
 | Editor アセンブリ | コンパイル。UnityEngine の API 使用は実物に対して検証されます |
 | シェーダー | `shader_feature` の全 4 組み合わせで HLSL として型チェック |
 | **メッシュ生成** | **実際に実行**して形状を検査（下記） |
+| **ドキュメントの図** | 生成器を実行し直し、committed の図と一致するかを検査 |
+| ドキュメント | サイトの生成、未変換の記法・壊れたリンク・存在しない画像の検出 |
 | マニフェスト | `package.json` の必須項目、フォルダ名との一致、CHANGELOG のバージョン記載、`source.json` への登録、`.meta` の欠落 |
 
 #### メッシュ生成の実行検査

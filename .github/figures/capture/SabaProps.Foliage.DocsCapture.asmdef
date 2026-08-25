@@ -1,0 +1,12 @@
+{
+  "name": "SabaProps.Foliage.DocsCapture",
+  "rootNamespace": "SabaProps.Foliage.DocsCapture",
+  "references": [
+    "SabaProps.Foliage.Runtime",
+    "SabaProps.Foliage.Editor"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "autoReferenced": true
+}
