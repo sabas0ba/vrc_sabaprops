@@ -9,6 +9,10 @@ Sources are the Markdown already in the repository -- each package's README,
 CHANGELOG and Documentation~ folder. Nothing is written twice: the docs on
 GitHub and the docs on the site are the same files.
 
+Images are part of that subset: the figures under a package's
+Documentation~/images are copied into the site next to the page that uses them,
+so a document reads the same on GitHub and here.
+
 Markdown is converted here rather than with a library, for the same reason
 build_listing.py talks to the GitHub API directly: this runs in CI and the
 fewer third-party moving parts it has, the fewer ways it breaks. The subset is
@@ -26,19 +30,28 @@ import re
 import shutil
 import sys
 from dataclasses import dataclass, field
-from typing import Iterable
+from typing import Callable, Iterable
 
 # ---------------------------------------------------------------------------
 # Inline markdown
 # ---------------------------------------------------------------------------
 
 _CODE = re.compile(r"`([^`]+)`")
+_IMAGE = re.compile(r"!\[([^\]]*)\]\(([^)\s]+)\)")
 _BOLD = re.compile(r"\*\*([^*]+)\*\*")
 _LINK = re.compile(r"\[([^\]]+)\]\(([^)\s]+)\)")
 _AUTOLINK = re.compile(r"<(https?://[^>\s]+)>")
 
 
-def render_inline(text: str, link_rewriter) -> str:
+@dataclass
+class Rewriter:
+    """Where a link points, and where an image the page uses ends up."""
+
+    link: Callable[[str], str]
+    image: Callable[[str], str]
+
+
+def render_inline(text: str, links: Rewriter) -> str:
     """Escape a line of Markdown and apply the inline constructs."""
     placeholders: list[str] = []
 
@@ -52,11 +65,21 @@ def render_inline(text: str, link_rewriter) -> str:
 
     text = _CODE.sub(code, text)
 
+    # Images before links: the two spellings differ only by the leading "!".
+    def image(match: re.Match) -> str:
+        alt, target = match.group(1), match.group(2)
+        return stash(
+            f'<img src="{html.escape(links.image(target), quote=True)}" '
+            f'alt="{html.escape(alt, quote=True)}" loading="lazy">'
+        )
+
+    text = _IMAGE.sub(image, text)
+
     def link(match: re.Match) -> str:
         label, target = match.group(1), match.group(2)
         return stash(
-            f'<a href="{html.escape(link_rewriter(target), quote=True)}">'
-            f"{render_inline(label, link_rewriter)}</a>"
+            f'<a href="{html.escape(links.link(target), quote=True)}">'
+            f"{render_inline(label, links)}</a>"
         )
 
     text = _LINK.sub(link, text)
@@ -109,7 +132,7 @@ def slugify(text: str, taken: set[str]) -> str:
     return candidate
 
 
-def render_markdown(source: str, link_rewriter) -> Document:
+def render_markdown(source: str, links: Rewriter) -> Document:
     lines = source.replace("\r\n", "\n").split("\n")
     out: list[str] = []
     headings: list[Heading] = []
@@ -171,7 +194,7 @@ def render_markdown(source: str, link_rewriter) -> Document:
             headings.append(Heading(level, text, anchor))
             out.append(
                 f'<h{level} id="{html.escape(anchor, quote=True)}">'
-                f"{render_inline(text, link_rewriter)}</h{level}>"
+                f"{render_inline(text, links)}</h{level}>"
             )
             index += 1
             continue
@@ -186,7 +209,7 @@ def render_markdown(source: str, link_rewriter) -> Document:
                 rows.append(_split_row(lines[index].strip()))
                 index += 1
 
-            out.append(_render_table(header, rows, link_rewriter))
+            out.append(_render_table(header, rows, links))
             continue
 
         # --- blockquote ---------------------------------------------------
@@ -197,7 +220,7 @@ def render_markdown(source: str, link_rewriter) -> Document:
                 quote.append(lines[index].strip()[1:].strip())
                 index += 1
 
-            inner = "<br>".join(render_inline(q, link_rewriter) for q in quote if q)
+            inner = "<br>".join(render_inline(q, links) for q in quote if q)
             out.append(f"<blockquote><p>{inner}</p></blockquote>")
             continue
 
@@ -205,10 +228,20 @@ def render_markdown(source: str, link_rewriter) -> Document:
         if re.match(r"[-*+]\s+", stripped) or re.match(r"\d+\.\s+", stripped):
             close_paragraph(paragraph)
             block, index = _consume_list(lines, index)
-            out.append(_render_list(block, link_rewriter))
+            out.append(_render_list(block, links))
             continue
 
-        paragraph.append(render_inline(stripped, link_rewriter))
+        # --- figure -------------------------------------------------------
+        # A line that is nothing but an image is a figure, not a paragraph that
+        # happens to contain one. The figures carry their own titles and
+        # captions, so nothing is added around them here.
+        if _IMAGE.fullmatch(stripped):
+            close_paragraph(paragraph)
+            out.append(f"<figure>{render_inline(stripped, links)}</figure>")
+            index += 1
+            continue
+
+        paragraph.append(render_inline(stripped, links))
         index += 1
 
     close_paragraph(paragraph)
@@ -223,10 +256,10 @@ def _split_row(line: str) -> list[str]:
     return [cell.strip() for cell in line.strip().strip("|").split("|")]
 
 
-def _render_table(header: list[str], rows: list[list[str]], link_rewriter) -> str:
-    head = "".join(f"<th>{render_inline(cell, link_rewriter)}</th>" for cell in header)
+def _render_table(header: list[str], rows: list[list[str]], links: Rewriter) -> str:
+    head = "".join(f"<th>{render_inline(cell, links)}</th>" for cell in header)
     body = "".join(
-        "<tr>" + "".join(f"<td>{render_inline(cell, link_rewriter)}</td>" for cell in row) + "</tr>"
+        "<tr>" + "".join(f"<td>{render_inline(cell, links)}</td>" for cell in row) + "</tr>"
         for row in rows
     )
     return f"<div class=\"table-scroll\"><table><thead><tr>{head}</tr></thead><tbody>{body}</tbody></table></div>"
@@ -289,7 +322,7 @@ def _nest(flat: list[ListItem]) -> list[ListItem]:
     return roots
 
 
-def _render_list(items: list[ListItem], link_rewriter) -> str:
+def _render_list(items: list[ListItem], links: Rewriter) -> str:
     if not items:
         return ""
 
@@ -297,9 +330,9 @@ def _render_list(items: list[ListItem], link_rewriter) -> str:
     parts = []
 
     for item in items:
-        inner = render_inline(item.text, link_rewriter)
+        inner = render_inline(item.text, links)
         if item.children:
-            inner += _render_list(item.children, link_rewriter)
+            inner += _render_list(item.children, links)
         parts.append(f"<li>{inner}</li>")
 
     return f"<{tag}>" + "".join(parts) + f"</{tag}>"
@@ -316,6 +349,7 @@ class Page:
     output: str
     title: str
     section: str
+    package_dir: str
 
 
 def discover(repo: str) -> tuple[list[Page], list[dict]]:
@@ -357,18 +391,24 @@ def discover(repo: str) -> tuple[list[Page], list[dict]]:
                         output=os.path.join(package_id, output),
                         title=title,
                         section=display,
+                        package_dir=os.path.join(packages_dir, package_id),
                     )
                 )
 
     return pages, packages
 
 
-def make_link_rewriter(page: Page, pages: list[Page], repo_url: str):
-    """Point .md links at the rendered page, and everything else at GitHub."""
+def make_rewriter(
+    page: Page, pages: list[Page], repo_url: str, docs_root: str, assets: dict[str, str]
+) -> Rewriter:
+    """Resolve a page's links and images against the site being built."""
     by_source = {os.path.normpath(p.source): p for p in pages}
     page_dir = os.path.dirname(os.path.join("docs", page.output))
 
-    def rewrite(target: str) -> str:
+    def resolve(target: str) -> str:
+        return os.path.normpath(os.path.join(os.path.dirname(page.source), target))
+
+    def link(target: str) -> str:
         if target.startswith(("http://", "https://", "#", "mailto:")):
             return target
 
@@ -380,7 +420,7 @@ def make_link_rewriter(page: Page, pages: list[Page], repo_url: str):
         if not target:
             return anchor
 
-        resolved = os.path.normpath(os.path.join(os.path.dirname(page.source), target))
+        resolved = resolve(target)
         rendered = by_source.get(resolved)
 
         if rendered is not None:
@@ -394,7 +434,37 @@ def make_link_rewriter(page: Page, pages: list[Page], repo_url: str):
         repo_relative = os.path.relpath(resolved, repo_url_root).replace(os.sep, "/")
         return f"{repo_url}/blob/main/{repo_relative}{anchor}"
 
-    return rewrite
+    def image(target: str) -> str:
+        if target.startswith(("http://", "https://", "data:")):
+            return target
+
+        resolved = resolve(target)
+        if not os.path.isfile(resolved):
+            raise SystemExit(
+                f"error: {page.source} references a missing image: {target}"
+            )
+
+        # Images live beside the Markdown, under Documentation~ so that Unity
+        # ignores them. The tilde is an editor convention and has no business
+        # in a URL, so it is dropped on the way into the site.
+        relative = os.path.relpath(resolved, page.package_dir).replace(os.sep, "/")
+        if relative.startswith("../"):
+            raise SystemExit(
+                f"error: {page.source} uses an image from outside its package: {target}"
+            )
+
+        if relative.startswith("Documentation~/"):
+            relative = relative[len("Documentation~/"):]
+
+        package_id = os.path.basename(page.package_dir.rstrip(os.sep))
+        destination = os.path.join(docs_root, package_id, relative.replace("/", os.sep))
+        assets[resolved] = destination
+
+        return os.path.relpath(
+            os.path.join("docs", package_id, relative), page_dir
+        ).replace(os.sep, "/")
+
+    return Rewriter(link=link, image=image)
 
 
 repo_url_root = ""
@@ -493,9 +563,13 @@ def main() -> int:
         shutil.rmtree(docs_root)
 
     written = []
+    assets: dict[str, str] = {}
+
     for page in pages:
         with open(page.source, encoding="utf-8") as handle:
-            document = render_markdown(handle.read(), make_link_rewriter(page, pages, repo_url))
+            document = render_markdown(
+                handle.read(), make_rewriter(page, pages, repo_url, docs_root, assets)
+            )
 
         depth = len(page.output.replace(os.sep, "/").split("/"))
         root = "../" * depth
@@ -520,13 +594,20 @@ def main() -> int:
 
         written.append(os.path.relpath(destination, out).replace(os.sep, "/"))
 
+    for source, destination in sorted(assets.items()):
+        os.makedirs(os.path.dirname(destination), exist_ok=True)
+        shutil.copyfile(source, destination)
+
     _write_stylesheet(docs_root)
     _write_index(docs_root, pages, packages, site_name, repo_url)
 
     for path in written:
         print(f"wrote {path}")
 
-    print(f"ok: {len(written)} page(s) from {len(packages)} package(s)")
+    print(
+        f"ok: {len(written)} page(s) from {len(packages)} package(s), "
+        f"{len(assets)} image(s)"
+    )
     return 0
 
 
@@ -692,6 +773,21 @@ blockquote {
 }
 
 hr { border: 0; border-top: 1px solid var(--border); margin: 2.5rem 0; }
+
+/* Figures are SVG and scale to whatever width is left, but never past their
+   natural size: past it the labels grow larger than the body text. */
+figure {
+  margin: 1.5rem 0;
+  overflow-x: auto;
+}
+
+figure img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
 
 .table-scroll { overflow-x: auto; margin: 1.25rem 0; }
 
