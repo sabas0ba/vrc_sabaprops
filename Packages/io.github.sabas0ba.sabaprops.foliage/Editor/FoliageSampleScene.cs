@@ -457,6 +457,7 @@ namespace SabaProps.Foliage.Editors
                 case FoliageSpeciesKind.Reed: return 4f;
                 case FoliageSpeciesKind.Clover: return 14f;
                 case FoliageSpeciesKind.SmallFlower: return 12f;
+                case FoliageSpeciesKind.Weed: return 6f;
                 case FoliageSpeciesKind.GrassClump:
                 default: return PlotDensity;
             }

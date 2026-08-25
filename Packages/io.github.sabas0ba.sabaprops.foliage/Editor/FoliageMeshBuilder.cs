@@ -52,6 +52,9 @@ namespace SabaProps.Foliage.Editors
                 case FoliageSpeciesKind.SmallFlower:
                     return BuildSmallFlowerBuffer(species.smallFlower, species.meshSeed, dormant);
 
+                case FoliageSpeciesKind.Weed:
+                    return BuildWeedBuffer(species.weed, species.meshSeed);
+
                 case FoliageSpeciesKind.GrassClump:
                 default:
                     return BuildGrassClumpBuffer(species.grass, species.meshSeed);
@@ -88,6 +91,13 @@ namespace SabaProps.Foliage.Editors
             public float NormalUpBlend;
             public float RootOcclusion;
             public float Stiffness;
+
+            /// <summary>
+            /// 0 tapers from the base, which is a grass blade. 1 bulges
+            /// through the middle, which is a broad leaf. Defaulting to 0
+            /// leaves grass and reeds generating exactly what they did.
+            /// </summary>
+            public float Bulge;
         }
 
         // ------------------------------------------------------------------
@@ -169,7 +179,7 @@ namespace SabaProps.Foliage.Editors
                 Vector3 center = BladePoint(root, bendDir, height, bend, t);
                 Vector3 normal = BladeNormal(p, side, bendDir, height, bend, t);
 
-                float halfWidth = width * 0.5f * Mathf.Pow(1f - t, p.Taper);
+                float halfWidth = width * 0.5f * BladeProfile(p, t);
                 Color color = ShadeBlade(rootColor, tipColor, p.RootOcclusion, t, elementSeed);
 
                 int left = buffer.AddVertex(center - side * halfWidth, normal, color, new Vector2(0f, t), rootData);
@@ -192,6 +202,32 @@ namespace SabaProps.Foliage.Editors
 
             int tip = buffer.AddVertex(tipPoint, tipNormal, tipShaded, new Vector2(0.5f, 1f), rootData);
             buffer.AddTriangle(previousLeft, previousRight, tip);
+        }
+
+        /// <summary>
+        /// Half-width along a blade, as a fraction of its widest point.
+        /// <para>
+        /// A grass blade is widest where it leaves the ground and narrows all
+        /// the way up. A broad leaf is widest across its middle. The two are the
+        /// same strip of geometry with a different profile, which is why they
+        /// share a generator instead of having one each.
+        /// </para>
+        /// </summary>
+        private static float BladeProfile(BladeShape p, float t)
+        {
+            float taper = Mathf.Pow(1f - t, p.Taper);
+
+            if (p.Bulge <= 0f)
+            {
+                return taper;
+            }
+
+            // Never reaches zero at the base: a leaf that pinched to nothing
+            // where it meets the crown would be a degenerate quad, and the tip
+            // is already a single converged vertex.
+            float bulge = Mathf.Lerp(0.45f, 1f, Mathf.Sin(Mathf.PI * Mathf.Clamp01(t)));
+
+            return Mathf.Lerp(taper, bulge, Mathf.Clamp01(p.Bulge));
         }
 
         private static Vector3 BladePoint(Vector3 root, Vector3 bendDir, float height, float bend, float t)
@@ -1129,6 +1165,108 @@ namespace SabaProps.Foliage.Editors
             }
 
             buffer.SeasonWeight = 1f;
+        }
+
+
+        // ------------------------------------------------------------------
+        // Weed
+        // ------------------------------------------------------------------
+
+        public static Mesh BuildWeed(WeedParams p, int seed)
+        {
+            return BuildWeedBuffer(p, seed).ToMesh();
+        }
+
+        /// <summary>
+        /// A rosette of broad leaves with a thin shoot or two through it.
+        /// <para>
+        /// Built from the same blade code as grass and reeds, because that is
+        /// what a leaf is here too. Two things make it read as a weed rather
+        /// than as coarse grass: the width profile bulges in the middle instead
+        /// of tapering from the base, and the length variance is wide enough
+        /// that no two leaves match. Uniform height is what a lawn is.
+        /// </para>
+        /// </summary>
+        private static BuiltMesh BuildWeedBuffer(WeedParams p, int seed)
+        {
+            var rng = new FoliageRandom(seed);
+            var buffer = new FoliageMeshBuffer();
+
+            var leafShape = new BladeShape
+            {
+                Segments = p.segments,
+                Taper = p.taper,
+                NormalUpBlend = p.normalUpBlend,
+                RootOcclusion = p.rootOcclusion,
+                Stiffness = p.stiffness,
+                Bulge = 1f,
+            };
+
+            int leafCount = Mathf.Max(1, p.leafCount);
+            float tallest = 0f;
+
+            for (int i = 0; i < leafCount; i++)
+            {
+                // Fanned rather than scattered: a rosette radiates from one
+                // crown, and evenly spaced angles with a little jitter is what
+                // that looks like from above.
+                float angle = i / (float)leafCount * Mathf.PI * 2f + rng.Range(-0.35f, 0.35f);
+
+                float distance = Mathf.Sqrt(rng.Value01()) * p.clumpRadius;
+                var root = new Vector3(Mathf.Cos(angle) * distance, 0f, Mathf.Sin(angle) * distance);
+
+                var bendDir = new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle));
+
+                float height = p.height * rng.Range(1f - p.heightVariance, 1f + p.heightVariance);
+                float width = p.width * rng.Range(1f - p.widthVariance, 1f + p.widthVariance);
+                float bend = p.bend * height * rng.Range(0.7f, 1.3f);
+                float elementSeed = rng.Value01();
+
+                Color rootColor = JitterColor(p.rootColor, ref rng, p.perLeafTintJitter);
+                Color tipColor = JitterColor(p.tipColor, ref rng, p.perLeafTintJitter);
+
+                AddBlade(buffer, leafShape, root, bendDir, height, width, bend, elementSeed, rootColor, tipColor);
+                tallest = Mathf.Max(tallest, height);
+            }
+
+            // The shoots are what give a weed its height. Narrow, barely bent,
+            // and built from the same blade code with the grass profile, since
+            // a flowering stem does taper from the base.
+            var shootShape = new BladeShape
+            {
+                Segments = Mathf.Max(2, p.segments),
+                Taper = 1.4f,
+                NormalUpBlend = 0.5f,
+                RootOcclusion = p.rootOcclusion,
+                Stiffness = p.stiffness,
+            };
+
+            int shootCount = Mathf.Max(0, p.shootCount);
+            for (int i = 0; i < shootCount; i++)
+            {
+                float angle = rng.Range(0f, Mathf.PI * 2f);
+                float distance = Mathf.Sqrt(rng.Value01()) * (p.clumpRadius * 0.5f);
+                var root = new Vector3(Mathf.Cos(angle) * distance, 0f, Mathf.Sin(angle) * distance);
+
+                float facing = angle + rng.Range(-1.2f, 1.2f);
+                var bendDir = new Vector3(Mathf.Cos(facing), 0f, Mathf.Sin(facing));
+
+                float height = p.shootHeight * rng.Range(0.75f, 1.25f);
+                float bend = height * rng.Range(0.08f, 0.28f);
+                float elementSeed = rng.Value01();
+
+                Color shoot = JitterColor(p.shootColor, ref rng, p.perLeafTintJitter);
+
+                AddBlade(buffer, shootShape, root, bendDir, height, p.shootWidth, bend, elementSeed, shoot, shoot);
+                tallest = Mathf.Max(tallest, height);
+            }
+
+            return new BuiltMesh
+            {
+                Buffer = buffer,
+                Name = "SabaFoliage_Weed",
+                BoundsPadding = tallest * 0.35f,
+            };
         }
 
         // ------------------------------------------------------------------

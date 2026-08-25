@@ -46,6 +46,7 @@ internal static class OfflineMeshTests
         Run("season weight holds a colour back", SeasonWeightHoldsColourBack);
         Run("a dormant flower drops its petals", DormantFlowersDropTheirPetals);
         Run("the small flower carries its flowers", SmallFlowerCarriesItsFlowers);
+        Run("weed leaves are broad and uneven", WeedLeavesAreBroadAndUneven);
 
         Run("degenerate parameters stay finite", DegenerateParametersStayFinite);
         Run("merging preserves counts and moves the wind pivots", MergePreservesChannels);
@@ -575,6 +576,83 @@ internal static class OfflineMeshTests
         }
     }
 
+    private static void WeedLeavesAreBroadAndUneven()
+    {
+        // The two properties that separate a weed from coarse grass, asserted
+        // rather than eyeballed, because both are easy to lose to a tweak of
+        // the shared blade code.
+        Mesh weed = Build(FoliageSpeciesKind.Weed, 44);
+        Mesh grass = Build(FoliageSpeciesKind.GrassClump, 44);
+
+        Require(WidestSpan(weed) > WidestSpan(grass),
+            $"weed leaves ({WidestSpan(weed):0.000} m) are no broader than grass blades "
+            + $"({WidestSpan(grass):0.000} m)");
+
+        // Uneven length is the other half. Measured as the spread of how far
+        // each vertex reaches from the crown, which needs no knowledge of which
+        // vertices belong to which leaf.
+        Require(ReachSpread(weed) > ReachSpread(grass),
+            "weed leaves come out as even in length as grass blades");
+    }
+
+    /// <summary>
+    /// Widest gap between any two vertices that share a height band. Stands in
+    /// for "how broad is a leaf" without the mesh saying where its leaves are.
+    /// </summary>
+    private static float WidestSpan(Mesh mesh)
+    {
+        var uv0 = new List<Vector2>();
+        mesh.GetUVs(0, uv0);
+
+        float widest = 0f;
+
+        for (int i = 0; i < mesh.vertexCount; i++)
+        {
+            for (int j = i + 1; j < mesh.vertexCount; j++)
+            {
+                // Same point along a blade, and close enough together to be the
+                // two sides of one -- not two different leaves.
+                if (Math.Abs(uv0[i].y - uv0[j].y) > 1e-4f)
+                {
+                    continue;
+                }
+
+                float span = (mesh.vertices[i] - mesh.vertices[j]).magnitude;
+                if (span < 0.2f)
+                {
+                    widest = Mathf.Max(widest, span);
+                }
+            }
+        }
+
+        return widest;
+    }
+
+    /// <summary>Difference between the furthest and the nearest vertex reach.</summary>
+    private static float ReachSpread(Mesh mesh)
+    {
+        float nearest = float.MaxValue;
+        float furthest = 0f;
+
+        var uv0 = new List<Vector2>();
+        mesh.GetUVs(0, uv0);
+
+        for (int i = 0; i < mesh.vertexCount; i++)
+        {
+            // Tips only: the bases all sit on the crown whatever the species.
+            if (uv0[i].y < 0.99f)
+            {
+                continue;
+            }
+
+            float reach = mesh.vertices[i].magnitude;
+            nearest = Mathf.Min(nearest, reach);
+            furthest = Mathf.Max(furthest, reach);
+        }
+
+        return nearest < float.MaxValue ? furthest - nearest : 0f;
+    }
+
     private static void DegenerateParametersStayFinite()
     {
         // Values a user can dial in from the inspector that collapse a basis
@@ -657,6 +735,7 @@ internal static class OfflineMeshTests
         FoliageSpeciesKind.Sunflower,
         FoliageSpeciesKind.Reed,
         FoliageSpeciesKind.SmallFlower,
+        FoliageSpeciesKind.Weed,
     };
 
     private static FoliageSeason[] AllSeasons() => new[]

@@ -25,6 +25,13 @@ namespace SabaProps.Foliage
         /// they are built.
         /// </summary>
         SmallFlower = 4,
+
+        /// <summary>
+        /// A rosette of broad leaves lying over at uneven lengths, with a
+        /// thin flowering shoot or two through the middle. What separates
+        /// it from grass is not the blade but the unevenness.
+        /// </summary>
+        Weed = 5,
     }
 
     /// <summary>Parameters for <see cref="FoliageSpeciesKind.GrassClump"/>.</summary>
@@ -247,6 +254,57 @@ namespace SabaProps.Foliage
         [Range(0f, 1f)] public float petalStiffness = 0.9f;
     }
 
+    /// <summary>Parameters for <see cref="FoliageSpeciesKind.Weed"/>.</summary>
+    [Serializable]
+    public class WeedParams
+    {
+        [Header("Leaves")]
+        [Tooltip("1 株あたりの葉の枚数。根元から放射状に出ます。")]
+        [Range(1, 16)] public int leafCount = 6;
+
+        [Range(1, 6)] public int segments = 3;
+
+        [Tooltip("葉の付け根が散る半径 (m)。")]
+        [Min(0f)] public float clumpRadius = 0.045f;
+
+        [Min(0.01f)] public float height = 0.24f;
+
+        [Tooltip(
+            "葉の長さのばらつき。雑草は草より大きく取ります。"
+            + "背丈が不揃いであることが、芝と雑草を見分けている手掛かりそのものだからです。")]
+        [Range(0f, 0.9f)] public float heightVariance = 0.5f;
+
+        [Tooltip("葉の幅 (m)。草のブレードより広く取ります。")]
+        [Min(0.003f)] public float width = 0.052f;
+
+        [Range(0f, 0.9f)] public float widthVariance = 0.3f;
+
+        [Tooltip("葉がどれだけ寝るか。大きいほど地面へ広がります。")]
+        [Range(0f, 2.5f)] public float bend = 1.15f;
+
+        [Range(0.2f, 3f)] public float taper = 0.9f;
+        [Range(0f, 1f)] public float normalUpBlend = 0.65f;
+
+        public Color rootColor = new Color(0.180f, 0.243f, 0.098f, 1f);
+        public Color tipColor = new Color(0.361f, 0.443f, 0.169f, 1f);
+
+        [Range(0f, 1f)] public float rootOcclusion = 0.3f;
+
+        [Range(0f, 0.5f)] public float perLeafTintJitter = 0.1f;
+
+        [Header("Shoots")]
+        [Tooltip("葉の間から立ち上がる細い花茎の本数。0 で葉だけになります。")]
+        [Range(0, 4)] public int shootCount = 1;
+
+        [Min(0.01f)] public float shootHeight = 0.46f;
+        [Min(0.001f)] public float shootWidth = 0.008f;
+
+        public Color shootColor = new Color(0.404f, 0.427f, 0.220f, 1f);
+
+        [Header("Wind")]
+        [Range(0f, 1f)] public float stiffness = 0.9f;
+    }
+
     /// <summary>
     /// A reusable foliage preset: how the mesh is generated and how instances of
     /// it are placed. One species maps to exactly one mesh, and therefore to one
@@ -313,6 +371,7 @@ namespace SabaProps.Foliage
         public CloverParams clover = new CloverParams();
         public ReedParams reed = new ReedParams();
         public SmallFlowerParams smallFlower = new SmallFlowerParams();
+        public WeedParams weed = new WeedParams();
 
         [Header("Generated (read only)")]
         [Tooltip("ビルド時に自動生成・上書きされるメッシュアセット。")]

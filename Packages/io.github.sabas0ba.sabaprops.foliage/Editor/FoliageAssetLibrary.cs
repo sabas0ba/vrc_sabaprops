@@ -185,6 +185,7 @@ namespace SabaProps.Foliage.Editors
             FoliageSpeciesKind.Sunflower,
             FoliageSpeciesKind.Reed,
             FoliageSpeciesKind.SmallFlower,
+            FoliageSpeciesKind.Weed,
         };
 
         /// <summary>Asset file name, and inspector label, for a species kind.</summary>
@@ -196,6 +197,7 @@ namespace SabaProps.Foliage.Editors
                 case FoliageSpeciesKind.Clover: return "Clover";
                 case FoliageSpeciesKind.Reed: return "Reed";
                 case FoliageSpeciesKind.SmallFlower: return "SmallFlower";
+                case FoliageSpeciesKind.Weed: return "Weed";
                 case FoliageSpeciesKind.GrassClump:
                 default: return "GrassSeed";
             }
@@ -248,6 +250,7 @@ namespace SabaProps.Foliage.Editors
                 case FoliageSpeciesKind.Clover: return "clover";
                 case FoliageSpeciesKind.Reed: return "reed";
                 case FoliageSpeciesKind.SmallFlower: return "smallFlower";
+                case FoliageSpeciesKind.Weed: return "weed";
                 case FoliageSpeciesKind.GrassClump:
                 default: return "grass";
             }
@@ -353,6 +356,26 @@ namespace SabaProps.Foliage.Editors
                 species.alignToGroundNormal = 0.1f;
                 species.slopeLimits = new Vector2(0f, 18f);
                 species.castShadows = true;
+                return;
+            }
+
+            if (kind == FoliageSpeciesKind.Weed)
+            {
+                species.meshSeed = 44;
+
+                // Weeds turn up in the gaps, so they are placed like a filler
+                // rather than like a crop: common enough to notice, spaced far
+                // enough apart that each one reads as an individual.
+                species.placementWeight = 0.3f;
+                species.minSpacing = 0.14f;
+                species.scaleRange = new Vector2(0.8f, 1.35f);
+                species.maxTilt = 10f;
+                species.alignToGroundNormal = 0.5f;
+
+                // The one species with no slope it will not grow on. That is
+                // most of what makes something a weed.
+                species.slopeLimits = new Vector2(0f, 60f);
+                species.castShadows = false;
                 return;
             }
 
