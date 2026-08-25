@@ -23,7 +23,7 @@
 
 必要なもの: .NET SDK 8+ と、podman か docker（Python は `.github/scripts/run.sh` の固定コンテナ内で動きます）。
 
-ローカルに環境が無い場合は、Actions の `Render figures` を対象 branch で手動実行します。生成結果は `documentation-figures` artifact から取得できます。この workflow は `workflow_dispatch` のみで、push や Pull Request からは起動しません。
+ローカルに環境が無い場合、figure mismatch で失敗した `Verify` run が再生成結果を `documentation-figures` artifact として保存します。生成器自体の compile や実行で失敗し、SVG directory が作られなかった場合は artifact を作りません。
 
 内部は 2 段です。
 
