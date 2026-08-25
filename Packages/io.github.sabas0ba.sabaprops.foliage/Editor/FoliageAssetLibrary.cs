@@ -184,6 +184,10 @@ namespace SabaProps.Foliage.Editors
             FoliageSpeciesKind.Clover,
             FoliageSpeciesKind.Sunflower,
             FoliageSpeciesKind.Reed,
+            FoliageSpeciesKind.SmallFlower,
+            FoliageSpeciesKind.Weed,
+            FoliageSpeciesKind.Grain,
+            FoliageSpeciesKind.Dandelion,
         };
 
         /// <summary>Asset file name, and inspector label, for a species kind.</summary>
@@ -194,6 +198,10 @@ namespace SabaProps.Foliage.Editors
                 case FoliageSpeciesKind.Sunflower: return "Sunflower";
                 case FoliageSpeciesKind.Clover: return "Clover";
                 case FoliageSpeciesKind.Reed: return "Reed";
+                case FoliageSpeciesKind.SmallFlower: return "SmallFlower";
+                case FoliageSpeciesKind.Weed: return "Weed";
+                case FoliageSpeciesKind.Grain: return "Grain";
+                case FoliageSpeciesKind.Dandelion: return "Dandelion";
                 case FoliageSpeciesKind.GrassClump:
                 default: return "GrassSeed";
             }
@@ -245,6 +253,10 @@ namespace SabaProps.Foliage.Editors
                 case FoliageSpeciesKind.Sunflower: return "sunflower";
                 case FoliageSpeciesKind.Clover: return "clover";
                 case FoliageSpeciesKind.Reed: return "reed";
+                case FoliageSpeciesKind.SmallFlower: return "smallFlower";
+                case FoliageSpeciesKind.Weed: return "weed";
+                case FoliageSpeciesKind.Grain: return "grain";
+                case FoliageSpeciesKind.Dandelion: return "dandelion";
                 case FoliageSpeciesKind.GrassClump:
                 default: return "grass";
             }
@@ -350,6 +362,95 @@ namespace SabaProps.Foliage.Editors
                 species.alignToGroundNormal = 0.1f;
                 species.slopeLimits = new Vector2(0f, 18f);
                 species.castShadows = true;
+                return;
+            }
+
+            if (kind == FoliageSpeciesKind.Dandelion)
+            {
+                species.meshSeed = 68;
+
+                // Turns up in lawns and verges the way the weed does, but the
+                // flower is the point, so it is spaced to be seen individually
+                // rather than packed.
+                species.placementWeight = 0.22f;
+                species.minSpacing = 0.16f;
+                species.scaleRange = new Vector2(0.85f, 1.25f);
+                species.maxTilt = 8f;
+                species.alignToGroundNormal = 0.55f;
+                species.slopeLimits = new Vector2(0f, 45f);
+                species.castShadows = false;
+
+                // A perennial, unlike the sunflower and the small flower: the
+                // rosette sits out the year flattened against the ground and
+                // only the head comes and goes. Dormant, never absent.
+                species.seasonPalette.autumn.appearance = SeasonAppearance.Dormant;
+                species.seasonPalette.winterSnow.appearance = SeasonAppearance.Dormant;
+                species.seasonPalette.winterBare.appearance = SeasonAppearance.Dormant;
+                return;
+            }
+
+            if (kind == FoliageSpeciesKind.Grain)
+            {
+                species.meshSeed = 57;
+
+                // A crop, so it is planted rather than scattered: packed tight,
+                // barely tilted, and only on ground flat enough to farm.
+                species.placementWeight = 0.5f;
+                species.minSpacing = 0.1f;
+                species.scaleRange = new Vector2(0.85f, 1.15f);
+                species.maxTilt = 4f;
+                species.alignToGroundNormal = 0.1f;
+                species.slopeLimits = new Vector2(0f, 15f);
+
+                // Tall and sparse enough to be worth a shadow, like the reed.
+                species.castShadows = true;
+
+                // Harvested rather than dormant: what stands in a winter field
+                // is stubble, which is not this mesh.
+                species.seasonPalette.winterSnow.appearance = SeasonAppearance.Absent;
+                species.seasonPalette.winterBare.appearance = SeasonAppearance.Absent;
+                return;
+            }
+
+            if (kind == FoliageSpeciesKind.Weed)
+            {
+                species.meshSeed = 44;
+
+                // Weeds turn up in the gaps, so they are placed like a filler
+                // rather than like a crop: common enough to notice, spaced far
+                // enough apart that each one reads as an individual.
+                species.placementWeight = 0.3f;
+                species.minSpacing = 0.14f;
+                species.scaleRange = new Vector2(0.8f, 1.35f);
+                species.maxTilt = 10f;
+                species.alignToGroundNormal = 0.5f;
+
+                // The one species with no slope it will not grow on. That is
+                // most of what makes something a weed.
+                species.slopeLimits = new Vector2(0f, 60f);
+                species.castShadows = false;
+                return;
+            }
+
+            if (kind == FoliageSpeciesKind.SmallFlower)
+            {
+                species.meshSeed = 31;
+
+                // Weighted for the case this species exists to serve: a field of
+                // flowers, not a lawn with a few in it. Still under the grass so
+                // that a default mix reads as a meadow rather than a flowerbed.
+                species.placementWeight = 0.45f;
+                species.minSpacing = 0.08f;
+                species.scaleRange = new Vector2(0.85f, 1.25f);
+                species.maxTilt = 11f;
+                species.alignToGroundNormal = 0.5f;
+                species.slopeLimits = new Vector2(0f, 38f);
+                species.castShadows = false;
+
+                // An annual, like the sunflower: spent by autumn, gone by winter.
+                species.seasonPalette.autumn.appearance = SeasonAppearance.Dormant;
+                species.seasonPalette.winterSnow.appearance = SeasonAppearance.Absent;
+                species.seasonPalette.winterBare.appearance = SeasonAppearance.Absent;
                 return;
             }
 

@@ -5,7 +5,7 @@ using VRC.SDKBase;
 /// <summary>
 /// Raises the local player's movement speeds and enables jumping.
 /// <para>
-/// Walking a garden of twenty plots at VRChat's default 2 m/s is slow, and
+/// Walking a garden of 28 plots at VRChat's default 2 m/s is slow, and
 /// its default jump impulse of zero means the mound and the terraces cannot be
 /// climbed at all. Both are worth changing while looking at foliage; neither
 /// belongs in a world you actually ship without thinking about it.

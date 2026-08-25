@@ -28,6 +28,7 @@ internal static class OfflineMeshTests
         Run("FoliageRandom diverges for neighbouring seeds", NeighbouringSeedsDiverge);
 
         Run("every species builds a well-formed mesh", EverySpeciesIsWellFormed);
+        Run("legacy assets initialize new parameter blocks", LegacyAssetsInitializeNewParameterBlocks);
         Run("every species is deterministic for a seed", EverySpeciesIsDeterministic);
         Run("mesh seeds actually change the geometry", SeedsChangeGeometry);
 
@@ -45,6 +46,10 @@ internal static class OfflineMeshTests
         Run("a season keeps the root-to-tip gradient", SeasonsPreserveTheGradient);
         Run("season weight holds a colour back", SeasonWeightHoldsColourBack);
         Run("a dormant flower drops its petals", DormantFlowersDropTheirPetals);
+        Run("the small flower carries its flowers", SmallFlowerCarriesItsFlowers);
+        Run("weed leaves are broad and uneven", WeedLeavesAreBroadAndUneven);
+        Run("the grain ear bows under its droop", GrainEarBowsUnderItsDroop);
+        Run("the dandelion keeps its rosette when the head goes", DandelionKeepsItsRosetteWhenTheHeadGoes);
 
         Run("degenerate parameters stay finite", DegenerateParametersStayFinite);
         Run("merging preserves counts and moves the wind pivots", MergePreservesChannels);
@@ -113,6 +118,32 @@ internal static class OfflineMeshTests
             int triangles = mesh.triangles.Length / 3;
             Require(triangles < 400, $"{kind} costs {triangles} triangles; mass placement needs it cheap");
         }
+    }
+
+    private static void LegacyAssetsInitializeNewParameterBlocks()
+    {
+        // Unity leaves newly added serializable reference fields null when it
+        // loads an asset written before those fields existed. Switching such a
+        // 0.2 asset to a 0.3 species must create the new block before dispatch.
+        var smallFlower = new FoliageSpecies { kind = FoliageSpeciesKind.SmallFlower };
+        smallFlower.smallFlower = null;
+        AssertWellFormed(FoliageMeshBuilder.Build(smallFlower), "upgraded small flower");
+        Require(smallFlower.smallFlower != null, "small flower parameters stayed null");
+
+        var weed = new FoliageSpecies { kind = FoliageSpeciesKind.Weed };
+        weed.weed = null;
+        AssertWellFormed(FoliageMeshBuilder.Build(weed), "upgraded weed");
+        Require(weed.weed != null, "weed parameters stayed null");
+
+        var grain = new FoliageSpecies { kind = FoliageSpeciesKind.Grain };
+        grain.grain = null;
+        AssertWellFormed(FoliageMeshBuilder.Build(grain), "upgraded grain");
+        Require(grain.grain != null, "grain parameters stayed null");
+
+        var dandelion = new FoliageSpecies { kind = FoliageSpeciesKind.Dandelion };
+        dandelion.dandelion = null;
+        AssertWellFormed(FoliageMeshBuilder.Build(dandelion), "upgraded dandelion");
+        Require(dandelion.dandelion != null, "dandelion parameters stayed null");
     }
 
     private static void EverySpeciesIsDeterministic()
@@ -192,7 +223,7 @@ internal static class OfflineMeshTests
         // A clump is separate blades that may sway out of step. A clover or a
         // sunflower is one plant, and parts of one plant that move out of step
         // come apart at the joints.
-        foreach (FoliageSpeciesKind kind in new[] { FoliageSpeciesKind.Clover, FoliageSpeciesKind.Sunflower })
+        foreach (FoliageSpeciesKind kind in new[] { FoliageSpeciesKind.Clover, FoliageSpeciesKind.Sunflower, FoliageSpeciesKind.SmallFlower })
         {
             Mesh mesh = Build(kind, 3);
 
@@ -518,6 +549,289 @@ internal static class OfflineMeshTests
             "a winter sunflower left as Full lost geometry anyway");
     }
 
+    private static void SmallFlowerCarriesItsFlowers()
+    {
+        // The species exists to fill a field with flowers, so "it has flowers"
+        // is the property worth pinning down rather than a vertex count.
+        var species = new FoliageSpecies { kind = FoliageSpeciesKind.SmallFlower, meshSeed = 31 };
+        SmallFlowerParams p = species.smallFlower;
+
+        Mesh mesh = FoliageMeshBuilder.Build(species);
+        AssertWellFormed(mesh, "small flower");
+
+        // Petal colours are what a flower is recognised by, and they are the
+        // one thing in this mesh that is not some shade of green.
+        int petalish = 0;
+        foreach (Color c in mesh.colors)
+        {
+            if (c.b > c.g)
+            {
+                petalish++;
+            }
+        }
+
+        Require(petalish > 0, "the small flower grew no petals in its petal colours");
+
+        // Several flowers per plant is what stops a field of these reading as a
+        // grid of single dots.
+        var species2 = new FoliageSpecies { kind = FoliageSpeciesKind.SmallFlower, meshSeed = 31 };
+        species2.smallFlower.flowerCount = 1;
+
+        Mesh single = FoliageMeshBuilder.Build(species2);
+
+        Require(mesh.triangles.Length > single.triangles.Length,
+            $"flowerCount {p.flowerCount} produced no more geometry than a single flower");
+
+        // Dormant is the same plant with the flowers left out: stem and leaves
+        // survive, so it is still a plant rather than nothing.
+        var dormant = new FoliageSpecies
+        {
+            kind = FoliageSpeciesKind.SmallFlower,
+            meshSeed = 31,
+            season = FoliageSeason.Autumn,
+        };
+        dormant.seasonPalette.autumn.appearance = SeasonAppearance.Dormant;
+
+        Mesh spent = FoliageMeshBuilder.Build(dormant);
+        AssertWellFormed(spent, "dormant small flower");
+
+        Require(spent.triangles.Length < mesh.triangles.Length,
+            "a dormant small flower kept its flowers");
+
+        foreach (Color c in spent.colors)
+        {
+            Require(c.b <= c.g + 1e-4f,
+                "a dormant small flower still carries a petal colour");
+        }
+    }
+
+    private static void WeedLeavesAreBroadAndUneven()
+    {
+        // The two properties that separate a weed from coarse grass, asserted
+        // rather than eyeballed, because both are easy to lose to a tweak of
+        // the shared blade code.
+        Mesh weed = Build(FoliageSpeciesKind.Weed, 44);
+        Mesh grass = Build(FoliageSpeciesKind.GrassClump, 44);
+
+        Require(WidestSpan(weed) > WidestSpan(grass),
+            $"weed leaves ({WidestSpan(weed):0.000} m) are no broader than grass blades "
+            + $"({WidestSpan(grass):0.000} m)");
+
+        // Uneven length is the other half, measured as the longest blade
+        // against the shortest so that the answer does not depend on how
+        // tall the species is.
+        Require(ReachRatio(weed) > ReachRatio(grass),
+            $"weed leaves are as even in length as grass blades "
+            + $"({ReachRatio(weed):0.00}x against {ReachRatio(grass):0.00}x longest to shortest)");
+    }
+
+    /// <summary>
+    /// Widest a single blade gets.
+    /// <para>
+    /// The two sides of a blade are added as a pair, left then right, and the
+    /// blade code writes UV0.x = 0 on one and 1 on the other. That pairing is
+    /// what identifies them: every blade in a mesh shares the same UV0.y values,
+    /// so matching on height alone measures the gap between two different
+    /// leaves instead — which is how this check first passed for the wrong
+    /// reason and then failed for it.
+    /// </para>
+    /// </summary>
+    private static float WidestSpan(Mesh mesh)
+    {
+        var uv0 = new List<Vector2>();
+        mesh.GetUVs(0, uv0);
+
+        float widest = 0f;
+
+        for (int i = 0; i + 1 < mesh.vertexCount; i++)
+        {
+            bool pair = uv0[i].x < 1e-4f
+                && uv0[i + 1].x > 1f - 1e-4f
+                && Math.Abs(uv0[i].y - uv0[i + 1].y) < 1e-4f;
+
+            if (pair)
+            {
+                widest = Mathf.Max(widest, (mesh.vertices[i] - mesh.vertices[i + 1]).magnitude);
+            }
+        }
+
+        return widest;
+    }
+
+    /// <summary>
+    /// How far the longest blade reaches compared with the shortest.
+    /// <para>
+    /// A ratio rather than a difference, because the species being compared are
+    /// different sizes: grass stands twice as tall as a weed leaf, so its tips
+    /// are further apart in metres while being no less even. What is being
+    /// asked is whether the blades in one plant match each other, and that
+    /// question has no units.
+    /// </para>
+    /// </summary>
+    private static float ReachRatio(Mesh mesh)
+    {
+        float nearest = float.MaxValue;
+        float furthest = 0f;
+
+        var uv0 = new List<Vector2>();
+        mesh.GetUVs(0, uv0);
+
+        for (int i = 0; i < mesh.vertexCount; i++)
+        {
+            // Tips only: the bases all sit on the crown whatever the species.
+            if (uv0[i].y < 0.99f)
+            {
+                continue;
+            }
+
+            float reach = mesh.vertices[i].magnitude;
+            nearest = Mathf.Min(nearest, reach);
+            furthest = Mathf.Max(furthest, reach);
+        }
+
+        return nearest > 1e-4f ? furthest / nearest : 1f;
+    }
+
+    private static void GrainEarBowsUnderItsDroop()
+    {
+        // Wheat and rice come from one generator, and earDroop is what tells
+        // them apart. If it stopped working the two would be the same plant in
+        // two colours, and nothing else in the suite would notice.
+        var wheat = new FoliageSpecies { kind = FoliageSpeciesKind.Grain, meshSeed = 57 };
+        wheat.grain.earDroop = 0f;
+
+        var rice = new FoliageSpecies { kind = FoliageSpeciesKind.Grain, meshSeed = 57 };
+        rice.grain.earDroop = 1f;
+        rice.grain.awnLength = 0f;
+
+        Mesh upright = FoliageMeshBuilder.Build(wheat);
+        Mesh bowed = FoliageMeshBuilder.Build(rice);
+
+        AssertWellFormed(upright, "wheat");
+        AssertWellFormed(bowed, "rice");
+
+        Require(Tallest(bowed) < Tallest(upright),
+            $"a fully drooping ear stands as tall as an upright one "
+            + $"({Tallest(bowed):0.000} m against {Tallest(upright):0.000} m)");
+
+        // Awns are the other half of the difference, and they are geometry.
+        Require(upright.triangles.Length > bowed.triangles.Length,
+            "the awns cost nothing, so awnLength is not building them");
+
+        // The ear has to stay rigid with the stalk it grows on, however far it
+        // hangs: the stalk's phase, and the top of the bend mask everywhere. An
+        // ear that swayed on its own would swing off the neck.
+        //
+        // Checked on a single-stalk plant. A clump is several blades that sway
+        // independently by design, so in a full one the band around the ear
+        // contains other blades' tips and finding several phases there says
+        // nothing -- which is what this check first reported.
+        var single = new FoliageSpecies { kind = FoliageSpeciesKind.Grain, meshSeed = 57 };
+        single.grain.earDroop = 1f;
+        single.grain.bladeCount = 1;
+
+        Mesh alone = FoliageMeshBuilder.Build(single);
+        AssertWellFormed(alone, "single-stalk rice");
+
+        var uv0 = new List<Vector2>();
+        alone.GetUVs(0, uv0);
+
+        var phases = new HashSet<float>();
+        float earFloor = Tallest(alone) - single.grain.earLength;
+
+        for (int i = 0; i < alone.vertexCount; i++)
+        {
+            phases.Add(alone.colors[i].a);
+
+            if (alone.vertices[i].y > earFloor)
+            {
+                Require(uv0[i].y > 0.99f,
+                    $"ear vertex {i} sits below the top of the bend mask ({uv0[i].y:0.000})");
+            }
+        }
+
+        Require(phases.Count == 1,
+            $"a single stalk and its ear sway with {phases.Count} phases; they must share one");
+    }
+
+    private static float Tallest(Mesh mesh)
+    {
+        float tallest = 0f;
+        foreach (Vector3 v in mesh.vertices)
+        {
+            tallest = Mathf.Max(tallest, v.y);
+        }
+
+        return tallest;
+    }
+
+    private static void DandelionKeepsItsRosetteWhenTheHeadGoes()
+    {
+        var flower = new FoliageSpecies { kind = FoliageSpeciesKind.Dandelion, meshSeed = 68 };
+
+        var clock = new FoliageSpecies { kind = FoliageSpeciesKind.Dandelion, meshSeed = 68 };
+        clock.dandelion.seedHead = true;
+
+        Mesh inFlower = FoliageMeshBuilder.Build(flower);
+        Mesh inSeed = FoliageMeshBuilder.Build(clock);
+
+        AssertWellFormed(inFlower, "dandelion in flower");
+        AssertWellFormed(inSeed, "dandelion clock");
+
+        // The claim made in the documentation: opaque geometry makes the clock
+        // the cheaper of the two, which is the opposite of what alpha-tested
+        // billboards would cost. Worth pinning, because it is the reason the
+        // seed head is affordable at all.
+        Require(inSeed.triangles.Length < inFlower.triangles.Length,
+            $"the clock costs {inSeed.triangles.Length / 3} triangles against the flower's "
+            + $"{inFlower.triangles.Length / 3}; the documented tradeoff no longer holds");
+
+        // A clock has no front. A ring of spokes would vanish edge-on, so the
+        // pappus directions have to cover a sphere -- checked as "some of them
+        // point below the head as well as above".
+        float top = 0f;
+        float bottom = float.MaxValue;
+
+        var uv0 = new List<Vector2>();
+        inSeed.GetUVs(0, uv0);
+
+        for (int i = 0; i < inSeed.vertexCount; i++)
+        {
+            if (uv0[i].y > 0.99f)
+            {
+                top = Mathf.Max(top, inSeed.vertices[i].y);
+                bottom = Mathf.Min(bottom, inSeed.vertices[i].y);
+            }
+        }
+
+        Require(top - bottom > clock.dandelion.headRadius,
+            "the clock's pappus lies in a plane; it needs to cover a sphere");
+
+        // A perennial: the leaves stay when the head goes. Every other flowering
+        // species here vanishes instead, and the difference is the whole reason
+        // the dandelion is dormant rather than absent in winter.
+        var dormant = new FoliageSpecies
+        {
+            kind = FoliageSpeciesKind.Dandelion,
+            meshSeed = 68,
+            season = FoliageSeason.WinterBare,
+        };
+        dormant.seasonPalette.winterBare.appearance = SeasonAppearance.Dormant;
+
+        Mesh rosette = FoliageMeshBuilder.Build(dormant);
+        AssertWellFormed(rosette, "dormant dandelion");
+
+        Require(rosette.triangles.Length < inFlower.triangles.Length,
+            "a dormant dandelion kept its head");
+
+        int expectedLeafTriangles =
+            flower.dandelion.leafCount * ((flower.dandelion.segments - 1) * 2 + 1);
+
+        Require(rosette.triangles.Length / 3 == expectedLeafTriangles,
+            $"a dormant dandelion has {rosette.triangles.Length / 3} triangles, expected the "
+            + $"{expectedLeafTriangles} of its rosette alone");
+    }
+
     private static void DegenerateParametersStayFinite()
     {
         // Values a user can dial in from the inspector that collapse a basis
@@ -599,6 +913,10 @@ internal static class OfflineMeshTests
         FoliageSpeciesKind.Clover,
         FoliageSpeciesKind.Sunflower,
         FoliageSpeciesKind.Reed,
+        FoliageSpeciesKind.SmallFlower,
+        FoliageSpeciesKind.Weed,
+        FoliageSpeciesKind.Grain,
+        FoliageSpeciesKind.Dandelion,
     };
 
     private static FoliageSeason[] AllSeasons() => new[]

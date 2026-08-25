@@ -1,9 +1,9 @@
 {
   "name": "io.github.sabas0ba.sabaprops.foliage",
   "displayName": "SabaProps Foliage",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "unity": "2022.3",
-  "description": "GPU インスタンシング前提の軽量な草木スキャッタリングツール。グラスシード（草叢）とひまわりをプロシージャルに生成し、風揺れ・個体差・距離フェードを 1 マテリアルで処理します。テクスチャ不要、頂点カラーベースなのでバイナリアセットを含みません。",
+  "description": "GPU インスタンシング前提の軽量な草木スキャッタリングツール。草叢、花、雑草、穀物など 8 種をプロシージャルに生成し、風揺れ・個体差・距離縮退を 1 マテリアルで処理します。テクスチャ不要、頂点カラーベースなのでバイナリアセットを含みません。",
   "author": {
     "name": "sabas0ba",
     "url": "https://github.com/sabas0ba"
@@ -19,6 +19,8 @@
     "avatar",
     "foliage",
     "grass",
+    "flower",
+    "grain",
     "sunflower",
     "gpu-instancing",
     "optimization"

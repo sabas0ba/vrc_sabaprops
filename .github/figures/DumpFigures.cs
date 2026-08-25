@@ -49,6 +49,7 @@ internal static class DumpFigures
         public string Id;
         public string Title;
         public string Caption;
+        public string Layout = "Grid";
         public List<Tile> Tiles = new List<Tile>();
     }
 
@@ -56,6 +57,7 @@ internal static class DumpFigures
     {
         var figures = new List<Figure>
         {
+            FoliageDemoOverview(),
             SpeciesOverview(),
 
             GrassFigure("grass-blade-count", "Blade Count", "bladeCount",
@@ -106,12 +108,177 @@ internal static class DumpFigures
     // Figures
     // ----------------------------------------------------------------------
 
+    private static Figure FoliageDemoOverview()
+    {
+        return new Figure
+        {
+            Id = "foliage-demo-overview",
+            Title = "8 種を混植した FoliageDemo",
+            Caption =
+                "実際の生成器から作った 320 株を決定論的に配置し、"
+                + "シェーダーと同じ風の式を固定時刻で評価したオフラインレンダリングです。",
+            Layout = "Hero",
+            Tiles = new List<Tile>
+            {
+                new Tile { Label = "FoliageDemo", Mesh = BuildHeroScene() },
+            },
+        };
+    }
+
+    /// <summary>
+    /// A compact field for the documentation header. Every plant is a
+    /// transformed copy of a real species mesh, appended through the same
+    /// buffer path as merged chunks. The only scene-specific work here is the
+    /// deterministic scatter and one fixed frame of the shader's wind.
+    /// </summary>
+    private static Mesh BuildHeroScene()
+    {
+        var sources = new Dictionary<FoliageSpeciesKind, FoliageSourceMesh>();
+        foreach (FoliageSpeciesKind kind in new[]
+        {
+            FoliageSpeciesKind.GrassClump,
+            FoliageSpeciesKind.Clover,
+            FoliageSpeciesKind.Sunflower,
+            FoliageSpeciesKind.Reed,
+            FoliageSpeciesKind.SmallFlower,
+            FoliageSpeciesKind.Weed,
+            FoliageSpeciesKind.Grain,
+            FoliageSpeciesKind.Dandelion,
+        })
+        {
+            sources[kind] = FoliageSourceMesh.From(FoliageMeshBuilder.Build(
+                new FoliageSpecies { kind = kind, meshSeed = (int)kind + 11 }));
+        }
+
+        var buffer = new FoliageMeshBuffer();
+        var random = new FoliageRandom(30403);
+
+        for (int i = 0; i < 320; i++)
+        {
+            float choice = random.Value01();
+            FoliageSpeciesKind kind;
+
+            if (choice < 0.40f) kind = FoliageSpeciesKind.GrassClump;
+            else if (choice < 0.62f) kind = FoliageSpeciesKind.Clover;
+            else if (choice < 0.74f) kind = FoliageSpeciesKind.SmallFlower;
+            else if (choice < 0.82f) kind = FoliageSpeciesKind.Weed;
+            else if (choice < 0.89f) kind = FoliageSpeciesKind.Grain;
+            else if (choice < 0.95f) kind = FoliageSpeciesKind.Dandelion;
+            else if (choice < 0.98f) kind = FoliageSpeciesKind.Reed;
+            else kind = FoliageSpeciesKind.Sunflower;
+
+            float z = random.Range(0.1f, 9.2f);
+            float halfWidth = 3.5f + z * 0.25f;
+            var position = new Vector3(random.Range(-halfWidth, halfWidth), 0f, z);
+            float yaw = random.Range(0f, 360f);
+            float scale = random.Range(0.78f, 1.22f);
+
+            buffer.Append(
+                sources[kind],
+                Matrix4x4.TRS(
+                    position,
+                    Quaternion.AngleAxis(yaw, Vector3.up),
+                    new Vector3(scale, scale, scale)));
+        }
+
+        ApplyHeroShaderFrame(buffer, 2.4f);
+        return buffer.ToMesh("SabaFoliage_DocumentationHero", 0.4f);
+    }
+
+    /// <summary>
+    /// Evaluates the shader's world-space colour variance and wind once. This
+    /// is deliberately a fixed frame: generated documentation must be stable.
+    /// Constants match the material defaults except for a stronger, still
+    /// valid wind strength so that the direction remains legible in a still.
+    /// </summary>
+    private static void ApplyHeroShaderFrame(FoliageMeshBuffer buffer, float time)
+    {
+        var direction = new Vector3(1f, 0f, 0.4f).normalized;
+
+        for (int i = 0; i < buffer.VertexCount; i++)
+        {
+            Vector4 rootData = buffer.Uv3[i];
+            var root = new Vector3(rootData.x, rootData.y, rootData.z);
+            Vector3 position = buffer.Positions[i];
+            Color color = buffer.Colors[i];
+
+            float seed = Frac(Hash13(root) + color.a * 0.6180339f);
+            float heightRatio = Mathf.Clamp01(buffer.Uv0[i].y);
+            float bend = Mathf.Pow(heightRatio, 2.2f) * rootData.w;
+
+            float travel = Vector3.Dot(root, direction) / 12f;
+            float phase = travel * Mathf.PI * 2f + time * 1.5f + seed * Mathf.PI * 2f;
+            float wave = Mathf.Sin(phase) * 0.65f + Mathf.Sin(phase * 2.37f + 1.7f) * 0.35f;
+            float gust = Mathf.Sin(travel * 1.13f + time * 1.5f * 0.27f) * 0.5f + 0.5f;
+            gust = 1f + (gust * 1.6f - 1f) * 0.5f;
+            float flutter = Mathf.Sin(phase * 4.13f + seed * 27f) * 0.35f * 0.18f;
+            float sway = (wave + flutter) * bend * 0.30f * gust;
+
+            Vector3 offset = direction * sway;
+            offset.y -= Mathf.Abs(sway) * 0.35f;
+            offset *= 1f + Mathf.Clamp01((position.y - root.y) * 0.15f);
+
+            buffer.Positions[i] = position + offset;
+            buffer.Colors[i] = VaryColor(color, seed, 0.035f, 0.15f, 0.22f);
+        }
+    }
+
+    private static float Hash13(Vector3 value)
+    {
+        float x = Frac(value.x * 0.3183099f + 0.1f) * 17f;
+        float y = Frac(value.y * 0.3183099f + 0.1f) * 17f;
+        float z = Frac(value.z * 0.3183099f + 0.1f) * 17f;
+        return Frac(x * y * z * (x + y + z));
+    }
+
+    private static Color VaryColor(
+        Color color, float seed, float hueVariance, float saturationVariance, float valueVariance)
+    {
+        var albedo = new Vector3(color.r, color.g, color.b);
+        float r0 = seed * 2f - 1f;
+        float r1 = Frac(seed * 7.31f) * 2f - 1f;
+        float r2 = Frac(seed * 13.77f) * 2f - 1f;
+
+        albedo = HueShift(albedo, r0 * hueVariance);
+
+        float luma = Vector3.Dot(albedo, new Vector3(0.299f, 0.587f, 0.114f));
+        float saturation = Mathf.Clamp01(1f + r1 * saturationVariance);
+        albedo = new Vector3(
+            luma + (albedo.x - luma) * saturation,
+            luma + (albedo.y - luma) * saturation,
+            luma + (albedo.z - luma) * saturation);
+        albedo *= Mathf.Clamp01(1f + r2 * valueVariance);
+
+        return new Color(
+            Mathf.Clamp01(albedo.x),
+            Mathf.Clamp01(albedo.y),
+            Mathf.Clamp01(albedo.z),
+            color.a);
+    }
+
+    private static Vector3 HueShift(Vector3 color, float turns)
+    {
+        var axis = new Vector3(0.57735027f, 0.57735027f, 0.57735027f);
+        float angle = turns * Mathf.PI * 2f;
+        float cosine = Mathf.Cos(angle);
+        float sine = Mathf.Sin(angle);
+
+        return color * cosine
+            + Vector3.Cross(axis, color) * sine
+            + axis * Vector3.Dot(axis, color) * (1f - cosine);
+    }
+
+    private static float Frac(float value)
+    {
+        return value - (float)Math.Floor(value);
+    }
+
     private static Figure SpeciesOverview()
     {
         var figure = new Figure
         {
             Id = "species-overview",
-            Title = "収録している 4 種",
+            Title = "収録している 8 種",
             Caption = "すべて既定パラメータ、同じ縮尺です。ひまわりと葦が草の 2 倍前後の背丈になります。",
         };
 
@@ -119,6 +286,10 @@ internal static class DumpFigures
         AddTile(figure, "Clover", FoliageSpeciesKind.Clover);
         AddTile(figure, "Sunflower", FoliageSpeciesKind.Sunflower);
         AddTile(figure, "Reed", FoliageSpeciesKind.Reed);
+        AddTile(figure, "Small Flower", FoliageSpeciesKind.SmallFlower);
+        AddTile(figure, "Weed", FoliageSpeciesKind.Weed);
+        AddTile(figure, "Grain", FoliageSpeciesKind.Grain);
+        AddTile(figure, "Dandelion", FoliageSpeciesKind.Dandelion);
 
         return figure;
     }
@@ -339,6 +510,8 @@ internal static class DumpFigures
         AppendString(json, "title", figure.Title);
         json.Append(',');
         AppendString(json, "caption", figure.Caption);
+        json.Append(',');
+        AppendString(json, "layout", figure.Layout);
         json.Append(",\"tiles\":[");
 
         for (int i = 0; i < figure.Tiles.Count; i++)

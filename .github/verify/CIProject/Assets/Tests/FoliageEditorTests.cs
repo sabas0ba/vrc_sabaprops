@@ -11,6 +11,28 @@ using UnityEngine.SceneManagement;
 
 namespace SabaProps.Foliage.CITests
 {
+    public class FoliageFieldWizardTests
+    {
+        [Test]
+        public void DefaultWeights_MatchTheNewSpeciesPresets()
+        {
+            MethodInfo defaultWeight = typeof(FoliageFieldWizard).GetMethod(
+                "DefaultWeight", BindingFlags.NonPublic | BindingFlags.Static);
+
+            Assert.IsNotNull(defaultWeight, "the field wizard has no default-weight policy");
+
+            Assert.AreEqual(0.45f, DefaultWeight(defaultWeight, FoliageSpeciesKind.SmallFlower));
+            Assert.AreEqual(0.3f, DefaultWeight(defaultWeight, FoliageSpeciesKind.Weed));
+            Assert.AreEqual(0.5f, DefaultWeight(defaultWeight, FoliageSpeciesKind.Grain));
+            Assert.AreEqual(0.22f, DefaultWeight(defaultWeight, FoliageSpeciesKind.Dandelion));
+        }
+
+        private static float DefaultWeight(MethodInfo method, FoliageSpeciesKind kind)
+        {
+            return (float)method.Invoke(null, new object[] { kind });
+        }
+    }
+
     /// <summary>
     /// Cleanup shared by the fixtures that write into the project.
     /// </summary>
@@ -300,6 +322,46 @@ namespace SabaProps.Foliage.CITests
         }
 
         [Test]
+        public void UpgradedAssetsInitializeNewSpeciesParameterBlocks()
+        {
+            var species = ScriptableObject.CreateInstance<FoliageSpecies>();
+            try
+            {
+                species.kind = FoliageSpeciesKind.SmallFlower;
+                species.smallFlower = null;
+                Mesh smallFlower = FoliageMeshBuilder.Build(species);
+                AssertMeshIsWellFormed(smallFlower, "upgraded small flower");
+                Assert.IsNotNull(species.smallFlower);
+                Object.DestroyImmediate(smallFlower);
+
+                species.kind = FoliageSpeciesKind.Weed;
+                species.weed = null;
+                Mesh weed = FoliageMeshBuilder.Build(species);
+                AssertMeshIsWellFormed(weed, "upgraded weed");
+                Assert.IsNotNull(species.weed);
+                Object.DestroyImmediate(weed);
+
+                species.kind = FoliageSpeciesKind.Grain;
+                species.grain = null;
+                Mesh grain = FoliageMeshBuilder.Build(species);
+                AssertMeshIsWellFormed(grain, "upgraded grain");
+                Assert.IsNotNull(species.grain);
+                Object.DestroyImmediate(grain);
+
+                species.kind = FoliageSpeciesKind.Dandelion;
+                species.dandelion = null;
+                Mesh dandelion = FoliageMeshBuilder.Build(species);
+                AssertMeshIsWellFormed(dandelion, "upgraded dandelion");
+                Assert.IsNotNull(species.dandelion);
+                Object.DestroyImmediate(dandelion);
+            }
+            finally
+            {
+                Object.DestroyImmediate(species);
+            }
+        }
+
+        [Test]
         public void SingleStemmedSpeciesShareOneWindPhase()
         {
             // A grass or reed clump is separate blades that may sway out of step.
@@ -571,7 +633,7 @@ namespace SabaProps.Foliage.CITests
 
     /// <summary>
     /// The sample scene is the package's first impression, so it is worth a test
-    /// of its own: it exercises both output modes, both species and the ground
+    /// of its own: it exercises both output modes, every species and the ground
     /// raycast in one pass, and a broken one is the most visible failure the
     /// package can ship.
     /// </summary>
@@ -581,7 +643,7 @@ namespace SabaProps.Foliage.CITests
 
         /// <summary>
         /// Built once for the whole fixture. Generating the demo writes a merged
-        /// mesh asset per chunk per species across sixteen plots, and every one
+        /// mesh asset per chunk per species across 28 plots, and every one
         /// is an AssetDatabase import: doing that per test costs minutes.
         /// Nothing here modifies the scene, so one build serves them all.
         /// </summary>
@@ -612,7 +674,8 @@ namespace SabaProps.Foliage.CITests
             // placed something: an empty plot in a showcase reads as a broken
             // package, and one silently empty plot is easy to miss by eye.
             var fields = new List<FoliageField>(Object.FindObjectsOfType<FoliageField>());
-            Assert.Greater(fields.Count, 8, "the demo should lay out a garden of plots, not one field");
+            Assert.AreEqual(28, fields.Count,
+                "the demo plot count changed; update its documented layout and aggregate statistics");
 
             foreach (FoliageField field in fields)
             {
