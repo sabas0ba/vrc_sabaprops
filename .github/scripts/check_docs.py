@@ -141,6 +141,17 @@ def main() -> int:
             if html.escape(package_id) not in listed:
                 problems.append(f"docs/index.html does not link {package_id}")
 
+            # The listing page links every package card straight at this path,
+            # and it is only written when the package has a README.md. A
+            # package that has a CHANGELOG or Documentation~ but no README
+            # still produces a site the index can link, so nothing else here
+            # would notice the card going nowhere.
+            if not os.path.isfile(os.path.join(docs, package_id, "index.html")):
+                problems.append(
+                    f"docs/{package_id}/index.html is missing: the package needs a README.md, "
+                    "which is what the listing page's card links to"
+                )
+
     if problems:
         for problem in problems:
             print(f"error: {problem}", file=sys.stderr)
