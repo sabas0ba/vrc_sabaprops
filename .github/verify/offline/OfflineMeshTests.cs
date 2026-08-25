@@ -690,27 +690,40 @@ internal static class OfflineMeshTests
         Require(upright.triangles.Length > bowed.triangles.Length,
             "the awns cost nothing, so awnLength is not building them");
 
-        // The ear has to stay rigid with the stalk however far it hangs: one
-        // phase, and the top of the bend mask everywhere. A drooping ear that
-        // swayed on its own would swing off the neck.
+        // The ear has to stay rigid with the stalk it grows on, however far it
+        // hangs: the stalk's phase, and the top of the bend mask everywhere. An
+        // ear that swayed on its own would swing off the neck.
+        //
+        // Checked on a single-stalk plant. A clump is several blades that sway
+        // independently by design, so in a full one the band around the ear
+        // contains other blades' tips and finding several phases there says
+        // nothing -- which is what this check first reported.
+        var single = new FoliageSpecies { kind = FoliageSpeciesKind.Grain, meshSeed = 57 };
+        single.grain.earDroop = 1f;
+        single.grain.bladeCount = 1;
+
+        Mesh alone = FoliageMeshBuilder.Build(single);
+        AssertWellFormed(alone, "single-stalk rice");
+
         var uv0 = new List<Vector2>();
-        bowed.GetUVs(0, uv0);
+        alone.GetUVs(0, uv0);
 
-        float top = Tallest(bowed);
         var phases = new HashSet<float>();
+        float earFloor = Tallest(alone) - single.grain.earLength;
 
-        for (int i = 0; i < bowed.vertexCount; i++)
+        for (int i = 0; i < alone.vertexCount; i++)
         {
-            if (bowed.vertices[i].y > top - rice.grain.earLength)
+            phases.Add(alone.colors[i].a);
+
+            if (alone.vertices[i].y > earFloor)
             {
-                phases.Add(bowed.colors[i].a);
                 Require(uv0[i].y > 0.99f,
                     $"ear vertex {i} sits below the top of the bend mask ({uv0[i].y:0.000})");
             }
         }
 
         Require(phases.Count == 1,
-            $"the ear sways with {phases.Count} phases; it must share the stalk's");
+            $"a single stalk and its ear sway with {phases.Count} phases; they must share one");
     }
 
     private static float Tallest(Mesh mesh)
