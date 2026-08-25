@@ -132,13 +132,17 @@ class Triangle:
 # ---------------------------------------------------------------------------
 
 
-def shade(normal: tuple[float, float, float], albedo: tuple[float, float, float]) -> tuple[float, float, float]:
+def shade(
+    normal: tuple[float, float, float],
+    albedo: tuple[float, float, float],
+    camera_forward: tuple[float, float, float] = FORWARD,
+) -> tuple[float, float, float]:
     """Wrapped diffuse, two-sided, as the package's shader is."""
     n = normalise(normal)
 
     # The shader draws foliage with culling off, so a triangle facing away from
     # the camera is still visible -- and must be lit as if it faced us.
-    if dot(n, FORWARD) > 0.0:
+    if dot(n, camera_forward) > 0.0:
         n = (-n[0], -n[1], -n[2])
 
     wrapped = max(0.0, min(1.0, dot(n, LIGHT_DIR) * 0.5 + 0.5))
@@ -321,7 +325,127 @@ def text_width(text: str, size: float) -> float:
     return sum(advance(char) for char in text) * size
 
 
+# ---------------------------------------------------------------------------
+# Documentation hero
+# ---------------------------------------------------------------------------
+
+HERO_WIDTH = 1200.0
+HERO_HEIGHT = 675.0
+HERO_CAMERA = (0.0, 2.4, -7.5)
+HERO_TARGET = (0.0, 0.65, 4.0)
+HERO_FOCAL = HERO_WIDTH / (2.0 * math.tan(math.radians(48.0) / 2.0))
+HERO_CENTRE = (HERO_WIDTH / 2.0, HERO_HEIGHT * 0.48)
+HERO_FOG = (0.63, 0.72, 0.64)
+
+
+def cross(a: tuple[float, float, float], b: tuple[float, float, float]) -> tuple[float, float, float]:
+    return (
+        a[1] * b[2] - a[2] * b[1],
+        a[2] * b[0] - a[0] * b[2],
+        a[0] * b[1] - a[1] * b[0],
+    )
+
+
+HERO_FORWARD = normalise(tuple(HERO_TARGET[i] - HERO_CAMERA[i] for i in range(3)))
+HERO_RIGHT = normalise(cross((0.0, 1.0, 0.0), HERO_FORWARD))
+HERO_UP = normalise(cross(HERO_FORWARD, HERO_RIGHT))
+
+
+def hero_project(point: tuple[float, float, float]) -> tuple[float, float, float]:
+    relative = tuple(point[i] - HERO_CAMERA[i] for i in range(3))
+    depth = dot(relative, HERO_FORWARD)
+    if depth < 1e-4:
+        depth = 1e-4
+
+    return (
+        HERO_CENTRE[0] + dot(relative, HERO_RIGHT) * HERO_FOCAL / depth,
+        HERO_CENTRE[1] - dot(relative, HERO_UP) * HERO_FOCAL / depth,
+        depth,
+    )
+
+
+def hero_triangles(tile: Tile) -> list[Triangle]:
+    projected = []
+    for i in range(0, len(tile.positions), 3):
+        projected.append(hero_project(tuple(tile.positions[i : i + 3])))
+
+    faces: list[Triangle] = []
+    for i in range(0, len(tile.triangles), 3):
+        indices = tile.triangles[i], tile.triangles[i + 1], tile.triangles[i + 2]
+        points = tuple((projected[index][0], projected[index][1]) for index in indices)
+        depth = sum(projected[index][2] for index in indices) / 3.0
+
+        albedo = average(tile.colors, indices, 3)
+        normal = average(tile.normals, indices, 3)
+        lit = shade(normal, albedo, HERO_FORWARD)
+
+        fog = max(0.0, min(0.34, (depth - 9.0) / 24.0))
+        colour = tuple(lit[channel] + (HERO_FOG[channel] - lit[channel]) * fog for channel in range(3))
+        faces.append(Triangle(depth=depth, points=points, fill=to_hex(colour)))
+
+    faces.sort(key=lambda face: -face.depth)
+    return faces
+
+
+def render_hero(figure: dict) -> str:
+    tile_data = figure["tiles"][0]
+    tile = Tile(
+        label=tile_data["label"],
+        channel=tile_data["channel"],
+        positions=tile_data["positions"],
+        normals=tile_data["normals"],
+        colors=tile_data["colors"],
+        scalars=tile_data["scalars"],
+        triangles=tile_data["triangles"],
+    )
+
+    out = [
+        f'<svg xmlns="http://www.w3.org/2000/svg" width="{number(HERO_WIDTH)}" '
+        f'height="{number(HERO_HEIGHT)}" viewBox="0 0 {number(HERO_WIDTH)} {number(HERO_HEIGHT)}" '
+        f'role="img" aria-label="{escape(figure["title"])}">',
+        "<defs>",
+        '<linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">'
+        '<stop offset="0" stop-color="#dce9ed"/><stop offset="1" stop-color="#f2f3dc"/>'
+        "</linearGradient>",
+        '<linearGradient id="ground" x1="0" y1="0" x2="0" y2="1">'
+        '<stop offset="0" stop-color="#9caf78"/><stop offset="1" stop-color="#4f6945"/>'
+        "</linearGradient>",
+        '<radialGradient id="field-shadow">'
+        '<stop offset="0" stop-color="#243620" stop-opacity="0.34"/>'
+        '<stop offset="1" stop-color="#243620" stop-opacity="0"/>'
+        "</radialGradient>",
+        "</defs>",
+        f'<rect width="{number(HERO_WIDTH)}" height="{number(HERO_HEIGHT)}" fill="url(#sky)"/>',
+        '<circle cx="985" cy="118" r="43" fill="#fff8cb" opacity="0.74"/>',
+        '<path d="M0 320 C190 275 365 310 535 292 C745 270 930 305 1200 255 L1200 410 L0 410 Z" '
+        'fill="#a8b88b" opacity="0.68"/>',
+        f'<rect y="340" width="{number(HERO_WIDTH)}" height="{number(HERO_HEIGHT - 340)}" '
+        'fill="url(#ground)"/>',
+        '<ellipse cx="600" cy="585" rx="565" ry="130" fill="url(#field-shadow)"/>',
+    ]
+
+    for face in hero_triangles(tile):
+        path = " ".join(
+            f"{'M' if i == 0 else 'L'}{number(x)},{number(y)}" for i, (x, y) in enumerate(face.points)
+        )
+        out.append(f'<path d="{path}Z" fill="{face.fill}"/>')
+
+    out.extend(
+        [
+            '<path d="M0 640 C250 612 430 660 650 630 C870 600 1035 650 1200 620 L1200 675 L0 675 Z" '
+            'fill="#405b3d" opacity="0.34"/>',
+            '<rect x="0.5" y="0.5" width="1199" height="674" rx="8" fill="none" '
+            'stroke="#31402e" stroke-opacity="0.22"/>',
+            "</svg>",
+        ]
+    )
+    return "\n".join(out) + "\n"
+
+
 def render(figure: dict) -> str:
+    if figure.get("layout") == "Hero":
+        return render_hero(figure)
+
     tiles = [
         Tile(
             label=tile["label"],

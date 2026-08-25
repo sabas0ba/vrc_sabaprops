@@ -4,10 +4,10 @@
 
 | 系統 | 生成するもの | 実行 | リポジトリ内の置き場所 |
 | --- | --- | --- | --- |
-| オフライン（このフォルダの `render.sh`） | パラメータごとの形状比較図 (SVG) | CI で検査、手元で再生成 | `Packages/<pkg>/Documentation~/images/generated/` |
+| オフライン（このフォルダの `render.sh`） | パラメータごとの形状比較図と overview (SVG) | CI で検査、手元で再生成 | `Packages/<pkg>/Documentation~/images/generated/` |
 | Unity（`capture/`） | サンプルシーンの実写 (JPEG) | 手元の Unity で手動 | `Packages/<pkg>/Documentation~/images/captured/` |
 
-前者は「パラメータを変えると形がどう変わるか」を示すもので、比較が仕事なので毎回同じ結果になる必要があります。
+前者は「パラメータを変えると形がどう変わるか」と「収録している種を混植するとどのような構成になるか」を示すもので、毎回同じ結果になる必要があります。
 後者は「実際にどう見えるか」を示すもので、風・透過光・影・数千個体といった、オフラインでは代替できないものを写します。
 
 どちらの出力も VPM の zip には含まれません（`build-release.yml` が `Documentation~/images/*` を除外します）。
@@ -22,6 +22,8 @@
 ```
 
 必要なもの: .NET SDK 8+ と、podman か docker（Python は `.github/scripts/run.sh` の固定コンテナ内で動きます）。
+
+ローカルに環境が無い場合は、Actions の `Render figures` を対象 branch で手動実行します。生成結果は `documentation-figures` artifact から取得できます。この workflow は `workflow_dispatch` のみで、push や Pull Request からは起動しません。
 
 内部は 2 段です。
 
@@ -38,8 +40,9 @@
 `render_figures.py` の陰影はパッケージのシェーダーではありません。シルエットと奥行きが読めることだけを目的にした固定のライティングです。
 シェーダーの見た目を示すのは `capture/` の実写の役目で、こちらの役目は「2 つのタイルの違いがパラメータだけである」ことを示すことです。
 
-ただし、シェーダーの挙動そのものを図にしているものが 2 つあります。いずれも規約として文書化済みの入力だけを使っています。
+ただし、シェーダーの挙動そのものを図にしているものが 3 つあります。いずれも規約として文書化済みの入力だけを使っています。
 
+- `foliage-demo-overview` — 115 株を決定論的に配置し、ワールド座標 hash による色差と wind deformation を固定時刻で評価した overview。ライティングと地面はオフライン近似です
 - `distance-shrink` — 頂点を `UV3.xyz`（要素の根元）へ寄せる縮退。シェーダーと同じ `lerp` を `DumpFigures.cs` で適用しています
 - `mesh-channels` — `UV0.y` と `UV3.w` をそのまま色に割り当てたもの
 

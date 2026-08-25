@@ -7,6 +7,10 @@ GPU インスタンシング前提の、軽量な草木スキャッタリング�
 - ワールド座標ハッシュによる個体差なので、per-instance データの送信が一切不要です
 - Built-in Render Pipeline / Unity 2022.3 / VRChat ワールド・アバターの両方で使えます
 
+![8 種の草花を混植し、同じ風になびかせた FoliageDemo のオフラインレンダリング](Documentation~/images/generated/foliage-demo-overview.svg)
+
+この図は実際のメッシュ生成器から作った 115 株を決定論的に配置し、シェーダーと同じ風の式を固定時刻で評価したものです。ライティングと地面は形状を読みやすくするためのオフライン近似で、Unity の画面を撮影したものではありません。
+
 ![草叢・クローバー・ひまわり・葦・小花・雑草・穀物・たんぽぽを同じ縮尺で並べた比較図](Documentation~/images/generated/species-overview.svg)
 
 図はすべて実際の生成器の出力です。パラメータを変えると形状がどう動くかは [パラメータと見た目の対応](Documentation~/parameters.md) に一覧があります。
