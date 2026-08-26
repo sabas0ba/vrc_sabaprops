@@ -36,6 +36,7 @@ set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO="$(cd "$HERE/../.." && pwd)"
 PACKAGE="${1:-$REPO/Packages/io.github.sabas0ba.sabaprops.foliage}"
+TREE_PACKAGE="${TREE_PACKAGE:-$REPO/Packages/io.github.sabas0ba.sabaprops.trees}"
 
 WORK="${VERIFY_WORK_DIR:-$REPO/.verify}"
 REFS="$WORK/refs"
@@ -118,6 +119,14 @@ csc "${COMMON[@]}" "${BCL[@]}" "${UNITY_ARGS[@]}" \
     -out:"$OUT/SabaProps.Foliage.Runtime.dll" "${RUNTIME_SOURCES[@]}"
 echo "ok: ${#RUNTIME_SOURCES[@]} file(s)"
 
+if [ -d "$TREE_PACKAGE/Runtime" ]; then
+    mapfile -t TREE_RUNTIME_SOURCES < <(find "$TREE_PACKAGE/Runtime" -name '*.cs' | sort)
+    csc "${COMMON[@]}" "${BCL[@]}" "${UNITY_ARGS[@]}" \
+        -r:"$OUT/SabaProps.Foliage.Runtime.dll" \
+        -out:"$OUT/SabaProps.Trees.Runtime.dll" "${TREE_RUNTIME_SOURCES[@]}"
+    echo "ok: ${#TREE_RUNTIME_SOURCES[@]} tree runtime file(s)"
+fi
+
 # ---------------------------------------------------------------------------
 log "Compiling UnityEditor stub"
 # ---------------------------------------------------------------------------
@@ -135,6 +144,16 @@ csc "${COMMON[@]}" "${BCL[@]}" "${UNITY_ARGS[@]}" \
     -r:"$OUT/SabaProps.Foliage.Runtime.dll" -r:"$OUT/UnityEditor.dll" \
     -out:"$OUT/SabaProps.Foliage.Editor.dll" "${EDITOR_SOURCES[@]}"
 echo "ok: ${#EDITOR_SOURCES[@]} file(s)"
+
+if [ -d "$TREE_PACKAGE/Editor" ]; then
+    mapfile -t TREE_EDITOR_SOURCES < <(find "$TREE_PACKAGE/Editor" -name '*.cs' | sort)
+    csc "${COMMON[@]}" "${BCL[@]}" "${UNITY_ARGS[@]}" \
+        -r:"$OUT/SabaProps.Foliage.Runtime.dll" \
+        -r:"$OUT/SabaProps.Trees.Runtime.dll" \
+        -r:"$OUT/UnityEditor.dll" \
+        -out:"$OUT/SabaProps.Trees.Editor.dll" "${TREE_EDITOR_SOURCES[@]}"
+    echo "ok: ${#TREE_EDITOR_SOURCES[@]} tree editor file(s)"
+fi
 
 # ---------------------------------------------------------------------------
 log "Compiling the documentation capture tool"
@@ -167,6 +186,8 @@ if [ -d "$TEST_DIR" ]; then
         csc "${COMMON[@]}" "${BCL[@]}" "${UNITY_ARGS[@]}" \
             -r:"$OUT/SabaProps.Foliage.Runtime.dll" \
             -r:"$OUT/SabaProps.Foliage.Editor.dll" \
+            -r:"$OUT/SabaProps.Trees.Runtime.dll" \
+            -r:"$OUT/SabaProps.Trees.Editor.dll" \
             -r:"$OUT/UnityEditor.dll" \
             -out:"$OUT/SabaProps.Foliage.CITests.dll" "${TEST_SOURCES[@]}"
         echo "ok: ${#TEST_SOURCES[@]} file(s)"
@@ -294,5 +315,8 @@ rm -rf "$OUT/site/docs"
 log "Validating manifests"
 # ---------------------------------------------------------------------------
 "$PYTHON" .github/scripts/check_package.py "$REPO" "$PACKAGE"
+if [ -d "$TREE_PACKAGE" ]; then
+    "$PYTHON" .github/scripts/check_package.py "$REPO" "$TREE_PACKAGE"
+fi
 
 log "All checks passed"

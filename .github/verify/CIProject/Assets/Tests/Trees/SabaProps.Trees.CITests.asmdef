@@ -1,0 +1,26 @@
+{
+    "name": "SabaProps.Trees.CITests",
+    "rootNamespace": "SabaProps.Trees.CITests",
+    "references": [
+        "SabaProps.Foliage.Runtime",
+        "SabaProps.Trees.Runtime",
+        "SabaProps.Trees.Editor",
+        "UnityEngine.TestRunner",
+        "UnityEditor.TestRunner"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": true,
+    "precompiledReferences": [
+        "nunit.framework.dll"
+    ],
+    "autoReferenced": false,
+    "defineConstraints": [
+        "UNITY_INCLUDE_TESTS"
+    ],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

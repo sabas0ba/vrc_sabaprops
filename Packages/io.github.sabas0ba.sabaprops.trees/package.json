@@ -1,0 +1,26 @@
+{
+  "name": "io.github.sabas0ba.sabaprops.trees",
+  "displayName": "SabaProps Trees",
+  "version": "0.1.0",
+  "unity": "2022.3",
+  "description": "再帰的な枝分かれから広葉樹、針葉樹、枯れ木、砂漠低木を生成する軽量な樹木ジェネレータ。SabaProps Foliage のシェーダーと風チャンネルを共有し、樹木向けの LOD を生成します。",
+  "author": {
+    "name": "sabas0ba",
+    "url": "https://github.com/sabas0ba"
+  },
+  "license": "MIT",
+  "licensesUrl": "https://github.com/sabas0ba/vrc_sabaprops/blob/main/LICENSE",
+  "documentationUrl": "https://github.com/sabas0ba/vrc_sabaprops/blob/main/Packages/io.github.sabas0ba.sabaprops.trees/README.md",
+  "changelogUrl": "https://github.com/sabas0ba/vrc_sabaprops/blob/main/Packages/io.github.sabas0ba.sabaprops.trees/CHANGELOG.md",
+  "vpmDependencies": {
+    "io.github.sabas0ba.sabaprops.foliage": "0.3.0"
+  },
+  "keywords": [
+    "vrchat",
+    "world",
+    "tree",
+    "procedural",
+    "lod",
+    "wind"
+  ]
+}

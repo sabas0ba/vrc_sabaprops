@@ -1,0 +1,265 @@
+using System.Collections.Generic;
+using NUnit.Framework;
+using SabaProps.Foliage;
+using SabaProps.Trees.Editors;
+using UnityEditor;
+using UnityEngine;
+using UnityEngine.Rendering;
+
+namespace SabaProps.Trees.CITests
+{
+    public sealed class TreeEditorTests
+    {
+        [TearDown]
+        public void CleanGeneratedAssets()
+        {
+            foreach (LODGroup group in Object.FindObjectsOfType<LODGroup>())
+            {
+                if (group.name.EndsWith(" Tree"))
+                {
+                    Object.DestroyImmediate(group.gameObject);
+                }
+            }
+
+            if (AssetDatabase.IsValidFolder(TreeAssetLibrary.RootFolder))
+            {
+                AssetDatabase.DeleteAsset(TreeAssetLibrary.RootFolder);
+            }
+        }
+
+        [Test]
+        public void EveryArchetypeBuildsThreeWellFormedLods()
+        {
+            foreach (TreeArchetype archetype in TreeAssetLibrary.AllArchetypes)
+            {
+                TreeSpecies species = CreateSpecies(archetype);
+                try
+                {
+                    Mesh lod0 = TreeMeshBuilder.Build(species, 0);
+                    Mesh lod1 = TreeMeshBuilder.Build(species, 1);
+                    Mesh lod2 = TreeMeshBuilder.Build(species, 2);
+                    try
+                    {
+                        AssertMesh(lod0, archetype + " LOD0");
+                        AssertMesh(lod1, archetype + " LOD1");
+                        AssertMesh(lod2, archetype + " LOD2");
+
+                        Assert.Less(lod0.triangles.Length / 3, 100000,
+                            archetype + " default LOD0 exceeds the triangle budget");
+
+                        Assert.Greater(lod0.triangles.Length, lod1.triangles.Length,
+                            archetype + " LOD1 should contain fewer triangles than LOD0");
+                        Assert.Greater(lod1.triangles.Length, lod2.triangles.Length,
+                            archetype + " LOD2 should contain fewer triangles than LOD1");
+                    }
+                    finally
+                    {
+                        Object.DestroyImmediate(lod0);
+                        Object.DestroyImmediate(lod1);
+                        Object.DestroyImmediate(lod2);
+                    }
+                }
+                finally
+                {
+                    Object.DestroyImmediate(species);
+                }
+            }
+        }
+
+        [Test]
+        public void SameSeedProducesIdenticalMesh()
+        {
+            TreeSpecies species = CreateSpecies(TreeArchetype.Broadleaf);
+            try
+            {
+                Mesh first = TreeMeshBuilder.Build(species, 0);
+                Mesh second = TreeMeshBuilder.Build(species, 0);
+                try
+                {
+                    Assert.AreEqual(first.vertexCount, second.vertexCount);
+                    Assert.AreEqual(first.triangles.Length, second.triangles.Length);
+
+                    Vector3[] firstVertices = first.vertices;
+                    Vector3[] secondVertices = second.vertices;
+                    for (int i = 0; i < firstVertices.Length; i++)
+                    {
+                        Assert.AreEqual(firstVertices[i], secondVertices[i], "vertex " + i);
+                    }
+
+                    int[] firstTriangles = first.triangles;
+                    int[] secondTriangles = second.triangles;
+                    for (int i = 0; i < firstTriangles.Length; i++)
+                    {
+                        Assert.AreEqual(firstTriangles[i], secondTriangles[i], "index " + i);
+                    }
+                }
+                finally
+                {
+                    Object.DestroyImmediate(first);
+                    Object.DestroyImmediate(second);
+                }
+            }
+            finally
+            {
+                Object.DestroyImmediate(species);
+            }
+        }
+
+        [Test]
+        public void ValidationClampsUnsafeApiValues()
+        {
+            TreeSpecies species = CreateSpecies(TreeArchetype.Broadleaf);
+            try
+            {
+                species.structure.trunkLength = -1f;
+                species.structure.radialSegments = 99;
+                species.structure.maxDepth = 99;
+                species.structure.branchAngle = -20f;
+                species.structure.lengthDecay = 4f;
+                species.structure.crookedness = 4f;
+                species.appearance.leafLength = 0f;
+                species.appearance.branchStiffness = 4f;
+                species.lod.lod0ScreenHeight = 0f;
+                species.lod.lod1ScreenHeight = 1f;
+                species.lod.lod2ScreenHeight = 1f;
+
+                species.ValidateParameters();
+
+                Assert.AreEqual(0.2f, species.structure.trunkLength, 1e-6f);
+                Assert.AreEqual(12, species.structure.radialSegments);
+                Assert.AreEqual(6, species.structure.maxDepth);
+                Assert.AreEqual(5f, species.structure.branchAngle, 1e-6f);
+                Assert.AreEqual(0.85f, species.structure.lengthDecay, 1e-6f);
+                Assert.AreEqual(0.5f, species.structure.crookedness, 1e-6f);
+                Assert.AreEqual(0.01f, species.appearance.leafLength, 1e-6f);
+                Assert.AreEqual(1f, species.appearance.branchStiffness, 1e-6f);
+                Assert.AreEqual(0.03f, species.lod.lod0ScreenHeight, 1e-6f);
+                Assert.AreEqual(0.02f, species.lod.lod1ScreenHeight, 1e-6f);
+                Assert.AreEqual(0.01f, species.lod.lod2ScreenHeight, 1e-6f);
+            }
+            finally
+            {
+                Object.DestroyImmediate(species);
+            }
+        }
+
+        [Test]
+        public void WindDataKeepsTrunkRigidAndBranchesPivoted()
+        {
+            TreeSpecies species = CreateSpecies(TreeArchetype.Broadleaf);
+            try
+            {
+                Mesh mesh = TreeMeshBuilder.Build(species, 0);
+                try
+                {
+                    var uv0 = new List<Vector2>();
+                    var uv3 = new List<Vector4>();
+                    mesh.GetUVs(0, uv0);
+                    mesh.GetUVs(FoliageShaderContract.WindDataUvChannel, uv3);
+
+                    int rigidVertices = 0;
+                    int flexibleVertices = 0;
+                    var pivots = new HashSet<Vector3>();
+                    var pivotHasRoot = new HashSet<Vector3>();
+                    for (int i = 0; i < mesh.vertexCount; i++)
+                    {
+                        Assert.IsTrue(uv0[i].y >= 0f && uv0[i].y <= 1f,
+                            "bend coordinate must stay in [0,1]");
+
+                        Vector4 wind = uv3[i];
+                        if (wind.w <= 0f)
+                        {
+                            rigidVertices++;
+                            continue;
+                        }
+
+                        flexibleVertices++;
+                        var pivot = new Vector3(wind.x, wind.y, wind.z);
+                        pivots.Add(pivot);
+                        if (uv0[i].y <= 1e-5f)
+                        {
+                            pivotHasRoot.Add(pivot);
+                        }
+                    }
+
+                    Assert.Greater(rigidVertices, 0, "the trunk must not move");
+                    Assert.Greater(flexibleVertices, 0, "branches must carry wind data");
+                    Assert.Greater(pivots.Count, 1, "primary branches need independent pivots");
+                    Assert.AreEqual(pivots.Count, pivotHasRoot.Count,
+                        "every primary branch subtree needs vertices at bend zero");
+                }
+                finally
+                {
+                    Object.DestroyImmediate(mesh);
+                }
+            }
+            finally
+            {
+                Object.DestroyImmediate(species);
+            }
+        }
+
+        [Test]
+        public void SceneTreeUsesLodGroupShadowsAndNoDistanceShrink()
+        {
+            TreeSpecies species = TreeAssetLibrary.CreateOrLoadSpecies(TreeArchetype.Broadleaf);
+            GameObject root = TreeAssetLibrary.CreateLodGroup(species);
+
+            Assert.IsNotNull(root);
+            LODGroup group = root.GetComponent<LODGroup>();
+            Assert.IsNotNull(group);
+            Assert.AreEqual(3, group.GetLODs().Length);
+
+            MeshRenderer[] renderers = root.GetComponentsInChildren<MeshRenderer>();
+            Assert.AreEqual(3, renderers.Length);
+            foreach (MeshRenderer renderer in renderers)
+            {
+                Assert.AreEqual(ShadowCastingMode.On, renderer.shadowCastingMode);
+                Assert.IsTrue(renderer.receiveShadows);
+                Assert.AreEqual(species.material, renderer.sharedMaterial);
+            }
+
+            Assert.AreEqual(0f,
+                species.material.GetFloat(FoliageShaderContract.DistanceFadeProperty), 1e-6f);
+            Assert.IsFalse(species.material.IsKeywordEnabled(
+                FoliageShaderContract.DistanceFadeKeyword));
+        }
+
+        private static TreeSpecies CreateSpecies(TreeArchetype archetype)
+        {
+            TreeSpecies species = ScriptableObject.CreateInstance<TreeSpecies>();
+            species.name = archetype.ToString();
+            species.ApplyArchetypePreset(archetype);
+            return species;
+        }
+
+        private static void AssertMesh(Mesh mesh, string label)
+        {
+            Assert.IsNotNull(mesh, label);
+            Assert.Greater(mesh.vertexCount, 0, label + " has no vertices");
+            Assert.Greater(mesh.triangles.Length, 0, label + " has no triangles");
+            Assert.AreEqual(0, mesh.triangles.Length % 3, label + " index count");
+            Assert.AreEqual(mesh.vertexCount, mesh.normals.Length, label + " normals");
+            Assert.AreEqual(mesh.vertexCount, mesh.colors.Length, label + " colors");
+
+            var uv0 = new List<Vector2>();
+            var uv3 = new List<Vector4>();
+            mesh.GetUVs(0, uv0);
+            mesh.GetUVs(FoliageShaderContract.WindDataUvChannel, uv3);
+            Assert.AreEqual(mesh.vertexCount, uv0.Count, label + " UV0");
+            Assert.AreEqual(mesh.vertexCount, uv3.Count, label + " UV3");
+
+            foreach (Vector3 vertex in mesh.vertices)
+            {
+                Assert.IsFalse(float.IsNaN(vertex.x) || float.IsInfinity(vertex.x), label + " vertex.x");
+                Assert.IsFalse(float.IsNaN(vertex.y) || float.IsInfinity(vertex.y), label + " vertex.y");
+                Assert.IsFalse(float.IsNaN(vertex.z) || float.IsInfinity(vertex.z), label + " vertex.z");
+            }
+
+            foreach (int index in mesh.triangles)
+            {
+                Assert.IsTrue(index >= 0 && index < mesh.vertexCount, label + " index range");
+            }
+        }
+    }
+}

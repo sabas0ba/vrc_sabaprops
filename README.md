@@ -26,6 +26,7 @@ https://sabas0ba.github.io/vrc_sabaprops/index.json
 | Package ID | 名前 | 概要 |
 | --- | --- | --- |
 | `io.github.sabas0ba.sabaprops.foliage` | SabaProps Foliage | GPU インスタンシング対応の草木スキャッタリングツール。グラスシード／ひまわりをプロシージャル生成し、大量配置しても軽量。 |
+| `io.github.sabas0ba.sabaprops.trees` | SabaProps Trees | 再帰枝ジェネレータから樹木と 3 段階 LOD を生成。Foliage の shader／風チャンネルを共有。 |
 
 各パッケージの詳細は `Packages/<package-id>/README.md` を参照してください。
 
@@ -40,11 +41,15 @@ VRChat Worlds SDK が入っているプロジェクトでは `VRCSceneDescriptor
 ```
 .
 ├── Packages/                       # 配布する VPM パッケージ群（1 フォルダ = 1 パッケージ）
-│   └── io.github.sabas0ba.sabaprops.foliage/
-│       ├── package.json            # VPM マニフェスト
-│       ├── Runtime/                # シーンに残る最小限のコンポーネントとシェーダー
-│       ├── Editor/                 # 生成・配置ツール（ビルドには含まれない）
-│       └── Documentation~/
+│   ├── io.github.sabas0ba.sabaprops.foliage/
+│   │   ├── package.json            # VPM マニフェスト
+│   │   ├── Runtime/                # シーンに残る最小限のコンポーネントとシェーダー
+│   │   ├── Editor/                 # 生成・配置ツール（ビルドには含まれない）
+│   │   └── Documentation~/
+│   └── io.github.sabas0ba.sabaprops.trees/
+│       ├── package.json
+│       ├── Runtime/                # TreeSpecies とパラメータ
+│       └── Editor/                 # 再帰枝、LOD Mesh、LODGroup 生成
 ├── Website/                        # GitHub Pages で公開するリスティングサイト
 ├── source.json                     # VPM リスティングのメタ情報
 └── .github/

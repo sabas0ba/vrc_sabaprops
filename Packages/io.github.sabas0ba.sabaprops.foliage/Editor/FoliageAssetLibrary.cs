@@ -19,7 +19,7 @@ namespace SabaProps.Foliage.Editors
         public const string GeneratedMeshFolder = GeneratedFolder + "/Species";
         public const string GeneratedMergedFolder = GeneratedFolder + "/Merged";
 
-        public const string ShaderName = "SabaProps/Foliage";
+        public const string ShaderName = FoliageShaderContract.ShaderName;
 
         /// <summary>
         /// Absolute path to a file inside this package, or null if the package

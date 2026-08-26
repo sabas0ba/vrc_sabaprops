@@ -1,0 +1,19 @@
+{
+    "name": "SabaProps.Trees.Editor",
+    "rootNamespace": "SabaProps.Trees.Editors",
+    "references": [
+        "SabaProps.Trees.Runtime",
+        "SabaProps.Foliage.Runtime"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
