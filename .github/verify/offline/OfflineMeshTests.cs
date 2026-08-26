@@ -50,6 +50,7 @@ internal static class OfflineMeshTests
         Run("weed leaves are broad and uneven", WeedLeavesAreBroadAndUneven);
         Run("the grain ear bows under its droop", GrainEarBowsUnderItsDroop);
         Run("the dandelion keeps its rosette when the head goes", DandelionKeepsItsRosetteWhenTheHeadGoes);
+        Run("the vine hangs below a rigid ledge anchor", VineHangsBelowItsAnchor);
 
         Run("degenerate parameters stay finite", DegenerateParametersStayFinite);
         Run("merging preserves counts and moves the wind pivots", MergePreservesChannels);
@@ -124,7 +125,8 @@ internal static class OfflineMeshTests
     {
         // Unity leaves newly added serializable reference fields null when it
         // loads an asset written before those fields existed. Switching such a
-        // 0.2 asset to a 0.3 species must create the new block before dispatch.
+        // An older asset switched to a newer species kind must create the new
+        // parameter block before dispatch.
         var smallFlower = new FoliageSpecies { kind = FoliageSpeciesKind.SmallFlower };
         smallFlower.smallFlower = null;
         AssertWellFormed(FoliageMeshBuilder.Build(smallFlower), "upgraded small flower");
@@ -144,6 +146,11 @@ internal static class OfflineMeshTests
         dandelion.dandelion = null;
         AssertWellFormed(FoliageMeshBuilder.Build(dandelion), "upgraded dandelion");
         Require(dandelion.dandelion != null, "dandelion parameters stayed null");
+
+        var vine = new FoliageSpecies { kind = FoliageSpeciesKind.Vine };
+        vine.vine = null;
+        AssertWellFormed(FoliageMeshBuilder.Build(vine), "upgraded vine");
+        Require(vine.vine != null, "vine parameters stayed null");
     }
 
     private static void EverySpeciesIsDeterministic()
@@ -216,6 +223,45 @@ internal static class OfflineMeshTests
         // tallest blade. Ankle-high grass reads as moss from standing height.
         Require(tallest > 0.4f, $"default grass is only {tallest:0.00} m tall");
         Require(tallest < 1.5f, $"default grass is {tallest:0.00} m tall");
+    }
+
+    private static void VineHangsBelowItsAnchor()
+    {
+        var species = new FoliageSpecies
+        {
+            kind = FoliageSpeciesKind.Vine,
+            meshSeed = 79,
+        };
+        Mesh mesh = FoliageMeshBuilder.Build(species);
+        AssertWellFormed(mesh, "vine");
+
+        float lowest = 0f;
+        float highest = float.MinValue;
+        foreach (Vector3 vertex in mesh.vertices)
+        {
+            lowest = Mathf.Min(lowest, vertex.y);
+            highest = Mathf.Max(highest, vertex.y);
+        }
+        Require(lowest < -1f, $"the default vine only hangs to {lowest:0.00} m");
+        Require(highest <= 1e-5f,
+            $"the vine grew above its ledge anchor to {highest:0.000} m");
+
+        var uv0 = new List<Vector2>();
+        var uv3 = new List<Vector4>();
+        mesh.GetUVs(0, uv0);
+        mesh.GetUVs(3, uv3);
+
+        int rigidRoots = 0;
+        for (int i = 0; i < mesh.vertexCount; i++)
+        {
+            Require(Math.Abs(uv3[i].y) <= 1e-6f,
+                $"vine vertex {i} has a wind pivot below the ledge");
+            if (Math.Abs(mesh.vertices[i].y) <= 1e-5f && uv0[i].y <= 1e-5f)
+            {
+                rigidRoots++;
+            }
+        }
+        Require(rigidRoots > 0, "the vine has no rigid root vertices");
     }
 
     private static void SinglePlantsShareOneWindPhase()
@@ -917,6 +963,7 @@ internal static class OfflineMeshTests
         FoliageSpeciesKind.Weed,
         FoliageSpeciesKind.Grain,
         FoliageSpeciesKind.Dandelion,
+        FoliageSpeciesKind.Vine,
     };
 
     private static FoliageSeason[] AllSeasons() => new[]

@@ -188,6 +188,7 @@ namespace SabaProps.Foliage.Editors
             FoliageSpeciesKind.Weed,
             FoliageSpeciesKind.Grain,
             FoliageSpeciesKind.Dandelion,
+            FoliageSpeciesKind.Vine,
         };
 
         /// <summary>
@@ -206,6 +207,7 @@ namespace SabaProps.Foliage.Editors
                 case FoliageSpeciesKind.Weed: return 0.3f;
                 case FoliageSpeciesKind.Grain: return 0.5f;
                 case FoliageSpeciesKind.Dandelion: return 0.22f;
+                case FoliageSpeciesKind.Vine: return 0.3f;
                 case FoliageSpeciesKind.GrassClump:
                 default: return 1f;
             }
@@ -223,6 +225,7 @@ namespace SabaProps.Foliage.Editors
                 case FoliageSpeciesKind.Weed: return "Weed";
                 case FoliageSpeciesKind.Grain: return "Grain";
                 case FoliageSpeciesKind.Dandelion: return "Dandelion";
+                case FoliageSpeciesKind.Vine: return "Vine";
                 case FoliageSpeciesKind.GrassClump:
                 default: return "GrassSeed";
             }
@@ -278,6 +281,7 @@ namespace SabaProps.Foliage.Editors
                 case FoliageSpeciesKind.Weed: return "weed";
                 case FoliageSpeciesKind.Grain: return "grain";
                 case FoliageSpeciesKind.Dandelion: return "dandelion";
+                case FoliageSpeciesKind.Vine: return "vine";
                 case FoliageSpeciesKind.GrassClump:
                 default: return "grass";
             }
@@ -353,6 +357,23 @@ namespace SabaProps.Foliage.Editors
 
         private static void ApplyPreset(FoliageSpecies species, FoliageSpeciesKind kind)
         {
+            if (kind == FoliageSpeciesKind.Vine)
+            {
+                species.meshSeed = 79;
+
+                // Intended for a narrow field on a ledge. The mesh itself grows
+                // down from the hit point, so it must stay upright regardless
+                // of small variations in the support collider's normal.
+                species.placementWeight = 0.3f;
+                species.minSpacing = 0.32f;
+                species.scaleRange = new Vector2(0.85f, 1.2f);
+                species.maxTilt = 2f;
+                species.alignToGroundNormal = 0f;
+                species.slopeLimits = new Vector2(0f, 20f);
+                species.castShadows = true;
+                return;
+            }
+
             if (kind == FoliageSpeciesKind.Clover)
             {
                 species.meshSeed = 21;

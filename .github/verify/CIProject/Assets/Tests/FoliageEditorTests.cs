@@ -20,6 +20,7 @@ namespace SabaProps.Foliage.CITests
             Assert.AreEqual(0.3f, FoliageAssetLibrary.DefaultFieldWeight(FoliageSpeciesKind.Weed));
             Assert.AreEqual(0.5f, FoliageAssetLibrary.DefaultFieldWeight(FoliageSpeciesKind.Grain));
             Assert.AreEqual(0.22f, FoliageAssetLibrary.DefaultFieldWeight(FoliageSpeciesKind.Dandelion));
+            Assert.AreEqual(0.3f, FoliageAssetLibrary.DefaultFieldWeight(FoliageSpeciesKind.Vine));
         }
     }
 
@@ -396,6 +397,13 @@ namespace SabaProps.Foliage.CITests
                 AssertMeshIsWellFormed(dandelion, "upgraded dandelion");
                 Assert.IsNotNull(species.dandelion);
                 Object.DestroyImmediate(dandelion);
+
+                species.kind = FoliageSpeciesKind.Vine;
+                species.vine = null;
+                Mesh vine = FoliageMeshBuilder.Build(species);
+                AssertMeshIsWellFormed(vine, "upgraded vine");
+                Assert.IsNotNull(species.vine);
+                Object.DestroyImmediate(vine);
             }
             finally
             {
@@ -532,6 +540,61 @@ namespace SabaProps.Foliage.CITests
                 Object.DestroyImmediate(ground);
                 Object.DestroyImmediate(species);
                 Object.DestroyImmediate(material);
+            }
+        }
+
+        [Test]
+        public void VineHangsBelowItsAnchorAndKeepsRigidRoots()
+        {
+            var species = ScriptableObject.CreateInstance<FoliageSpecies>();
+            try
+            {
+                species.kind = FoliageSpeciesKind.Vine;
+                species.meshSeed = 79;
+                Mesh mesh = FoliageMeshBuilder.Build(species);
+                try
+                {
+                    Assert.IsNotNull(mesh);
+                    Assert.Greater(mesh.vertexCount, 0);
+                    Assert.Greater(mesh.triangles.Length, 0);
+
+                    float lowest = 0f;
+                    float highest = float.MinValue;
+                    foreach (Vector3 vertex in mesh.vertices)
+                    {
+                        lowest = Mathf.Min(lowest, vertex.y);
+                        highest = Mathf.Max(highest, vertex.y);
+                    }
+                    Assert.Less(lowest, -1f);
+                    Assert.LessOrEqual(highest, 1e-5f,
+                        "a hanging vine must not grow above its ledge anchor");
+
+                    var uv0 = new List<Vector2>();
+                    var uv3 = new List<Vector4>();
+                    mesh.GetUVs(0, uv0);
+                    mesh.GetUVs(FoliageShaderContract.WindDataUvChannel, uv3);
+
+                    int rigidRoots = 0;
+                    for (int i = 0; i < mesh.vertexCount; i++)
+                    {
+                        Assert.AreEqual(0f, uv3[i].y, 1e-6f,
+                            "every strand wind pivot must stay on the ledge");
+                        if (Mathf.Abs(mesh.vertices[i].y) <= 1e-5f &&
+                            uv0[i].y <= 1e-5f)
+                        {
+                            rigidRoots++;
+                        }
+                    }
+                    Assert.Greater(rigidRoots, 0);
+                }
+                finally
+                {
+                    Object.DestroyImmediate(mesh);
+                }
+            }
+            finally
+            {
+                Object.DestroyImmediate(species);
             }
         }
     }
@@ -753,7 +816,7 @@ namespace SabaProps.Foliage.CITests
 
         /// <summary>
         /// Built once for the whole fixture. Generating the demo writes a merged
-        /// mesh asset per chunk per species across 28 plots, and every one
+        /// mesh asset per chunk per species across 29 plots, and every one
         /// is an AssetDatabase import: doing that per test costs minutes.
         /// Nothing here modifies the scene, so one build serves them all.
         /// </summary>
@@ -784,7 +847,7 @@ namespace SabaProps.Foliage.CITests
             // placed something: an empty plot in a showcase reads as a broken
             // package, and one silently empty plot is easy to miss by eye.
             var fields = new List<FoliageField>(Object.FindObjectsOfType<FoliageField>());
-            Assert.AreEqual(28, fields.Count,
+            Assert.AreEqual(29, fields.Count,
                 "the demo plot count changed; update its documented layout and aggregate statistics");
 
             foreach (FoliageField field in fields)
