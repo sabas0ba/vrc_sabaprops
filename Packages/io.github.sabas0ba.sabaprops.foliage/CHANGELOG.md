@@ -6,6 +6,18 @@
 
 ## [Unreleased]
 
+### Added
+
+- `Window > SabaProps > Foliage Palette`: 配合、選択中 Species の形状パラメータ、メッシュプレビュー、Scene 配置をまとめた常設 Editor ウィンドウ
+  - `WorkingCopy` は一時コピーだけを編集し、配置時に新しい Species アセットへ保存します。試行中に既存フィールドの見た目を変えません
+  - `DirectAsset` は既存 Species を `SerializedObject` 経由で直接編集し、同じ GUID の Mesh を更新します。同じアセットを参照するフィールドへ変更が即時反映されます
+  - Scene ビューで地面をクリックすると、現在の配合と Field 設定で生成します。地面に Collider が無い場合は Y=0 平面へ配置します
+  - パネル操作とフィールド生成は Undo に対応します。`AssetDatabase` による Species／Mesh の書き出しは Unity の Undo 対象外です
+
+### Changed
+
+- Field Wizard と Foliage Palette の既定 Weight を `FoliageAssetLibrary.DefaultFieldWeight()` に集約しました
+
 ## [0.3.0] - 2026-08-26
 
 ### Added

@@ -16,20 +16,62 @@ namespace SabaProps.Foliage.CITests
         [Test]
         public void DefaultWeights_MatchTheNewSpeciesPresets()
         {
-            MethodInfo defaultWeight = typeof(FoliageFieldWizard).GetMethod(
-                "DefaultWeight", BindingFlags.NonPublic | BindingFlags.Static);
+            Assert.AreEqual(0.45f, FoliageAssetLibrary.DefaultFieldWeight(FoliageSpeciesKind.SmallFlower));
+            Assert.AreEqual(0.3f, FoliageAssetLibrary.DefaultFieldWeight(FoliageSpeciesKind.Weed));
+            Assert.AreEqual(0.5f, FoliageAssetLibrary.DefaultFieldWeight(FoliageSpeciesKind.Grain));
+            Assert.AreEqual(0.22f, FoliageAssetLibrary.DefaultFieldWeight(FoliageSpeciesKind.Dandelion));
+        }
+    }
 
-            Assert.IsNotNull(defaultWeight, "the field wizard has no default-weight policy");
+    public class FoliagePaletteTests
+    {
+        [Test]
+        public void WorkingCopy_IsIndependentFromTheSourceAsset()
+        {
+            MethodInfo createWorkingCopy = typeof(FoliagePaletteWindow).GetMethod(
+                "CreateWorkingCopy", BindingFlags.NonPublic | BindingFlags.Static);
+            Assert.IsNotNull(createWorkingCopy, "the palette has no isolated edit path");
 
-            Assert.AreEqual(0.45f, DefaultWeight(defaultWeight, FoliageSpeciesKind.SmallFlower));
-            Assert.AreEqual(0.3f, DefaultWeight(defaultWeight, FoliageSpeciesKind.Weed));
-            Assert.AreEqual(0.5f, DefaultWeight(defaultWeight, FoliageSpeciesKind.Grain));
-            Assert.AreEqual(0.22f, DefaultWeight(defaultWeight, FoliageSpeciesKind.Dandelion));
+            var source = ScriptableObject.CreateInstance<FoliageSpecies>();
+            source.grass.height = 0.72f;
+
+            var copy = (FoliageSpecies)createWorkingCopy.Invoke(
+                null, new object[] { source });
+
+            try
+            {
+                Assert.IsNotNull(copy);
+                Assert.AreNotEqual(source, copy);
+                Assert.IsNull(copy.generatedMesh);
+
+                copy.grass.height = 0.31f;
+                Assert.AreEqual(0.72f, source.grass.height, 1e-5f,
+                    "editing the working copy changed the source Species");
+            }
+            finally
+            {
+                Object.DestroyImmediate(copy);
+                Object.DestroyImmediate(source);
+            }
         }
 
-        private static float DefaultWeight(MethodInfo method, FoliageSpeciesKind kind)
+        [Test]
+        public void PlacementRay_FallsBackToTheWorldGroundPlane()
         {
-            return (float)method.Invoke(null, new object[] { kind });
+            MethodInfo findPoint = typeof(FoliagePaletteWindow).GetMethod(
+                "TryFindPlacementPoint", BindingFlags.NonPublic | BindingFlags.Static);
+            Assert.IsNotNull(findPoint, "the palette has no Scene placement path");
+
+            var ray = new Ray(new Vector3(12345f, 8f, 12345f), Vector3.down);
+            var arguments = new object[] { ray, null };
+
+            bool found = (bool)findPoint.Invoke(null, arguments);
+            var point = (Vector3)arguments[1];
+
+            Assert.IsTrue(found);
+            Assert.AreEqual(12345f, point.x, 1e-4f);
+            Assert.AreEqual(0f, point.y, 1e-4f);
+            Assert.AreEqual(12345f, point.z, 1e-4f);
         }
     }
 

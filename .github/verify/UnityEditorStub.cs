@@ -186,6 +186,7 @@ namespace UnityEditor
         public static T LoadAssetAtPath<T>(string assetPath) where T : UnityEngine.Object => null;
         public static string GetAssetPath(UnityEngine.Object assetObject) => string.Empty;
         public static string AssetPathToGUID(string path) => string.Empty;
+        public static string GenerateUniqueAssetPath(string path) => path;
         public static void SaveAssets() { }
         public static void Refresh() { }
         public static void ImportAsset(string path) { }
@@ -204,6 +205,7 @@ namespace UnityEditor
 
     public static class Undo
     {
+        public static event Action undoRedoPerformed;
         public static void RegisterCreatedObjectUndo(UnityEngine.Object objectToUndo, string name) { }
         public static void DestroyObjectImmediate(UnityEngine.Object objectToUndo) { }
         public static void RecordObject(UnityEngine.Object objectToUndo, string name) { }
@@ -223,6 +225,8 @@ namespace UnityEditor
     public static class HandleUtility
     {
         public static float GetHandleSize(Vector3 position) => 1f;
+        public static void AddDefaultControl(int controlId) { }
+        public static Ray GUIPointToWorldRay(Vector2 position) => default;
     }
 
     public static class Handles
@@ -236,6 +240,7 @@ namespace UnityEditor
         public static void Label(Vector3 position, string text) { }
         public static void Label(Vector3 position, string text, GUIStyle style) { }
         public static void DrawLine(Vector3 p1, Vector3 p2) { }
+        public static void DrawWireDisc(Vector3 center, Vector3 normal, float radius) { }
 
         public static float RadiusHandle(Quaternion rotation, Vector3 position, float radius) => radius;
 
@@ -257,8 +262,10 @@ namespace UnityEditor
 
     public class SceneView
     {
+        public static event Action<SceneView> duringSceneGui;
         public static SceneView lastActiveSceneView => null;
         public Vector3 pivot { get; set; }
+        public static void RepaintAll() { }
         public void Repaint() { }
         public void LookAt(Vector3 point, Quaternion direction, float newSize) { }
     }
@@ -269,6 +276,7 @@ namespace UnityEditor
     {
         public static void BeginChangeCheck() { }
         public static bool EndChangeCheck() => false;
+        public static void DrawRect(Rect rect, Color color) { }
 
         public class IndentLevelScope : IDisposable
         {
@@ -282,6 +290,21 @@ namespace UnityEditor
             public DisabledScope(bool disabled) { }
             public void Dispose() { }
         }
+    }
+
+    public class PreviewRenderUtility
+    {
+        public PreviewRenderUtility(bool renderFullScene = false) { }
+
+        public Camera camera { get; } = null;
+        public Light[] lights { get; } = new Light[2];
+        public Color ambientColor { get; set; }
+
+        public void BeginPreview(Rect rect, GUIStyle background) { }
+        public void DrawMesh(Mesh mesh, Matrix4x4 matrix, Material material, int subMeshIndex) { }
+        public void Render(bool allowScriptableRenderPipeline = false, bool updatefov = true) { }
+        public void EndAndDrawPreview(Rect rect) { }
+        public void Cleanup() { }
     }
 
     public static class EditorGUILayout

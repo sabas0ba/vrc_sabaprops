@@ -67,24 +67,8 @@ namespace SabaProps.Foliage.Editors
                     // Grass and clover alone read as a lawn, which is the least
                     // surprising thing to hand someone who just pressed create.
                     Enabled = kind == FoliageSpeciesKind.GrassClump || kind == FoliageSpeciesKind.Clover,
-                    Weight = DefaultWeight(kind),
+                    Weight = FoliageAssetLibrary.DefaultFieldWeight(kind),
                 });
-            }
-        }
-
-        private static float DefaultWeight(FoliageSpeciesKind kind)
-        {
-            switch (kind)
-            {
-                case FoliageSpeciesKind.Sunflower: return 0.06f;
-                case FoliageSpeciesKind.Reed: return 0.12f;
-                case FoliageSpeciesKind.Clover: return 0.5f;
-                case FoliageSpeciesKind.SmallFlower: return 0.45f;
-                case FoliageSpeciesKind.Weed: return 0.3f;
-                case FoliageSpeciesKind.Grain: return 0.5f;
-                case FoliageSpeciesKind.Dandelion: return 0.22f;
-                case FoliageSpeciesKind.GrassClump:
-                default: return 1f;
             }
         }
 

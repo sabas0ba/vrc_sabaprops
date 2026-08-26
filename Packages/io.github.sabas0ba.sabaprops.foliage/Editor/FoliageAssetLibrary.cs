@@ -190,6 +190,27 @@ namespace SabaProps.Foliage.Editors
             FoliageSpeciesKind.Dandelion,
         };
 
+        /// <summary>
+        /// Stock mixing weight for a species kind. Creation surfaces share this
+        /// policy so the wizard and palette do not silently produce different
+        /// fields from the same selection.
+        /// </summary>
+        public static float DefaultFieldWeight(FoliageSpeciesKind kind)
+        {
+            switch (kind)
+            {
+                case FoliageSpeciesKind.Sunflower: return 0.06f;
+                case FoliageSpeciesKind.Reed: return 0.12f;
+                case FoliageSpeciesKind.Clover: return 0.5f;
+                case FoliageSpeciesKind.SmallFlower: return 0.45f;
+                case FoliageSpeciesKind.Weed: return 0.3f;
+                case FoliageSpeciesKind.Grain: return 0.5f;
+                case FoliageSpeciesKind.Dandelion: return 0.22f;
+                case FoliageSpeciesKind.GrassClump:
+                default: return 1f;
+            }
+        }
+
         /// <summary>Asset file name, and inspector label, for a species kind.</summary>
         public static string DisplayName(FoliageSpeciesKind kind)
         {

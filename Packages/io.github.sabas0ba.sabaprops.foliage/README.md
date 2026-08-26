@@ -85,6 +85,26 @@ VRChat Worlds SDK が入っているプロジェクトでは、`VRCSceneDescript
 
 現在開いているシーンは置き換えられます。未保存の変更があるときは確認ダイアログが出ます。
 
+### Palette で調整して置く
+
+`Window > SabaProps > Foliage Palette` は、配合、形状パラメータ、プレビュー、配置を
+1 つにまとめたドッキング可能なウィンドウです。
+
+1. Composition で使う Species を有効にし、Weight を決める
+2. 種名を選び、Parameters を変更する。Preview は変更のたびに更新されます
+3. Shape、Density、Output を決め、**Place in Scene** を押す
+4. Scene ビュー上の地面をクリックする。`Esc` で配置モードを終了します
+
+編集先は 2 つあります。
+
+| Mode | 挙動 |
+| --- | --- |
+| `WorkingCopy` | ウィンドウ内の一時コピーを編集します。配置時に `Assets/SabaProps/Foliage/Species/Palette/` へ新しい Species アセットを書き出すため、既存フィールドは変わりません |
+| `DirectAsset` | Composition で指定した既存 Species とその Mesh を直接更新します。同じアセットを参照するすべてのフィールドに変更が即時反映されます |
+
+ウィンドウ内の編集とフィールド配置は Undo に対応します。ただし Unity の仕様上、
+`AssetDatabase` が書き出した Species と Mesh アセット自体は Undo では削除されません。
+
 ### 自分のシーンに置く
 
 1. 地面に Collider を付ける
@@ -338,6 +358,7 @@ Built-in RP のサーフェスシェーダーです。
 | `Assets/SabaProps/Foliage/Generated/Species/` | Species ごとのメッシュ（再ビルドで上書き。GUID は維持されます） |
 | `Assets/SabaProps/Foliage/Generated/Merged/<field>/` | Merged Chunks モードの結合メッシュ。Clear で削除されます |
 | `Assets/SabaProps/Foliage/Samples/` | `Create Sample Scene` が作るデモシーンと地面マテリアル |
+| `Assets/SabaProps/Foliage/Species/Palette/` | Palette の `WorkingCopy` モードで配置時に保存される Species のスナップショット |
 
 生成物はパッケージフォルダの外に置かれます。VCC はアップグレード時にパッケージフォルダを丸ごと置き換えるためです。
 
