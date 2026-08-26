@@ -183,8 +183,45 @@ namespace SabaProps.Trees.Editors
                 return null;
             }
 
-            var root = new GameObject(species.name + " Tree");
+            GameObject root = CreateLodGroupInstance(species, parent);
+            if (root == null)
+            {
+                return null;
+            }
+
             Undo.RegisterCreatedObjectUndo(root, "Create SabaProps Tree");
+            Selection.activeGameObject = root;
+            return root;
+        }
+
+        /// <summary>
+        /// Creates only a scene LOD hierarchy from meshes already assigned to
+        /// the species. Bulk builders use this after generating each species
+        /// once, so asset writes do not scale with the number of instances.
+        /// </summary>
+        public static GameObject CreateLodGroupInstance(
+            TreeSpecies species, Transform parent = null)
+        {
+            if (species == null || species.material == null)
+            {
+                return null;
+            }
+
+            var meshes = new[]
+            {
+                species.lod0Mesh,
+                species.lod1Mesh,
+                species.lod2Mesh,
+            };
+            for (int i = 0; i < meshes.Length; i++)
+            {
+                if (meshes[i] == null)
+                {
+                    return null;
+                }
+            }
+
+            var root = new GameObject(species.name + " Tree");
             if (parent != null)
             {
                 root.transform.SetParent(parent, false);
@@ -215,7 +252,6 @@ namespace SabaProps.Trees.Editors
             });
             group.RecalculateBounds();
 
-            Selection.activeGameObject = root;
             return root;
         }
 

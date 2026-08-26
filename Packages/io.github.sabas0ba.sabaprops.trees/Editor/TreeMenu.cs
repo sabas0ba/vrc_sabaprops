@@ -39,6 +39,25 @@ namespace SabaProps.Trees.Editors
             TreeAssetLibrary.CreateLodGroup(species, parentObject != null ? parentObject.transform : null);
         }
 
+        [MenuItem("GameObject/SabaProps/Tree Field", false, 12)]
+        public static void CreateTreeField(MenuCommand command)
+        {
+            var fieldObject = new GameObject("Tree Field");
+            Undo.RegisterCreatedObjectUndo(fieldObject, "Create Tree Field");
+
+            GameObject parentObject = command.context as GameObject;
+            if (parentObject != null)
+            {
+                GameObjectUtility.SetParentAndAlign(fieldObject, parentObject);
+            }
+
+            TreeField field = fieldObject.AddComponent<TreeField>();
+            field.species.Add(
+                TreeAssetLibrary.CreateOrLoadSpecies(TreeArchetype.Broadleaf));
+            AssetDatabase.SaveAssets();
+            Selection.activeGameObject = fieldObject;
+        }
+
         [MenuItem("Tools/SabaProps/Trees/Documentation", false, 100)]
         public static void OpenDocumentation()
         {

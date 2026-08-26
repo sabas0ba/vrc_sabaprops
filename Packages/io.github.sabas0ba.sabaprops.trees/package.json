@@ -13,7 +13,7 @@
   "documentationUrl": "https://github.com/sabas0ba/vrc_sabaprops/blob/main/Packages/io.github.sabas0ba.sabaprops.trees/README.md",
   "changelogUrl": "https://github.com/sabas0ba/vrc_sabaprops/blob/main/Packages/io.github.sabas0ba.sabaprops.trees/CHANGELOG.md",
   "vpmDependencies": {
-    "io.github.sabas0ba.sabaprops.foliage": "0.3.0"
+    "io.github.sabas0ba.sabaprops.foliage": "0.4.0"
   },
   "keywords": [
     "vrchat",

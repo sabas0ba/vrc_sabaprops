@@ -13,6 +13,9 @@
   - `DirectAsset` は既存 Species を `SerializedObject` 経由で直接編集し、同じ GUID の Mesh を更新します。同じアセットを参照するフィールドへ変更が即時反映されます
   - Scene ビューで地面をクリックすると、現在の配合と Field 設定で生成します。地面に Collider が無い場合は Y=0 平面へ配置します
   - パネル操作とフィールド生成は Undo に対応します。`AssetDatabase` による Species／Mesh の書き出しは Unity の Undo 対象外です
+- `FoliageSurfaceScatterer`: エリア走査、Density Mask、地面レイキャスト、高度制限、除外判定を prop パッケージ間で共有する決定的な Editor API
+  - 種の選択、サーフェス条件、最小間隔、最終姿勢は callback として分離し、既存 Foliage Field の Seed 列を維持します
+- `FoliageAreaUtility`: 矩形／円形の面積、範囲、包含判定、Mask UV 変換を共有する Runtime API
 
 ### Changed
 

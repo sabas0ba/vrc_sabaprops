@@ -13,6 +13,11 @@ namespace SabaProps.Trees.CITests
         [TearDown]
         public void CleanGeneratedAssets()
         {
+            foreach (TreeField field in Object.FindObjectsOfType<TreeField>())
+            {
+                Object.DestroyImmediate(field.gameObject);
+            }
+
             foreach (LODGroup group in Object.FindObjectsOfType<LODGroup>())
             {
                 if (group.name.EndsWith(" Tree"))
@@ -122,6 +127,12 @@ namespace SabaProps.Trees.CITests
                 species.lod.lod0ScreenHeight = 0f;
                 species.lod.lod1ScreenHeight = 1f;
                 species.lod.lod2ScreenHeight = 1f;
+                species.placement.placementWeight = -1f;
+                species.placement.minSpacing = -1f;
+                species.placement.scaleRange = new Vector2(2f, 0f);
+                species.placement.maxTilt = 90f;
+                species.placement.alignToGroundNormal = 2f;
+                species.placement.slopeLimits = new Vector2(95f, -5f);
 
                 species.ValidateParameters();
 
@@ -136,6 +147,15 @@ namespace SabaProps.Trees.CITests
                 Assert.AreEqual(0.03f, species.lod.lod0ScreenHeight, 1e-6f);
                 Assert.AreEqual(0.02f, species.lod.lod1ScreenHeight, 1e-6f);
                 Assert.AreEqual(0.01f, species.lod.lod2ScreenHeight, 1e-6f);
+                Assert.AreEqual(0f, species.placement.placementWeight, 1e-6f);
+                Assert.AreEqual(0f, species.placement.minSpacing, 1e-6f);
+                Assert.AreEqual(new Vector2(0.001f, 2f),
+                    species.placement.scaleRange);
+                Assert.AreEqual(45f, species.placement.maxTilt, 1e-6f);
+                Assert.AreEqual(1f,
+                    species.placement.alignToGroundNormal, 1e-6f);
+                Assert.AreEqual(new Vector2(0f, 90f),
+                    species.placement.slopeLimits);
             }
             finally
             {
@@ -225,12 +245,111 @@ namespace SabaProps.Trees.CITests
                 FoliageShaderContract.DistanceFadeKeyword));
         }
 
+        [Test]
+        public void TreeFieldBuildIsDeterministicAndReusesSpeciesLods()
+        {
+            GameObject ground = GameObject.CreatePrimitive(PrimitiveType.Plane);
+            ground.name = "TreeField Test Ground";
+            var fieldObject = new GameObject("TreeField Test");
+            TreeField field = fieldObject.AddComponent<TreeField>();
+            TreeSpecies species =
+                TreeAssetLibrary.CreateOrLoadSpecies(TreeArchetype.Broadleaf);
+
+            field.size = new Vector2(8f, 8f);
+            field.density = 0.25f;
+            field.seed = 4815;
+            field.maxInstances = 100;
+            field.groundOffset = 0f;
+            field.species.Add(species);
+
+            try
+            {
+                TreeBuildStats firstStats = TreeFieldBuilder.Build(field);
+                Assert.IsNotNull(firstStats);
+                Assert.Greater(firstStats.instanceCount, 1);
+                Assert.AreEqual(
+                    firstStats.instanceCount * 3, firstStats.rendererCount);
+                Assert.AreEqual(firstStats.instanceCount,
+                    field.generatedRoot.childCount);
+
+                Vector3[] firstPositions = CapturePositions(field.generatedRoot);
+                var sharedMeshes = new HashSet<Mesh>();
+                foreach (MeshFilter filter in
+                    field.generatedRoot.GetComponentsInChildren<MeshFilter>())
+                {
+                    sharedMeshes.Add(filter.sharedMesh);
+                }
+                Assert.AreEqual(3, sharedMeshes.Count,
+                    "one species must reuse exactly three LOD mesh assets");
+
+                foreach (LODGroup group in
+                    field.generatedRoot.GetComponentsInChildren<LODGroup>())
+                {
+                    Assert.AreEqual(3, group.GetLODs().Length);
+                }
+                foreach (MeshRenderer renderer in
+                    field.generatedRoot.GetComponentsInChildren<MeshRenderer>())
+                {
+                    Assert.AreEqual(
+                        ShadowCastingMode.On, renderer.shadowCastingMode);
+                    Assert.IsTrue(renderer.receiveShadows);
+                }
+
+                AssertMinimumSpacing(
+                    firstPositions, species.placement.minSpacing);
+
+                TreeBuildStats secondStats = TreeFieldBuilder.Build(field);
+                Assert.IsNotNull(secondStats);
+                Assert.AreEqual(firstStats.instanceCount, secondStats.instanceCount);
+                CollectionAssert.AreEqual(
+                    firstPositions, CapturePositions(field.generatedRoot));
+
+                TreeFieldBuilder.Clear(field);
+                Assert.IsNull(field.generatedRoot);
+                Assert.IsNull(field.lastBuildStats);
+                Assert.IsNull(field.transform.Find(TreeField.GeneratedRootName));
+            }
+            finally
+            {
+                Object.DestroyImmediate(fieldObject);
+                Object.DestroyImmediate(ground);
+            }
+        }
+
         private static TreeSpecies CreateSpecies(TreeArchetype archetype)
         {
             TreeSpecies species = ScriptableObject.CreateInstance<TreeSpecies>();
             species.name = archetype.ToString();
             species.ApplyArchetypePreset(archetype);
             return species;
+        }
+
+        private static Vector3[] CapturePositions(Transform generatedRoot)
+        {
+            var positions = new Vector3[generatedRoot.childCount];
+            for (int i = 0; i < generatedRoot.childCount; i++)
+            {
+                positions[i] = generatedRoot.GetChild(i).position;
+            }
+            return positions;
+        }
+
+        private static void AssertMinimumSpacing(
+            IReadOnlyList<Vector3> positions, float minimum)
+        {
+            float minimumSquared = minimum * minimum;
+            for (int i = 0; i < positions.Count; i++)
+            {
+                for (int j = i + 1; j < positions.Count; j++)
+                {
+                    Vector3 delta = positions[i] - positions[j];
+                    float planarSquared =
+                        delta.x * delta.x + delta.z * delta.z;
+                    Assert.GreaterOrEqual(
+                        planarSquared, minimumSquared - 1e-4f,
+                        $"instances {i} and {j} violate minimum spacing");
+                }
+            }
         }
 
         private static void AssertMesh(Mesh mesh, string label)

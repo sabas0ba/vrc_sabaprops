@@ -69,6 +69,17 @@ namespace SabaProps.Trees
         [Range(0.01f, 0.4f)] public float lod2ScreenHeight = 0.08f;
     }
 
+    [Serializable]
+    public sealed class TreePlacementParams
+    {
+        [Min(0f)] public float placementWeight = 1f;
+        [Min(0f)] public float minSpacing = 3f;
+        public Vector2 scaleRange = new Vector2(0.85f, 1.2f);
+        [Range(0f, 45f)] public float maxTilt = 3f;
+        [Range(0f, 1f)] public float alignToGroundNormal = 0.15f;
+        public Vector2 slopeLimits = new Vector2(0f, 30f);
+    }
+
     /// <summary>
     /// Serializable source parameters for one recursively generated tree.
     /// Generated meshes are editor assets; no C# executes at runtime.
@@ -82,6 +93,7 @@ namespace SabaProps.Trees
         public TreeStructureParams structure = new TreeStructureParams();
         public TreeAppearanceParams appearance = new TreeAppearanceParams();
         public TreeLodParams lod = new TreeLodParams();
+        public TreePlacementParams placement = new TreePlacementParams();
 
         [Header("Generated Assets (read only)")]
         public Mesh lod0Mesh;
@@ -99,12 +111,39 @@ namespace SabaProps.Trees
             }
         }
 
+        public Vector2 SafeScaleRange
+        {
+            get
+            {
+                float min = Mathf.Max(0.001f,
+                    Mathf.Min(placement.scaleRange.x, placement.scaleRange.y));
+                float max = Mathf.Max(min,
+                    Mathf.Max(placement.scaleRange.x, placement.scaleRange.y));
+                return new Vector2(min, max);
+            }
+        }
+
+        public Vector2 SafeSlopeLimits
+        {
+            get
+            {
+                float min = Mathf.Clamp(
+                    Mathf.Min(placement.slopeLimits.x, placement.slopeLimits.y),
+                    0f, 90f);
+                float max = Mathf.Clamp(
+                    Mathf.Max(placement.slopeLimits.x, placement.slopeLimits.y),
+                    0f, 90f);
+                return new Vector2(min, max);
+            }
+        }
+
         public void ApplyArchetypePreset(TreeArchetype value)
         {
             archetype = value;
             structure = new TreeStructureParams();
             appearance = new TreeAppearanceParams();
             lod = new TreeLodParams();
+            placement = new TreePlacementParams();
 
             switch (value)
             {
@@ -130,6 +169,10 @@ namespace SabaProps.Trees
                     appearance.leafBaseColor = new Color(0.055f, 0.19f, 0.09f, 1f);
                     appearance.leafTipColor = new Color(0.13f, 0.31f, 0.14f, 1f);
                     appearance.branchStiffness = 0.2f;
+                    placement.minSpacing = 2.6f;
+                    placement.scaleRange = new Vector2(0.8f, 1.3f);
+                    placement.maxTilt = 2f;
+                    placement.slopeLimits = new Vector2(0f, 40f);
                     break;
 
                 case TreeArchetype.Deadwood:
@@ -146,6 +189,11 @@ namespace SabaProps.Trees
                     appearance.barkTipColor = new Color(0.32f, 0.27f, 0.21f, 1f);
                     appearance.leafShape = TreeLeafShape.None;
                     appearance.branchStiffness = 0.12f;
+                    placement.minSpacing = 2.2f;
+                    placement.scaleRange = new Vector2(0.8f, 1.15f);
+                    placement.maxTilt = 4f;
+                    placement.alignToGroundNormal = 0.25f;
+                    placement.slopeLimits = new Vector2(0f, 50f);
                     break;
 
                 case TreeArchetype.DesertScrub:
@@ -165,6 +213,11 @@ namespace SabaProps.Trees
                     appearance.barkTipColor = new Color(0.49f, 0.34f, 0.19f, 1f);
                     appearance.leafShape = TreeLeafShape.None;
                     appearance.branchStiffness = 0.18f;
+                    placement.minSpacing = 1.4f;
+                    placement.scaleRange = new Vector2(0.75f, 1.25f);
+                    placement.maxTilt = 6f;
+                    placement.alignToGroundNormal = 0.35f;
+                    placement.slopeLimits = new Vector2(0f, 55f);
                     break;
 
                 case TreeArchetype.Broadleaf:
@@ -181,6 +234,7 @@ namespace SabaProps.Trees
             if (structure == null) structure = new TreeStructureParams();
             if (appearance == null) appearance = new TreeAppearanceParams();
             if (lod == null) lod = new TreeLodParams();
+            if (placement == null) placement = new TreePlacementParams();
 
             structure.trunkLength = Mathf.Max(0.2f, structure.trunkLength);
             structure.trunkRadius = Mathf.Max(0.01f, structure.trunkRadius);
@@ -209,6 +263,13 @@ namespace SabaProps.Trees
                 lod.lod1ScreenHeight, 0.02f, lod.lod0ScreenHeight - 0.01f);
             lod.lod2ScreenHeight = Mathf.Clamp(
                 lod.lod2ScreenHeight, 0.01f, lod.lod1ScreenHeight - 0.01f);
+
+            placement.placementWeight = Mathf.Max(0f, placement.placementWeight);
+            placement.minSpacing = Mathf.Max(0f, placement.minSpacing);
+            placement.scaleRange = SafeScaleRange;
+            placement.maxTilt = Mathf.Clamp(placement.maxTilt, 0f, 45f);
+            placement.alignToGroundNormal = Mathf.Clamp01(placement.alignToGroundNormal);
+            placement.slopeLimits = SafeSlopeLimits;
         }
 
         private void OnValidate()

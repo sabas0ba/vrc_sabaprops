@@ -468,6 +468,74 @@ namespace SabaProps.Foliage.CITests
         }
     }
 
+    public class FoliageScatterCompatibilityTests
+    {
+        [Test]
+        public void SharedSurfaceRefactorPreservesTheExistingSeedSequence()
+        {
+            GameObject ground = GameObject.CreatePrimitive(PrimitiveType.Plane);
+            GameObject owner = new GameObject("Scatter Compatibility Field");
+            FoliageSpecies species = ScriptableObject.CreateInstance<FoliageSpecies>();
+            Material material = new Material(Shader.Find(FoliageShaderContract.ShaderName));
+
+            try
+            {
+                ground.transform.localScale = new Vector3(5f, 1f, 5f);
+                species.material = material;
+                species.minSpacing = 0.05f;
+                species.scaleRange = new Vector2(0.85f, 1.2f);
+                species.maxTilt = 7f;
+                species.alignToGroundNormal = 0.3f;
+                species.slopeLimits = new Vector2(0f, 40f);
+
+                FoliageField field = owner.AddComponent<FoliageField>();
+                field.shape = FoliageAreaShape.Rectangle;
+                field.size = new Vector2(8f, 8f);
+                field.density = 4f;
+                field.seed = 1234;
+                field.raycastHeight = 10f;
+                field.raycastDistance = 40f;
+                field.species.Add(species);
+
+                List<FoliageInstance> instances = FoliageScatterer.Scatter(field, out string error);
+                Assert.IsNull(error);
+                Assert.Greater(instances.Count, 5);
+
+                Vector3[] positions =
+                {
+                    new Vector3(-3.656223f, -0.01f, -3.53236771f),
+                    new Vector3(-3.40992451f, -0.01f, -3.73406458f),
+                    new Vector3(-2.58091545f, -0.01f, -3.790736f),
+                    new Vector3(-2.29066014f, -0.01f, -3.83968925f),
+                    new Vector3(-1.51888144f, -0.01f, -3.96986532f),
+                };
+                float[] scales =
+                {
+                    1.04562247f,
+                    1.14164317f,
+                    0.931809545f,
+                    1.08452082f,
+                    1.02049589f,
+                };
+
+                for (int i = 0; i < positions.Length; i++)
+                {
+                    Assert.AreEqual(positions[i].x, instances[i].Position.x, 1e-5f, "position.x " + i);
+                    Assert.AreEqual(positions[i].y, instances[i].Position.y, 1e-5f, "position.y " + i);
+                    Assert.AreEqual(positions[i].z, instances[i].Position.z, 1e-5f, "position.z " + i);
+                    Assert.AreEqual(scales[i], instances[i].Scale, 1e-5f, "scale " + i);
+                }
+            }
+            finally
+            {
+                Object.DestroyImmediate(owner);
+                Object.DestroyImmediate(ground);
+                Object.DestroyImmediate(species);
+                Object.DestroyImmediate(material);
+            }
+        }
+    }
+
     public class FoliageFieldBuildTests
     {
         private GameObject _ground;

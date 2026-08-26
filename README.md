@@ -26,7 +26,7 @@ https://sabas0ba.github.io/vrc_sabaprops/index.json
 | Package ID | 名前 | 概要 |
 | --- | --- | --- |
 | `io.github.sabas0ba.sabaprops.foliage` | SabaProps Foliage | GPU インスタンシング対応の草木スキャッタリングツール。グラスシード／ひまわりをプロシージャル生成し、大量配置しても軽量。 |
-| `io.github.sabas0ba.sabaprops.trees` | SabaProps Trees | 再帰枝ジェネレータから樹木と 3 段階 LOD を生成。Foliage の shader／風チャンネルを共有。 |
+| `io.github.sabas0ba.sabaprops.trees` | SabaProps Trees | 再帰枝ジェネレータから樹木と 3 段階 LOD を生成。共有サーフェス散布 API を使う Tree Field に対応。 |
 
 各パッケージの詳細は `Packages/<package-id>/README.md` を参照してください。
 

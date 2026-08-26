@@ -11,3 +11,6 @@ All notable changes to this package are documented in this file.
 - 枝サブツリー単位の UV3 wind pivot と、接続点で連続する bend 座標
 - SabaProps Foliage shader を使い、Distance Shrink を無効化した樹木用 Material
 - 影を有効にした Scene 用 `LODGroup` の生成
+- `TreeField`: 固定 Seed、地面吸着、高度／傾斜／除外／Density Mask と種別 Weight を使った複数個体の配置
+- Species ごとに生成した 3 個の LOD Mesh を全個体で共有する edit-time builder
+- `GameObject > SabaProps > Tree Field` と、生成・クリア・統計表示を行う Inspector

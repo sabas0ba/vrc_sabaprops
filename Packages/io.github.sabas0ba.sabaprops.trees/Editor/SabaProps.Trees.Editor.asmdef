@@ -3,7 +3,8 @@
     "rootNamespace": "SabaProps.Trees.Editors",
     "references": [
         "SabaProps.Trees.Runtime",
-        "SabaProps.Foliage.Runtime"
+        "SabaProps.Foliage.Runtime",
+        "SabaProps.Foliage.Editor"
     ],
     "includePlatforms": [
         "Editor"

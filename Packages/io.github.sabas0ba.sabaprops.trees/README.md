@@ -3,7 +3,7 @@
 VRChat ワールド向けのプロシージャル樹木ジェネレータです。広葉樹、針葉樹、枯れ木、
 砂漠低木を 1 つの再帰枝ジェネレータのパラメータ差分として生成します。
 
-このパッケージは `io.github.sabas0ba.sabaprops.foliage` 0.3.0 に依存します。
+このパッケージは `io.github.sabas0ba.sabaprops.foliage` 0.4.0 に依存します。
 Foliage の shader と風チャンネル契約を共有しますが、草向けの Distance Shrink と
 影 OFF の既定値は使いません。
 
@@ -18,6 +18,23 @@ Foliage の shader と風チャンネル契約を共有しますが、草向け�
 既存の LOD Mesh は同じ GUID のまま更新されます。シーン参照は失われません。
 Mesh の AssetDatabase 書き出しは Unity Undo の対象外です。Scene に生成した
 `LODGroup` は Undo できます。
+
+## 複数個体の配置
+
+1. Hierarchy の `GameObject > SabaProps > Tree Field` を実行します
+2. `Species` に配置する `TreeSpecies` と、必要ならフィールド固有の Weight を設定します
+3. エリア、密度、地面レイヤー、最小間隔などを調整して `Generate` を押します
+4. 再生成前の結果を削除する場合は `Clear` を押します
+
+`TreeField` は Foliage 0.4.0 の共有サーフェス散布 API を利用します。矩形／円形、固定
+Seed、地面へのレイキャスト、高度制限、除外レイヤー、Density Mask の挙動は
+Foliage Field と共通です。種の選択、傾斜制限、最小間隔、スケールと姿勢だけを
+Trees 側のポリシーとして追加します。
+
+LOD Mesh は Species ごとに 3 個だけ生成し、すべての個体で共有します。Scene には
+通常の `LODGroup` と `MeshRenderer` を焼き込むため、ビルド後のワールドで C# は
+実行されません。生成された Scene 階層は Unity Undo の対象ですが、Mesh アセットの
+書き出しは Undo の対象外です。
 
 ## 生成モデル
 
@@ -41,6 +58,5 @@ Mesh の AssetDatabase 書き出しは Unity Undo の対象外です。Scene に
 
 ## 現在の範囲
 
-0.1.0 は 1 個体の生成と Scene への LODGroup 配置を対象にします。複数個体の
-スキャッタリングは Foliage 側の配置アルゴリズムを汎用化して共有する予定で、
-Trees 側には重複実装しません。
+0.1.0 は 1 個体の生成と `TreeField` による複数個体の Scene 配置を対象にします。
+ブラシで塗る配置、結合メッシュ出力、実行時の動的生成は対象外です。
