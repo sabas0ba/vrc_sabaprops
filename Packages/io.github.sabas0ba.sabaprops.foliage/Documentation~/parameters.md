@@ -101,6 +101,18 @@ Species の形状パラメータが実際にどう効くかを、生成された
 
 ---
 
+## Vine
+
+ツタは地面から上へ生える他の種と異なり、ローカル Y=0 の根から −Y 方向へ垂れます。
+`Length` と `Length Variance` が垂れる距離、`Strand Count` が 1 個体に含む茎の本数、
+`Lateral Sway` が壁面上での横方向の流れを決めます。`Leaves Per Strand` は三角形数に
+ほぼ比例します。
+
+壁の上端に沿って細い Foliage Field を作り、上面の Collider に吸着させてください。
+`Align To Ground Normal` は既定で 0 のため、小さな法線差があっても鉛直下向きを保ちます。
+
+---
+
 ## 関連
 
 - 各パラメータの一覧と既定値は [README](../README.md) を参照してください

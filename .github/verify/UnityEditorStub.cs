@@ -331,6 +331,7 @@ namespace UnityEditor
         public static UnityEngine.Object ObjectField(UnityEngine.Object obj, Type objType, bool allowSceneObjects, params GUILayoutOption[] options) => obj;
         public static UnityEngine.Object ObjectField(string label, UnityEngine.Object obj, Type objType, bool allowSceneObjects, params GUILayoutOption[] options) => obj;
 
+        public static bool Toggle(bool value, params GUILayoutOption[] options) => value;
         public static bool Toggle(string label, bool value, params GUILayoutOption[] options) => value;
         public static bool ToggleLeft(string label, bool value, params GUILayoutOption[] options) => value;
 
@@ -442,8 +443,23 @@ namespace NUnit.Framework
 
         public static void Greater(double arg1, double arg2) { }
         public static void Greater(double arg1, double arg2, string message) { }
+        public static void GreaterOrEqual(double arg1, double arg2) { }
+        public static void GreaterOrEqual(double arg1, double arg2, string message) { }
         public static void Less(double arg1, double arg2) { }
         public static void Less(double arg1, double arg2, string message) { }
+        public static void LessOrEqual(double arg1, double arg2) { }
+        public static void LessOrEqual(double arg1, double arg2, string message) { }
+    }
+
+    public static class CollectionAssert
+    {
+        public static void AreEqual(
+            System.Collections.IEnumerable expected,
+            System.Collections.IEnumerable actual) { }
+        public static void AreEqual(
+            System.Collections.IEnumerable expected,
+            System.Collections.IEnumerable actual,
+            string message) { }
     }
 }
 

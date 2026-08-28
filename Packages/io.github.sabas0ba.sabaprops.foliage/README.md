@@ -1,17 +1,17 @@
 # SabaProps Foliage
 
 GPU インスタンシング前提の、軽量な草木スキャッタリングツールです。
-草叢・クローバー・ひまわり・葦・小花・雑草・穀物・たんぽぽをプロシージャルに生成し、広い範囲に大量配置できます。
+草叢・クローバー・ひまわり・葦・小花・雑草・穀物・たんぽぽ・ツタをプロシージャルに生成し、広い範囲に大量配置できます。
 
 - テクスチャ不要（頂点カラー駆動）。パッケージにバイナリアセットを含みません
 - ワールド座標ハッシュによる個体差なので、per-instance データの送信が一切不要です
 - Built-in Render Pipeline / Unity 2022.3 / VRChat ワールド・アバターの両方で使えます
 
-![8 種の草花を混植し、同じ風になびかせた FoliageDemo のオフラインレンダリング](Documentation~/images/generated/foliage-demo-overview.svg)
+![地面配置向け 8 種の草花を混植し、同じ風になびかせた FoliageDemo のオフラインレンダリング](Documentation~/images/generated/foliage-demo-overview.svg)
 
 この図は実際のメッシュ生成器から作った 320 株を決定論的に配置し、シェーダーと同じ風の式を固定時刻で評価したものです。ライティングと地面は形状を読みやすくするためのオフライン近似で、Unity の画面を撮影したものではありません。
 
-![草叢・クローバー・ひまわり・葦・小花・雑草・穀物・たんぽぽを同じ縮尺で並べた比較図](Documentation~/images/generated/species-overview.svg)
+![地面配置向けの草叢・クローバー・ひまわり・葦・小花・雑草・穀物・たんぽぽを同じ縮尺で並べた比較図](Documentation~/images/generated/species-overview.svg)
 
 図はすべて実際の生成器の出力です。パラメータを変えると形状がどう動くかは [パラメータと見た目の対応](Documentation~/parameters.md) に一覧があります。
 
@@ -40,7 +40,7 @@ VRChat のワールドとアバターでは、**実行時に C# が動きませ�
 
 `Tools > SabaProps > Foliage > Create Sample Scene`
 
-地面・起伏・傾斜・ライト・カメラと 28 の区画からなるデモシーンを生成し、
+地面・起伏・傾斜・壁上のツタ・ライト・カメラと 29 の区画からなるデモシーンを生成し、
 **ビルドまで済ませた状態**で開きます。保存先は `Assets/SabaProps/Foliage/Samples/FoliageDemo.unity` です。
 
 シーンは 7 m 角の区画を並べた庭のような構成です。隣り合う区画は 1 つだけ条件が違うので、
@@ -48,15 +48,15 @@ VRChat のワールドとアバターでは、**実行時に C# が動きませ�
 
 | セクション | 区画 | 変えているもの |
 | --- | --- | --- |
-| 1 Single Species | Grass / Clover / Sunflower / Reed / Small Flower / Weed / Grain / Dandelion | 種のみ。サイズ・シードは共通 |
+| 1 Single Species | Grass / Clover / Sunflower / Reed / Small Flower / Weed / Grain / Dandelion / Vine | 種のみ。Vine は壁上の細い区画から下へ垂らす |
 | 2 Parameter Variants | Grass - Tall / Clover - Broad / Sunflower - Dwarf / Reed - Splayed / Grain - Rice | 同じ種の形状パラメータ |
 | 3 Terrain | Mound / Ramp / Terrace / Skinned Mesh | 地面の形だけ。フィールド設定は共通 |
 | 4 Combinations | Meadow / Waterside / Flowerbed / Flower Field | 種の組み合わせと比率 |
 | 5 Output Modes | GPU Instanced / Merged Chunks | 出力モードのみ |
 | 6 Seasons | Spring / Summer / Autumn / Winter Snow / Winter Bare | 季節のみ。種・比率・シードは共通 |
 
-合計 11,522 個体、677 Renderer、376,648 三角形です。
-Unity 2022.3.22f1 の検証環境では生成に約 5.3 秒かかりました（生成時間は環境に依存します）。
+合計 11,524 個体、679 Renderer、376,966 三角形です。
+Unity 2022.3.22f1 の検証環境では生成に約 3.2 秒かかりました（生成時間は環境に依存します）。
 
 セクション 6 は同じシードなので、5 区画は同じ位置に生えています。違うのは季節だけです。
 使う Species アセット（`GrassSeed_Autumn` など）は `Assets/SabaProps/Foliage/Species/` に作られます。
@@ -64,6 +64,11 @@ Unity 2022.3.22f1 の検証環境では生成に約 5.3 秒かかりました（
 セクション 3 の Ramp は傾斜 28 度で、ひまわりの傾斜上限 25 度を超えるため草とクローバーだけが残ります。
 Mound では地面法線への追従、Terrace では段差への吸着が見えます。いずれも追加設定はしていません。
 Skinned Mesh はボーンで変形させた起伏地形で、**Collider を一切持ちません**（後述の Skinned Ground）。
+
+Vine はローカル Y=0 を根として −Y 方向へ伸びます。壁の上端に細い
+`FoliageField` を置き、上面 Collider を Ground Layers に含めて Generate すると、
+通常の地面吸着経路だけで壁面へ垂らせます。壁表面を探索して這う配置は 0.6.0 の
+第 2 段階です。
 
 セクション 5 は同じ設定・同じシードの区画を 2 つ並べてあるので、
 Inspector の統計で Renderer 数と推定ドローコールの差をそのまま比較できます。

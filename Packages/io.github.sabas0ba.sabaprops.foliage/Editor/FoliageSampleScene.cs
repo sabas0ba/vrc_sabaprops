@@ -45,6 +45,7 @@ namespace SabaProps.Foliage.Editors
         public const string InstancedPlotName = "GPU Instanced";
         public const string MergedPlotName = "Merged Chunks";
         public const string SkinnedPlotName = "Skinned Mesh";
+        public const string VineSupportName = "Vine Ledge";
 
         /// <summary>Player spawn, on the flat ground and facing up the garden.</summary>
         public static readonly Vector3 SpawnPosition = new Vector3(0f, 0.05f, -7f);
@@ -191,10 +192,27 @@ namespace SabaProps.Foliage.Editors
                     continue;
                 }
 
+                Vector3 position = new Vector3(
+                    WideColumns[i % WideColumns.Length],
+                    0f,
+                    (i / WideColumns.Length) * Pitch);
+                if (kind == FoliageSpeciesKind.Vine)
+                {
+                    // Place the narrow field just inside the front edge of the
+                    // support collider created by BuildGround. Roots land on
+                    // its top and the mesh hangs clear of the vertical face.
+                    position.z -= 0.13f;
+                }
+
                 FoliageField field = CreatePlot(
                     root, FoliageAssetLibrary.DisplayName(kind),
-                    new Vector3(WideColumns[i % WideColumns.Length], 0f, (i / WideColumns.Length) * Pitch),
+                    position,
                     DensityFor(kind), 3001 + i, FoliageOutputMode.MergedChunks);
+
+                if (kind == FoliageSpeciesKind.Vine)
+                {
+                    field.size = new Vector2(PlotSize, 0.08f);
+                }
 
                 AddSpecies(field, species, 1f);
                 fields.Add(field);
@@ -479,6 +497,7 @@ namespace SabaProps.Foliage.Editors
                 case FoliageSpeciesKind.Weed: return 6f;
                 case FoliageSpeciesKind.Grain: return 9f;
                 case FoliageSpeciesKind.Dandelion: return 5f;
+                case FoliageSpeciesKind.Vine: return 8f;
                 case FoliageSpeciesKind.GrassClump:
                 default: return PlotDensity;
             }
@@ -639,6 +658,20 @@ namespace SabaProps.Foliage.Editors
             CreateGroundPiece(root.transform, PrimitiveType.Plane, "Flat",
                 new Vector3(0f, 0f, (front + back) * 0.5f), Quaternion.identity,
                 new Vector3(4.6f, 1f, (back - front) * 0.1f), material);
+
+            int vineIndex = Array.IndexOf(
+                FoliageAssetLibrary.AllKinds, FoliageSpeciesKind.Vine);
+            if (vineIndex >= 0)
+            {
+                var vinePosition = new Vector3(
+                    WideColumns[vineIndex % WideColumns.Length],
+                    1.2f,
+                    (vineIndex / WideColumns.Length) * Pitch);
+                CreateGroundPiece(
+                    root.transform, PrimitiveType.Cube, VineSupportName,
+                    vinePosition, Quaternion.identity,
+                    new Vector3(PlotSize, 2.4f, 0.36f), material);
+            }
 
             // --- section 3's ground -----------------------------------------
             float z = SectionZ(2);

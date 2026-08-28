@@ -16,6 +16,9 @@
 - `FoliageSurfaceScatterer`: エリア走査、Density Mask、地面レイキャスト、高度制限、除外判定を prop パッケージ間で共有する決定的な Editor API
   - 種の選択、サーフェス条件、最小間隔、最終姿勢は callback として分離し、既存 Foliage Field の Seed 列を維持します
 - `FoliageAreaUtility`: 矩形／円形の面積、範囲、包含判定、Mask UV 変換を共有する Runtime API
+- `Vine`: 壁上の根から −Y 方向へ垂れる複数の茎と不透明な葉を生成する決定的メッシュ
+  - 既存 Foliage Field を壁上端に細く配置して使う第 1 段階です。UV0 bend と UV3 root/stiffness は既存の風 shader 契約を使います
+  - サンプルシーンに壁上配置の Vine 区画を追加しました
 
 ### Changed
 
