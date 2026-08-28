@@ -26,7 +26,7 @@
   "samples": [
     {
       "displayName": "Trees Demo",
-      "description": "Two prebuilt scenes containing ten Japanese botanical and seasonal presets with shared three-level LOD assets.",
+      "description": "Two grouped-planting scenes showing woodland, plantation, street-tree, and seasonal avenues with shared three-level LOD assets.",
       "path": "Samples~/TreesDemo"
     }
   ]

@@ -10,11 +10,11 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 8be36d79f9154b838b73343abde7c779, type: 3}
-  m_Name: GrassClump
+  m_Name: Grain
   m_EditorClassIdentifier:
-  kind: 0
-  material: {fileID: 2100000, guid: 9f9c3ad3f34022041a50491ff3e080a4, type: 2}
-  meshSeed: 110
+  kind: 6
+  material: {fileID: 2100000, guid: 4aeefa6999fee3944b0a80eb27050a24, type: 2}
+  meshSeed: 57
   season: 1
   seasonPalette:
     spring:
@@ -256,4 +256,4 @@ MonoBehaviour:
     leafBaseColor: {r: 0.149, g: 0.314, b: 0.098, a: 1}
     leafTipColor: {r: 0.329, g: 0.506, b: 0.165, a: 1}
     stiffness: 0.72
-  generatedMesh: {fileID: 4300000, guid: 4e0c01670b649f0428f04dab912b5b57, type: 2}
+  generatedMesh: {fileID: 4300000, guid: 313d6f7fcd1a7124499ecbc2e98c6df1, type: 2}

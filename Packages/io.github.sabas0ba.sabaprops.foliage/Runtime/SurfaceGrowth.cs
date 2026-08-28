@@ -106,14 +106,26 @@ namespace SabaProps.Foliage
         [Tooltip("Scales path count, branch frequency, and leaf or shoot occupancy.")]
         [Range(0.01f, 1f)] public float coverage = 0.65f;
 
-        [Tooltip("Expected branch starts per metre of primary path.")]
-        [Range(0f, 4f)] public float branchesPerMetre = 0.65f;
+        [Header("Branching")]
+        [Tooltip("Expected lateral branch starts per metre of primary path.")]
+        [Range(0f, 8f)] public float branchesPerMetre = 0.65f;
 
-        [Range(0, 3)] public int maxBranchDepth = 1;
+        [Tooltip("Number of recursive lateral branch orders. Zero disables branches.")]
+        [Range(0, 4)] public int maxBranchDepth = 1;
 
         [Tooltip("Fraction of the primary path length available to a branch.")]
         [Range(0.05f, 1f)] public float branchLength = 0.38f;
 
+        [Tooltip("Angle in degrees between a lateral branch and its parent stem.")]
+        [Range(5f, 85f)] public float branchAngle = 48f;
+
+        [Tooltip("Per-branch random variation applied to Branch Angle in degrees.")]
+        [Range(0f, 40f)] public float branchAngleJitter = 14f;
+
+        [Tooltip("Per-branch proportional variation applied to Branch Length.")]
+        [Range(0f, 0.75f)] public float branchLengthVariance = 0.22f;
+
+        [Header("Path variation")]
         [Tooltip("Random change of the tangent direction at each step.")]
         [Range(0f, 1f)] public float directionJitter = 0.28f;
 

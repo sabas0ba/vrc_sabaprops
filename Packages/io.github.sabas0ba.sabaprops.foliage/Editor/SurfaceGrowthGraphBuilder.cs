@@ -330,10 +330,26 @@ namespace SabaProps.Foliage.Editors
                 incoming = (parentNode.position
                     - graph.Nodes[parentNode.parentIndex].position).normalized;
             }
+            incoming = ProjectOnPlane(incoming, parentNode.normal).normalized;
+            if (incoming.sqrMagnitude < 1e-6f)
+            {
+                incoming = AnyTangent(parentNode.normal);
+            }
             Vector3 side = Vector3.Cross(parentNode.normal, incoming).normalized;
+            float angle = Mathf.Clamp(
+                settings.branchAngle
+                + random.Range(
+                    -settings.branchAngleJitter,
+                    settings.branchAngleJitter),
+                0f,
+                89f) * Mathf.Deg2Rad;
+            float sideSign = random.Chance(0.5f) ? 1f : -1f;
             Vector3 direction = (
-                incoming * random.Range(0.15f, 0.55f)
-                + side * (random.Chance(0.5f) ? 1f : -1f)).normalized;
+                incoming * Mathf.Cos(angle)
+                + side * (Mathf.Sin(angle) * sideSign)).normalized;
+            float variedLength = length * random.Range(
+                1f - settings.branchLengthVariance,
+                1f + settings.branchLengthVariance);
 
             int before = graph.Nodes.Count;
             GrowWalk(
@@ -342,7 +358,7 @@ namespace SabaProps.Foliage.Editors
                 parent,
                 depth,
                 direction,
-                length,
+                variedLength,
                 ref random,
                 projector);
 
@@ -354,7 +370,7 @@ namespace SabaProps.Foliage.Editors
                     settings,
                     last,
                     depth + 1,
-                    length * settings.branchLength,
+                    variedLength * settings.branchLength,
                     ref random,
                     projector);
             }

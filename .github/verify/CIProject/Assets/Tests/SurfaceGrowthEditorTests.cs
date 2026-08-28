@@ -52,6 +52,59 @@ namespace SabaProps.Foliage.CITests
         }
 
         [Test]
+        public void BranchAngleControlsLateralGrowth()
+        {
+            var settings = new SurfaceGrowthSettings
+            {
+                mode = SurfaceGrowthMode.ProjectedSpline,
+                pathCount = 1,
+                coverage = 1f,
+                stepLength = 0.2f,
+                maxPathLength = 1.2f,
+                branchesPerMetre = 8f,
+                maxBranchDepth = 1,
+                branchLength = 0.4f,
+                branchAngle = 35f,
+                branchAngleJitter = 0f,
+                branchLengthVariance = 0f,
+                directionJitter = 0f,
+                gravityBias = 0f,
+                rootSpread = 0f,
+                minimumSpacing = 0f,
+                seed = 7311,
+            };
+            SurfaceGrowthGraph graph = SurfaceGrowthGraphBuilder.Build(
+                settings,
+                new List<Vector3>
+                {
+                    Vector3.zero,
+                    new Vector3(0f, 1.2f, 0f),
+                },
+                ProjectWall);
+
+            int firstBranch = -1;
+            for (int i = 0; i < graph.Nodes.Count; i++)
+            {
+                if (graph.Nodes[i].branchDepth == 1)
+                {
+                    firstBranch = i;
+                    break;
+                }
+            }
+            Assert.Greater(firstBranch, 0, "a lateral branch should be generated");
+
+            SurfaceGrowthNode branch = graph.Nodes[firstBranch];
+            SurfaceGrowthNode parent = graph.Nodes[branch.parentIndex];
+            SurfaceGrowthNode grandParent = graph.Nodes[parent.parentIndex];
+            Vector3 incoming = (parent.position - grandParent.position).normalized;
+            Vector3 outgoing = (branch.position - parent.position).normalized;
+            Assert.AreEqual(
+                settings.branchAngle,
+                Vector3.Angle(incoming, outgoing),
+                0.05f);
+        }
+
+        [Test]
         public void SurfaceMorphologyControlsGeometryAndKeepsShaderChannels()
         {
             var settings = new SurfaceGrowthSettings

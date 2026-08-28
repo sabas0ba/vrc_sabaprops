@@ -22,6 +22,8 @@ namespace SabaProps.Foliage.Editors
 
         public const string OutputRoot = "Assets/SabaProps/FoliageBundledDemo";
         public const string ScenePath = OutputRoot + "/FoliageDemo.unity";
+        public const string SpeciesScenePath =
+            OutputRoot + "/FoliageSpeciesDemo.unity";
         private const string AssetFolder = OutputRoot + "/Assets";
 
         [MenuItem("Tools/SabaProps/Foliage/Create Bundled Demo", false, 2)]
@@ -48,9 +50,6 @@ namespace SabaProps.Foliage.Editors
             }
             FoliageAssetLibrary.EnsureFolder(AssetFolder);
 
-            Scene scene = EditorSceneManager.NewScene(
-                NewSceneSetup.DefaultGameObjects,
-                NewSceneMode.Single);
             Material foliage = CreateFoliageMaterial();
             Material groundMaterial = CreateStandardMaterial(
                 "DemoGround",
@@ -58,7 +57,12 @@ namespace SabaProps.Foliage.Editors
             Material wallMaterial = CreateStandardMaterial(
                 "DemoWall",
                 new Color(0.43f, 0.42f, 0.37f, 1f));
+            Dictionary<FoliageSpeciesKind, Mesh> speciesMeshes =
+                CreateSpeciesAssets(foliage);
 
+            Scene scene = EditorSceneManager.NewScene(
+                NewSceneSetup.DefaultGameObjects,
+                NewSceneMode.Single);
             ConfigureCameraAndLight();
             GameObject ground = CreatePrimitive(
                 PrimitiveType.Plane,
@@ -81,7 +85,7 @@ namespace SabaProps.Foliage.Editors
             slope.transform.rotation = Quaternion.Euler(-24f, 0f, 0f);
             Physics.SyncTransforms();
 
-            CreateSpeciesGallery(foliage);
+            CreateSpeciesStrip(speciesMeshes, foliage);
             CreateVinePattern(
                 "English Ivy - Floor to Wall",
                 ground.GetComponent<Collider>(),
@@ -141,13 +145,67 @@ namespace SabaProps.Foliage.Editors
 
             FoliageAssetLibrary.EnsureFolder(OutputRoot);
             EditorSceneManager.SaveScene(scene, ScenePath);
+            CreateSpeciesScene(
+                speciesMeshes,
+                foliage,
+                groundMaterial,
+                wallMaterial);
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
-            Debug.Log("[SabaProps Foliage] Bundled demo created at " + ScenePath);
-            return scene;
+            Scene openedScene = EditorSceneManager.OpenScene(ScenePath);
+            Debug.Log(
+                "[SabaProps Foliage] Bundled demos created at "
+                + ScenePath + " and " + SpeciesScenePath);
+            return openedScene;
         }
 
-        private static void CreateSpeciesGallery(Material material)
+        private static Dictionary<FoliageSpeciesKind, Mesh> CreateSpeciesAssets(
+            Material material)
+        {
+            var result = new Dictionary<FoliageSpeciesKind, Mesh>();
+            for (int kindIndex = 0;
+                 kindIndex < FoliageAssetLibrary.AllKinds.Length;
+                 kindIndex++)
+            {
+                FoliageSpeciesKind kind = FoliageAssetLibrary.AllKinds[kindIndex];
+                var species = ScriptableObject.CreateInstance<FoliageSpecies>();
+                species.name = FoliageAssetLibrary.DisplayName(kind);
+                species.kind = kind;
+                species.material = material;
+                species.meshSeed = SpeciesSeed(kind);
+                string speciesPath = AssetFolder + "/" + species.name + ".asset";
+                AssetDatabase.CreateAsset(species, speciesPath);
+
+                Mesh mesh = FoliageMeshBuilder.Build(species);
+                mesh.name = species.name + "Mesh";
+                AssetDatabase.CreateAsset(mesh, AssetFolder + "/" + mesh.name + ".asset");
+                species.generatedMesh = mesh;
+                EditorUtility.SetDirty(species);
+                result.Add(kind, mesh);
+            }
+            return result;
+        }
+
+        private static int SpeciesSeed(FoliageSpeciesKind kind)
+        {
+            switch (kind)
+            {
+                case FoliageSpeciesKind.Sunflower: return 7;
+                case FoliageSpeciesKind.Clover: return 23;
+                case FoliageSpeciesKind.Reed: return 18;
+                case FoliageSpeciesKind.SmallFlower: return 31;
+                case FoliageSpeciesKind.Weed: return 44;
+                case FoliageSpeciesKind.Grain: return 57;
+                case FoliageSpeciesKind.Dandelion: return 68;
+                case FoliageSpeciesKind.Vine: return 79;
+                case FoliageSpeciesKind.GrassClump:
+                default: return 1;
+            }
+        }
+
+        private static void CreateSpeciesStrip(
+            IReadOnlyDictionary<FoliageSpeciesKind, Mesh> speciesMeshes,
+            Material material)
         {
             var kinds = new[]
             {
@@ -158,19 +216,7 @@ namespace SabaProps.Foliage.Editors
             for (int kindIndex = 0; kindIndex < kinds.Length; kindIndex++)
             {
                 FoliageSpeciesKind kind = kinds[kindIndex];
-                var species = ScriptableObject.CreateInstance<FoliageSpecies>();
-                species.name = kind.ToString();
-                species.kind = kind;
-                species.material = material;
-                species.meshSeed = 110 + kindIndex;
-                string speciesPath = AssetFolder + "/" + kind + ".asset";
-                AssetDatabase.CreateAsset(species, speciesPath);
-
-                Mesh mesh = FoliageMeshBuilder.Build(species);
-                mesh.name = kind + "Mesh";
-                AssetDatabase.CreateAsset(mesh, AssetFolder + "/" + mesh.name + ".asset");
-                species.generatedMesh = mesh;
-                EditorUtility.SetDirty(species);
+                Mesh mesh = speciesMeshes[kind];
 
                 for (int instance = 0; instance < 5; instance++)
                 {
@@ -188,6 +234,146 @@ namespace SabaProps.Foliage.Editors
                     item.AddComponent<MeshFilter>().sharedMesh = mesh;
                     item.AddComponent<MeshRenderer>().sharedMaterial = material;
                 }
+            }
+        }
+
+        private static void CreateSpeciesScene(
+            IReadOnlyDictionary<FoliageSpeciesKind, Mesh> speciesMeshes,
+            Material foliage,
+            Material groundMaterial,
+            Material wallMaterial)
+        {
+            Scene scene = EditorSceneManager.NewScene(
+                NewSceneSetup.DefaultGameObjects,
+                NewSceneMode.Single);
+            ConfigureSpeciesCameraAndLight();
+
+            CreatePrimitive(
+                PrimitiveType.Plane,
+                "Species Gallery Ground",
+                Vector3.zero,
+                new Vector3(1.45f, 1f, 1.18f),
+                groundMaterial);
+            var root = new GameObject("Generated Foliage Species");
+            for (int kindIndex = 0;
+                 kindIndex < FoliageAssetLibrary.AllKinds.Length;
+                 kindIndex++)
+            {
+                FoliageSpeciesKind kind = FoliageAssetLibrary.AllKinds[kindIndex];
+                int column = kindIndex % 3;
+                int row = kindIndex / 3;
+                Vector3 centre = new Vector3(
+                    -4.4f + column * 4.4f,
+                    0f,
+                    3.45f - row * 3.45f);
+                CreateSpeciesPlot(
+                    root.transform,
+                    kind,
+                    speciesMeshes[kind],
+                    foliage,
+                    wallMaterial,
+                    centre);
+                CreateLabel(
+                    SpeciesDemoLabel(kind),
+                    centre + new Vector3(-1.35f, 0.04f, -1.34f),
+                    0.28f);
+            }
+            CreateLabel(
+                "Generated foliage species",
+                new Vector3(-6.75f, 3.45f, 4.65f),
+                0.34f);
+
+            EditorSceneManager.SaveScene(scene, SpeciesScenePath);
+        }
+
+        private static void CreateSpeciesPlot(
+            Transform parent,
+            FoliageSpeciesKind kind,
+            Mesh mesh,
+            Material foliage,
+            Material wallMaterial,
+            Vector3 centre)
+        {
+            var plot = new GameObject(FoliageAssetLibrary.DisplayName(kind) + " Plot");
+            plot.transform.SetParent(parent, false);
+
+            if (kind == FoliageSpeciesKind.Vine)
+            {
+                GameObject support = CreatePrimitive(
+                    PrimitiveType.Cube,
+                    "Vine Support",
+                    centre + new Vector3(0f, 0.82f, -0.30f),
+                    new Vector3(2.8f, 1.64f, 0.12f),
+                    wallMaterial);
+                support.transform.SetParent(plot.transform, true);
+                for (int i = 0; i < 5; i++)
+                {
+                    CreateSpeciesInstance(
+                        plot.transform,
+                        kind,
+                        mesh,
+                        foliage,
+                        centre + new Vector3(-1.05f + i * 0.52f, 1.62f, -0.36f),
+                        0.82f + i * 0.045f,
+                        0f);
+                }
+                return;
+            }
+
+            int instanceCount = kind == FoliageSpeciesKind.Grain ? 12
+                : kind == FoliageSpeciesKind.Sunflower ? 7
+                : 9;
+            var random = new FoliageRandom(2100 + (int)kind * 97);
+            for (int i = 0; i < instanceCount; i++)
+            {
+                float x;
+                float z;
+                if (kind == FoliageSpeciesKind.Grain)
+                {
+                    x = -0.9f + (i % 4) * 0.6f + random.Range(-0.06f, 0.06f);
+                    z = -0.72f + (i / 4) * 0.62f + random.Range(-0.06f, 0.06f);
+                }
+                else
+                {
+                    x = random.Range(-1.12f, 1.12f);
+                    z = random.Range(-0.92f, 0.92f);
+                }
+                CreateSpeciesInstance(
+                    plot.transform,
+                    kind,
+                    mesh,
+                    foliage,
+                    centre + new Vector3(x, 0.015f, z),
+                    random.Range(0.82f, 1.18f),
+                    random.Range(0f, 360f));
+            }
+        }
+
+        private static void CreateSpeciesInstance(
+            Transform parent,
+            FoliageSpeciesKind kind,
+            Mesh mesh,
+            Material material,
+            Vector3 position,
+            float scale,
+            float yaw)
+        {
+            var item = new GameObject(FoliageAssetLibrary.DisplayName(kind));
+            item.transform.SetParent(parent, false);
+            item.transform.position = position;
+            item.transform.rotation = Quaternion.Euler(0f, yaw, 0f);
+            item.transform.localScale = Vector3.one * scale;
+            item.AddComponent<MeshFilter>().sharedMesh = mesh;
+            item.AddComponent<MeshRenderer>().sharedMaterial = material;
+        }
+
+        private static string SpeciesDemoLabel(FoliageSpeciesKind kind)
+        {
+            switch (kind)
+            {
+                case FoliageSpeciesKind.GrassClump: return "Grass";
+                case FoliageSpeciesKind.SmallFlower: return "Small Flower";
+                default: return FoliageAssetLibrary.DisplayName(kind);
             }
         }
 
@@ -210,12 +396,24 @@ namespace SabaProps.Foliage.Editors
             vine.growth.coverage = profile == VineDemoProfile.BostonIvy ? 0.72f : 0.58f;
             vine.growth.stepLength = 0.075f;
             vine.growth.maxPathLength = 4.4f;
-            vine.growth.branchesPerMetre = profile == VineDemoProfile.BostonIvy ? 0.8f : 0.52f;
+            vine.growth.branchesPerMetre = profile == VineDemoProfile.BostonIvy
+                ? 1.35f
+                : profile == VineDemoProfile.CreepingFig ? 1.5f : 1.2f;
+            vine.growth.maxBranchDepth = 2;
+            vine.growth.branchLength = profile == VineDemoProfile.CreepingFig
+                ? 0.38f
+                : 0.44f;
+            vine.growth.branchAngle = profile == VineDemoProfile.CreepingFig
+                ? 38f
+                : profile == VineDemoProfile.BostonIvy ? 46f : 52f;
+            vine.growth.branchAngleJitter = 16f;
+            vine.growth.branchLengthVariance = 0.28f;
             vine.growth.rootSpread = 0.14f;
             vine.growth.guideAttraction = 0.64f;
             vine.growth.pathLengthVariance = 0.16f;
             vine.growth.directionJitter = 0.24f;
             vine.growth.projectionDistance = 0.42f;
+            vine.growth.nodeBudget = 2048;
             vine.growth.seed = seed;
             vine.guidePoints = guidePoints;
             if (profile == VineDemoProfile.BostonIvy)
@@ -361,6 +559,30 @@ namespace SabaProps.Foliage.Editors
             {
                 camera.transform.position = new Vector3(0f, 2.5f, -7.4f);
                 camera.transform.rotation = Quaternion.Euler(8f, 0f, 0f);
+                camera.farClipPlane = 80f;
+            }
+
+            Light light = Object.FindObjectOfType<Light>();
+            if (light != null)
+            {
+                light.transform.rotation = Quaternion.Euler(48f, -32f, 0f);
+                light.color = new Color(1f, 0.96f, 0.87f, 1f);
+                light.intensity = 1.15f;
+                light.shadows = LightShadows.Soft;
+            }
+        }
+
+        private static void ConfigureSpeciesCameraAndLight()
+        {
+            Camera camera = Camera.main;
+            if (camera != null)
+            {
+                camera.orthographic = true;
+                camera.orthographicSize = 5.1f;
+                camera.transform.position = new Vector3(0f, 7.2f, -13.2f);
+                camera.transform.rotation = Quaternion.LookRotation(
+                    new Vector3(0f, 0.75f, 0f) - camera.transform.position,
+                    Vector3.up);
                 camera.farClipPlane = 80f;
             }
 

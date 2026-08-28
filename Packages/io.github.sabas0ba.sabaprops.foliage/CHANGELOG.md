@@ -15,6 +15,8 @@
   - 根 Node に長さ・太さを設定できるテーパー付き collar を追加し、始端の切断面を隠します
 - `RhizomePatch`: 同じ Graph を地下茎として使い、ドクダミ型の心形葉、紫赤色の差し色、白い苞を持つ地上茎を生成します
 - Package Manager から導入できる、床→壁、垂直壁、床→斜面→壁のツタと根茎パッチを含む生成済み `Foliage Demo` Sample
+- 分岐角度、角度揺らぎ、長さ揺らぎを追加し、高密度な側枝を調整できるようにしました
+- ヒマワリを含む全9 Speciesを小群落で比較する生成済み `Foliage Species Demo` Sample
 
 - `Window > SabaProps > Foliage Palette`: 配合、選択中 Species の形状パラメータ、メッシュプレビュー、Scene 配置をまとめた常設 Editor ウィンドウ
   - `WorkingCopy` は一時コピーだけを編集し、配置時に新しい Species アセットへ保存します。試行中に既存フィールドの見た目を変えません

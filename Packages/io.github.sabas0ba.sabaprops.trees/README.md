@@ -11,9 +11,10 @@ Foliage の shader と風チャンネル契約を共有しますが、草向け�
 
 Package Manager で `SabaProps Trees` を選び、`Samples > Trees Demo > Import` を実行すると、
 10 preset と各 3 段階 LOD を生成済みの 2 シーンを確認できます。`TreesDemo.unity` は
-ケヤキ、イロハモミジ、スギ、ヒノキ、アカマツ、`SeasonalTreesDemo.unity` はシラカバ、
-ソメイヨシノの春／夏、イチョウの夏／秋を収録しています。Demo は各 preset の既定分岐予算、
-樹冠、枝序、葉序、風応答をそのまま焼き込んでいます。
+ケヤキ等の混交林、スギ・ヒノキの植林、ケヤキ街路樹、`SeasonalTreesDemo.unity` は
+シラカバ林、ソメイヨシノの春／夏の並木、イチョウの夏／秋の並木を収録しています。
+高さと向きに固定Seedの個体差を加え、各樹種のLOD Meshを全個体で共有しています。Demo は
+各 preset の既定分岐予算、樹冠、枝序、葉序、風応答をそのまま焼き込んでいます。
 
 1. `Tools > SabaProps > Trees > Create Default Assets` を実行します。10 preset と枯れ木・低木を作成します
 2. `Assets/SabaProps/Trees/Species/` から `TreeSpecies` を選びます

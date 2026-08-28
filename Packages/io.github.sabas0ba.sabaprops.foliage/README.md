@@ -39,8 +39,9 @@ VRChat のワールドとアバターでは、**実行時に C# が動きませ�
 ### まず動くものを見る
 
 Package Manager で `SabaProps Foliage` を選び、`Samples > Foliage Demo > Import` を
-実行すると、通常の Species、床・壁・斜面を這う 3 パターンのツタ、根茎パッチを含む軽量な
-`FoliageDemo.unity` が `Assets/Samples/` 以下へコピーされます。生成操作なしで開けます。
+実行すると、床・壁・斜面を這う3パターンのツタと根茎パッチを含む
+`FoliageDemo.unity`、ヒマワリを含む全9 Speciesを小群落で並べた
+`FoliageSpeciesDemo.unity` が `Assets/Samples/` 以下へコピーされます。生成操作なしで開けます。
 
 全 Species、地形、出力モード、季節を比較する大規模な検証用シーンは次のメニューから
 プロジェクト内へ生成できます。

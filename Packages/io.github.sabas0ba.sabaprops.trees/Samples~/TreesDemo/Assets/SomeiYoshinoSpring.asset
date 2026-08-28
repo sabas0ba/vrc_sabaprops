@@ -66,7 +66,7 @@ MonoBehaviour:
     maxTilt: 3
     alignToGroundNormal: 0.15
     slopeLimits: {x: 0, y: 30}
-  lod0Mesh: {fileID: 4300000, guid: 9ec69384f59e35e4294ea1b5adf94519, type: 2}
-  lod1Mesh: {fileID: 4300000, guid: 58751e1b25132ca4fb17a4b380eab73e, type: 2}
-  lod2Mesh: {fileID: 4300000, guid: 39159e0228b2789489e98d084e9fd983, type: 2}
-  material: {fileID: 2100000, guid: 6700e61b3d74ce0459f881904686c730, type: 2}
+  lod0Mesh: {fileID: 4300000, guid: 921491e34634e3645a9a1f489e71c042, type: 2}
+  lod1Mesh: {fileID: 4300000, guid: 231d6f3b1fbde5942b8a45d943076091, type: 2}
+  lod2Mesh: {fileID: 4300000, guid: 9ed28ed5859184744a6d236f9a41e6be, type: 2}
+  material: {fileID: 2100000, guid: 255c4fe71ad925f479c48c2deaeeb389, type: 2}

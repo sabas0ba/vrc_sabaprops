@@ -124,7 +124,8 @@ Species の形状パラメータが実際にどう効くかを、生成された
 | 投影先 | `Target Surface` / `Additional Surfaces` | 主対象と、同じ経路で横断する隣接 Collider です。重複と null は無視されます |
 | 経路 | `Path Count` / `Coverage` | 主経路数と実際に使う割合。家全体の被覆率を決める最初の値です |
 | 経路 | `Guide Attraction` / `Root Spread` / `Path Length Variance` | ガイドへ戻る強さ、根元を散らす半径、個体ごとの長さ差です。固定的な平行線を崩す場合に先に調整します |
-| 分岐 | `Branches Per Metre` / `Max Branch Depth` / `Branch Length` | 1 m あたりの分岐開始頻度、再帰深度、親経路に対する長さ比です |
+| 分岐 | `Branches Per Metre` / `Max Branch Depth` / `Branch Length` | 1 m あたりの側枝開始頻度、再帰深度、親経路に対する長さ比です。密度を上げる場合は Node Budget も確認します |
+| 分岐 | `Branch Angle` / `Branch Angle Jitter` / `Branch Length Variance` | 親茎に対する側枝角、個々の角度差、長さ差です。角度を小さくすると主茎に沿い、大きくすると横へ広がります |
 | 精度 | `Step Length` / `Projection Distance` | 表面追従の細かさと Collider を探索する距離です。角が細かいほど Step を短くします |
 | 安全弁 | `Minimum Spacing` / `Node Budget` | 経路どうしの過密と、極端な設定による Node 数を制限します |
 | 茎 | `Stem Width` / `Stem Stiffness` | 表面に固定された茎の幅と風への剛性です |
