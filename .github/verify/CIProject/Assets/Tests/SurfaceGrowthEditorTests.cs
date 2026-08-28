@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using NUnit.Framework;
 using SabaProps.Foliage.Editors;
+using UnityEditor;
 using UnityEngine;
 
 namespace SabaProps.Foliage.CITests
@@ -214,6 +215,81 @@ namespace SabaProps.Foliage.CITests
             finally
             {
                 Object.DestroyImmediate(mesh);
+            }
+        }
+
+        [Test]
+        public void AuthoringVineCrossesAdjacentFloorAndWallColliders()
+        {
+            GameObject floor = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            GameObject wall = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            var vineObject = new GameObject("Multi Surface Vine Test");
+            Material material = null;
+            string generatedPath = string.Empty;
+            try
+            {
+                floor.transform.position = new Vector3(0f, -0.05f, 0f);
+                floor.transform.localScale = new Vector3(3f, 0.1f, 3f);
+                wall.transform.position = new Vector3(0f, 1f, 1.5f);
+                wall.transform.localScale = new Vector3(3f, 2f, 0.1f);
+                Physics.SyncTransforms();
+
+                SurfaceVine vine = vineObject.AddComponent<SurfaceVine>();
+                vine.targetSurface = floor.GetComponent<Collider>();
+                vine.additionalSurfaces.Add(wall.GetComponent<Collider>());
+                vine.growth.pathCount = 1;
+                vine.growth.coverage = 1f;
+                vine.growth.stepLength = 0.075f;
+                vine.growth.maxPathLength = 3.4f;
+                vine.growth.branchesPerMetre = 0f;
+                vine.growth.rootSpread = 0f;
+                vine.growth.pathLengthVariance = 0f;
+                vine.growth.guideAttraction = 0.88f;
+                vine.growth.directionJitter = 0f;
+                vine.growth.projectionDistance = 0.35f;
+                vine.guidePoints = new List<Vector3>
+                {
+                    new Vector3(0f, 0f, 0.2f),
+                    new Vector3(0f, 0f, 1.42f),
+                    new Vector3(0f, 0.75f, 1.44f),
+                    new Vector3(0f, 1.85f, 1.44f),
+                };
+                material = new Material(Shader.Find("Standard"));
+                vine.material = material;
+
+                Assert.IsTrue(SurfaceGrowthAuthoringBuilder.Build(vine));
+                generatedPath = AssetDatabase.GetAssetPath(vine.generatedMesh);
+
+                bool foundFloor = false;
+                bool foundWall = false;
+                for (int i = 0; i < vine.generatedGraph.Nodes.Count; i++)
+                {
+                    SurfaceGrowthNode node = vine.generatedGraph.Nodes[i];
+                    foundFloor |= node.normal.y > 0.9f;
+                    foundWall |= node.normal.z < -0.9f;
+                    if (node.parentIndex >= 0)
+                    {
+                        float edgeLength = Vector3.Distance(
+                            node.position,
+                            vine.generatedGraph.Nodes[node.parentIndex].position);
+                        Assert.Less(edgeLength, 0.3f,
+                            "surface transition must remain a connected stem");
+                    }
+                }
+                Assert.IsTrue(foundFloor, "floor nodes were not generated");
+                Assert.IsTrue(foundWall, "wall nodes were not generated");
+                Assert.Greater(vine.generatedMesh.vertexCount, 0);
+            }
+            finally
+            {
+                if (!string.IsNullOrEmpty(generatedPath))
+                {
+                    AssetDatabase.DeleteAsset(generatedPath);
+                }
+                Object.DestroyImmediate(material);
+                Object.DestroyImmediate(vineObject);
+                Object.DestroyImmediate(wall);
+                Object.DestroyImmediate(floor);
             }
         }
 

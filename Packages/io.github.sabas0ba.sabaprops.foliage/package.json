@@ -28,7 +28,7 @@
   "samples": [
     {
       "displayName": "Foliage Demo",
-      "description": "Prebuilt scene showing generated species, projected surface vines, seasonal leaf palettes, and a rhizome patch.",
+      "description": "Prebuilt scene showing generated species, floor-wall-slope surface vines, seasonal leaf palettes, and a rhizome patch.",
       "path": "Samples~/FoliageDemo"
     },
     {

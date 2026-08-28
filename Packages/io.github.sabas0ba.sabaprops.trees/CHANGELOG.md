@@ -6,14 +6,18 @@ All notable changes to this package are documented in this file.
 
 ### Added
 
-- ケヤキ、イロハモミジ、スギ、シラカバ、アカマツの実在種 preset
+- ケヤキ、イロハモミジ、スギ、シラカバ、アカマツ、ヒノキの実在種 preset
+- ソメイヨシノの春／夏とイチョウの夏／秋を、同一 Seed・同一枝構造で切り替える季節 preset
 - 樹冠形、枝序、主幹優勢、枝の下垂と先端上向き、葉序を分けた生成規則
-- Package Manager から導入できる、5 実在種と 3 段階 LOD を生成済みの `Trees Demo` Sample
+- Species ごとの `Wind Enabled` / `Wind Response` と、主枝・葉密度を独立制御する `Crown Density` / `Foliage Depth`
+- Package Manager から導入できる、10 preset と 3 段階 LOD を生成済みの `Trees Demo` / `Seasonal Trees Demo` Sample
 
 ### Changed
 
 - 子枝の太さへ分岐数に基づく上限を設け、枝次数に応じて樹皮色を補間するようにしました
-- 掌状葉、鱗片状の短葉、2 針束を含む樹種別の葉配置へ変更しました
+- 掌状葉、鱗片状の短葉、2 針束、5 弁花、扇形葉を含む樹種別の葉配置へ変更しました
+- 構造枝の下向き成長を抑え、下垂を末端枝だけへ適用しました。継続枝は親枝終端の位置・半径を引き継ぎ、切断面を作りません
+- 実在種 preset は葉を一次枝まで分布させ、主枝層を増やしました。既定 LOD0 は各 preset 10 万 triangle 未満です
 
 ## [0.1.0] - 2026-08-27
 

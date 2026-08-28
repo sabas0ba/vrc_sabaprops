@@ -13,6 +13,13 @@ namespace SabaProps.Foliage.Editors
     /// </summary>
     public static class FoliageBundledDemo
     {
+        private enum VineDemoProfile
+        {
+            EnglishIvy,
+            BostonIvy,
+            CreepingFig,
+        }
+
         public const string OutputRoot = "Assets/SabaProps/FoliageBundledDemo";
         public const string ScenePath = OutputRoot + "/FoliageDemo.unity";
         private const string AssetFolder = OutputRoot + "/Assets";
@@ -65,25 +72,70 @@ namespace SabaProps.Foliage.Editors
                 new Vector3(0f, 1.55f, 1.8f),
                 new Vector3(6.4f, 3.1f, 0.3f),
                 wallMaterial);
+            GameObject slope = CreatePrimitive(
+                PrimitiveType.Cube,
+                "Slope Surface",
+                new Vector3(2.15f, 0.64f, 0.10f),
+                new Vector3(2.25f, 0.12f, 3.2f),
+                wallMaterial);
+            slope.transform.rotation = Quaternion.Euler(-24f, 0f, 0f);
+            Physics.SyncTransforms();
 
             CreateSpeciesGallery(foliage);
-            CreateWallVine(
-                "English Ivy - Projected Spline",
-                wall.GetComponent<Collider>(),
+            CreateVinePattern(
+                "English Ivy - Floor to Wall",
+                ground.GetComponent<Collider>(),
+                new[] { wall.GetComponent<Collider>() },
                 foliage,
-                -1.45f,
-                false);
-            CreateWallVine(
-                "Boston Ivy - Local Pigment",
+                VineDemoProfile.EnglishIvy,
+                901,
+                new List<Vector3>
+                {
+                    new Vector3(-2.15f, 0.02f, 0.45f),
+                    new Vector3(-2.10f, 0.02f, 1.48f),
+                    new Vector3(-2.05f, 0.65f, 1.64f),
+                    new Vector3(-1.75f, 2.75f, 1.64f),
+                });
+            CreateVinePattern(
+                "Boston Ivy - Vertical Pigment",
                 wall.GetComponent<Collider>(),
+                new Collider[0],
                 foliage,
-                1.35f,
-                true);
+                VineDemoProfile.BostonIvy,
+                902,
+                new List<Vector3>
+                {
+                    new Vector3(-0.25f, 0.08f, 1.64f),
+                    new Vector3(-0.35f, 0.85f, 1.64f),
+                    new Vector3(0.15f, 1.70f, 1.64f),
+                    new Vector3(0.45f, 2.78f, 1.64f),
+                });
+            CreateVinePattern(
+                "Creeping Fig - Floor Slope Wall",
+                ground.GetComponent<Collider>(),
+                new[]
+                {
+                    slope.GetComponent<Collider>(),
+                    wall.GetComponent<Collider>(),
+                },
+                foliage,
+                VineDemoProfile.CreepingFig,
+                903,
+                new List<Vector3>
+                {
+                    new Vector3(2.15f, 0.02f, -1.72f),
+                    new Vector3(2.15f, 0.22f, -0.95f),
+                    new Vector3(2.15f, 0.82f, 0.48f),
+                    new Vector3(2.15f, 1.34f, 1.56f),
+                    new Vector3(1.90f, 2.72f, 1.64f),
+                });
             CreateRhizomePatch(
                 ground.GetComponent<Collider>(),
                 foliage);
 
-            CreateLabel("Surface vines", new Vector3(-2.9f, 3.35f, 1.55f), 0.20f);
+            CreateLabel("Floor / wall", new Vector3(-2.95f, 3.35f, 1.55f), 0.18f);
+            CreateLabel("Vertical", new Vector3(-0.65f, 3.35f, 1.55f), 0.18f);
+            CreateLabel("Slope / wall", new Vector3(1.35f, 3.35f, 1.55f), 0.18f);
             CreateLabel("Rhizome patch", new Vector3(-2.8f, 0.05f, -2.1f), 0.16f);
             CreateLabel("Generated species", new Vector3(0.4f, 0.05f, -2.1f), 0.16f);
 
@@ -124,7 +176,7 @@ namespace SabaProps.Foliage.Editors
                 {
                     var item = new GameObject(kind + " " + (instance + 1));
                     item.transform.position = new Vector3(
-                        0.75f + kindIndex * 1.2f,
+                        -3.05f + kindIndex * 0.95f,
                         0f,
                         -1.45f + instance * 0.32f);
                     item.transform.rotation = Quaternion.Euler(
@@ -139,71 +191,65 @@ namespace SabaProps.Foliage.Editors
             }
         }
 
-        private static void CreateWallVine(
+        private static void CreateVinePattern(
             string name,
-            Collider wall,
+            Collider primarySurface,
+            Collider[] additionalSurfaces,
             Material material,
-            float horizontalOffset,
-            bool autumn)
+            VineDemoProfile profile,
+            int seed,
+            List<Vector3> guidePoints)
         {
             var gameObject = new GameObject(name);
-            gameObject.transform.position = new Vector3(0f, 0.18f, 1.64f);
             SurfaceVine vine = gameObject.AddComponent<SurfaceVine>();
-            vine.targetSurface = wall;
+            vine.targetSurface = primarySurface;
+            vine.additionalSurfaces.AddRange(additionalSurfaces);
             vine.material = material;
             vine.growth.mode = SurfaceGrowthMode.ProjectedSpline;
-            vine.growth.pathCount = autumn ? 7 : 5;
-            vine.growth.coverage = autumn ? 0.82f : 0.55f;
-            vine.growth.stepLength = 0.11f;
-            vine.growth.maxPathLength = 2.7f;
-            vine.growth.branchesPerMetre = autumn ? 0.9f : 0.55f;
-            vine.growth.rootSpread = autumn ? 0.46f : 0.34f;
-            vine.growth.guideAttraction = autumn ? 0.38f : 0.48f;
-            vine.growth.pathLengthVariance = autumn ? 0.32f : 0.24f;
-            vine.growth.directionJitter = autumn ? 0.38f : 0.30f;
-            vine.growth.seed = autumn ? 902 : 901;
-            vine.guidePoints = new List<Vector3>
-            {
-                new Vector3(horizontalOffset, 0f, 0f),
-                new Vector3(horizontalOffset - 0.18f, 0.75f, 0f),
-                new Vector3(horizontalOffset + 0.25f, 1.55f, 0f),
-                new Vector3(horizontalOffset + (autumn ? 0.5f : -0.15f), 2.75f, 0f),
-            };
-            if (autumn)
+            vine.growth.pathCount = profile == VineDemoProfile.BostonIvy ? 6 : 4;
+            vine.growth.coverage = profile == VineDemoProfile.BostonIvy ? 0.72f : 0.58f;
+            vine.growth.stepLength = 0.075f;
+            vine.growth.maxPathLength = 4.4f;
+            vine.growth.branchesPerMetre = profile == VineDemoProfile.BostonIvy ? 0.8f : 0.52f;
+            vine.growth.rootSpread = 0.14f;
+            vine.growth.guideAttraction = 0.64f;
+            vine.growth.pathLengthVariance = 0.16f;
+            vine.growth.directionJitter = 0.24f;
+            vine.growth.projectionDistance = 0.42f;
+            vine.growth.seed = seed;
+            vine.guidePoints = guidePoints;
+            if (profile == VineDemoProfile.BostonIvy)
             {
                 vine.morphology.ApplyBostonIvyPreset();
                 vine.morphology.autumnAmount = 0.06f;
             }
-            else
+            else if (profile == VineDemoProfile.EnglishIvy)
             {
                 vine.morphology.ApplyEnglishIvyPreset();
             }
+            else
+            {
+                vine.morphology.ApplyCreepingFigPreset();
+            }
 
+            var projector = new SurfaceGrowthAuthoringBuilder.ColliderProjector(
+                vine.transform,
+                vine.targetSurface,
+                vine.additionalSurfaces);
             SurfaceGrowthGraph graph = SurfaceGrowthGraphBuilder.Build(
                 vine.growth,
                 vine.guidePoints,
-                ProjectWall);
+                projector.Project);
             Mesh mesh = SurfaceGrowthMeshBuilder.BuildVine(
                 graph,
                 vine.growth,
                 vine.morphology);
-            mesh.name = autumn ? "BostonIvySurfaceMesh" : "EnglishIvySurfaceMesh";
+            mesh.name = profile + "SurfaceMesh";
             AssetDatabase.CreateAsset(mesh, AssetFolder + "/" + mesh.name + ".asset");
             vine.generatedGraph = graph;
             vine.generatedMesh = mesh;
             gameObject.GetComponent<MeshFilter>().sharedMesh = mesh;
             gameObject.GetComponent<MeshRenderer>().sharedMaterial = material;
-        }
-
-        private static bool ProjectWall(
-            Vector3 candidate,
-            Vector3 normalHint,
-            float maximumDistance,
-            out SurfacePoint point)
-        {
-            candidate.z = 0f;
-            point = new SurfacePoint(candidate, Vector3.back);
-            return true;
         }
 
         private static void CreateRhizomePatch(Collider ground, Material material)

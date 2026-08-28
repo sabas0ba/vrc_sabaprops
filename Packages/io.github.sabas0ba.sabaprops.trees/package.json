@@ -26,7 +26,7 @@
   "samples": [
     {
       "displayName": "Trees Demo",
-      "description": "Prebuilt scene containing all tree archetypes and their shared three-level LOD assets.",
+      "description": "Two prebuilt scenes containing ten Japanese botanical and seasonal presets with shared three-level LOD assets.",
       "path": "Samples~/TreesDemo"
     }
   ]

@@ -22,7 +22,7 @@ MonoBehaviour:
     segmentsPerBranch: 4
     maxDepth: 4
     branchCount: 2
-    branchAngle: 68
+    branchAngle: 76
     branchAngleJitter: 14
     lengthDecay: 0.68
     radiusDecay: 0.62
@@ -33,20 +33,24 @@ MonoBehaviour:
     branchArrangement: 2
     whorlSize: 3
     apicalDominance: 0.72
-    branchDroop: 0.13
-    tipUpturn: 0.24
+    branchDroop: 0.04
+    tipUpturn: 0.16
     azimuthJitter: 18
     branchLengthVariance: 0.22
+    crownDensity: 1.15
   appearance:
     barkRootColor: {r: 0.2, g: 0.17, b: 0.14, a: 1}
     barkTipColor: {r: 0.55, g: 0.22, b: 0.075, a: 1}
     leafShape: 2
     leafArrangement: 3
-    leavesPerTip: 10
+    leavesPerTip: 16
     leafLength: 0.38
     leafWidth: 0.025
     leafBaseColor: {r: 0.08, g: 0.24, b: 0.09, a: 1}
     leafTipColor: {r: 0.2, g: 0.39, b: 0.13, a: 1}
+    foliageDepth: 4
+    windEnabled: 1
+    windResponse: 1
     branchStiffness: 0.2
     leafStiffness: 0.78
   lod:

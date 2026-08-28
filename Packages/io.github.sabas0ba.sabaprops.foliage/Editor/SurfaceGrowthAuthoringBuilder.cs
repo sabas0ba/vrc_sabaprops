@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.IO;
 using UnityEditor;
 using UnityEditor.SceneManagement;
@@ -21,7 +22,10 @@ namespace SabaProps.Foliage.Editors
                 return false;
             }
 
-            var projector = new ColliderProjector(vine.transform, vine.targetSurface);
+            var projector = new ColliderProjector(
+                vine.transform,
+                vine.targetSurface,
+                vine.additionalSurfaces);
             SurfaceGrowthGraph graph = SurfaceGrowthGraphBuilder.Build(
                 vine.growth,
                 vine.guidePoints,
@@ -60,7 +64,10 @@ namespace SabaProps.Foliage.Editors
                 return false;
             }
 
-            var projector = new ColliderProjector(patch.transform, patch.targetSurface);
+            var projector = new ColliderProjector(
+                patch.transform,
+                patch.targetSurface,
+                patch.additionalSurfaces);
             SurfaceGrowthGraph graph = SurfaceGrowthGraphBuilder.Build(
                 patch.growth,
                 patch.guidePoints,
@@ -194,15 +201,34 @@ namespace SabaProps.Foliage.Editors
             }
         }
 
-        private sealed class ColliderProjector
+        internal sealed class ColliderProjector
         {
             private readonly Transform authoringTransform;
-            private readonly Collider collider;
+            private readonly Collider[] colliders;
 
-            public ColliderProjector(Transform authoringTransform, Collider collider)
+            public ColliderProjector(
+                Transform authoringTransform,
+                Collider primary,
+                IReadOnlyList<Collider> additional)
             {
                 this.authoringTransform = authoringTransform;
-                this.collider = collider;
+                var unique = new List<Collider>();
+                if (primary != null)
+                {
+                    unique.Add(primary);
+                }
+                if (additional != null)
+                {
+                    for (int i = 0; i < additional.Count; i++)
+                    {
+                        Collider candidate = additional[i];
+                        if (candidate != null && !unique.Contains(candidate))
+                        {
+                            unique.Add(candidate);
+                        }
+                    }
+                }
+                colliders = unique.ToArray();
             }
 
             public bool Project(
@@ -212,7 +238,7 @@ namespace SabaProps.Foliage.Editors
                 out SurfacePoint point)
             {
                 point = default;
-                if (authoringTransform == null || collider == null)
+                if (authoringTransform == null || colliders.Length == 0)
                 {
                     return false;
                 }
@@ -240,25 +266,40 @@ namespace SabaProps.Foliage.Editors
                 bool found = false;
                 float bestDistance = float.MaxValue;
                 RaycastHit bestHit = default;
-                for (int i = 0; i < directions.Length; i++)
+                for (int colliderIndex = 0;
+                     colliderIndex < colliders.Length;
+                     colliderIndex++)
                 {
-                    Vector3 direction = directions[i].normalized;
-                    Vector3 origin = worldCandidate + direction * distance;
-                    RaycastHit hit;
-                    if (!collider.Raycast(
-                            new Ray(origin, -direction),
-                            out hit,
-                            distance * 2f + 0.001f))
+                    Collider collider = colliders[colliderIndex];
+                    if (collider == null || !collider.enabled)
                     {
                         continue;
                     }
 
-                    float candidateDistance = Vector3.Distance(worldCandidate, hit.point);
-                    if (candidateDistance < bestDistance)
+                    for (int directionIndex = 0;
+                         directionIndex < directions.Length;
+                         directionIndex++)
                     {
-                        bestDistance = candidateDistance;
-                        bestHit = hit;
-                        found = true;
+                        Vector3 direction = directions[directionIndex].normalized;
+                        Vector3 origin = worldCandidate + direction * distance;
+                        RaycastHit hit;
+                        if (!collider.Raycast(
+                                new Ray(origin, -direction),
+                                out hit,
+                                distance * 2f + 0.001f))
+                        {
+                            continue;
+                        }
+
+                        float candidateDistance = Vector3.Distance(
+                            worldCandidate,
+                            hit.point);
+                        if (candidateDistance < bestDistance)
+                        {
+                            bestDistance = candidateDistance;
+                            bestHit = hit;
+                            found = true;
+                        }
                     }
                 }
 

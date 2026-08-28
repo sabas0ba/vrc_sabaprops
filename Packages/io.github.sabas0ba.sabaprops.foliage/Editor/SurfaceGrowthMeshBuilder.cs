@@ -19,6 +19,45 @@ namespace SabaProps.Foliage.Editors
                 : new List<SurfaceGrowthNode>();
             var random = new FoliageRandom(growth.seed ^ 0x5A17);
 
+            if (morphology.rootAnchorLength > 0f)
+            {
+                for (int i = 0; i < nodes.Count; i++)
+                {
+                    SurfaceGrowthNode root = nodes[i];
+                    if (root.parentIndex >= 0)
+                    {
+                        continue;
+                    }
+
+                    int firstChild = FirstChild(nodes, i);
+                    if (firstChild < 0)
+                    {
+                        continue;
+                    }
+                    Vector3 tangent = (
+                        nodes[firstChild].position - root.position).normalized;
+                    if (tangent.sqrMagnitude < 1e-6f)
+                    {
+                        continue;
+                    }
+                    var anchor = new SurfaceGrowthNode(
+                        root.position - tangent * morphology.rootAnchorLength,
+                        root.normal,
+                        -1,
+                        root.branchDepth,
+                        -morphology.rootAnchorLength);
+                    AddSurfaceStem(
+                        buffer,
+                        anchor,
+                        root,
+                        Mathf.Max(0.001f, morphology.stemWidth)
+                            * morphology.rootCollarScale,
+                        morphology.stemRootColor,
+                        1f,
+                        random.Value01());
+                }
+            }
+
             float maximumDistance = MaximumDistance(nodes);
             for (int i = 0; i < nodes.Count; i++)
             {
@@ -256,6 +295,20 @@ namespace SabaProps.Foliage.Editors
                 new Vector2(0f, 0f),
                 pivot);
             AddOrientedQuad(buffer, a, b, c, d, parent.normal);
+        }
+
+        private static int FirstChild(
+            IReadOnlyList<SurfaceGrowthNode> nodes,
+            int parentIndex)
+        {
+            for (int i = 0; i < nodes.Count; i++)
+            {
+                if (nodes[i].parentIndex == parentIndex)
+                {
+                    return i;
+                }
+            }
+            return -1;
         }
 
         private static void AddRhizomeShoot(

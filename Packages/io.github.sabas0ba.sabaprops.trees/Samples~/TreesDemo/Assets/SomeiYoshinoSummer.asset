@@ -1,0 +1,72 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8bb7ae45c5bf4a40a7e7436fb8c6f627, type: 3}
+  m_Name: SomeiYoshinoSummer
+  m_EditorClassIdentifier:
+  archetype: 0
+  botanicalPreset: 8
+  meshSeed: 1709
+  structure:
+    trunkLength: 5.4
+    trunkRadius: 0.28
+    radialSegments: 7
+    segmentsPerBranch: 4
+    maxDepth: 4
+    branchCount: 3
+    branchAngle: 54
+    branchAngleJitter: 8
+    lengthDecay: 0.67
+    radiusDecay: 0.58
+    trunkBranchStart: 0.27
+    crookedness: 0.055
+    maxBranches: 620
+    crownShape: 0
+    branchArrangement: 0
+    whorlSize: 3
+    apicalDominance: 0.36
+    branchDroop: 0.015
+    tipUpturn: 0.12
+    azimuthJitter: 11
+    branchLengthVariance: 0.12
+    crownDensity: 1.25
+  appearance:
+    barkRootColor: {r: 0.18, g: 0.16, b: 0.15, a: 1}
+    barkTipColor: {r: 0.31, g: 0.25, b: 0.22, a: 1}
+    leafShape: 1
+    leafArrangement: 0
+    leavesPerTip: 22
+    leafLength: 0.29
+    leafWidth: 0.125
+    leafBaseColor: {r: 0.085, g: 0.26, b: 0.065, a: 1}
+    leafTipColor: {r: 0.28, g: 0.48, b: 0.12, a: 1}
+    foliageDepth: 4
+    windEnabled: 1
+    windResponse: 1
+    branchStiffness: 0.32
+    leafStiffness: 0.78
+  lod:
+    lod1DepthReduction: 1
+    lod2DepthReduction: 2
+    lod0ScreenHeight: 0.55
+    lod1ScreenHeight: 0.25
+    lod2ScreenHeight: 0.08
+  placement:
+    placementWeight: 1
+    minSpacing: 3
+    scaleRange: {x: 0.85, y: 1.2}
+    maxTilt: 3
+    alignToGroundNormal: 0.15
+    slopeLimits: {x: 0, y: 30}
+  lod0Mesh: {fileID: 4300000, guid: 295f26e27fb22874da2e89e97723fc16, type: 2}
+  lod1Mesh: {fileID: 4300000, guid: f625ae51930b47840a15d81273a745ee, type: 2}
+  lod2Mesh: {fileID: 4300000, guid: a01683f48197cb349a701999e194689d, type: 2}
+  material: {fileID: 2100000, guid: 6700e61b3d74ce0459f881904686c730, type: 2}

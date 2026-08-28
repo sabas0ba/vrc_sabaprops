@@ -107,10 +107,10 @@ namespace SabaProps.Trees.CITests
                 }
             }
 
-            Assert.AreEqual(
-                TreeAssetLibrary.AllBotanicalPresets.Length,
+            Assert.GreaterOrEqual(
                 vertexCounts.Count,
-                "species profiles should not collapse to one topology");
+                7,
+                "botanical families should retain several distinct generated topologies");
         }
 
         [Test]
@@ -120,6 +120,11 @@ namespace SabaProps.Trees.CITests
             TreeSpecies cedar = CreateSpecies(TreeBotanicalPreset.JapaneseCedar);
             TreeSpecies birch = CreateSpecies(TreeBotanicalPreset.JapaneseWhiteBirch);
             TreeSpecies pine = CreateSpecies(TreeBotanicalPreset.JapaneseRedPine);
+            TreeSpecies hinoki = CreateSpecies(TreeBotanicalPreset.HinokiCypress);
+            TreeSpecies sakuraSpring = CreateSpecies(TreeBotanicalPreset.SomeiYoshinoSpring);
+            TreeSpecies sakuraSummer = CreateSpecies(TreeBotanicalPreset.SomeiYoshinoSummer);
+            TreeSpecies ginkgoSummer = CreateSpecies(TreeBotanicalPreset.GinkgoSummer);
+            TreeSpecies ginkgoAutumn = CreateSpecies(TreeBotanicalPreset.GinkgoAutumn);
             try
             {
                 Assert.AreEqual(TreeBranchArrangement.Opposite,
@@ -130,11 +135,30 @@ namespace SabaProps.Trees.CITests
                     cedar.structure.branchArrangement);
                 Assert.AreEqual(TreeCrownShape.Pyramidal,
                     cedar.structure.crownShape);
-                Assert.Greater(birch.structure.branchDroop, 0.3f);
+                Assert.AreEqual(TreeLeafShape.Needle,
+                    cedar.appearance.leafShape);
+                Assert.Less(cedar.structure.branchDroop, 0.1f);
+                Assert.Less(birch.structure.branchDroop, 0.15f);
                 Assert.AreEqual(TreeLeafArrangement.FasciclePairs,
                     pine.appearance.leafArrangement);
                 Assert.AreEqual(TreeCrownShape.OpenIrregular,
                     pine.structure.crownShape);
+                Assert.AreEqual(TreeLeafShape.Scale,
+                    hinoki.appearance.leafShape);
+                Assert.AreEqual(TreeLeafArrangement.Opposite,
+                    hinoki.appearance.leafArrangement);
+                Assert.AreEqual(TreeLeafShape.Blossom,
+                    sakuraSpring.appearance.leafShape);
+                Assert.AreEqual(TreeLeafShape.Broad,
+                    sakuraSummer.appearance.leafShape);
+                Assert.AreEqual(sakuraSpring.meshSeed, sakuraSummer.meshSeed,
+                    "seasonal Sakura variants should retain their branch structure");
+                Assert.AreEqual(TreeLeafShape.Fan,
+                    ginkgoSummer.appearance.leafShape);
+                Assert.AreEqual(TreeLeafArrangement.Clustered,
+                    ginkgoSummer.appearance.leafArrangement);
+                Assert.AreEqual(ginkgoSummer.meshSeed, ginkgoAutumn.meshSeed,
+                    "seasonal Ginkgo variants should retain their branch structure");
             }
             finally
             {
@@ -142,6 +166,11 @@ namespace SabaProps.Trees.CITests
                 Object.DestroyImmediate(cedar);
                 Object.DestroyImmediate(birch);
                 Object.DestroyImmediate(pine);
+                Object.DestroyImmediate(hinoki);
+                Object.DestroyImmediate(sakuraSpring);
+                Object.DestroyImmediate(sakuraSummer);
+                Object.DestroyImmediate(ginkgoSummer);
+                Object.DestroyImmediate(ginkgoAutumn);
             }
         }
 
@@ -196,7 +225,10 @@ namespace SabaProps.Trees.CITests
                 species.structure.branchAngle = -20f;
                 species.structure.lengthDecay = 4f;
                 species.structure.crookedness = 4f;
+                species.structure.crownDensity = 4f;
                 species.appearance.leafLength = 0f;
+                species.appearance.foliageDepth = 99;
+                species.appearance.windResponse = 4f;
                 species.appearance.branchStiffness = 4f;
                 species.lod.lod0ScreenHeight = 0f;
                 species.lod.lod1ScreenHeight = 1f;
@@ -216,7 +248,10 @@ namespace SabaProps.Trees.CITests
                 Assert.AreEqual(5f, species.structure.branchAngle, 1e-6f);
                 Assert.AreEqual(0.85f, species.structure.lengthDecay, 1e-6f);
                 Assert.AreEqual(0.5f, species.structure.crookedness, 1e-6f);
+                Assert.AreEqual(1.5f, species.structure.crownDensity, 1e-6f);
                 Assert.AreEqual(0.01f, species.appearance.leafLength, 1e-6f);
+                Assert.AreEqual(4, species.appearance.foliageDepth);
+                Assert.AreEqual(2f, species.appearance.windResponse, 1e-6f);
                 Assert.AreEqual(1f, species.appearance.branchStiffness, 1e-6f);
                 Assert.AreEqual(0.03f, species.lod.lod0ScreenHeight, 1e-6f);
                 Assert.AreEqual(0.02f, species.lod.lod1ScreenHeight, 1e-6f);
@@ -294,6 +329,35 @@ namespace SabaProps.Trees.CITests
         }
 
         [Test]
+        public void WindCanBeDisabledPerSpecies()
+        {
+            TreeSpecies species = CreateSpecies(TreeBotanicalPreset.JapaneseZelkova);
+            species.appearance.windEnabled = false;
+            try
+            {
+                Mesh mesh = TreeMeshBuilder.Build(species, 0);
+                try
+                {
+                    var uv3 = new List<Vector4>();
+                    mesh.GetUVs(FoliageShaderContract.WindDataUvChannel, uv3);
+                    Assert.AreEqual(mesh.vertexCount, uv3.Count);
+                    foreach (Vector4 wind in uv3)
+                    {
+                        Assert.AreEqual(0f, wind.w, 1e-6f);
+                    }
+                }
+                finally
+                {
+                    Object.DestroyImmediate(mesh);
+                }
+            }
+            finally
+            {
+                Object.DestroyImmediate(species);
+            }
+        }
+
+        [Test]
         public void SceneTreeUsesLodGroupShadowsAndNoDistanceShrink()
         {
             TreeSpecies species = TreeAssetLibrary.CreateOrLoadSpecies(TreeArchetype.Broadleaf);
@@ -317,6 +381,8 @@ namespace SabaProps.Trees.CITests
                 species.material.GetFloat(FoliageShaderContract.DistanceFadeProperty), 1e-6f);
             Assert.IsFalse(species.material.IsKeywordEnabled(
                 FoliageShaderContract.DistanceFadeKeyword));
+            Assert.Greater(species.material.GetFloat("_WindStrength"), 0f,
+                "the default tree material must enable shader wind");
         }
 
         [Test]

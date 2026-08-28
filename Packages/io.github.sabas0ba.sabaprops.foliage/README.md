@@ -39,7 +39,7 @@ VRChat のワールドとアバターでは、**実行時に C# が動きませ�
 ### まず動くものを見る
 
 Package Manager で `SabaProps Foliage` を選び、`Samples > Foliage Demo > Import` を
-実行すると、通常の Species、表面を這う 2 種類のツタ、根茎パッチを含む軽量な
+実行すると、通常の Species、床・壁・斜面を這う 3 パターンのツタ、根茎パッチを含む軽量な
 `FoliageDemo.unity` が `Assets/Samples/` 以下へコピーされます。生成操作なしで開けます。
 
 全 Species、地形、出力モード、季節を比較する大規模な検証用シーンは次のメニューから
@@ -144,7 +144,12 @@ Hierarchy で Collider を持つ壁または地面を選び、次を実行しま
 - `GameObject > SabaProps > Surface Vine`
 - `GameObject > SabaProps > Rhizome Patch`
 
-親の Collider は自動設定されます。Inspector のローカル Guide Points、経路密度、分岐、
+親の Collider は `Target Surface` へ自動設定されます。隣接する床・壁・斜面をまたぐ場合は
+`Additional Surfaces` に Collider を追加します。各候補へ投影して最も近い hit を選ぶため、
+ガイドを境界の先まで伸ばすと1本の経路として連続します。Collider 間の隙間は
+`Projection Distance` 以下にし、鋭い角では `Step Length` を短くしてください。
+
+Inspector のローカル Guide Points、経路密度、分岐、
 葉形、葉数、サイズ、色を調整し、`Build / Rebuild` を押します。`ProjectedSpline` は
 ガイド点列を Catmull–Rom 補間した流れへ各経路を引き寄せながら表面へ投影し、
 `SurfaceCrawl` は表面の接平面上を
@@ -153,6 +158,8 @@ Hierarchy で Collider を持つ壁または地面を選び、次を実行しま
 Surface Vine には Creeping Fig / English Ivy / Boston Ivy の形態 preset があります。
 根元の範囲、経路長、葉間隔、葉角度は Seed から個体ごとに変化します。葉色は葉全体の
 季節色に加え、葉縁・主脈・葉柄だけへ別の頂点色を焼き込めます。
+根元は最初の経路と逆方向へ短いテーパー付き collar を延ばします。`Root Anchor Length` が
+長さ、`Root Collar Scale` が始端側の太さを決め、壁や床の途中で茎が切れて見える状態を防ぎます。
 Rhizome Patch の既定形態はドクダミで、地下 Graph の Node から心形葉と花を立ち上げます。
 生成結果は `Assets/SabaProps/Foliage/Generated/SurfaceGrowth/` の Mesh asset へ保存され、
 実行時 C# を必要としません。

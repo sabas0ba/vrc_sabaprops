@@ -42,7 +42,7 @@ Material:
     - _ValueVariance: 0.22
     - _WindGust: 0.5
     - _WindSpeed: 1.5
-    - _WindStrength: 0.1
+    - _WindStrength: 0.14
     - _WindTurbulence: 0.35
     - _WindWaveLength: 12
     - _Wrap: 0.45

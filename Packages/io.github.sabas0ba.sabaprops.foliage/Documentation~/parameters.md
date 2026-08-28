@@ -113,18 +113,22 @@ Species の形状パラメータが実際にどう効くかを、生成された
 
 ### Surface Vine
 
-`SurfaceVine` は Foliage Field の面積散布とは別の authoring component です。対象の
-Collider とローカル空間の Guide Points を指定し、`Build / Rebuild` で表面へ焼き込みます。
+`SurfaceVine` は Foliage Field の面積散布とは別の authoring component です。
+`Target Surface` と必要な `Additional Surfaces`、ローカル空間の Guide Points を指定し、
+`Build / Rebuild` で表面へ焼き込みます。床・壁・斜面のように接する Collider は、各 step で
+最も近い投影先が選ばれるため1本の経路として横断できます。
 
 | 分類 | パラメータ | 効果 |
 |---|---|---|
 | 経路 | `Mode` | `ProjectedSpline` はガイド曲線を優先し、`SurfaceCrawl` は接平面上をランダムに進みます |
+| 投影先 | `Target Surface` / `Additional Surfaces` | 主対象と、同じ経路で横断する隣接 Collider です。重複と null は無視されます |
 | 経路 | `Path Count` / `Coverage` | 主経路数と実際に使う割合。家全体の被覆率を決める最初の値です |
 | 経路 | `Guide Attraction` / `Root Spread` / `Path Length Variance` | ガイドへ戻る強さ、根元を散らす半径、個体ごとの長さ差です。固定的な平行線を崩す場合に先に調整します |
 | 分岐 | `Branches Per Metre` / `Max Branch Depth` / `Branch Length` | 1 m あたりの分岐開始頻度、再帰深度、親経路に対する長さ比です |
 | 精度 | `Step Length` / `Projection Distance` | 表面追従の細かさと Collider を探索する距離です。角が細かいほど Step を短くします |
 | 安全弁 | `Minimum Spacing` / `Node Budget` | 経路どうしの過密と、極端な設定による Node 数を制限します |
 | 茎 | `Stem Width` / `Stem Stiffness` | 表面に固定された茎の幅と風への剛性です |
+| 根元 | `Root Anchor Length` / `Root Collar Scale` | 最初の Edge と逆方向へ延ばすテーパーの長さと始端側の太さです。根元の切断面を隠します |
 | 葉 | `Leaves Per Metre` / `Minimum/Maximum Leaf Length` | 経路長あたりの葉数とサイズ範囲です。最終数には `Coverage` も掛かります |
 | 葉序 | `Leaf Arrangement` / `Leaf Spacing Jitter` / `Leaf Angle Jitter` | 互生・対生・輪生・ランダムと、節間隔・葉の向きのばらつきです |
 | 葉形 | `Cordate` / `Lobed` / `Ovate` / `Orbicular` | 心形、掌状裂、卵形、円形の低ポリゴン輪郭です |
@@ -151,7 +155,9 @@ Preset 適用後も各値を個別に編集できます。
 | `Flower Chance` / `Flower Radius` | 4 枚の白い苞と中央の花序を付ける確率と大きさです |
 | `Render Rhizomes` | 地下 Edge の構造確認用表示です。通常の完成表現では OFF にします |
 
-どちらの component も非一様 Scale は想定していません。表面形状、ガイド点、または
+Collider 間の隙間は `Projection Distance` 以下にし、境界の曲率が大きい場合は
+`Step Length` を短くします。どちらの component も非一様 Scale は想定していません。
+表面形状、ガイド点、または
 パラメータを変えた後は再ビルドしてください。
 
 ---

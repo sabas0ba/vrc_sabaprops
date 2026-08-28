@@ -19,6 +19,11 @@ namespace SabaProps.Trees
         JapaneseCedar = 3,
         JapaneseWhiteBirch = 4,
         JapaneseRedPine = 5,
+        HinokiCypress = 6,
+        SomeiYoshinoSpring = 7,
+        SomeiYoshinoSummer = 8,
+        GinkgoSummer = 9,
+        GinkgoAutumn = 10,
     }
 
     public enum TreeCrownShape
@@ -44,6 +49,7 @@ namespace SabaProps.Trees
         Opposite = 1,
         Whorled = 2,
         FasciclePairs = 3,
+        Clustered = 4,
     }
 
     public enum TreeLeafShape
@@ -53,6 +59,8 @@ namespace SabaProps.Trees
         Needle = 2,
         Palmate = 3,
         Scale = 4,
+        Blossom = 5,
+        Fan = 6,
     }
 
     [Serializable]
@@ -81,10 +89,13 @@ namespace SabaProps.Trees
             TreeBranchArrangement.Spiral;
         [Range(2, 6)] public int whorlSize = 3;
         [Range(0f, 1f)] public float apicalDominance = 0.5f;
+        [Tooltip("Downward curvature of thin terminal shoots. Structural branches keep a non-negative elevation.")]
         [Range(0f, 0.8f)] public float branchDroop = 0.04f;
         [Range(0f, 0.8f)] public float tipUpturn = 0.12f;
         [Range(0f, 45f)] public float azimuthJitter = 16f;
         [Range(0f, 0.5f)] public float branchLengthVariance = 0.14f;
+        [Tooltip("Scales the number of primary crown branches without changing recursive depth.")]
+        [Range(0.5f, 1.5f)] public float crownDensity = 1f;
     }
 
     [Serializable]
@@ -97,13 +108,19 @@ namespace SabaProps.Trees
         [Header("Leaves")]
         public TreeLeafShape leafShape = TreeLeafShape.Broad;
         public TreeLeafArrangement leafArrangement = TreeLeafArrangement.Alternate;
-        [Range(1, 12)] public int leavesPerTip = 5;
+        [Range(1, 24)] public int leavesPerTip = 5;
         [Min(0.01f)] public float leafLength = 0.24f;
         [Min(0.005f)] public float leafWidth = 0.11f;
         public Color leafBaseColor = new Color(0.12f, 0.29f, 0.075f, 1f);
         public Color leafTipColor = new Color(0.32f, 0.52f, 0.14f, 1f);
+        [Tooltip("Number of terminal branch orders that carry foliage.")]
+        [Range(1, 4)] public int foliageDepth = 2;
 
         [Header("Wind")]
+        [Tooltip("Bakes zero wind response into this species when disabled. Rebuild LOD meshes after changing it.")]
+        public bool windEnabled = true;
+        [Tooltip("Species-level multiplier for the shared foliage material wind.")]
+        [Range(0f, 2f)] public float windResponse = 1f;
         [Range(0f, 1f)] public float branchStiffness = 0.32f;
         [Range(0f, 1f)] public float leafStiffness = 0.78f;
     }
@@ -219,6 +236,7 @@ namespace SabaProps.Trees
                     appearance.leafWidth = 0.018f;
                     appearance.leafBaseColor = new Color(0.055f, 0.19f, 0.09f, 1f);
                     appearance.leafTipColor = new Color(0.13f, 0.31f, 0.14f, 1f);
+                    appearance.foliageDepth = 4;
                     appearance.branchStiffness = 0.2f;
                     placement.minSpacing = 2.6f;
                     placement.scaleRange = new Vector2(0.8f, 1.3f);
@@ -284,6 +302,7 @@ namespace SabaProps.Trees
         {
             TreeArchetype baseArchetype = value == TreeBotanicalPreset.JapaneseCedar
                 || value == TreeBotanicalPreset.JapaneseRedPine
+                || value == TreeBotanicalPreset.HinokiCypress
                 ? TreeArchetype.Conifer
                 : TreeArchetype.Broadleaf;
             ApplyArchetypePreset(baseArchetype);
@@ -307,18 +326,20 @@ namespace SabaProps.Trees
                     structure.crownShape = TreeCrownShape.Vase;
                     structure.branchArrangement = TreeBranchArrangement.Spiral;
                     structure.apicalDominance = 0.38f;
-                    structure.branchDroop = 0.02f;
-                    structure.tipUpturn = 0.32f;
+                    structure.branchDroop = 0f;
+                    structure.tipUpturn = 0.18f;
                     structure.branchLengthVariance = 0.12f;
+                    structure.crownDensity = 1.2f;
                     appearance.barkRootColor = new Color(0.19f, 0.17f, 0.14f, 1f);
                     appearance.barkTipColor = new Color(0.37f, 0.29f, 0.20f, 1f);
                     appearance.leafShape = TreeLeafShape.Broad;
                     appearance.leafArrangement = TreeLeafArrangement.Alternate;
-                    appearance.leavesPerTip = 8;
-                    appearance.leafLength = 0.22f;
-                    appearance.leafWidth = 0.09f;
+                    appearance.leavesPerTip = 22;
+                    appearance.leafLength = 0.32f;
+                    appearance.leafWidth = 0.135f;
                     appearance.leafBaseColor = new Color(0.10f, 0.28f, 0.07f, 1f);
                     appearance.leafTipColor = new Color(0.28f, 0.48f, 0.12f, 1f);
+                    appearance.foliageDepth = 4;
                     break;
 
                 case TreeBotanicalPreset.JapaneseMaple:
@@ -337,18 +358,20 @@ namespace SabaProps.Trees
                     structure.crownShape = TreeCrownShape.Layered;
                     structure.branchArrangement = TreeBranchArrangement.Opposite;
                     structure.apicalDominance = 0.27f;
-                    structure.branchDroop = 0.09f;
-                    structure.tipUpturn = 0.17f;
+                    structure.branchDroop = 0.025f;
+                    structure.tipUpturn = 0.12f;
                     structure.azimuthJitter = 10f;
+                    structure.crownDensity = 1.08f;
                     appearance.barkRootColor = new Color(0.16f, 0.13f, 0.105f, 1f);
                     appearance.barkTipColor = new Color(0.25f, 0.20f, 0.14f, 1f);
                     appearance.leafShape = TreeLeafShape.Palmate;
                     appearance.leafArrangement = TreeLeafArrangement.Opposite;
-                    appearance.leavesPerTip = 4;
-                    appearance.leafLength = 0.22f;
-                    appearance.leafWidth = 0.18f;
+                    appearance.leavesPerTip = 6;
+                    appearance.leafLength = 0.31f;
+                    appearance.leafWidth = 0.24f;
                     appearance.leafBaseColor = new Color(0.10f, 0.27f, 0.07f, 1f);
                     appearance.leafTipColor = new Color(0.31f, 0.49f, 0.13f, 1f);
+                    appearance.foliageDepth = 4;
                     break;
 
                 case TreeBotanicalPreset.JapaneseCedar:
@@ -357,7 +380,7 @@ namespace SabaProps.Trees
                     structure.trunkRadius = 0.30f;
                     structure.maxDepth = 4;
                     structure.branchCount = 3;
-                    structure.branchAngle = 73f;
+                    structure.branchAngle = 78f;
                     structure.branchAngleJitter = 6f;
                     structure.lengthDecay = 0.59f;
                     structure.radiusDecay = 0.54f;
@@ -368,19 +391,21 @@ namespace SabaProps.Trees
                     structure.branchArrangement = TreeBranchArrangement.Whorled;
                     structure.whorlSize = 4;
                     structure.apicalDominance = 0.94f;
-                    structure.branchDroop = 0.17f;
-                    structure.tipUpturn = 0.04f;
+                    structure.branchDroop = 0.035f;
+                    structure.tipUpturn = 0.09f;
                     structure.azimuthJitter = 5f;
                     structure.branchLengthVariance = 0.08f;
+                    structure.crownDensity = 1.15f;
                     appearance.barkRootColor = new Color(0.19f, 0.085f, 0.045f, 1f);
                     appearance.barkTipColor = new Color(0.35f, 0.16f, 0.075f, 1f);
-                    appearance.leafShape = TreeLeafShape.Scale;
+                    appearance.leafShape = TreeLeafShape.Needle;
                     appearance.leafArrangement = TreeLeafArrangement.Whorled;
-                    appearance.leavesPerTip = 10;
-                    appearance.leafLength = 0.28f;
-                    appearance.leafWidth = 0.07f;
+                    appearance.leavesPerTip = 19;
+                    appearance.leafLength = 0.20f;
+                    appearance.leafWidth = 0.040f;
                     appearance.leafBaseColor = new Color(0.045f, 0.18f, 0.075f, 1f);
                     appearance.leafTipColor = new Color(0.12f, 0.31f, 0.12f, 1f);
+                    appearance.foliageDepth = 4;
                     break;
 
                 case TreeBotanicalPreset.JapaneseWhiteBirch:
@@ -399,18 +424,20 @@ namespace SabaProps.Trees
                     structure.crownShape = TreeCrownShape.Pyramidal;
                     structure.branchArrangement = TreeBranchArrangement.Spiral;
                     structure.apicalDominance = 0.88f;
-                    structure.branchDroop = 0.38f;
-                    structure.tipUpturn = 0.06f;
+                    structure.branchDroop = 0.08f;
+                    structure.tipUpturn = 0.10f;
                     structure.branchLengthVariance = 0.16f;
+                    structure.crownDensity = 1.2f;
                     appearance.barkRootColor = new Color(0.48f, 0.47f, 0.43f, 1f);
                     appearance.barkTipColor = new Color(0.25f, 0.18f, 0.12f, 1f);
                     appearance.leafShape = TreeLeafShape.Broad;
                     appearance.leafArrangement = TreeLeafArrangement.Alternate;
-                    appearance.leavesPerTip = 7;
-                    appearance.leafLength = 0.20f;
-                    appearance.leafWidth = 0.09f;
+                    appearance.leavesPerTip = 18;
+                    appearance.leafLength = 0.27f;
+                    appearance.leafWidth = 0.12f;
                     appearance.leafBaseColor = new Color(0.10f, 0.29f, 0.075f, 1f);
                     appearance.leafTipColor = new Color(0.35f, 0.51f, 0.15f, 1f);
+                    appearance.foliageDepth = 4;
                     break;
 
                 case TreeBotanicalPreset.JapaneseRedPine:
@@ -419,7 +446,7 @@ namespace SabaProps.Trees
                     structure.trunkRadius = 0.29f;
                     structure.maxDepth = 4;
                     structure.branchCount = 2;
-                    structure.branchAngle = 68f;
+                    structure.branchAngle = 76f;
                     structure.branchAngleJitter = 14f;
                     structure.lengthDecay = 0.68f;
                     structure.radiusDecay = 0.62f;
@@ -430,19 +457,89 @@ namespace SabaProps.Trees
                     structure.branchArrangement = TreeBranchArrangement.Whorled;
                     structure.whorlSize = 3;
                     structure.apicalDominance = 0.72f;
-                    structure.branchDroop = 0.13f;
-                    structure.tipUpturn = 0.24f;
+                    structure.branchDroop = 0.04f;
+                    structure.tipUpturn = 0.16f;
                     structure.azimuthJitter = 18f;
                     structure.branchLengthVariance = 0.22f;
+                    structure.crownDensity = 1.15f;
                     appearance.barkRootColor = new Color(0.20f, 0.17f, 0.14f, 1f);
                     appearance.barkTipColor = new Color(0.55f, 0.22f, 0.075f, 1f);
                     appearance.leafShape = TreeLeafShape.Needle;
                     appearance.leafArrangement = TreeLeafArrangement.FasciclePairs;
-                    appearance.leavesPerTip = 10;
+                    appearance.leavesPerTip = 16;
                     appearance.leafLength = 0.38f;
                     appearance.leafWidth = 0.025f;
                     appearance.leafBaseColor = new Color(0.08f, 0.24f, 0.09f, 1f);
                     appearance.leafTipColor = new Color(0.20f, 0.39f, 0.13f, 1f);
+                    appearance.foliageDepth = 4;
+                    break;
+
+                case TreeBotanicalPreset.HinokiCypress:
+                    meshSeed = 1601;
+                    structure.trunkLength = 6.8f;
+                    structure.trunkRadius = 0.28f;
+                    structure.maxDepth = 4;
+                    structure.branchCount = 3;
+                    structure.branchAngle = 81f;
+                    structure.branchAngleJitter = 4f;
+                    structure.lengthDecay = 0.58f;
+                    structure.radiusDecay = 0.52f;
+                    structure.trunkBranchStart = 0.18f;
+                    structure.crookedness = 0.018f;
+                    structure.maxBranches = 820;
+                    structure.crownShape = TreeCrownShape.Pyramidal;
+                    structure.branchArrangement = TreeBranchArrangement.Whorled;
+                    structure.whorlSize = 3;
+                    structure.apicalDominance = 0.93f;
+                    structure.branchDroop = 0.02f;
+                    structure.tipUpturn = 0.07f;
+                    structure.azimuthJitter = 4f;
+                    structure.branchLengthVariance = 0.07f;
+                    structure.crownDensity = 1.2f;
+                    appearance.barkRootColor = new Color(0.24f, 0.12f, 0.075f, 1f);
+                    appearance.barkTipColor = new Color(0.38f, 0.20f, 0.11f, 1f);
+                    appearance.leafShape = TreeLeafShape.Scale;
+                    appearance.leafArrangement = TreeLeafArrangement.Opposite;
+                    appearance.leavesPerTip = 24;
+                    appearance.leafLength = 0.21f;
+                    appearance.leafWidth = 0.07f;
+                    appearance.leafBaseColor = new Color(0.035f, 0.16f, 0.075f, 1f);
+                    appearance.leafTipColor = new Color(0.10f, 0.28f, 0.11f, 1f);
+                    appearance.foliageDepth = 4;
+                    break;
+
+                case TreeBotanicalPreset.SomeiYoshinoSpring:
+                    ApplySomeiYoshinoStructure();
+                    appearance.leafShape = TreeLeafShape.Blossom;
+                    appearance.leafArrangement = TreeLeafArrangement.Clustered;
+                    appearance.leavesPerTip = 10;
+                    appearance.leafLength = 0.17f;
+                    appearance.leafWidth = 0.085f;
+                    appearance.leafBaseColor = new Color(0.96f, 0.70f, 0.76f, 1f);
+                    appearance.leafTipColor = new Color(1f, 0.91f, 0.92f, 1f);
+                    break;
+
+                case TreeBotanicalPreset.SomeiYoshinoSummer:
+                    ApplySomeiYoshinoStructure();
+                    appearance.leafShape = TreeLeafShape.Broad;
+                    appearance.leafArrangement = TreeLeafArrangement.Alternate;
+                    appearance.leavesPerTip = 22;
+                    appearance.leafLength = 0.29f;
+                    appearance.leafWidth = 0.125f;
+                    appearance.leafBaseColor = new Color(0.085f, 0.26f, 0.065f, 1f);
+                    appearance.leafTipColor = new Color(0.28f, 0.48f, 0.12f, 1f);
+                    break;
+
+                case TreeBotanicalPreset.GinkgoSummer:
+                    ApplyGinkgoStructure();
+                    appearance.leafBaseColor = new Color(0.12f, 0.31f, 0.07f, 1f);
+                    appearance.leafTipColor = new Color(0.39f, 0.57f, 0.12f, 1f);
+                    break;
+
+                case TreeBotanicalPreset.GinkgoAutumn:
+                    ApplyGinkgoStructure();
+                    appearance.leafBaseColor = new Color(0.86f, 0.58f, 0.035f, 1f);
+                    appearance.leafTipColor = new Color(1f, 0.82f, 0.10f, 1f);
                     break;
 
                 case TreeBotanicalPreset.Custom:
@@ -451,6 +548,65 @@ namespace SabaProps.Trees
             }
 
             ValidateParameters();
+        }
+
+        private void ApplySomeiYoshinoStructure()
+        {
+            meshSeed = 1709;
+            structure.trunkLength = 5.4f;
+            structure.trunkRadius = 0.28f;
+            structure.maxDepth = 4;
+            structure.branchCount = 3;
+            structure.branchAngle = 54f;
+            structure.branchAngleJitter = 8f;
+            structure.lengthDecay = 0.67f;
+            structure.radiusDecay = 0.58f;
+            structure.trunkBranchStart = 0.27f;
+            structure.crookedness = 0.055f;
+            structure.maxBranches = 620;
+            structure.crownShape = TreeCrownShape.Rounded;
+            structure.branchArrangement = TreeBranchArrangement.Spiral;
+            structure.apicalDominance = 0.36f;
+            structure.branchDroop = 0.015f;
+            structure.tipUpturn = 0.12f;
+            structure.azimuthJitter = 11f;
+            structure.branchLengthVariance = 0.12f;
+            structure.crownDensity = 1.25f;
+            appearance.barkRootColor = new Color(0.18f, 0.16f, 0.15f, 1f);
+            appearance.barkTipColor = new Color(0.31f, 0.25f, 0.22f, 1f);
+            appearance.foliageDepth = 4;
+        }
+
+        private void ApplyGinkgoStructure()
+        {
+            meshSeed = 1801;
+            structure.trunkLength = 6.5f;
+            structure.trunkRadius = 0.29f;
+            structure.maxDepth = 4;
+            structure.branchCount = 2;
+            structure.branchAngle = 43f;
+            structure.branchAngleJitter = 6f;
+            structure.lengthDecay = 0.64f;
+            structure.radiusDecay = 0.57f;
+            structure.trunkBranchStart = 0.24f;
+            structure.crookedness = 0.025f;
+            structure.maxBranches = 540;
+            structure.crownShape = TreeCrownShape.Pyramidal;
+            structure.branchArrangement = TreeBranchArrangement.Spiral;
+            structure.apicalDominance = 0.78f;
+            structure.branchDroop = 0f;
+            structure.tipUpturn = 0.16f;
+            structure.azimuthJitter = 8f;
+            structure.branchLengthVariance = 0.10f;
+            structure.crownDensity = 1.2f;
+            appearance.barkRootColor = new Color(0.27f, 0.25f, 0.20f, 1f);
+            appearance.barkTipColor = new Color(0.40f, 0.37f, 0.28f, 1f);
+            appearance.leafShape = TreeLeafShape.Fan;
+            appearance.leafArrangement = TreeLeafArrangement.Clustered;
+            appearance.leavesPerTip = 16;
+            appearance.leafLength = 0.25f;
+            appearance.leafWidth = 0.19f;
+            appearance.foliageDepth = 4;
         }
 
         public void ValidateParameters()
@@ -480,9 +636,13 @@ namespace SabaProps.Trees
             structure.azimuthJitter = Mathf.Clamp(structure.azimuthJitter, 0f, 45f);
             structure.branchLengthVariance = Mathf.Clamp(
                 structure.branchLengthVariance, 0f, 0.5f);
-            appearance.leavesPerTip = Mathf.Clamp(appearance.leavesPerTip, 1, 12);
+            structure.crownDensity = Mathf.Clamp(
+                structure.crownDensity, 0.5f, 1.5f);
+            appearance.leavesPerTip = Mathf.Clamp(appearance.leavesPerTip, 1, 24);
             appearance.leafLength = Mathf.Max(0.01f, appearance.leafLength);
             appearance.leafWidth = Mathf.Max(0.005f, appearance.leafWidth);
+            appearance.foliageDepth = Mathf.Clamp(appearance.foliageDepth, 1, 4);
+            appearance.windResponse = Mathf.Clamp(appearance.windResponse, 0f, 2f);
             appearance.branchStiffness = Mathf.Clamp01(appearance.branchStiffness);
             appearance.leafStiffness = Mathf.Clamp01(appearance.leafStiffness);
 

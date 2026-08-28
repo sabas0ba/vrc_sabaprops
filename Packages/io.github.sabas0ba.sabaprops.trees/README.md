@@ -10,11 +10,12 @@ Foliage の shader と風チャンネル契約を共有しますが、草向け�
 ## 使い方
 
 Package Manager で `SabaProps Trees` を選び、`Samples > Trees Demo > Import` を実行すると、
-ケヤキ、イロハモミジ、スギ、シラカバ、アカマツと各 3 段階 LOD を生成済みの
-`TreesDemo.unity` を確認できます。Demo は各 preset の既定分岐予算、樹冠、枝序、葉序を
-そのまま焼き込んでいます。
+10 preset と各 3 段階 LOD を生成済みの 2 シーンを確認できます。`TreesDemo.unity` は
+ケヤキ、イロハモミジ、スギ、ヒノキ、アカマツ、`SeasonalTreesDemo.unity` はシラカバ、
+ソメイヨシノの春／夏、イチョウの夏／秋を収録しています。Demo は各 preset の既定分岐予算、
+樹冠、枝序、葉序、風応答をそのまま焼き込んでいます。
 
-1. `Tools > SabaProps > Trees > Create Default Assets` を実行します。5 実在種と枯れ木・低木を作成します
+1. `Tools > SabaProps > Trees > Create Default Assets` を実行します。10 preset と枯れ木・低木を作成します
 2. `Assets/SabaProps/Trees/Species/` から `TreeSpecies` を選びます
 3. Inspector で構造・葉・LOD を調整し、`Rebuild LOD Meshes` を押します
 4. `Create LOD Group in Scene` を押すか、Hierarchy の
@@ -50,9 +51,19 @@ LOD Mesh は Species ごとに 3 個だけ生成し、すべての個体で共�
 - LOD1/LOD2 は再帰深度、断面数、枝分岐数、葉数を段階的に減らします
 - 一次枝と子枝は `Spiral` / `Opposite` / `Whorled` / `Irregular` の枝序で配置します
 - `Crown Shape` が高さごとの枝長包絡を、`Apical Dominance` が主幹と側枝の比率を決めます
-- `Branch Droop` と `Tip Upturn` は枝の各 segment に接ベクトルとして加わり、枝全体の弧を作ります
+- `Crown Density` は再帰深度を変えずに主枝層を増減し、`Foliage Depth` は葉を付ける末端側の枝階層数を決めます
+- 構造枝は水平より下へ向けず、`Branch Droop` は細い末端枝だけへ適用します。`Tip Upturn` は先端の上向きを加えます
 - 子枝半径は分岐数の平方根で上限を設け、親より太い末端枝が生じないようにします
 - 樹皮色は幹から枝次数の高い若枝へ補間し、葉は互生・対生・輪生・2 針束を分けます
+- 親枝の終端と継続枝は同じ位置・半径で接続し、非終端の切断面を作りません
+
+### 風
+
+`Wind Enabled` は Species 単位の風応答を切り替え、`Wind Response` は共有 Material の風に
+対する倍率を設定します。変更後は `Rebuild LOD Meshes` が必要です。OFF の場合は UV3.w を
+0 として焼き込むため、実行時スクリプトや Species ごとの Material は増えません。
+`Branch Stiffness` と `Leaf Stiffness` は枝と葉の相対的な応答量です。全体の風向、速度、強度は
+Material の `Direction`、`Speed`、`Strength` で設定します。
 
 ## 実在種 Preset
 
@@ -63,6 +74,11 @@ LOD Mesh は Species ごとに 3 個だけ生成し、すべての個体で共�
 | Japanese Cedar / スギ | 主幹優勢の円錐樹冠、水平からやや下垂する輪生枝 | 輪生状の短い針葉、赤褐色樹皮 |
 | Japanese White Birch / シラカバ | 中心主幹と細い開出枝、先端ほど下垂 | 互生する小型広葉、白い幹から褐色若枝 |
 | Japanese Red Pine / アカマツ | 曲がる幹、上部に偏る疎な輪生枝、開いた樹冠 | 2 本束の長い針葉、灰色の根元から橙赤色樹皮 |
+| Hinoki Cypress / ヒノキ | 主幹優勢の円錐樹冠、水平な輪生枝、細い末端だけが小さく下垂 | 対生する鱗片葉、暗緑色の葉、赤褐色樹皮 |
+| Somei Yoshino Spring / ソメイヨシノ・春 | 太い枝が横へ広がる丸い樹冠 | 葉より先に付く淡桃色から白色の 5 弁花 |
+| Somei Yoshino Summer / ソメイヨシノ・夏 | 春と同じ Seed・枝構造 | 互生する卵形の緑葉 |
+| Ginkgo Summer / イチョウ・夏 | 直立する主幹と円錐状の樹冠 | 短枝にまとまる緑色の扇形葉 |
+| Ginkgo Autumn / イチョウ・秋 | 夏と同じ Seed・枝構造 | 黄色く紅葉した扇形葉 |
 
 形態の根拠は、North Carolina State University Extension の
 [ケヤキ](https://plants.ces.ncsu.edu/plants/zelkova-serrata/common-name/japanese-zelkova/)、
@@ -70,6 +86,10 @@ LOD Mesh は Species ごとに 3 個だけ生成し、すべての個体で共�
 [スギ](https://plants.ces.ncsu.edu/plants/cryptomeria-japonica/)、
 [シラカバ](https://plants.ces.ncsu.edu/plants/betula-platyphylla-var-japonica/)、
 [アカマツ](https://plants.ces.ncsu.edu/plants/pinus-densiflora/)の記載に基づきます。
+ヒノキ、ソメイヨシノ、イチョウの追加形態は森林総合研究所の
+[ヒノキ](https://www.ffpri.go.jp/kys/business/jumokuen/jumoku/zukan/hinoki.html)、
+[ソメイヨシノ](https://www.ffpri.go.jp/kys/business/jumokuen/jumoku/zukan/someiyosino.html)、
+[イチョウ](https://www.ffpri.go.jp/kys/business/jumokuen/jumoku/zukan/ityou.html)を参照しています。
 生成器は種同定用の精密模型ではなく、低ポリゴンの樹冠シルエットと分枝差を目的とします。
 
 `Apply Botanical Preset` は現在選択中の実在種 preset でパラメータを置き換えます。

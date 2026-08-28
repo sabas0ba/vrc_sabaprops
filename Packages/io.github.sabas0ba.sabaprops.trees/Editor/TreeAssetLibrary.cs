@@ -31,6 +31,11 @@ namespace SabaProps.Trees.Editors
             TreeBotanicalPreset.JapaneseCedar,
             TreeBotanicalPreset.JapaneseWhiteBirch,
             TreeBotanicalPreset.JapaneseRedPine,
+            TreeBotanicalPreset.HinokiCypress,
+            TreeBotanicalPreset.SomeiYoshinoSpring,
+            TreeBotanicalPreset.SomeiYoshinoSummer,
+            TreeBotanicalPreset.GinkgoSummer,
+            TreeBotanicalPreset.GinkgoAutumn,
         };
 
         public static void EnsureFolder(string folderPath)
@@ -74,6 +79,11 @@ namespace SabaProps.Trees.Editors
                 case TreeBotanicalPreset.JapaneseCedar: return "JapaneseCedar";
                 case TreeBotanicalPreset.JapaneseWhiteBirch: return "JapaneseWhiteBirch";
                 case TreeBotanicalPreset.JapaneseRedPine: return "JapaneseRedPine";
+                case TreeBotanicalPreset.HinokiCypress: return "HinokiCypress";
+                case TreeBotanicalPreset.SomeiYoshinoSpring: return "SomeiYoshinoSpring";
+                case TreeBotanicalPreset.SomeiYoshinoSummer: return "SomeiYoshinoSummer";
+                case TreeBotanicalPreset.GinkgoSummer: return "GinkgoSummer";
+                case TreeBotanicalPreset.GinkgoAutumn: return "GinkgoAutumn";
                 default: return "Custom";
             }
         }

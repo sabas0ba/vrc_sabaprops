@@ -150,6 +150,9 @@ namespace SabaProps.Foliage
     {
         [Header("Stem")]
         [Min(0.001f)] public float stemWidth = 0.012f;
+        [Tooltip("Short tapered stem behind each generated root so the vine does not start at a cut edge.")]
+        [Min(0f)] public float rootAnchorLength = 0.08f;
+        [Range(1f, 3f)] public float rootCollarScale = 1.55f;
         public Color stemRootColor = new Color(0.10f, 0.19f, 0.06f, 1f);
         public Color stemTipColor = new Color(0.23f, 0.36f, 0.11f, 1f);
 
@@ -305,7 +308,11 @@ namespace SabaProps.Foliage
     [RequireComponent(typeof(MeshFilter), typeof(MeshRenderer))]
     public sealed class SurfaceVine : MonoBehaviour
     {
+        [Tooltip("Primary Collider used for surface projection.")]
         public Collider targetSurface;
+
+        [Tooltip("Adjacent Colliders that form one continuous growth surface, such as a floor, slope, and wall.")]
+        public List<Collider> additionalSurfaces = new List<Collider>();
         public Material material;
         public SurfaceGrowthSettings growth = new SurfaceGrowthSettings();
         public SurfaceVineParams morphology = new SurfaceVineParams();
@@ -328,7 +335,11 @@ namespace SabaProps.Foliage
     [RequireComponent(typeof(MeshFilter), typeof(MeshRenderer))]
     public sealed class RhizomePatch : MonoBehaviour
     {
+        [Tooltip("Primary Collider used for surface projection.")]
         public Collider targetSurface;
+
+        [Tooltip("Adjacent Colliders that belong to the same ground surface.")]
+        public List<Collider> additionalSurfaces = new List<Collider>();
         public Material material;
         public SurfaceGrowthSettings growth = new SurfaceGrowthSettings
         {
