@@ -149,6 +149,7 @@ if [ -d "$TREE_PACKAGE/Editor" ]; then
     mapfile -t TREE_EDITOR_SOURCES < <(find "$TREE_PACKAGE/Editor" -name '*.cs' | sort)
     csc "${COMMON[@]}" "${BCL[@]}" "${UNITY_ARGS[@]}" \
         -r:"$OUT/SabaProps.Foliage.Runtime.dll" \
+        -r:"$OUT/SabaProps.Foliage.Editor.dll" \
         -r:"$OUT/SabaProps.Trees.Runtime.dll" \
         -r:"$OUT/UnityEditor.dll" \
         -out:"$OUT/SabaProps.Trees.Editor.dll" "${TREE_EDITOR_SOURCES[@]}"
