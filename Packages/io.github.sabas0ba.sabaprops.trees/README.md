@@ -9,6 +9,10 @@ Foliage の shader と風チャンネル契約を共有しますが、草向け�
 
 ## 使い方
 
+Package Manager で `SabaProps Trees` を選び、`Samples > Trees Demo > Import` を実行すると、
+4 archetype と各 3 段階 LOD を生成済みの `TreesDemo.unity` を確認できます。
+Demo はサンプル用に分岐予算だけを抑えており、既定 preset の値は変更しません。
+
 1. `Tools > SabaProps > Trees > Create Default Assets` を実行します
 2. `Assets/SabaProps/Trees/Species/` から `TreeSpecies` を選びます
 3. Inspector で構造・葉・LOD を調整し、`Rebuild LOD Meshes` を押します

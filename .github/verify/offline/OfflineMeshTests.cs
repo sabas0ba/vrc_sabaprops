@@ -51,6 +51,9 @@ internal static class OfflineMeshTests
         Run("the grain ear bows under its droop", GrainEarBowsUnderItsDroop);
         Run("the dandelion keeps its rosette when the head goes", DandelionKeepsItsRosetteWhenTheHeadGoes);
         Run("the vine hangs below a rigid ledge anchor", VineHangsBelowItsAnchor);
+        Run("projected surface paths are deterministic and budgeted", ProjectedSurfacePathsAreDeterministic);
+        Run("surface crawl stays on its projector", SurfaceCrawlStaysProjected);
+        Run("surface vine and rhizome meshes are well formed", SurfaceGrowthMeshesAreWellFormed);
 
         Run("degenerate parameters stay finite", DegenerateParametersStayFinite);
         Run("merging preserves counts and moves the wind pivots", MergePreservesChannels);
@@ -68,6 +71,152 @@ internal static class OfflineMeshTests
     // ----------------------------------------------------------------------
     // Checks
     // ----------------------------------------------------------------------
+
+    private static void ProjectedSurfacePathsAreDeterministic()
+    {
+        var settings = new SurfaceGrowthSettings
+        {
+            mode = SurfaceGrowthMode.ProjectedSpline,
+            pathCount = 6,
+            coverage = 0.75f,
+            stepLength = 0.1f,
+            maxPathLength = 2f,
+            branchesPerMetre = 1.2f,
+            maxBranchDepth = 2,
+            nodeBudget = 180,
+            seed = 4401,
+        };
+        var guides = new List<Vector3>
+        {
+            Vector3.zero,
+            new Vector3(0.2f, 0.8f, 0f),
+            new Vector3(-0.15f, 1.5f, 0f),
+            new Vector3(0.35f, 2.1f, 0f),
+        };
+
+        SurfaceGrowthGraph first = SurfaceGrowthGraphBuilder.Build(
+            settings, guides, ProjectWall);
+        SurfaceGrowthGraph second = SurfaceGrowthGraphBuilder.Build(
+            settings, guides, ProjectWall);
+
+        Require(first.Nodes.Count > settings.pathCount, "projected spline produced too few nodes");
+        Require(first.Nodes.Count <= settings.nodeBudget, "projected spline exceeded node budget");
+        Require(first.Nodes.Count == second.Nodes.Count, "same surface seed changed node count");
+
+        for (int i = 0; i < first.Nodes.Count; i++)
+        {
+            SurfaceGrowthNode a = first.Nodes[i];
+            SurfaceGrowthNode b = second.Nodes[i];
+            Require(a.position.x == b.position.x
+                    && a.position.y == b.position.y
+                    && a.position.z == b.position.z,
+                $"surface node {i} changed for the same seed");
+            Require(Math.Abs(a.position.z - settings.surfaceOffset) < 1e-5f,
+                $"surface node {i} left the projected wall");
+            Require(a.parentIndex < i, $"surface node {i} has a forward parent reference");
+        }
+    }
+
+    private static void SurfaceCrawlStaysProjected()
+    {
+        var settings = new SurfaceGrowthSettings
+        {
+            mode = SurfaceGrowthMode.SurfaceCrawl,
+            pathCount = 5,
+            coverage = 0.8f,
+            stepLength = 0.12f,
+            maxPathLength = 1.4f,
+            branchesPerMetre = 0.8f,
+            maxBranchDepth = 1,
+            nodeBudget = 150,
+            seed = 4402,
+        };
+        SurfaceGrowthGraph graph = SurfaceGrowthGraphBuilder.Build(
+            settings,
+            new List<Vector3> { Vector3.zero },
+            ProjectGround);
+
+        Require(graph.Nodes.Count > 5, "surface crawl produced too few nodes");
+        Require(graph.Nodes.Count <= settings.nodeBudget, "surface crawl exceeded node budget");
+        foreach (SurfaceGrowthNode node in graph.Nodes)
+        {
+            Require(Math.Abs(node.position.y - settings.surfaceOffset) < 1e-5f,
+                "surface crawl left the projected ground");
+            Require(Math.Abs(node.normal.y - 1f) < 1e-5f,
+                "surface crawl lost the projector normal");
+        }
+    }
+
+    private static void SurfaceGrowthMeshesAreWellFormed()
+    {
+        var wallSettings = new SurfaceGrowthSettings
+        {
+            mode = SurfaceGrowthMode.ProjectedSpline,
+            pathCount = 3,
+            coverage = 0.7f,
+            stepLength = 0.1f,
+            maxPathLength = 1.4f,
+            branchesPerMetre = 0.6f,
+            seed = 4403,
+        };
+        var guides = new List<Vector3>
+        {
+            Vector3.zero,
+            new Vector3(0.2f, 0.7f, 0f),
+            new Vector3(-0.1f, 1.4f, 0f),
+        };
+        SurfaceGrowthGraph wallGraph = SurfaceGrowthGraphBuilder.Build(
+            wallSettings, guides, ProjectWall);
+        var sparse = new SurfaceVineParams { leavesPerMetre = 2f };
+        var dense = new SurfaceVineParams { leavesPerMetre = 12f };
+        Mesh sparseMesh = SurfaceGrowthMeshBuilder.BuildVine(wallGraph, wallSettings, sparse);
+        Mesh denseMesh = SurfaceGrowthMeshBuilder.BuildVine(wallGraph, wallSettings, dense);
+        AssertWellFormed(sparseMesh, "surface vine sparse");
+        AssertWellFormed(denseMesh, "surface vine dense");
+        Require(denseMesh.vertexCount > sparseMesh.vertexCount,
+            "leavesPerMetre did not increase surface vine geometry");
+
+        var groundSettings = new SurfaceGrowthSettings
+        {
+            mode = SurfaceGrowthMode.SurfaceCrawl,
+            pathCount = 4,
+            coverage = 0.75f,
+            maxPathLength = 1f,
+            stepLength = 0.12f,
+            seed = 4404,
+        };
+        SurfaceGrowthGraph groundGraph = SurfaceGrowthGraphBuilder.Build(
+            groundSettings,
+            new List<Vector3> { Vector3.zero },
+            ProjectGround);
+        Mesh rhizome = SurfaceGrowthMeshBuilder.BuildRhizomePatch(
+            groundGraph,
+            groundSettings,
+            new RhizomePatchParams { flowerChance = 0.4f });
+        AssertWellFormed(rhizome, "rhizome patch");
+    }
+
+    private static bool ProjectWall(
+        Vector3 candidate,
+        Vector3 normalHint,
+        float maximumDistance,
+        out SurfacePoint point)
+    {
+        candidate.z = 0f;
+        point = new SurfacePoint(candidate, Vector3.forward);
+        return true;
+    }
+
+    private static bool ProjectGround(
+        Vector3 candidate,
+        Vector3 normalHint,
+        float maximumDistance,
+        out SurfacePoint point)
+    {
+        candidate.y = 0f;
+        point = new SurfacePoint(candidate, Vector3.up);
+        return true;
+    }
 
     private static void RandomIsDeterministic()
     {

@@ -45,6 +45,20 @@ namespace UnityEngine
     [AttributeUsage(AttributeTargets.Field)]
     public sealed class SerializeField : Attribute { }
 
+    [AttributeUsage(AttributeTargets.Field)]
+    public sealed class HideInInspector : Attribute { }
+
+    [AttributeUsage(AttributeTargets.Class)]
+    public sealed class DisallowMultipleComponent : Attribute { }
+
+    [AttributeUsage(AttributeTargets.Class, AllowMultiple = true)]
+    public sealed class RequireComponent : Attribute
+    {
+        public RequireComponent(Type requiredComponent) { }
+        public RequireComponent(Type requiredComponent, Type requiredComponent2) { }
+        public RequireComponent(Type requiredComponent, Type requiredComponent2, Type requiredComponent3) { }
+    }
+
     [AttributeUsage(AttributeTargets.Class)]
     public sealed class CreateAssetMenuAttribute : Attribute
     {
@@ -143,6 +157,8 @@ namespace UnityEngine
             a.y * b.z - a.z * b.y,
             a.z * b.x - a.x * b.z,
             a.x * b.y - a.y * b.x);
+
+        public static float Distance(Vector3 a, Vector3 b) => (a - b).magnitude;
 
         public static Vector3 Lerp(Vector3 a, Vector3 b, float t)
         {
@@ -495,6 +511,13 @@ namespace UnityEngine
     }
 
     public class Material : Object { }
+
+    public class Component : Object { }
+    public class Behaviour : Component { }
+    public class MonoBehaviour : Behaviour { }
+    public class Collider : Component { }
+    public class MeshFilter : Component { }
+    public class MeshRenderer : Component { }
 
     public class ScriptableObject : Object
     {

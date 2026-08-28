@@ -243,6 +243,7 @@ namespace UnityEditor
         public static void DrawWireDisc(Vector3 center, Vector3 normal, float radius) { }
 
         public static float RadiusHandle(Quaternion rotation, Vector3 position, float radius) => radius;
+        public static Vector3 PositionHandle(Vector3 position, Quaternion rotation) => position;
 
         public static float ScaleValueHandle(
             float value, Vector3 position, Quaternion rotation, float size,

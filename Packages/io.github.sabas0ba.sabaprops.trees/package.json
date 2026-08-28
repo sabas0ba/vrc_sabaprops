@@ -22,5 +22,12 @@
     "procedural",
     "lod",
     "wind"
+  ],
+  "samples": [
+    {
+      "displayName": "Trees Demo",
+      "description": "Prebuilt scene containing all tree archetypes and their shared three-level LOD assets.",
+      "path": "Samples~/TreesDemo"
+    }
   ]
 }

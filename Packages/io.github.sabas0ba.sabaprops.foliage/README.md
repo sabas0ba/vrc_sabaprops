@@ -1,9 +1,9 @@
 # SabaProps Foliage
 
 GPU インスタンシング前提の、軽量な草木スキャッタリングツールです。
-草叢・クローバー・ひまわり・葦・小花・雑草・穀物・たんぽぽ・ツタをプロシージャルに生成し、広い範囲に大量配置できます。
+草叢・クローバー・ひまわり・葦・小花・雑草・穀物・たんぽぽ・ツタをプロシージャルに生成し、広い範囲に大量配置できます。Collider 表面を這うツタと、地下茎で連結したグラウンドカバーも Editor 時に焼き込めます。
 
-- テクスチャ不要（頂点カラー駆動）。パッケージにバイナリアセットを含みません
+- テクスチャ不要（頂点カラー駆動）。実装本体はバイナリアセット不要で、Package Manager から任意に導入する Demo Sample だけが生成済み Mesh を含みます
 - ワールド座標ハッシュによる個体差なので、per-instance データの送信が一切不要です
 - Built-in Render Pipeline / Unity 2022.3 / VRChat ワールド・アバターの両方で使えます
 
@@ -37,6 +37,13 @@ VRChat のワールドとアバターでは、**実行時に C# が動きませ�
 ## クイックスタート
 
 ### まず動くものを見る
+
+Package Manager で `SabaProps Foliage` を選び、`Samples > Foliage Demo > Import` を
+実行すると、通常の Species、表面を這う 2 種類のツタ、根茎パッチを含む軽量な
+`FoliageDemo.unity` が `Assets/Samples/` 以下へコピーされます。生成操作なしで開けます。
+
+全 Species、地形、出力モード、季節を比較する大規模な検証用シーンは次のメニューから
+プロジェクト内へ生成できます。
 
 `Tools > SabaProps > Foliage > Create Sample Scene`
 
@@ -127,6 +134,28 @@ VRChat Worlds SDK が入っているプロジェクトでは、`VRCSceneDescript
 Mix はフィールドごとの値で、Species アセットは書き換えません。0 にすると Species 側の `Placement Weight` に従います。
 
 Species アセットだけ先に作りたい場合は `Tools > SabaProps > Foliage > Create Default Assets` で全種そろいます。
+
+---
+
+## 表面を這うツタと根茎パッチ
+
+Hierarchy で Collider を持つ壁または地面を選び、次を実行します。
+
+- `GameObject > SabaProps > Surface Vine`
+- `GameObject > SabaProps > Rhizome Patch`
+
+親の Collider は自動設定されます。Inspector のローカル Guide Points、経路密度、分岐、
+葉形、葉数、サイズ、色を調整し、`Build / Rebuild` を押します。`ProjectedSpline` は
+ガイド点列を Catmull–Rom 補間して表面へ投影し、`SurfaceCrawl` は表面の接平面上を
+決定的な乱数で進みます。どちらも同じ `SurfaceGrowthGraph` を生成します。
+
+Surface Vine には Creeping Fig / English Ivy / Boston Ivy の形態 preset があります。
+Rhizome Patch の既定形態はドクダミで、地下 Graph の Node から心形葉と花を立ち上げます。
+生成結果は `Assets/SabaProps/Foliage/Generated/SurfaceGrowth/` の Mesh asset へ保存され、
+実行時 C# を必要としません。
+
+詳細は [パラメータと見た目の対応](Documentation~/parameters.md#surface-vine) と
+[ロードマップの設計記録](Documentation~/roadmap.md#060-ツタ)を参照してください。
 
 ---
 
@@ -362,6 +391,7 @@ Built-in RP のサーフェスシェーダーです。
 | `Assets/SabaProps/Foliage/Species/` | Species プリセット |
 | `Assets/SabaProps/Foliage/Generated/Species/` | Species ごとのメッシュ（再ビルドで上書き。GUID は維持されます） |
 | `Assets/SabaProps/Foliage/Generated/Merged/<field>/` | Merged Chunks モードの結合メッシュ。Clear で削除されます |
+| `Assets/SabaProps/Foliage/Generated/SurfaceGrowth/` | Surface Vine / Rhizome Patch の永続メッシュ |
 | `Assets/SabaProps/Foliage/Samples/` | `Create Sample Scene` が作るデモシーンと地面マテリアル |
 | `Assets/SabaProps/Foliage/Species/Palette/` | Palette の `WorkingCopy` モードで配置時に保存される Species のスナップショット |
 

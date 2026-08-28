@@ -24,5 +24,17 @@
     "sunflower",
     "gpu-instancing",
     "optimization"
+  ],
+  "samples": [
+    {
+      "displayName": "Foliage Demo",
+      "description": "Prebuilt scene showing generated species, projected surface vines, seasonal leaf palettes, and a rhizome patch.",
+      "path": "Samples~/FoliageDemo"
+    },
+    {
+      "displayName": "VRChat Demo Movement",
+      "description": "Optional movement settings for walking through the generated documentation demo in a VRChat world.",
+      "path": "Samples~/VRChatDemoMovement"
+    }
   ]
 }

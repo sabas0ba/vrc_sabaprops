@@ -270,9 +270,12 @@ csc -nologo -langversion:9.0 -target:exe -nostdlib+ -noconfig \
     "$PACKAGE/Runtime/FoliageRandom.cs" \
     "$PACKAGE/Runtime/FoliageSeason.cs" \
     "$PACKAGE/Runtime/FoliageSpecies.cs" \
+    "$PACKAGE/Runtime/SurfaceGrowth.cs" \
     "$PACKAGE/Editor/FoliageMeshBuffer.cs" \
     "$PACKAGE/Editor/FoliageMeshBuilder.cs" \
-    "$PACKAGE/Editor/FoliageSeasonPass.cs"
+    "$PACKAGE/Editor/FoliageSeasonPass.cs" \
+    "$PACKAGE/Editor/SurfaceGrowthGraphBuilder.cs" \
+    "$PACKAGE/Editor/SurfaceGrowthMeshBuilder.cs"
 
 cat > "$OFFLINE_OUT/OfflineMeshTests.runtimeconfig.json" <<'JSON'
 {

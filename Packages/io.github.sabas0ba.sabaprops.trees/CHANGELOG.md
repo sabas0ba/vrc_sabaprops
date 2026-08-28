@@ -2,6 +2,12 @@
 
 All notable changes to this package are documented in this file.
 
+## [Unreleased]
+
+### Added
+
+- Package Manager から導入できる、4 archetype と 3 段階 LOD を生成済みの `Trees Demo` Sample
+
 ## [0.1.0] - 2026-08-27
 
 ### Added
