@@ -147,19 +147,22 @@ LOD Mesh は Species ごとに一度だけ生成して全個体で共有し、As
 
 | モード | 用途 |
 |---|---|
-| `ProjectedSpline` | ローカル空間のガイド点列を Catmull–Rom 補間し、各点を Collider へ投影します。建物全体の流れを指定する場合に使います |
+| `ProjectedSpline` | ローカル空間のガイド点列を Catmull–Rom 補間し、その流れへ経路を引き寄せながら Collider へ投影します。建物全体の流れを指定する場合に使います |
 | `SurfaceCrawl` | 表面の接平面上を決定的な乱数で歩きます。小規模な自生や根茎の広がりに使います |
 
 どちらも `Path Count`、`Coverage`、`Branches Per Metre`、`Max Branch Depth`、
-`Step Length`、`Node Budget` を共有します。これにより「壁の一部へ数本」から「家を覆う
+`Step Length`、`Node Budget` を共有します。`Root Spread` は根元を面内へ散らし、
+`Guide Attraction` はガイドを固定線ではなく流れとして使い、`Path Length Variance` は
+同じ終点へ揃うことを避けます。これにより「壁の一部へ数本」から「家を覆う
 密度」まで同じモデルで制御でき、形態側の葉数を増やして経路不足を隠す必要がありません。
 
-`SurfaceVine` は茎幅、1 m あたりの葉数、葉サイズ範囲、幅比、葉形、若葉・成葉・秋色・
-枯葉の 4 色と混合率を持ちます。Preset は次の形態を出発点にしています。
+`SurfaceVine` は茎幅、1 m あたりの葉数、葉サイズ範囲、幅比、葉形、葉序、節間隔と角度の
+ばらつき、若葉・成葉・秋色・枯葉の 4 色と混合率を持ちます。葉身は内側と外側のリングへ
+分け、葉縁、主脈、葉柄に別の頂点色を持たせます。Preset は次の形態を出発点にしています。
 
 - オオイタビ（[Ficus pumila](https://plants.ces.ncsu.edu/plants/ficus-pumila/)）: 付着根で壁に張り付き、幼葉が小さい心形で密に付くため、`Cordate` と高い葉密度
 - セイヨウキヅタ（[Hedera helix](https://plants.ces.ncsu.edu/plants/hedera-helix/common-name/english-ivy/)）: 幼葉が 3〜5 裂するため、`Lobed` と濃緑の常緑パレット
-- ナツヅタ（[Parthenocissus tricuspidata](https://plants.ces.ncsu.edu/plants/parthenocissus-tricuspidata/common-name/grape-ivy/)）: 吸盤付き巻きひげで壁面を覆います。[University of Wisconsin の資料](https://hort.extension.wisc.edu/files/2022/10/A3837.pdf)にある橙〜赤紫の秋色と春の銅色を Autumn preset に反映
+- ナツヅタ（[Parthenocissus tricuspidata](https://plants.ces.ncsu.edu/plants/parthenocissus-tricuspidata/common-name/grape-ivy/)）: 夏は光沢のある濃緑で、秋に緑から赤紫へ変わります。通常 preset は緑の葉身を主体とし、紫褐色は葉縁・主脈・葉柄・若い茎と少数の秋葉へ限定
 
 `RhizomePatch` は Graph の Edge を地下茎として扱い、Node 間隔に応じて地上茎・葉・花を
 配置します。既定は地下茎で急速に広がり、心形葉と白い 4 枚の苞を持つ

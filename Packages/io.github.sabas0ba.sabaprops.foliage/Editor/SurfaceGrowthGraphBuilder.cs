@@ -131,16 +131,12 @@ namespace SabaProps.Foliage.Editors
             Vector3 lateral = Vector3.Cross(
                 firstSurface.normal,
                 firstDirection).normalized;
-            float pathSpread = Mathf.Max(
-                settings.minimumSpacing * 1.5f,
-                settings.stepLength * 0.45f);
-            int effectivePathCount = Mathf.Max(
-                1,
-                Mathf.RoundToInt(
-                    Mathf.Max(1, settings.pathCount)
-                    * Mathf.Clamp01(settings.coverage)));
-            float centredPath = pathIndex - (effectivePathCount - 1) * 0.5f;
-            Vector3 offset = lateral * (centredPath * pathSpread);
+            float spread = Mathf.Max(settings.minimumSpacing, settings.rootSpread);
+            float rootAngle = pathIndex * 2.39996323f
+                + random.Range(-0.35f, 0.35f);
+            float rootRadius = spread * Mathf.Sqrt(random.Value01());
+            Vector3 offset = lateral * (Mathf.Cos(rootAngle) * rootRadius)
+                + firstDirection * (Mathf.Sin(rootAngle) * rootRadius * 0.55f);
 
             SurfacePoint rootSurface;
             if (!projector(
@@ -162,28 +158,34 @@ namespace SabaProps.Foliage.Editors
             Vector3 previousPosition = graph.Nodes[parent].position;
             Vector3 previousNormal = rootSurface.normal;
             float distance = 0f;
+            float pathLength = settings.maxPathLength * random.Range(
+                1f - settings.pathLengthVariance,
+                1f + settings.pathLengthVariance);
             int steps = Mathf.Max(
                 1,
                 Mathf.RoundToInt(
-                    settings.maxPathLength
+                    pathLength
                     / Mathf.Max(0.01f, settings.stepLength)));
+
+            Vector3 walkDirection = firstDirection;
+            float lateralPhase = random.Range(0f, Mathf.PI * 2f);
+            float lateralFrequency = random.Range(0.7f, 1.8f);
 
             for (int step = 1;
                  step <= steps && graph.Nodes.Count < settings.nodeBudget;
                  step++)
             {
                 float t = step / (float)steps;
-                Vector3 candidate = SampleGuide(guides, t, settings.maxPathLength)
-                    + offset;
+                Vector3 guideTarget = SampleGuide(guides, t, pathLength) + offset;
 
                 Vector3 curveTangent = SampleGuide(
                     guides,
                     Mathf.Min(1f, t + 0.01f),
-                    settings.maxPathLength)
+                    pathLength)
                     - SampleGuide(
                         guides,
                         Mathf.Max(0f, t - 0.01f),
-                        settings.maxPathLength);
+                        pathLength);
                 Vector3 side = Vector3.Cross(
                     previousNormal,
                     ProjectOnPlane(curveTangent, previousNormal)).normalized;
@@ -191,10 +193,19 @@ namespace SabaProps.Foliage.Editors
                 {
                     side = AnyTangent(previousNormal);
                 }
-                candidate += side
-                    * random.Signed()
-                    * settings.directionJitter
-                    * settings.stepLength;
+                Vector3 tangent = ProjectOnPlane(curveTangent, previousNormal).normalized;
+                walkDirection = ProjectOnPlane(
+                    walkDirection + tangent * settings.guideAttraction
+                    + side * random.Signed() * settings.directionJitter,
+                    previousNormal).normalized;
+                Vector3 freeCandidate = previousPosition
+                    + walkDirection * settings.stepLength
+                    + side * Mathf.Sin(t * Mathf.PI * 2f * lateralFrequency + lateralPhase)
+                    * settings.directionJitter * settings.stepLength;
+                Vector3 candidate = Vector3.Lerp(
+                    freeCandidate,
+                    guideTarget,
+                    Mathf.Clamp01(settings.guideAttraction));
 
                 SurfacePoint projected;
                 if (!projector(
@@ -211,7 +222,7 @@ namespace SabaProps.Foliage.Editors
                 {
                     continue;
                 }
-                if (distance + edgeLength > settings.maxPathLength)
+                if (distance + edgeLength > pathLength)
                 {
                     break;
                 }
@@ -245,13 +256,9 @@ namespace SabaProps.Foliage.Editors
             Vector3 seed = guideCount > 0
                 ? guides[pathIndex % guideCount]
                 : Vector3.zero;
-            seed += new Vector3(
-                random.Signed(),
-                random.Signed(),
-                random.Signed())
-                * settings.stepLength
-                * pathIndex
-                * 0.28f;
+            Vector3 seedDirection = new Vector3(
+                random.Signed(), random.Signed(), random.Signed()).normalized;
+            seed += seedDirection * settings.rootSpread * Mathf.Sqrt(random.Value01());
 
             SurfacePoint rootSurface;
             if (!projector(
@@ -286,13 +293,16 @@ namespace SabaProps.Foliage.Editors
                 direction = AnyTangent(rootSurface.normal);
             }
 
+            float pathLength = settings.maxPathLength * random.Range(
+                1f - settings.pathLengthVariance,
+                1f + settings.pathLengthVariance);
             GrowWalk(
                 graph,
                 settings,
                 parent,
                 0,
                 direction,
-                settings.maxPathLength,
+                pathLength,
                 ref random,
                 projector);
         }

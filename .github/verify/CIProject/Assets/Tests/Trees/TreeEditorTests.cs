@@ -72,6 +72,80 @@ namespace SabaProps.Trees.CITests
         }
 
         [Test]
+        public void BotanicalPresetsBuildDistinctWellFormedLods()
+        {
+            var vertexCounts = new HashSet<int>();
+            foreach (TreeBotanicalPreset preset in TreeAssetLibrary.AllBotanicalPresets)
+            {
+                TreeSpecies species = CreateSpecies(preset);
+                try
+                {
+                    Mesh lod0 = TreeMeshBuilder.Build(species, 0);
+                    Mesh lod1 = TreeMeshBuilder.Build(species, 1);
+                    Mesh lod2 = TreeMeshBuilder.Build(species, 2);
+                    try
+                    {
+                        AssertMesh(lod0, preset + " LOD0");
+                        AssertMesh(lod1, preset + " LOD1");
+                        AssertMesh(lod2, preset + " LOD2");
+                        Assert.Greater(lod0.triangles.Length, lod1.triangles.Length);
+                        Assert.Greater(lod1.triangles.Length, lod2.triangles.Length);
+                        Assert.Less(lod0.triangles.Length / 3, 100000,
+                            preset + " default LOD0 exceeds the triangle budget");
+                        vertexCounts.Add(lod0.vertexCount);
+                    }
+                    finally
+                    {
+                        Object.DestroyImmediate(lod0);
+                        Object.DestroyImmediate(lod1);
+                        Object.DestroyImmediate(lod2);
+                    }
+                }
+                finally
+                {
+                    Object.DestroyImmediate(species);
+                }
+            }
+
+            Assert.AreEqual(
+                TreeAssetLibrary.AllBotanicalPresets.Length,
+                vertexCounts.Count,
+                "species profiles should not collapse to one topology");
+        }
+
+        [Test]
+        public void BotanicalPresetsEncodeObservedBranchAndLeafArrangements()
+        {
+            TreeSpecies maple = CreateSpecies(TreeBotanicalPreset.JapaneseMaple);
+            TreeSpecies cedar = CreateSpecies(TreeBotanicalPreset.JapaneseCedar);
+            TreeSpecies birch = CreateSpecies(TreeBotanicalPreset.JapaneseWhiteBirch);
+            TreeSpecies pine = CreateSpecies(TreeBotanicalPreset.JapaneseRedPine);
+            try
+            {
+                Assert.AreEqual(TreeBranchArrangement.Opposite,
+                    maple.structure.branchArrangement);
+                Assert.AreEqual(TreeLeafArrangement.Opposite,
+                    maple.appearance.leafArrangement);
+                Assert.AreEqual(TreeBranchArrangement.Whorled,
+                    cedar.structure.branchArrangement);
+                Assert.AreEqual(TreeCrownShape.Pyramidal,
+                    cedar.structure.crownShape);
+                Assert.Greater(birch.structure.branchDroop, 0.3f);
+                Assert.AreEqual(TreeLeafArrangement.FasciclePairs,
+                    pine.appearance.leafArrangement);
+                Assert.AreEqual(TreeCrownShape.OpenIrregular,
+                    pine.structure.crownShape);
+            }
+            finally
+            {
+                Object.DestroyImmediate(maple);
+                Object.DestroyImmediate(cedar);
+                Object.DestroyImmediate(birch);
+                Object.DestroyImmediate(pine);
+            }
+        }
+
+        [Test]
         public void SameSeedProducesIdenticalMesh()
         {
             TreeSpecies species = CreateSpecies(TreeArchetype.Broadleaf);
@@ -321,6 +395,14 @@ namespace SabaProps.Trees.CITests
             TreeSpecies species = ScriptableObject.CreateInstance<TreeSpecies>();
             species.name = archetype.ToString();
             species.ApplyArchetypePreset(archetype);
+            return species;
+        }
+
+        private static TreeSpecies CreateSpecies(TreeBotanicalPreset preset)
+        {
+            TreeSpecies species = ScriptableObject.CreateInstance<TreeSpecies>();
+            species.name = preset.ToString();
+            species.ApplyBotanicalPreset(preset);
             return species;
         }
 

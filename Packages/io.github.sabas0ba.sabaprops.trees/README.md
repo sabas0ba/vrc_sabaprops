@@ -1,7 +1,7 @@
 # SabaProps Trees
 
-VRChat ワールド向けのプロシージャル樹木ジェネレータです。広葉樹、針葉樹、枯れ木、
-砂漠低木を 1 つの再帰枝ジェネレータのパラメータ差分として生成します。
+VRChat ワールド向けのプロシージャル樹木ジェネレータです。互換用の広葉樹、針葉樹、
+枯れ木、砂漠低木 archetype に加え、実在種を根拠にした樹冠・分枝・葉序の preset を生成します。
 
 このパッケージは `io.github.sabas0ba.sabaprops.foliage` 0.4.0 に依存します。
 Foliage の shader と風チャンネル契約を共有しますが、草向けの Distance Shrink と
@@ -10,10 +10,11 @@ Foliage の shader と風チャンネル契約を共有しますが、草向け�
 ## 使い方
 
 Package Manager で `SabaProps Trees` を選び、`Samples > Trees Demo > Import` を実行すると、
-4 archetype と各 3 段階 LOD を生成済みの `TreesDemo.unity` を確認できます。
-Demo はサンプル用に分岐予算だけを抑えており、既定 preset の値は変更しません。
+ケヤキ、イロハモミジ、スギ、シラカバ、アカマツと各 3 段階 LOD を生成済みの
+`TreesDemo.unity` を確認できます。Demo は各 preset の既定分岐予算、樹冠、枝序、葉序を
+そのまま焼き込んでいます。
 
-1. `Tools > SabaProps > Trees > Create Default Assets` を実行します
+1. `Tools > SabaProps > Trees > Create Default Assets` を実行します。5 実在種と枯れ木・低木を作成します
 2. `Assets/SabaProps/Trees/Species/` から `TreeSpecies` を選びます
 3. Inspector で構造・葉・LOD を調整し、`Rebuild LOD Meshes` を押します
 4. `Create LOD Group in Scene` を押すか、Hierarchy の
@@ -47,18 +48,32 @@ LOD Mesh は Species ごとに 3 個だけ生成し、すべての個体で共�
 - `UV3.xyz` は object-space pivot、`UV3.w` は stiffness、`UV0.y` は bend です
 - Seed が同じなら頂点・index・LOD の生成結果は同じです
 - LOD1/LOD2 は再帰深度、断面数、枝分岐数、葉数を段階的に減らします
+- 一次枝と子枝は `Spiral` / `Opposite` / `Whorled` / `Irregular` の枝序で配置します
+- `Crown Shape` が高さごとの枝長包絡を、`Apical Dominance` が主幹と側枝の比率を決めます
+- `Branch Droop` と `Tip Upturn` は枝の各 segment に接ベクトルとして加わり、枝全体の弧を作ります
+- 子枝半径は分岐数の平方根で上限を設け、親より太い末端枝が生じないようにします
+- 樹皮色は幹から枝次数の高い若枝へ補間し、葉は互生・対生・輪生・2 針束を分けます
 
-## Preset
+## 実在種 Preset
 
-| Archetype | 葉 | 構造 |
+| Preset | 構造 | 葉・樹皮 |
 |---|---|---|
-| Broadleaf | 幅広の葉 | 中程度の角度で広がる樹冠 |
-| Conifer | 針葉 | 長い幹と水平寄りの枝 |
-| Deadwood | 無し | 枝数が少なく歪みが大きい枯れ木 |
-| DesertScrub | 無し | 低く強く分岐する砂漠低木 |
+| Japanese Zelkova / ケヤキ | 若木の箒状・花瓶状樹冠、上向きの螺旋枝 | 互生する小型広葉、灰褐色から若枝色 |
+| Japanese Maple / イロハモミジ | 低い位置から広がる層状樹冠、対生分枝 | 対生する 5 裂の掌状葉 |
+| Japanese Cedar / スギ | 主幹優勢の円錐樹冠、水平からやや下垂する輪生枝 | 輪生状の短い針葉、赤褐色樹皮 |
+| Japanese White Birch / シラカバ | 中心主幹と細い開出枝、先端ほど下垂 | 互生する小型広葉、白い幹から褐色若枝 |
+| Japanese Red Pine / アカマツ | 曲がる幹、上部に偏る疎な輪生枝、開いた樹冠 | 2 本束の長い針葉、灰色の根元から橙赤色樹皮 |
 
-`Apply Archetype Preset` は現在のパラメータを preset で置き換えます。実行前の
-`TreeSpecies` は Undo できます。
+形態の根拠は、North Carolina State University Extension の
+[ケヤキ](https://plants.ces.ncsu.edu/plants/zelkova-serrata/common-name/japanese-zelkova/)、
+[イロハモミジ](https://plants.ces.ncsu.edu/plants/acer-palmatum/)、
+[スギ](https://plants.ces.ncsu.edu/plants/cryptomeria-japonica/)、
+[シラカバ](https://plants.ces.ncsu.edu/plants/betula-platyphylla-var-japonica/)、
+[アカマツ](https://plants.ces.ncsu.edu/plants/pinus-densiflora/)の記載に基づきます。
+生成器は種同定用の精密模型ではなく、低ポリゴンの樹冠シルエットと分枝差を目的とします。
+
+`Apply Botanical Preset` は現在選択中の実在種 preset でパラメータを置き換えます。
+`Apply Archetype Preset` は従来の汎用形へ戻します。実行前の `TreeSpecies` は Undo できます。
 
 ## 現在の範囲
 

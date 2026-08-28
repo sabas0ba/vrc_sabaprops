@@ -24,6 +24,15 @@ namespace SabaProps.Trees.Editors
             TreeArchetype.DesertScrub,
         };
 
+        public static readonly TreeBotanicalPreset[] AllBotanicalPresets =
+        {
+            TreeBotanicalPreset.JapaneseZelkova,
+            TreeBotanicalPreset.JapaneseMaple,
+            TreeBotanicalPreset.JapaneseCedar,
+            TreeBotanicalPreset.JapaneseWhiteBirch,
+            TreeBotanicalPreset.JapaneseRedPine,
+        };
+
         public static void EnsureFolder(string folderPath)
         {
             if (AssetDatabase.IsValidFolder(folderPath))
@@ -53,6 +62,19 @@ namespace SabaProps.Trees.Editors
                 case TreeArchetype.DesertScrub: return "DesertScrub";
                 case TreeArchetype.Broadleaf:
                 default: return "Broadleaf";
+            }
+        }
+
+        public static string DisplayName(TreeBotanicalPreset preset)
+        {
+            switch (preset)
+            {
+                case TreeBotanicalPreset.JapaneseZelkova: return "JapaneseZelkova";
+                case TreeBotanicalPreset.JapaneseMaple: return "JapaneseMaple";
+                case TreeBotanicalPreset.JapaneseCedar: return "JapaneseCedar";
+                case TreeBotanicalPreset.JapaneseWhiteBirch: return "JapaneseWhiteBirch";
+                case TreeBotanicalPreset.JapaneseRedPine: return "JapaneseRedPine";
+                default: return "Custom";
             }
         }
 
@@ -113,14 +135,42 @@ namespace SabaProps.Trees.Editors
             return species;
         }
 
+        public static TreeSpecies CreateOrLoadSpecies(
+            TreeBotanicalPreset preset,
+            Material material = null)
+        {
+            EnsureFolder(SpeciesFolder);
+            string name = DisplayName(preset);
+            string path = $"{SpeciesFolder}/{name}.asset";
+            TreeSpecies species = AssetDatabase.LoadAssetAtPath<TreeSpecies>(path);
+            if (species == null)
+            {
+                species = ScriptableObject.CreateInstance<TreeSpecies>();
+                species.name = name;
+                species.ApplyBotanicalPreset(preset);
+                species.material = material ?? CreateOrLoadDefaultMaterial();
+                AssetDatabase.CreateAsset(species, path);
+            }
+            else if (species.material == null)
+            {
+                species.material = material ?? CreateOrLoadDefaultMaterial();
+                EditorUtility.SetDirty(species);
+            }
+
+            WriteLodMeshes(species);
+            return species;
+        }
+
         public static List<TreeSpecies> CreateOrLoadDefaults(out Material material)
         {
             material = CreateOrLoadDefaultMaterial();
-            var result = new List<TreeSpecies>(AllArchetypes.Length);
-            foreach (TreeArchetype archetype in AllArchetypes)
+            var result = new List<TreeSpecies>(AllBotanicalPresets.Length + 2);
+            foreach (TreeBotanicalPreset preset in AllBotanicalPresets)
             {
-                result.Add(CreateOrLoadSpecies(archetype, material));
+                result.Add(CreateOrLoadSpecies(preset, material));
             }
+            result.Add(CreateOrLoadSpecies(TreeArchetype.Deadwood, material));
+            result.Add(CreateOrLoadSpecies(TreeArchetype.DesertScrub, material));
             return result;
         }
 

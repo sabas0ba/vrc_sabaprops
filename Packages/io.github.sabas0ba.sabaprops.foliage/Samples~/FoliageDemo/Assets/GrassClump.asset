@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: GrassClump
   m_EditorClassIdentifier:
   kind: 0
-  material: {fileID: 2100000, guid: 4aeefa6999fee3944b0a80eb27050a24, type: 2}
+  material: {fileID: 2100000, guid: 9f9c3ad3f34022041a50491ff3e080a4, type: 2}
   meshSeed: 110
   season: 1
   seasonPalette:
@@ -256,4 +256,4 @@ MonoBehaviour:
     leafBaseColor: {r: 0.149, g: 0.314, b: 0.098, a: 1}
     leafTipColor: {r: 0.329, g: 0.506, b: 0.165, a: 1}
     stiffness: 0.72
-  generatedMesh: {fileID: 4300000, guid: 09535ecfc9a013342bf7353ca2516258, type: 2}
+  generatedMesh: {fileID: 4300000, guid: 4e0c01670b649f0428f04dab912b5b57, type: 2}

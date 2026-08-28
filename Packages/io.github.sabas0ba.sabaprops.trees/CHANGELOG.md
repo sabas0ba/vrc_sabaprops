@@ -6,7 +6,14 @@ All notable changes to this package are documented in this file.
 
 ### Added
 
-- Package Manager から導入できる、4 archetype と 3 段階 LOD を生成済みの `Trees Demo` Sample
+- ケヤキ、イロハモミジ、スギ、シラカバ、アカマツの実在種 preset
+- 樹冠形、枝序、主幹優勢、枝の下垂と先端上向き、葉序を分けた生成規則
+- Package Manager から導入できる、5 実在種と 3 段階 LOD を生成済みの `Trees Demo` Sample
+
+### Changed
+
+- 子枝の太さへ分岐数に基づく上限を設け、枝次数に応じて樹皮色を補間するようにしました
+- 掌状葉、鱗片状の短葉、2 針束を含む樹種別の葉配置へ変更しました
 
 ## [0.1.0] - 2026-08-27
 

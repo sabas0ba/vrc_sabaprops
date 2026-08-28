@@ -6,7 +6,7 @@ Package Manager から Sample を Import した後、`FoliageDemo.unity` を開�
 
 - Grass / Small Flower / Dandelion の通常 Species
 - 投影ガイドスプラインに沿う English Ivy preset
-- 密度を高くして赤紫の秋色を混ぜた Boston Ivy preset
+- 根元・経路長・葉間隔を散らし、緑の葉身へ紫褐色の葉縁・主脈・葉柄を加えた Boston Ivy preset
 - 分岐する地下茎 Graph を共有するドクダミ型の地上茎
 
 Surface Vine または Rhizome Patch を選ぶと、ガイド点、被覆率、分岐、葉形、葉密度、

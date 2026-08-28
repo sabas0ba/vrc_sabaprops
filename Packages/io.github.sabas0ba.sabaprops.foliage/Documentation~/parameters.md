@@ -120,16 +120,22 @@ Collider とローカル空間の Guide Points を指定し、`Build / Rebuild` 
 |---|---|---|
 | 経路 | `Mode` | `ProjectedSpline` はガイド曲線を優先し、`SurfaceCrawl` は接平面上をランダムに進みます |
 | 経路 | `Path Count` / `Coverage` | 主経路数と実際に使う割合。家全体の被覆率を決める最初の値です |
+| 経路 | `Guide Attraction` / `Root Spread` / `Path Length Variance` | ガイドへ戻る強さ、根元を散らす半径、個体ごとの長さ差です。固定的な平行線を崩す場合に先に調整します |
 | 分岐 | `Branches Per Metre` / `Max Branch Depth` / `Branch Length` | 1 m あたりの分岐開始頻度、再帰深度、親経路に対する長さ比です |
 | 精度 | `Step Length` / `Projection Distance` | 表面追従の細かさと Collider を探索する距離です。角が細かいほど Step を短くします |
 | 安全弁 | `Minimum Spacing` / `Node Budget` | 経路どうしの過密と、極端な設定による Node 数を制限します |
 | 茎 | `Stem Width` / `Stem Stiffness` | 表面に固定された茎の幅と風への剛性です |
 | 葉 | `Leaves Per Metre` / `Minimum/Maximum Leaf Length` | 経路長あたりの葉数とサイズ範囲です。最終数には `Coverage` も掛かります |
+| 葉序 | `Leaf Arrangement` / `Leaf Spacing Jitter` / `Leaf Angle Jitter` | 互生・対生・輪生・ランダムと、節間隔・葉の向きのばらつきです |
 | 葉形 | `Cordate` / `Lobed` / `Ovate` / `Orbicular` | 心形、掌状裂、卵形、円形の低ポリゴン輪郭です |
-| 色 | `Young` / `Mature` / `Autumn` / `Dry` | 4 色の頂点カラーパレットです。`Autumn Amount` と `Dry Amount` を確率として混ぜます |
+| 色 | `Young` / `Mature` / `Autumn` / `Dry` | 4 色の頂点カラーパレットです。`Autumn Amount` は葉全体が秋色になる確率です |
+| 部分色 | `Pigment Pattern` / `Edge` / `Vein` / `Petiole` | 葉全体を塗らず、葉縁・主脈・葉柄へ暗い緑、紫褐色などを焼き込みます |
+| 部分色 | `Edge Width` / `Pigment Amount` | 葉縁リングの幅と、基調色から部分色へ寄せる強さです |
 
 Preset は `Creeping Fig`（小さい心形葉を高密度）、`English Ivy`（濃緑の裂葉）、
-`Boston Ivy`（大きい裂葉と赤紫の秋色）です。Preset 適用後も各値を個別に編集できます。
+`Boston Ivy`（大きい裂葉、緑主体の葉身、紫褐色の葉縁・主脈・葉柄）です。Boston Ivy の
+`Autumn Amount` は少数の葉だけを葉全体の秋色にし、赤紫色の面が支配的にならない値です。
+Preset 適用後も各値を個別に編集できます。
 
 ### Rhizome Patch
 

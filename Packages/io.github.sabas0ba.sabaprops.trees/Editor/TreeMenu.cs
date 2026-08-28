@@ -22,7 +22,7 @@ namespace SabaProps.Trees.Editors
             Selection.objects = selection.ToArray();
 
             Debug.Log(
-                $"[SabaProps Trees] {species.Count} 種の Tree Species と LOD Mesh を " +
+                $"[SabaProps Trees] 実在種を含む {species.Count} 種の Tree Species と LOD Mesh を " +
                 $"{TreeAssetLibrary.RootFolder} に作成しました。");
         }
 

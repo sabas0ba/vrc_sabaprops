@@ -55,11 +55,24 @@ namespace SabaProps.Foliage.Editors
                     }
 
                     SurfaceGrowthNode parent = nodes[node.parentIndex];
-                    int first = Mathf.FloorToInt(parent.distanceFromRoot / interval) + 1;
-                    int last = Mathf.FloorToInt(node.distanceFromRoot / interval);
+                    int first = Mathf.Max(
+                        0,
+                        Mathf.FloorToInt(parent.distanceFromRoot / interval) - 1);
+                    int last = Mathf.CeilToInt(node.distanceFromRoot / interval) + 1;
                     for (int leafIndex = first; leafIndex <= last; leafIndex++)
                     {
-                        float targetDistance = leafIndex * interval;
+                        float spacingOffset = 0.5f
+                            + (Hash01(
+                                leafIndex,
+                                node.branchDepth,
+                                growth.seed) - 0.5f)
+                            * morphology.leafSpacingJitter;
+                        float targetDistance = (leafIndex + spacingOffset) * interval;
+                        if (targetDistance <= parent.distanceFromRoot
+                            || targetDistance > node.distanceFromRoot)
+                        {
+                            continue;
+                        }
                         float edgeDistance = node.distanceFromRoot - parent.distanceFromRoot;
                         float t = edgeDistance > 1e-5f
                             ? Mathf.Clamp01(
@@ -73,37 +86,44 @@ namespace SabaProps.Foliage.Editors
                         {
                             side = AnyTangent(normal);
                         }
-                        if (((leafIndex + node.branchDepth) & 1) != 0)
-                        {
-                            side = -side;
-                        }
-
                         float length = random.Range(
                             Mathf.Max(0.005f, morphology.minimumLeafLength),
                             Mathf.Max(
                                 morphology.minimumLeafLength,
                                 morphology.maximumLeafLength));
                         float width = length * morphology.leafWidthRatio;
-                        Vector3 direction = (
-                            side
-                            + tangent * random.Range(-0.22f, 0.22f)
-                            + Vector3.down * morphology.leafDroop).normalized;
-
                         Color color = SelectVineLeafColor(
                             morphology,
                             targetDistance / Mathf.Max(interval, maximumDistance),
                             ref random);
-                        AddLeaf(
-                            buffer,
-                            morphology.leafShape,
-                            attach + normal * 0.002f,
-                            direction,
-                            normal,
-                            length,
-                            width,
-                            color,
-                            morphology.leafStiffness,
-                            random.Value01());
+                        int leavesAtNode = LeavesAtNode(morphology.leafArrangement);
+                        for (int leaf = 0; leaf < leavesAtNode; leaf++)
+                        {
+                            float baseAngle = ArrangementAngle(
+                                morphology.leafArrangement,
+                                leafIndex,
+                                leaf,
+                                leavesAtNode,
+                                ref random);
+                            float angle = baseAngle + random.Range(
+                                -morphology.leafAngleJitter,
+                                morphology.leafAngleJitter);
+                            Vector3 radial = Quaternion.AngleAxis(angle, normal) * side;
+                            Vector3 direction = (
+                                radial
+                                + tangent * random.Range(-0.18f, 0.18f)
+                                + Vector3.down * morphology.leafDroop).normalized;
+                            AddVineLeaf(
+                                buffer,
+                                morphology,
+                                attach + normal * 0.002f,
+                                direction,
+                                normal,
+                                length * random.Range(0.94f, 1.06f),
+                                width * random.Range(0.94f, 1.06f),
+                                color,
+                                ref random);
+                        }
                     }
                 }
             }
@@ -338,6 +358,48 @@ namespace SabaProps.Foliage.Editors
             }
         }
 
+        private static void AddVineLeaf(
+            FoliageMeshBuffer buffer,
+            SurfaceVineParams p,
+            Vector3 attach,
+            Vector3 forward,
+            Vector3 normal,
+            float length,
+            float width,
+            Color color,
+            ref FoliageRandom random)
+        {
+            float petioleLength = length * p.petioleLengthRatio;
+            Vector3 leafBase = attach + forward * petioleLength;
+            Color petiole = Color.Lerp(color, p.petioleColor, p.pigmentAmount);
+            var root = new SurfaceGrowthNode(attach, normal, -1, 0, 0f);
+            var tip = new SurfaceGrowthNode(leafBase, normal, 0, 0, petioleLength);
+            AddSurfaceStem(
+                buffer,
+                root,
+                tip,
+                Mathf.Max(0.0006f, length * p.petioleWidthRatio),
+                petiole,
+                p.leafStiffness,
+                random.Value01());
+
+            AddLeaf(
+                buffer,
+                p.leafShape,
+                leafBase,
+                forward,
+                normal,
+                length,
+                width,
+                color,
+                Color.Lerp(color, p.edgeColor, p.pigmentAmount),
+                Color.Lerp(color, p.veinColor, p.pigmentAmount),
+                p.pigmentPattern,
+                p.edgeWidth,
+                p.leafStiffness,
+                random.Value01());
+        }
+
         private static void AddLeaf(
             FoliageMeshBuffer buffer,
             SurfaceLeafShape shape,
@@ -347,6 +409,39 @@ namespace SabaProps.Foliage.Editors
             float length,
             float width,
             Color color,
+            float stiffness,
+            float elementSeed)
+        {
+            AddLeaf(
+                buffer,
+                shape,
+                attach,
+                forward,
+                normal,
+                length,
+                width,
+                color,
+                color,
+                color,
+                SurfaceLeafPigmentPattern.Solid,
+                0.1f,
+                stiffness,
+                elementSeed);
+        }
+
+        private static void AddLeaf(
+            FoliageMeshBuffer buffer,
+            SurfaceLeafShape shape,
+            Vector3 attach,
+            Vector3 forward,
+            Vector3 normal,
+            float length,
+            float width,
+            Color color,
+            Color edgeColor,
+            Color veinColor,
+            SurfaceLeafPigmentPattern pigmentPattern,
+            float edgeWidth,
             float stiffness,
             float elementSeed)
         {
@@ -363,37 +458,121 @@ namespace SabaProps.Foliage.Editors
                 attach.y,
                 attach.z,
                 Mathf.Clamp01(stiffness));
-            color.a = elementSeed;
 
-            Vector3 centrePosition = attach + forward * (length * 0.46f);
+            bool hasEdge = pigmentPattern == SurfaceLeafPigmentPattern.Edge
+                || pigmentPattern == SurfaceLeafPigmentPattern.EdgeAndVein;
+            bool hasVein = pigmentPattern == SurfaceLeafPigmentPattern.Vein
+                || pigmentPattern == SurfaceLeafPigmentPattern.EdgeAndVein;
+            if (pigmentPattern == SurfaceLeafPigmentPattern.Solid)
+            {
+                color = edgeColor;
+            }
+            color.a = elementSeed;
+            edgeColor.a = elementSeed;
+            veinColor.a = elementSeed;
+
+            Vector2 profileCentre = new Vector2(0f, 0.46f);
+            Vector3 centrePosition = attach + forward * (length * profileCentre.y);
             int centre = buffer.AddVertex(
                 centrePosition,
                 normal,
                 color,
-                new Vector2(0.5f, 0.48f),
+                new Vector2(0.5f, profileCentre.y),
                 pivot);
-            var outline = new int[profile.Length];
+            var inner = new int[profile.Length];
+            var outline = hasEdge ? new int[profile.Length] : inner;
+            float innerScale = 1f - Mathf.Clamp(edgeWidth, 0.02f, 0.4f);
             for (int i = 0; i < profile.Length; i++)
             {
                 Vector2 point = profile[i];
-                Vector3 position = attach
-                    + side * (point.x * width)
-                    + forward * (point.y * length);
-                Color vertexColor = Color.Lerp(color, Color.white, point.y * 0.035f);
-                vertexColor.a = elementSeed;
-                outline[i] = buffer.AddVertex(
-                    position,
+                Vector2 innerPoint = hasEdge
+                    ? profileCentre + (point - profileCentre) * innerScale
+                    : point;
+                Color innerColor = color;
+                if (pigmentPattern == SurfaceLeafPigmentPattern.Mottled
+                    && (i % 3) == 0)
+                {
+                    innerColor = Color.Lerp(color, edgeColor, 0.55f);
+                    innerColor.a = elementSeed;
+                }
+                inner[i] = buffer.AddVertex(
+                    ProfilePosition(attach, side, forward, innerPoint, width, length),
                     normal,
-                    vertexColor,
-                    new Vector2(point.x + 0.5f, point.y),
+                    innerColor,
+                    new Vector2(innerPoint.x + 0.5f, innerPoint.y),
                     pivot);
+                if (hasEdge)
+                {
+                    outline[i] = buffer.AddVertex(
+                        ProfilePosition(attach, side, forward, point, width, length),
+                        normal,
+                        edgeColor,
+                        new Vector2(point.x + 0.5f, point.y),
+                        pivot);
+                }
             }
 
-            for (int i = 0; i < outline.Length; i++)
+            for (int i = 0; i < inner.Length; i++)
             {
-                int next = (i + 1) % outline.Length;
-                AddOrientedTriangle(buffer, centre, outline[i], outline[next], normal);
+                int next = (i + 1) % inner.Length;
+                AddOrientedTriangle(buffer, centre, inner[i], inner[next], normal);
+                if (hasEdge)
+                {
+                    AddOrientedQuad(
+                        buffer,
+                        inner[i],
+                        outline[i],
+                        outline[next],
+                        inner[next],
+                        normal);
+                }
             }
+
+            if (hasVein)
+            {
+                AddLeafVein(
+                    buffer,
+                    attach,
+                    forward,
+                    side,
+                    normal,
+                    length,
+                    Mathf.Max(0.0005f, width * 0.035f),
+                    veinColor,
+                    pivot);
+            }
+        }
+
+        private static Vector3 ProfilePosition(
+            Vector3 attach,
+            Vector3 side,
+            Vector3 forward,
+            Vector2 point,
+            float width,
+            float length)
+        {
+            return attach + side * (point.x * width) + forward * (point.y * length);
+        }
+
+        private static void AddLeafVein(
+            FoliageMeshBuffer buffer,
+            Vector3 attach,
+            Vector3 forward,
+            Vector3 side,
+            Vector3 normal,
+            float length,
+            float halfWidth,
+            Color color,
+            Vector4 pivot)
+        {
+            Vector3 lift = normal * 0.0006f;
+            Vector3 start = attach + forward * (length * 0.08f) + lift;
+            Vector3 end = attach + forward * (length * 0.88f) + lift;
+            int a = buffer.AddVertex(start - side * halfWidth, normal, color, new Vector2(0f, 0f), pivot);
+            int b = buffer.AddVertex(start + side * halfWidth, normal, color, new Vector2(1f, 0f), pivot);
+            int c = buffer.AddVertex(end + side * halfWidth * 0.35f, normal, color, new Vector2(1f, 1f), pivot);
+            int d = buffer.AddVertex(end - side * halfWidth * 0.35f, normal, color, new Vector2(0f, 1f), pivot);
+            AddOrientedQuad(buffer, a, b, c, d, normal);
         }
 
         private static Vector2[] LeafProfile(SurfaceLeafShape shape)
@@ -526,6 +705,51 @@ namespace SabaProps.Foliage.Editors
                 colour = Color.Lerp(p.youngColor, p.matureColor, Mathf.Clamp01(age));
             }
             return JitterColour(colour, ref random, p.colourJitter);
+        }
+
+        private static int LeavesAtNode(SurfaceLeafArrangement arrangement)
+        {
+            switch (arrangement)
+            {
+                case SurfaceLeafArrangement.Opposite: return 2;
+                case SurfaceLeafArrangement.Whorled: return 3;
+                default: return 1;
+            }
+        }
+
+        private static float ArrangementAngle(
+            SurfaceLeafArrangement arrangement,
+            int nodeIndex,
+            int leafIndex,
+            int leavesAtNode,
+            ref FoliageRandom random)
+        {
+            switch (arrangement)
+            {
+                case SurfaceLeafArrangement.Opposite:
+                case SurfaceLeafArrangement.Whorled:
+                    return nodeIndex * 137.50776f
+                        + leafIndex * (360f / leavesAtNode);
+                case SurfaceLeafArrangement.Random:
+                    return random.Range(0f, 360f);
+                case SurfaceLeafArrangement.Alternate:
+                default:
+                    return (nodeIndex & 1) == 0 ? 0f : 180f;
+            }
+        }
+
+        private static float Hash01(int a, int b, int c)
+        {
+            unchecked
+            {
+                uint value = (uint)a * 0x9E3779B9u;
+                value ^= (uint)b * 0x85EBCA6Bu;
+                value ^= (uint)c * 0xC2B2AE35u;
+                value ^= value >> 16;
+                value *= 0x7FEB352Du;
+                value ^= value >> 15;
+                return (value & 0xFFFFFFu) / 16777216f;
+            }
         }
 
         private static Color JitterColour(

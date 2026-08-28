@@ -1,0 +1,68 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8bb7ae45c5bf4a40a7e7436fb8c6f627, type: 3}
+  m_Name: JapaneseWhiteBirch
+  m_EditorClassIdentifier:
+  archetype: 0
+  botanicalPreset: 4
+  meshSeed: 1409
+  structure:
+    trunkLength: 6.8
+    trunkRadius: 0.25
+    radialSegments: 7
+    segmentsPerBranch: 4
+    maxDepth: 4
+    branchCount: 2
+    branchAngle: 49
+    branchAngleJitter: 9
+    lengthDecay: 0.67
+    radiusDecay: 0.61
+    trunkBranchStart: 0.23
+    crookedness: 0.045
+    maxBranches: 520
+    crownShape: 3
+    branchArrangement: 0
+    whorlSize: 3
+    apicalDominance: 0.88
+    branchDroop: 0.38
+    tipUpturn: 0.06
+    azimuthJitter: 16
+    branchLengthVariance: 0.16
+  appearance:
+    barkRootColor: {r: 0.48, g: 0.47, b: 0.43, a: 1}
+    barkTipColor: {r: 0.25, g: 0.18, b: 0.12, a: 1}
+    leafShape: 1
+    leafArrangement: 0
+    leavesPerTip: 7
+    leafLength: 0.2
+    leafWidth: 0.09
+    leafBaseColor: {r: 0.1, g: 0.29, b: 0.075, a: 1}
+    leafTipColor: {r: 0.35, g: 0.51, b: 0.15, a: 1}
+    branchStiffness: 0.32
+    leafStiffness: 0.78
+  lod:
+    lod1DepthReduction: 1
+    lod2DepthReduction: 2
+    lod0ScreenHeight: 0.55
+    lod1ScreenHeight: 0.25
+    lod2ScreenHeight: 0.08
+  placement:
+    placementWeight: 1
+    minSpacing: 3
+    scaleRange: {x: 0.85, y: 1.2}
+    maxTilt: 3
+    alignToGroundNormal: 0.15
+    slopeLimits: {x: 0, y: 30}
+  lod0Mesh: {fileID: 4300000, guid: 4facb385a79ec4747aec3062432cb594, type: 2}
+  lod1Mesh: {fileID: 4300000, guid: bb0fa3030ea87ea4da7003d6be032fb6, type: 2}
+  lod2Mesh: {fileID: 4300000, guid: d18cd290a70eeef4d94da957782f6244, type: 2}
+  material: {fileID: 2100000, guid: 6700e61b3d74ce0459f881904686c730, type: 2}

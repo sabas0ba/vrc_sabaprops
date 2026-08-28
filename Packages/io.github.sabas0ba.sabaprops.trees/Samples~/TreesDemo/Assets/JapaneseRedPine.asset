@@ -1,0 +1,68 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8bb7ae45c5bf4a40a7e7436fb8c6f627, type: 3}
+  m_Name: JapaneseRedPine
+  m_EditorClassIdentifier:
+  archetype: 1
+  botanicalPreset: 5
+  meshSeed: 1501
+  structure:
+    trunkLength: 6.4
+    trunkRadius: 0.29
+    radialSegments: 7
+    segmentsPerBranch: 4
+    maxDepth: 4
+    branchCount: 2
+    branchAngle: 68
+    branchAngleJitter: 14
+    lengthDecay: 0.68
+    radiusDecay: 0.62
+    trunkBranchStart: 0.43
+    crookedness: 0.17
+    maxBranches: 430
+    crownShape: 4
+    branchArrangement: 2
+    whorlSize: 3
+    apicalDominance: 0.72
+    branchDroop: 0.13
+    tipUpturn: 0.24
+    azimuthJitter: 18
+    branchLengthVariance: 0.22
+  appearance:
+    barkRootColor: {r: 0.2, g: 0.17, b: 0.14, a: 1}
+    barkTipColor: {r: 0.55, g: 0.22, b: 0.075, a: 1}
+    leafShape: 2
+    leafArrangement: 3
+    leavesPerTip: 10
+    leafLength: 0.38
+    leafWidth: 0.025
+    leafBaseColor: {r: 0.08, g: 0.24, b: 0.09, a: 1}
+    leafTipColor: {r: 0.2, g: 0.39, b: 0.13, a: 1}
+    branchStiffness: 0.2
+    leafStiffness: 0.78
+  lod:
+    lod1DepthReduction: 1
+    lod2DepthReduction: 2
+    lod0ScreenHeight: 0.55
+    lod1ScreenHeight: 0.25
+    lod2ScreenHeight: 0.08
+  placement:
+    placementWeight: 1
+    minSpacing: 2.6
+    scaleRange: {x: 0.8, y: 1.3}
+    maxTilt: 2
+    alignToGroundNormal: 0.15
+    slopeLimits: {x: 0, y: 40}
+  lod0Mesh: {fileID: 4300000, guid: d31bf6ef4c8b52d468da93bfec8b25d9, type: 2}
+  lod1Mesh: {fileID: 4300000, guid: f7663247fda19024ea681f0929d95429, type: 2}
+  lod2Mesh: {fileID: 4300000, guid: f307adf7a43e5f846b93bcf59e019f01, type: 2}
+  material: {fileID: 2100000, guid: 6700e61b3d74ce0459f881904686c730, type: 2}

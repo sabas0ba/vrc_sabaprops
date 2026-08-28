@@ -26,6 +26,17 @@ namespace SabaProps.Trees.Editors
                 EditorUtility.SetDirty(species);
             }
 
+            using (new EditorGUI.DisabledScope(
+                species.botanicalPreset == TreeBotanicalPreset.Custom))
+            {
+                if (GUILayout.Button("Apply Botanical Preset"))
+                {
+                    Undo.RecordObject(species, "Apply Tree Botanical Preset");
+                    species.ApplyBotanicalPreset(species.botanicalPreset);
+                    EditorUtility.SetDirty(species);
+                }
+            }
+
             if (GUILayout.Button("Rebuild LOD Meshes"))
             {
                 TreeAssetLibrary.WriteLodMeshes(species);

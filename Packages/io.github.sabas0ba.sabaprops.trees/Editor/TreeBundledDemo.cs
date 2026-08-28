@@ -46,24 +46,25 @@ namespace SabaProps.Trees.Editors
 
             GameObject ground = GameObject.CreatePrimitive(PrimitiveType.Plane);
             ground.name = "Tree Demo Ground";
-            ground.transform.localScale = new Vector3(1.15f, 1f, 0.65f);
+            ground.transform.localScale = new Vector3(2.8f, 1f, 0.82f);
             ground.GetComponent<MeshRenderer>().sharedMaterial = groundMaterial;
 
-            TreeArchetype[] archetypes =
+            TreeBotanicalPreset[] presets =
             {
-                TreeArchetype.Broadleaf,
-                TreeArchetype.Conifer,
-                TreeArchetype.Deadwood,
-                TreeArchetype.DesertScrub,
+                TreeBotanicalPreset.JapaneseZelkova,
+                TreeBotanicalPreset.JapaneseMaple,
+                TreeBotanicalPreset.JapaneseCedar,
+                TreeBotanicalPreset.JapaneseWhiteBirch,
+                TreeBotanicalPreset.JapaneseRedPine,
             };
-            for (int i = 0; i < archetypes.Length; i++)
+            for (int i = 0; i < presets.Length; i++)
             {
-                CreateTree(archetypes[i], i, treeMaterial);
+                CreateTree(presets[i], i, treeMaterial);
             }
 
             CreateLabel(
-                "LOD0 / LOD1 / LOD2 are shared per species",
-                new Vector3(-5.2f, 0.04f, -2.45f));
+                "Species profiles: crown / branch order / leaf arrangement",
+                new Vector3(-10.8f, 0.04f, -2.65f));
 
             TreeAssetLibrary.EnsureFolder(OutputRoot);
             EditorSceneManager.SaveScene(scene, ScenePath);
@@ -74,24 +75,18 @@ namespace SabaProps.Trees.Editors
         }
 
         private static void CreateTree(
-            TreeArchetype archetype,
+            TreeBotanicalPreset preset,
             int index,
             Material material)
         {
-            string displayName = TreeAssetLibrary.DisplayName(archetype);
+            string displayName = TreeAssetLibrary.DisplayName(preset);
             var species = ScriptableObject.CreateInstance<TreeSpecies>();
             species.name = displayName;
-            species.ApplyArchetypePreset(archetype);
-            // The user-facing sample demonstrates the same recursive generator
-            // and LOD transitions without carrying release-scale branch budgets.
-            species.structure.maxBranches = Mathf.Min(
-                species.structure.maxBranches,
-                192);
+            species.ApplyBotanicalPreset(preset);
             species.appearance.leavesPerTip = Mathf.Min(
                 species.appearance.leavesPerTip,
-                6);
+                12);
             species.material = material;
-            species.meshSeed = 710 + index;
             AssetDatabase.CreateAsset(
                 species,
                 AssetFolder + "/" + displayName + ".asset");
@@ -116,8 +111,9 @@ namespace SabaProps.Trees.Editors
                 return;
             }
             root.name = displayName + " Tree";
-            root.transform.position = new Vector3(-4.2f + index * 2.8f, 0f, 0.35f);
-            CreateLabel(displayName, root.transform.position + new Vector3(-0.65f, 0.02f, -1.55f));
+            root.transform.position = new Vector3(-9f + index * 4.5f, 0f, 0.45f);
+            root.transform.localScale = Vector3.one * 0.58f;
+            CreateLabel(displayName, root.transform.position + new Vector3(-1.0f, 0.02f, -1.75f));
         }
 
         private static Material CreateTreeMaterial()
@@ -152,11 +148,11 @@ namespace SabaProps.Trees.Editors
         {
             var labelObject = new GameObject(text + " Label");
             labelObject.transform.position = position;
-            labelObject.transform.rotation = Quaternion.Euler(0f, 180f, 0f);
+            labelObject.transform.rotation = Quaternion.identity;
             TextMesh label = labelObject.AddComponent<TextMesh>();
             label.text = text;
             label.fontSize = 56;
-            label.characterSize = 0.15f;
+            label.characterSize = 0.042f;
             label.anchor = TextAnchor.LowerLeft;
             label.color = new Color(0.08f, 0.09f, 0.07f, 1f);
         }
@@ -166,8 +162,8 @@ namespace SabaProps.Trees.Editors
             Camera camera = Camera.main;
             if (camera != null)
             {
-                camera.transform.position = new Vector3(0f, 3.2f, -10.5f);
-                camera.transform.rotation = Quaternion.Euler(9f, 0f, 0f);
+                camera.transform.position = new Vector3(0f, 3.4f, -22.0f);
+                camera.transform.rotation = Quaternion.Euler(8f, 0f, 0f);
                 camera.farClipPlane = 100f;
             }
 

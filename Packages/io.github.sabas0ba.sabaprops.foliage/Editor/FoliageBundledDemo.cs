@@ -74,7 +74,7 @@ namespace SabaProps.Foliage.Editors
                 -1.45f,
                 false);
             CreateWallVine(
-                "Boston Ivy - Autumn Palette",
+                "Boston Ivy - Local Pigment",
                 wall.GetComponent<Collider>(),
                 foliage,
                 1.35f,
@@ -157,6 +157,10 @@ namespace SabaProps.Foliage.Editors
             vine.growth.stepLength = 0.11f;
             vine.growth.maxPathLength = 2.7f;
             vine.growth.branchesPerMetre = autumn ? 0.9f : 0.55f;
+            vine.growth.rootSpread = autumn ? 0.46f : 0.34f;
+            vine.growth.guideAttraction = autumn ? 0.38f : 0.48f;
+            vine.growth.pathLengthVariance = autumn ? 0.32f : 0.24f;
+            vine.growth.directionJitter = autumn ? 0.38f : 0.30f;
             vine.growth.seed = autumn ? 902 : 901;
             vine.guidePoints = new List<Vector3>
             {
@@ -168,6 +172,7 @@ namespace SabaProps.Foliage.Editors
             if (autumn)
             {
                 vine.morphology.ApplyBostonIvyPreset();
+                vine.morphology.autumnAmount = 0.06f;
             }
             else
             {
@@ -294,11 +299,11 @@ namespace SabaProps.Foliage.Editors
         {
             var labelObject = new GameObject(text + " Label");
             labelObject.transform.position = position;
-            labelObject.transform.rotation = Quaternion.Euler(0f, 180f, 0f);
+            labelObject.transform.rotation = Quaternion.identity;
             TextMesh label = labelObject.AddComponent<TextMesh>();
             label.text = text;
             label.fontSize = 64;
-            label.characterSize = size;
+            label.characterSize = size * 0.14f;
             label.anchor = TextAnchor.LowerLeft;
             label.color = new Color(0.08f, 0.09f, 0.07f, 1f);
         }

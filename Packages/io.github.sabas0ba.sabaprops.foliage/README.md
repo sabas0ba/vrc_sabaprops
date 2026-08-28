@@ -146,10 +146,13 @@ Hierarchy で Collider を持つ壁または地面を選び、次を実行しま
 
 親の Collider は自動設定されます。Inspector のローカル Guide Points、経路密度、分岐、
 葉形、葉数、サイズ、色を調整し、`Build / Rebuild` を押します。`ProjectedSpline` は
-ガイド点列を Catmull–Rom 補間して表面へ投影し、`SurfaceCrawl` は表面の接平面上を
+ガイド点列を Catmull–Rom 補間した流れへ各経路を引き寄せながら表面へ投影し、
+`SurfaceCrawl` は表面の接平面上を
 決定的な乱数で進みます。どちらも同じ `SurfaceGrowthGraph` を生成します。
 
 Surface Vine には Creeping Fig / English Ivy / Boston Ivy の形態 preset があります。
+根元の範囲、経路長、葉間隔、葉角度は Seed から個体ごとに変化します。葉色は葉全体の
+季節色に加え、葉縁・主脈・葉柄だけへ別の頂点色を焼き込めます。
 Rhizome Patch の既定形態はドクダミで、地下 Graph の Node から心形葉と花を立ち上げます。
 生成結果は `Assets/SabaProps/Foliage/Generated/SurfaceGrowth/` の Mesh asset へ保存され、
 実行時 C# を必要としません。

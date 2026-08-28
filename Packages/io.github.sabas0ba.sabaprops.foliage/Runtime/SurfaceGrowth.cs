@@ -23,6 +23,25 @@ namespace SabaProps.Foliage
         Orbicular = 3,
     }
 
+    /// <summary>How leaves are attached along one surface stem.</summary>
+    public enum SurfaceLeafArrangement
+    {
+        Alternate = 0,
+        Opposite = 1,
+        Whorled = 2,
+        Random = 3,
+    }
+
+    /// <summary>Parts of a leaf that receive the secondary pigment colour.</summary>
+    public enum SurfaceLeafPigmentPattern
+    {
+        Solid = 0,
+        Edge = 1,
+        Vein = 2,
+        EdgeAndVein = 3,
+        Mottled = 4,
+    }
+
     /// <summary>One projected point in a branching surface-growth graph.</summary>
     [Serializable]
     public struct SurfaceGrowthNode
@@ -98,6 +117,15 @@ namespace SabaProps.Foliage
         [Tooltip("Random change of the tangent direction at each step.")]
         [Range(0f, 1f)] public float directionJitter = 0.28f;
 
+        [Tooltip("How strongly a projected spline is attracted to its guide instead of following its own tangent walk.")]
+        [Range(0f, 1f)] public float guideAttraction = 0.58f;
+
+        [Tooltip("Maximum root displacement over the surface in metres.")]
+        [Min(0f)] public float rootSpread = 0.28f;
+
+        [Tooltip("Per-path variation applied to Maximum Path Length.")]
+        [Range(0f, 0.8f)] public float pathLengthVariance = 0.24f;
+
         [Tooltip("World-gravity preference projected into the surface tangent plane.")]
         [Range(-1f, 1f)] public float gravityBias = -0.08f;
 
@@ -127,6 +155,7 @@ namespace SabaProps.Foliage
 
         [Header("Leaves")]
         public SurfaceLeafShape leafShape = SurfaceLeafShape.Cordate;
+        public SurfaceLeafArrangement leafArrangement = SurfaceLeafArrangement.Alternate;
 
         [Tooltip("Target leaves per metre before coverage is applied.")]
         [Range(0f, 40f)] public float leavesPerMetre = 7f;
@@ -136,13 +165,22 @@ namespace SabaProps.Foliage
         [Range(0.2f, 1.4f)] public float leafWidthRatio = 0.72f;
         [Range(0f, 1f)] public float leafDroop = 0.12f;
 
+        [Tooltip("Variation of the interval between adjacent leaf nodes.")]
+        [Range(0f, 0.9f)] public float leafSpacingJitter = 0.42f;
+
+        [Tooltip("Random rotation of a leaf around its attachment node in degrees.")]
+        [Range(0f, 90f)] public float leafAngleJitter = 24f;
+
+        [Range(0f, 0.5f)] public float petioleLengthRatio = 0.12f;
+        [Range(0.01f, 0.25f)] public float petioleWidthRatio = 0.045f;
+
         [Header("Leaf palette")]
         public Color youngColor = new Color(0.34f, 0.54f, 0.17f, 1f);
         public Color matureColor = new Color(0.12f, 0.31f, 0.07f, 1f);
         public Color autumnColor = new Color(0.42f, 0.12f, 0.24f, 1f);
         public Color dryColor = new Color(0.40f, 0.29f, 0.12f, 1f);
 
-        [Tooltip("Probability that a leaf uses the autumn-purple palette.")]
+        [Tooltip("Probability that an entire leaf uses the autumn palette.")]
         [Range(0f, 1f)] public float autumnAmount = 0f;
 
         [Tooltip("Probability that a leaf uses the dry palette.")]
@@ -150,6 +188,19 @@ namespace SabaProps.Foliage
 
         [Tooltip("Per-leaf brightness variation.")]
         [Range(0f, 0.5f)] public float colourJitter = 0.08f;
+
+        [Header("Local pigment")]
+        public SurfaceLeafPigmentPattern pigmentPattern =
+            SurfaceLeafPigmentPattern.EdgeAndVein;
+        public Color edgeColor = new Color(0.12f, 0.075f, 0.09f, 1f);
+        public Color veinColor = new Color(0.16f, 0.08f, 0.11f, 1f);
+        public Color petioleColor = new Color(0.14f, 0.075f, 0.09f, 1f);
+
+        [Tooltip("Width of the coloured edge as a fraction of the leaf radius.")]
+        [Range(0.02f, 0.4f)] public float edgeWidth = 0.12f;
+
+        [Tooltip("Blend strength of edge, vein, petiole, and mottled pigment.")]
+        [Range(0f, 1f)] public float pigmentAmount = 0.42f;
 
         [Header("Wind")]
         [Tooltip("Surface stems should normally remain close to 1. Leaves keep their own attachment pivot.")]
@@ -159,6 +210,7 @@ namespace SabaProps.Foliage
         public void ApplyCreepingFigPreset()
         {
             leafShape = SurfaceLeafShape.Cordate;
+            leafArrangement = SurfaceLeafArrangement.Alternate;
             leavesPerMetre = 11f;
             minimumLeafLength = 0.045f;
             maximumLeafLength = 0.09f;
@@ -167,11 +219,17 @@ namespace SabaProps.Foliage
             dryAmount = 0f;
             youngColor = new Color(0.34f, 0.55f, 0.20f, 1f);
             matureColor = new Color(0.10f, 0.29f, 0.08f, 1f);
+            pigmentPattern = SurfaceLeafPigmentPattern.Vein;
+            pigmentAmount = 0.18f;
+            edgeColor = new Color(0.11f, 0.20f, 0.08f, 1f);
+            veinColor = new Color(0.12f, 0.23f, 0.09f, 1f);
+            petioleColor = new Color(0.15f, 0.25f, 0.09f, 1f);
         }
 
         public void ApplyEnglishIvyPreset()
         {
             leafShape = SurfaceLeafShape.Lobed;
+            leafArrangement = SurfaceLeafArrangement.Alternate;
             leavesPerMetre = 7f;
             minimumLeafLength = 0.08f;
             maximumLeafLength = 0.17f;
@@ -180,20 +238,32 @@ namespace SabaProps.Foliage
             dryAmount = 0f;
             youngColor = new Color(0.25f, 0.44f, 0.14f, 1f);
             matureColor = new Color(0.07f, 0.22f, 0.07f, 1f);
+            pigmentPattern = SurfaceLeafPigmentPattern.Vein;
+            pigmentAmount = 0.34f;
+            veinColor = new Color(0.24f, 0.31f, 0.17f, 1f);
+            petioleColor = new Color(0.13f, 0.18f, 0.08f, 1f);
         }
 
         public void ApplyBostonIvyPreset()
         {
             leafShape = SurfaceLeafShape.Lobed;
+            leafArrangement = SurfaceLeafArrangement.Alternate;
             leavesPerMetre = 5.5f;
             minimumLeafLength = 0.10f;
             maximumLeafLength = 0.22f;
             leafWidthRatio = 1.02f;
-            autumnAmount = 0.7f;
-            dryAmount = 0.08f;
-            youngColor = new Color(0.43f, 0.30f, 0.13f, 1f);
-            matureColor = new Color(0.10f, 0.31f, 0.09f, 1f);
-            autumnColor = new Color(0.49f, 0.08f, 0.22f, 1f);
+            autumnAmount = 0.12f;
+            dryAmount = 0.035f;
+            youngColor = new Color(0.24f, 0.45f, 0.13f, 1f);
+            matureColor = new Color(0.075f, 0.27f, 0.075f, 1f);
+            autumnColor = new Color(0.36f, 0.10f, 0.15f, 1f);
+            pigmentPattern = SurfaceLeafPigmentPattern.EdgeAndVein;
+            pigmentAmount = 0.48f;
+            edgeColor = new Color(0.16f, 0.055f, 0.075f, 1f);
+            veinColor = new Color(0.20f, 0.06f, 0.085f, 1f);
+            petioleColor = new Color(0.18f, 0.055f, 0.07f, 1f);
+            stemRootColor = new Color(0.11f, 0.055f, 0.065f, 1f);
+            stemTipColor = new Color(0.20f, 0.075f, 0.085f, 1f);
         }
     }
 

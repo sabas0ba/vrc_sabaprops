@@ -1,0 +1,68 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8bb7ae45c5bf4a40a7e7436fb8c6f627, type: 3}
+  m_Name: JapaneseZelkova
+  m_EditorClassIdentifier:
+  archetype: 0
+  botanicalPreset: 1
+  meshSeed: 1103
+  structure:
+    trunkLength: 6.2
+    trunkRadius: 0.31
+    radialSegments: 7
+    segmentsPerBranch: 4
+    maxDepth: 4
+    branchCount: 3
+    branchAngle: 34
+    branchAngleJitter: 8
+    lengthDecay: 0.69
+    radiusDecay: 0.58
+    trunkBranchStart: 0.36
+    crookedness: 0.055
+    maxBranches: 620
+    crownShape: 1
+    branchArrangement: 0
+    whorlSize: 3
+    apicalDominance: 0.38
+    branchDroop: 0.02
+    tipUpturn: 0.32
+    azimuthJitter: 16
+    branchLengthVariance: 0.12
+  appearance:
+    barkRootColor: {r: 0.19, g: 0.17, b: 0.14, a: 1}
+    barkTipColor: {r: 0.37, g: 0.29, b: 0.2, a: 1}
+    leafShape: 1
+    leafArrangement: 0
+    leavesPerTip: 8
+    leafLength: 0.22
+    leafWidth: 0.09
+    leafBaseColor: {r: 0.1, g: 0.28, b: 0.07, a: 1}
+    leafTipColor: {r: 0.28, g: 0.48, b: 0.12, a: 1}
+    branchStiffness: 0.32
+    leafStiffness: 0.78
+  lod:
+    lod1DepthReduction: 1
+    lod2DepthReduction: 2
+    lod0ScreenHeight: 0.55
+    lod1ScreenHeight: 0.25
+    lod2ScreenHeight: 0.08
+  placement:
+    placementWeight: 1
+    minSpacing: 3
+    scaleRange: {x: 0.85, y: 1.2}
+    maxTilt: 3
+    alignToGroundNormal: 0.15
+    slopeLimits: {x: 0, y: 30}
+  lod0Mesh: {fileID: 4300000, guid: ebe7df3a854131344a50c5e73d3214a5, type: 2}
+  lod1Mesh: {fileID: 4300000, guid: a067ecb8ea4867a45900c2d78df43609, type: 2}
+  lod2Mesh: {fileID: 4300000, guid: 1571e061d70e9034b8936327da3a6e7f, type: 2}
+  material: {fileID: 2100000, guid: 6700e61b3d74ce0459f881904686c730, type: 2}

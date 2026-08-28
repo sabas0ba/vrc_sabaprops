@@ -100,6 +100,87 @@ namespace SabaProps.Foliage.CITests
         }
 
         [Test]
+        public void SurfaceVineScattersRootsAndKeepsPigmentLocal()
+        {
+            var settings = new SurfaceGrowthSettings
+            {
+                mode = SurfaceGrowthMode.ProjectedSpline,
+                pathCount = 6,
+                coverage = 1f,
+                stepLength = 0.09f,
+                maxPathLength = 1.8f,
+                rootSpread = 0.42f,
+                guideAttraction = 0.4f,
+                pathLengthVariance = 0.35f,
+                branchesPerMetre = 0f,
+                seed = 7310,
+            };
+            SurfaceGrowthGraph graph = SurfaceGrowthGraphBuilder.Build(
+                settings,
+                new List<Vector3>
+                {
+                    Vector3.zero,
+                    new Vector3(0.1f, 0.9f, 0f),
+                    new Vector3(-0.1f, 1.8f, 0f),
+                },
+                ProjectWall);
+
+            float minimumRootY = float.MaxValue;
+            float maximumRootY = float.MinValue;
+            int roots = 0;
+            foreach (SurfaceGrowthNode node in graph.Nodes)
+            {
+                if (node.parentIndex >= 0)
+                {
+                    continue;
+                }
+                roots++;
+                minimumRootY = Mathf.Min(minimumRootY, node.position.y);
+                maximumRootY = Mathf.Max(maximumRootY, node.position.y);
+            }
+            Assert.AreEqual(settings.pathCount, roots);
+            Assert.Greater(maximumRootY - minimumRootY, 0.05f,
+                "roots should occupy an area instead of one fixed baseline");
+
+            var morphology = new SurfaceVineParams();
+            morphology.ApplyBostonIvyPreset();
+            Assert.Less(morphology.autumnAmount, 0.2f);
+            Assert.AreEqual(
+                SurfaceLeafPigmentPattern.EdgeAndVein,
+                morphology.pigmentPattern);
+
+            morphology.autumnAmount = 0f;
+            morphology.dryAmount = 0f;
+            morphology.pigmentAmount = 1f;
+            morphology.youngColor = new Color(0.05f, 0.62f, 0.05f, 1f);
+            morphology.matureColor = morphology.youngColor;
+            morphology.edgeColor = new Color(0.34f, 0.02f, 0.12f, 1f);
+            morphology.veinColor = morphology.edgeColor;
+            morphology.petioleColor = morphology.edgeColor;
+            Mesh mesh = SurfaceGrowthMeshBuilder.BuildVine(
+                graph,
+                settings,
+                morphology);
+            try
+            {
+                int green = 0;
+                int pigment = 0;
+                foreach (Color color in mesh.colors)
+                {
+                    if (color.g > 0.5f && color.r < 0.15f) green++;
+                    if (color.r > 0.25f && color.g < 0.1f) pigment++;
+                }
+                Assert.Greater(green, 0, "leaf interiors should remain green");
+                Assert.Greater(pigment, 0, "edge, vein, and petiole pigment should be present");
+                AssertChannels(mesh);
+            }
+            finally
+            {
+                Object.DestroyImmediate(mesh);
+            }
+        }
+
+        [Test]
         public void RhizomePatchProducesConnectedShoots()
         {
             var settings = new SurfaceGrowthSettings

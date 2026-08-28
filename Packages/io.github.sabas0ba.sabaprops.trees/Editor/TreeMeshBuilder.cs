@@ -103,19 +103,23 @@ namespace SabaProps.Trees.Editors
                 0f,
                 0f,
                 0f,
+                0,
                 true);
 
-            int primaryCount = Mathf.Max(
-                context.Settings.BranchCount,
-                context.Settings.BranchCount * 2 + context.Settings.MaxDepth - 1);
+            int primaryCount = PrimaryBranchCount(context);
 
             for (int i = 0; i < primaryCount && CanAddBranch(context); i++)
             {
-                float unit = (i + 0.35f + context.Random.Range(-0.12f, 0.12f)) / primaryCount;
-                float attach = Mathf.Lerp(structure.trunkBranchStart, 0.94f, Mathf.Clamp01(unit));
+                float attach;
+                float azimuth;
+                PrimaryPlacement(
+                    context,
+                    i,
+                    primaryCount,
+                    out attach,
+                    out azimuth);
                 Vector3 start = trunk.PointAt(attach);
 
-                float azimuth = i * 137.50776f + context.Random.Range(-18f, 18f);
                 float angle = structure.branchAngle +
                     context.Random.Range(-structure.branchAngleJitter, structure.branchAngleJitter);
                 Vector3 radial = Quaternion.AngleAxis(azimuth, Vector3.up) * Vector3.forward;
@@ -123,15 +127,34 @@ namespace SabaProps.Trees.Editors
                     Vector3.up * Mathf.Cos(angle * Mathf.Deg2Rad) +
                     radial * Mathf.Sin(angle * Mathf.Deg2Rad)).normalized;
 
-                float lowerBranchScale = Mathf.Lerp(1.08f, 0.68f, attach);
-                float length = structure.trunkLength * structure.lengthDecay * lowerBranchScale *
-                    context.Random.Range(0.86f, 1.14f);
+                float crownPosition = Mathf.InverseLerp(
+                    structure.trunkBranchStart,
+                    0.94f,
+                    attach);
+                float crownScale = CrownRadiusScale(
+                    structure.crownShape,
+                    crownPosition);
+                float dominanceScale = Mathf.Lerp(
+                    1.08f,
+                    0.78f,
+                    structure.apicalDominance);
+                float length = structure.trunkLength * structure.lengthDecay
+                    * crownScale * dominanceScale
+                    * context.Random.Range(
+                        1f - structure.branchLengthVariance,
+                        1f + structure.branchLengthVariance);
                 float radius = structure.trunkRadius * structure.radiusDecay *
                     Mathf.Lerp(1f, 0.62f, attach);
 
                 BuildRecursiveBranch(
                     context, start, direction, length, radius, 1,
                     start, 0f, 1f / context.Settings.MaxDepth);
+            }
+
+            if (context.Species.appearance.leafShape != TreeLeafShape.None
+                && structure.apicalDominance > 0.65f)
+            {
+                AddLeaves(context, trunk, Vector3.zero, 0f);
             }
         }
 
@@ -154,34 +177,47 @@ namespace SabaProps.Trees.Editors
             BranchPath path = AddBranch(
                 context, start, direction, length, radius, windRoot,
                 context.Species.appearance.branchStiffness,
-                bendStart, bendEnd, false);
+                bendStart, bendEnd, depth, false);
 
             if (depth >= context.Settings.MaxDepth)
             {
-                AddLeaves(context, path.Points[path.Points.Length - 1],
-                    path.Directions[path.Directions.Length - 1], windRoot, bendEnd);
+                AddLeaves(context, path, windRoot, bendEnd);
                 return;
             }
 
             TreeStructureParams structure = context.Species.structure;
             int remaining = context.Settings.MaxDepth - depth;
-            int childCount = Mathf.Max(1, context.Settings.BranchCount - depth / 2);
+            int childCount = ChildBranchCount(context, depth);
 
             for (int i = 0; i < childCount && CanAddBranch(context); i++)
             {
-                float attach = childCount == 1
-                    ? 0.82f
-                    : Mathf.Lerp(0.55f, 0.94f, (i + 0.35f) / childCount);
-                attach = Mathf.Clamp(attach + context.Random.Range(-0.07f, 0.07f), 0.45f, 0.97f);
+                bool continuation = i == 0;
+                float attach;
+                float turn;
+                ChildPlacement(
+                    context,
+                    depth,
+                    i,
+                    childCount,
+                    out attach,
+                    out turn);
 
                 Vector3 attachDirection = path.DirectionAt(attach);
                 Vector3 axis = Perpendicular(attachDirection);
                 axis = Quaternion.AngleAxis(
-                    i * (360f / childCount) + context.Random.Range(-30f, 30f),
+                    turn,
                     attachDirection) * axis;
 
-                float angle = structure.branchAngle * context.Random.Range(0.78f, 1.08f) +
-                    context.Random.Range(-structure.branchAngleJitter, structure.branchAngleJitter);
+                float angle = continuation
+                    ? structure.branchAngle
+                        * Mathf.Lerp(0.46f, 0.22f, structure.apicalDominance)
+                        + context.Random.Range(
+                            -structure.branchAngleJitter * 0.3f,
+                            structure.branchAngleJitter * 0.3f)
+                    : structure.branchAngle * context.Random.Range(0.78f, 1.08f)
+                        + context.Random.Range(
+                            -structure.branchAngleJitter,
+                            structure.branchAngleJitter);
                 Vector3 childDirection = (
                     attachDirection * Mathf.Cos(angle * Mathf.Deg2Rad) +
                     axis * Mathf.Sin(angle * Mathf.Deg2Rad)).normalized;
@@ -195,8 +231,14 @@ namespace SabaProps.Trees.Editors
                     context,
                     path.PointAt(attach),
                     childDirection,
-                    length * structure.lengthDecay * context.Random.Range(0.86f, 1.12f),
-                    radius * structure.radiusDecay,
+                    length * structure.lengthDecay
+                        * (continuation ? 1.08f : 0.88f)
+                        * context.Random.Range(0.90f, 1.10f),
+                    radius * (continuation
+                        ? Mathf.Min(0.82f, structure.radiusDecay * 1.16f)
+                        : Mathf.Min(
+                            structure.radiusDecay,
+                            0.88f / Mathf.Sqrt(Mathf.Max(1, childCount - 1)))),
                     depth + 1,
                     windRoot,
                     childBendStart,
@@ -206,8 +248,7 @@ namespace SabaProps.Trees.Editors
             if (context.Species.appearance.leafShape != TreeLeafShape.None &&
                 depth >= context.Settings.MaxDepth - 1)
             {
-                AddLeaves(context, path.Points[path.Points.Length - 1],
-                    path.Directions[path.Directions.Length - 1], windRoot, bendEnd);
+                AddLeaves(context, path, windRoot, bendEnd);
             }
         }
 
@@ -221,6 +262,7 @@ namespace SabaProps.Trees.Editors
             float stiffness,
             float bendStart,
             float bendEnd,
+            int branchOrder,
             bool trunk)
         {
             context.BranchesBuilt++;
@@ -237,8 +279,15 @@ namespace SabaProps.Trees.Editors
             {
                 Vector3 side = Perpendicular(direction);
                 side = Quaternion.AngleAxis(context.Random.Range(0f, 360f), direction) * side;
-                direction = (direction + side *
-                    context.Species.structure.crookedness * context.Random.Signed()).normalized;
+                float pathRatio = (i + 1f) / segments;
+                TreeStructureParams structure = context.Species.structure;
+                Vector3 tropism = trunk
+                    ? Vector3.up * structure.apicalDominance * 0.08f
+                    : Vector3.down * structure.branchDroop * (0.08f + pathRatio * 0.14f)
+                        + Vector3.up * structure.tipUpturn * pathRatio * pathRatio * 0.18f;
+                direction = (direction
+                    + side * structure.crookedness * context.Random.Signed()
+                    + tropism).normalized;
                 directions[i] = direction;
                 points[i + 1] = points[i] + direction * step;
             }
@@ -255,12 +304,18 @@ namespace SabaProps.Trees.Editors
                     : (directions[ring - 1] + directions[ring]).normalized;
                 Vector3 right = Perpendicular(tangent);
                 Vector3 up = Vector3.Cross(tangent, right).normalized;
-                float ringRadius = Mathf.Lerp(radius, radius * 0.24f, ratio);
+                float tipRatio = trunk
+                    ? Mathf.Lerp(0.24f, 0.50f, context.Species.structure.apicalDominance)
+                    : 0.42f;
+                float ringRadius = Mathf.Lerp(radius, radius * tipRatio, ratio);
                 float bend = trunk ? 0f : Mathf.Lerp(bendStart, bendEnd, ratio);
+                float age = trunk
+                    ? ratio * 0.35f
+                    : Mathf.Clamp01(0.42f + branchOrder * 0.13f + ratio * 0.16f);
                 Color color = Color.Lerp(
                     context.Species.appearance.barkRootColor,
                     context.Species.appearance.barkTipColor,
-                    Mathf.Clamp01((points[ring].y / Mathf.Max(0.01f, context.Species.structure.trunkLength)) * 0.8f));
+                    age);
                 color.a = elementSeed;
 
                 for (int sideIndex = 0; sideIndex < sides; sideIndex++)
@@ -327,8 +382,10 @@ namespace SabaProps.Trees.Editors
         }
 
         private static void AddLeaves(
-            BuildContext context, Vector3 origin, Vector3 branchDirection,
-            Vector3 windRoot, float bend)
+            BuildContext context,
+            BranchPath path,
+            Vector3 windRoot,
+            float bend)
         {
             TreeAppearanceParams appearance = context.Species.appearance;
             if (appearance.leafShape == TreeLeafShape.None)
@@ -336,12 +393,34 @@ namespace SabaProps.Trees.Editors
                 return;
             }
 
-            int count = Mathf.Max(1, Mathf.RoundToInt(appearance.leavesPerTip * context.Settings.LeafFraction));
+            int count = Mathf.Max(
+                1,
+                Mathf.RoundToInt(
+                    appearance.leavesPerTip * context.Settings.LeafFraction));
+            int leavesPerNode = LeavesPerNode(appearance.leafArrangement);
             for (int i = 0; i < count; i++)
             {
-                float azimuth = i * (360f / count) + context.Random.Range(-18f, 18f);
+                int node = i / leavesPerNode;
+                int nodeCount = Mathf.Max(1, Mathf.CeilToInt(count / (float)leavesPerNode));
+                int slot = i % leavesPerNode;
+                float firstLeaf = appearance.leafArrangement ==
+                    TreeLeafArrangement.FasciclePairs ? 0.72f : 0.42f;
+                float along = nodeCount == 1
+                    ? 0.9f
+                    : Mathf.Lerp(firstLeaf, 0.98f, node / (float)(nodeCount - 1));
+                Vector3 origin = path.PointAt(along);
+                Vector3 branchDirection = path.DirectionAt(along);
+                float azimuth = LeafAzimuth(
+                    appearance.leafArrangement,
+                    node,
+                    slot,
+                    leavesPerNode,
+                    ref context.Random);
                 Vector3 radial = Quaternion.AngleAxis(azimuth, branchDirection) * Perpendicular(branchDirection);
-                Vector3 leafDirection = (branchDirection * 0.45f + radial).normalized;
+                float forwardBias = appearance.leafShape == TreeLeafShape.Scale
+                    ? 0.72f
+                    : appearance.leafShape == TreeLeafShape.Needle ? 0.56f : 0.32f;
+                Vector3 leafDirection = (branchDirection * forwardBias + radial).normalized;
 
                 float length = appearance.leafLength * context.Random.Range(0.82f, 1.18f);
                 float width = appearance.leafWidth * context.Random.Range(0.82f, 1.18f);
@@ -349,8 +428,26 @@ namespace SabaProps.Trees.Editors
                 {
                     width *= 0.65f;
                 }
+                else if (appearance.leafShape == TreeLeafShape.Scale)
+                {
+                    length *= 0.90f;
+                    width *= 0.90f;
+                }
 
                 Vector3 basePosition = origin + leafDirection * 0.01f;
+                if (appearance.leafShape == TreeLeafShape.Palmate)
+                {
+                    AddPalmateLeaf(
+                        context,
+                        basePosition,
+                        leafDirection,
+                        branchDirection,
+                        length,
+                        width,
+                        windRoot,
+                        Mathf.Lerp(bend, 1f, along));
+                    continue;
+                }
                 Vector3 tip = basePosition + leafDirection * length;
                 Vector3 across = Vector3.Cross(leafDirection, branchDirection).normalized;
                 if (across.sqrMagnitude < 1e-6f)
@@ -387,6 +484,57 @@ namespace SabaProps.Trees.Editors
             }
         }
 
+        private static void AddPalmateLeaf(
+            BuildContext context,
+            Vector3 basePosition,
+            Vector3 leafDirection,
+            Vector3 branchDirection,
+            float length,
+            float width,
+            Vector3 windRoot,
+            float bend)
+        {
+            TreeAppearanceParams appearance = context.Species.appearance;
+            Vector3 across = Vector3.Cross(leafDirection, branchDirection).normalized;
+            if (across.sqrMagnitude < 1e-6f)
+            {
+                across = Perpendicular(leafDirection);
+            }
+            Vector3 normal = Vector3.Cross(across, leafDirection).normalized;
+            for (int lobe = 0; lobe < 5; lobe++)
+            {
+                float fan = Mathf.Lerp(-52f, 52f, lobe / 4f);
+                Vector3 direction = Quaternion.AngleAxis(fan, normal) * leafDirection;
+                float lobeScale = 1f - Mathf.Abs(lobe - 2) * 0.12f;
+                Vector3 tip = basePosition + direction * length * lobeScale;
+                Vector3 lobeAcross = Vector3.Cross(normal, direction).normalized;
+                Vector3 middle = Vector3.Lerp(basePosition, tip, 0.58f);
+                float lobeWidth = width * 0.22f;
+                var positions = new[]
+                {
+                    basePosition,
+                    middle - lobeAcross * lobeWidth,
+                    tip,
+                    middle + lobeAcross * lobeWidth,
+                };
+                Color baseColor = appearance.leafBaseColor;
+                Color tipColor = appearance.leafTipColor;
+                float seed = context.Random.Value01();
+                baseColor.a = seed;
+                tipColor.a = seed;
+                var colors = new[] { baseColor, tipColor, tipColor, tipColor };
+                var stiffness = new[]
+                {
+                    appearance.branchStiffness,
+                    appearance.leafStiffness,
+                    appearance.leafStiffness,
+                    appearance.leafStiffness,
+                };
+                AddLeafFace(context, positions, colors, stiffness, normal, windRoot, bend, false);
+                AddLeafFace(context, positions, colors, stiffness, -normal, windRoot, bend, true);
+            }
+        }
+
         private static void AddLeafFace(
             BuildContext context, Vector3[] positions, Color[] colors, float[] stiffness,
             Vector3 normal, Vector3 windRoot, float bend, bool reverse)
@@ -413,6 +561,204 @@ namespace SabaProps.Trees.Editors
             else
             {
                 context.Buffer.AddQuad(indices[0], indices[1], indices[2], indices[3]);
+            }
+        }
+
+        private static int PrimaryBranchCount(BuildContext context)
+        {
+            TreeStructureParams structure = context.Species.structure;
+            int tiers = Mathf.Max(2, context.Settings.MaxDepth + 1);
+            switch (structure.branchArrangement)
+            {
+                case TreeBranchArrangement.Opposite:
+                    return tiers * 2;
+                case TreeBranchArrangement.Whorled:
+                    return tiers * structure.whorlSize;
+                default:
+                    return Mathf.Max(
+                        context.Settings.BranchCount,
+                        context.Settings.BranchCount * 2
+                            + context.Settings.MaxDepth - 1);
+            }
+        }
+
+        private static void PrimaryPlacement(
+            BuildContext context,
+            int index,
+            int count,
+            out float attach,
+            out float azimuth)
+        {
+            TreeStructureParams structure = context.Species.structure;
+            int groupSize = structure.branchArrangement == TreeBranchArrangement.Opposite
+                ? 2
+                : structure.branchArrangement == TreeBranchArrangement.Whorled
+                    ? structure.whorlSize
+                    : 1;
+            int group = index / groupSize;
+            int slot = index % groupSize;
+            int groupCount = Mathf.Max(1, Mathf.CeilToInt(count / (float)groupSize));
+            float unit = (group + 0.42f
+                + context.Random.Range(-0.10f, 0.10f)) / groupCount;
+            attach = Mathf.Lerp(
+                structure.trunkBranchStart,
+                0.94f,
+                Mathf.Clamp01(unit));
+
+            switch (structure.branchArrangement)
+            {
+                case TreeBranchArrangement.Opposite:
+                    azimuth = group * 97f + slot * 180f;
+                    break;
+                case TreeBranchArrangement.Whorled:
+                    azimuth = group * 23f + slot * (360f / groupSize);
+                    break;
+                case TreeBranchArrangement.Irregular:
+                    azimuth = context.Random.Range(0f, 360f);
+                    attach = Mathf.Clamp(
+                        attach + context.Random.Range(-0.09f, 0.09f),
+                        structure.trunkBranchStart,
+                        0.96f);
+                    break;
+                case TreeBranchArrangement.Spiral:
+                default:
+                    azimuth = index * 137.50776f;
+                    break;
+            }
+            azimuth += context.Random.Range(
+                -structure.azimuthJitter,
+                structure.azimuthJitter);
+        }
+
+        private static int ChildBranchCount(BuildContext context, int depth)
+        {
+            TreeStructureParams structure = context.Species.structure;
+            if (structure.branchArrangement == TreeBranchArrangement.Opposite)
+            {
+                return depth == 1 ? 3 : 2;
+            }
+            if (structure.branchArrangement == TreeBranchArrangement.Whorled
+                && depth == 1)
+            {
+                return 1 + Mathf.Max(
+                    2,
+                    Mathf.Min(structure.whorlSize, context.Settings.BranchCount));
+            }
+            return Mathf.Max(2, context.Settings.BranchCount - depth / 2);
+        }
+
+        private static void ChildPlacement(
+            BuildContext context,
+            int depth,
+            int index,
+            int count,
+            out float attach,
+            out float turn)
+        {
+            TreeStructureParams structure = context.Species.structure;
+            if (index == 0)
+            {
+                attach = context.Random.Range(0.92f, 0.97f);
+                turn = depth * 137.50776f
+                    + context.Random.Range(
+                        -structure.azimuthJitter,
+                        structure.azimuthJitter);
+                return;
+            }
+
+            int lateralIndex = index - 1;
+            int lateralCount = Mathf.Max(1, count - 1);
+            bool grouped = structure.branchArrangement == TreeBranchArrangement.Opposite
+                || structure.branchArrangement == TreeBranchArrangement.Whorled;
+            attach = grouped
+                ? Mathf.Lerp(0.68f, 0.88f, depth / (float)context.Settings.MaxDepth)
+                : count == 1
+                    ? 0.82f
+                    : Mathf.Lerp(
+                        0.52f,
+                        0.88f,
+                        (lateralIndex + 0.35f) / lateralCount);
+            attach = Mathf.Clamp(
+                attach + context.Random.Range(-0.055f, 0.055f),
+                0.45f,
+                0.97f);
+
+            if (structure.branchArrangement == TreeBranchArrangement.Opposite)
+            {
+                turn = depth * 83f + index * 180f;
+            }
+            else if (structure.branchArrangement == TreeBranchArrangement.Whorled)
+            {
+                turn = depth * 31f
+                    + lateralIndex * (360f / lateralCount);
+            }
+            else if (structure.branchArrangement == TreeBranchArrangement.Irregular)
+            {
+                turn = context.Random.Range(0f, 360f);
+            }
+            else
+            {
+                turn = lateralIndex * 137.50776f + depth * 47f;
+            }
+            turn += context.Random.Range(
+                -structure.azimuthJitter,
+                structure.azimuthJitter);
+        }
+
+        private static float CrownRadiusScale(TreeCrownShape shape, float height)
+        {
+            height = Mathf.Clamp01(height);
+            switch (shape)
+            {
+                case TreeCrownShape.Vase:
+                    return Mathf.Lerp(0.55f, 1.12f, height)
+                        * Mathf.Lerp(1f, 0.72f, Mathf.InverseLerp(0.82f, 1f, height));
+                case TreeCrownShape.Layered:
+                    return (0.72f + Mathf.Sin(height * Mathf.PI) * 0.32f)
+                        * (0.90f + Mathf.Sin(height * Mathf.PI * 4f) * 0.10f);
+                case TreeCrownShape.Pyramidal:
+                    return Mathf.Lerp(1.12f, 0.24f, height);
+                case TreeCrownShape.OpenIrregular:
+                    return 0.68f + Mathf.Sin(height * Mathf.PI) * 0.34f;
+                case TreeCrownShape.Rounded:
+                default:
+                    return 0.62f + Mathf.Sin(height * Mathf.PI) * 0.48f;
+            }
+        }
+
+        private static int LeavesPerNode(TreeLeafArrangement arrangement)
+        {
+            switch (arrangement)
+            {
+                case TreeLeafArrangement.Opposite:
+                case TreeLeafArrangement.FasciclePairs:
+                    return 2;
+                case TreeLeafArrangement.Whorled:
+                    return 3;
+                default:
+                    return 1;
+            }
+        }
+
+        private static float LeafAzimuth(
+            TreeLeafArrangement arrangement,
+            int node,
+            int slot,
+            int leavesPerNode,
+            ref FoliageRandom random)
+        {
+            float jitter = random.Range(-12f, 12f);
+            switch (arrangement)
+            {
+                case TreeLeafArrangement.Opposite:
+                    return node * 90f + slot * 180f + jitter;
+                case TreeLeafArrangement.Whorled:
+                    return node * 47f + slot * (360f / leavesPerNode) + jitter;
+                case TreeLeafArrangement.FasciclePairs:
+                    return node * 137.50776f + (slot == 0 ? -9f : 9f) + jitter * 0.35f;
+                case TreeLeafArrangement.Alternate:
+                default:
+                    return node * 137.50776f + jitter;
             }
         }
 
