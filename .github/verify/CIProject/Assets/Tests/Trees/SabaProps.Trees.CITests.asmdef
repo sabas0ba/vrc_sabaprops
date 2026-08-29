@@ -3,6 +3,7 @@
     "rootNamespace": "SabaProps.Trees.CITests",
     "references": [
         "SabaProps.Foliage.Runtime",
+        "SabaProps.Foliage.Editor",
         "SabaProps.Trees.Runtime",
         "SabaProps.Trees.Editor",
         "UnityEngine.TestRunner",

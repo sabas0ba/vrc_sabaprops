@@ -106,8 +106,10 @@ COMMON=(-nostdlib+ -noconfig -langversion:9.0 -nowarn:1701,1702 -target:library 
 
 csc() { dotnet "$CSC_DLL" "$@"; }
 
-# All Python in this repository runs in a pinned container; see run.sh.
-PYTHON="$REPO/.github/scripts/run.sh"
+# CI and host runs use the digest-pinned Python container. A separately pinned
+# development container can name the interpreter from its own immutable Nix
+# closure to avoid nesting another container engine.
+PYTHON="${VERIFY_PYTHON:-$REPO/.github/scripts/run.sh}"
 
 # ---------------------------------------------------------------------------
 log "Compiling Runtime assembly (real UnityEngine references)"

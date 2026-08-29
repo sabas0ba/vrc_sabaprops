@@ -58,7 +58,7 @@ MonoBehaviour:
     lod2DepthReduction: 2
     lod0ScreenHeight: 0.55
     lod1ScreenHeight: 0.25
-    lod2ScreenHeight: 0.08
+    lod2ScreenHeight: 0.015
   placement:
     placementWeight: 1
     minSpacing: 3

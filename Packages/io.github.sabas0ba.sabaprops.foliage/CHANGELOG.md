@@ -8,6 +8,8 @@
 
 ### Added
 
+- `FoliageLoadDemo.unity`: 600 sunflowers and a 1,920-plant mixed meadow using four shared GPU-instanced patch meshes and one material.
+
 - `SurfaceGrowthGraph` と `SurfaceVine`: ガイド点列の投影スプラインまたは決定的な表面クロールから分岐 Graph を作り、Collider 表面へツタを焼き込みます
   - 経路数、被覆率、分岐頻度、Node 予算、葉数、葉サイズ、4 種類の葉形、若葉・成葉・秋色・枯葉パレットを個別に制御できます
   - Creeping Fig / English Ivy / Boston Ivy の形態 preset を追加しました
@@ -31,6 +33,11 @@
   - サンプルシーンに壁上配置の Vine 区画を追加しました
 
 ### Changed
+
+- Relicensed the package from MIT to Apache License 2.0.
+- Moved `SurfaceVine` and `RhizomePatch` into matching script files so generated scene components remain resolvable after assembly recompilation.
+- Projected surface vines can switch to an adjacent collider when the guide crosses a floor/slope/wall boundary, so the Slope sample remains on the ramp.
+- Surface-grown stems and leaves clip only the wind component entering their supporting surface; lobed leaves use a smoother outline and a narrower, lower-contrast vein.
 
 - Surface Vine の方向揺らぎを持続的な旋回へ変更し、`Direction Persistence` で広い弧と短い不規則な折れを調整できるようにしました
 - Surface Vine の Guide を経路そのものから誘導場へ変更し、根元範囲、経路長、葉間隔、葉角度を Seed から散らすようにしました

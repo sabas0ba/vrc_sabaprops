@@ -53,6 +53,59 @@ namespace SabaProps.Trees.CITests
                     FoliageBundledDemo.ScenePath));
                 Assert.IsNotNull(AssetDatabase.LoadAssetAtPath<SceneAsset>(
                     FoliageBundledDemo.SpeciesScenePath));
+                Assert.IsNotNull(AssetDatabase.LoadAssetAtPath<SceneAsset>(
+                    FoliageBundledDemo.LoadScenePath));
+
+                Scene vineScene = EditorSceneManager.OpenScene(
+                    FoliageBundledDemo.ScenePath);
+                Assert.IsTrue(vineScene.IsValid());
+                SurfaceVine slopeVine = null;
+                foreach (SurfaceVine candidate in Object.FindObjectsOfType<SurfaceVine>())
+                {
+                    if (candidate.name.Contains("Floor Slope Wall"))
+                    {
+                        slopeVine = candidate;
+                        break;
+                    }
+                }
+                Assert.IsNotNull(slopeVine);
+                bool foundSlopeNode = false;
+                foreach (SurfaceGrowthNode node in slopeVine.generatedGraph.Nodes)
+                {
+                    foundSlopeNode |= node.normal.y > 0.75f
+                        && node.normal.y < 0.98f
+                        && Mathf.Abs(node.normal.z) > 0.20f;
+                }
+                Assert.IsTrue(foundSlopeNode,
+                    "slope vine did not retain nodes on the inclined surface");
+
+                Scene foliageLoadScene = EditorSceneManager.OpenScene(
+                    FoliageBundledDemo.LoadScenePath);
+                Assert.IsTrue(foliageLoadScene.IsValid());
+                GameObject loadFields = GameObject.Find("GPU Instanced Patch Fields");
+                Assert.IsNotNull(loadFields);
+                MeshRenderer[] loadRenderers =
+                    loadFields.GetComponentsInChildren<MeshRenderer>();
+                Assert.AreEqual(
+                    FoliageBundledDemo.LoadSampleRendererCount,
+                    loadRenderers.Length);
+                var loadMaterials = new HashSet<Material>();
+                foreach (MeshRenderer renderer in loadRenderers)
+                {
+                    loadMaterials.Add(renderer.sharedMaterial);
+                }
+                Assert.AreEqual(1, loadMaterials.Count,
+                    "load fields should share one instanced material");
+                foreach (Material material in loadMaterials)
+                {
+                    Assert.AreEqual(
+                        0f,
+                        material.GetFloat(FoliageShaderContract.DistanceFadeProperty),
+                        1e-6f,
+                        "the load scene must show its authored plant density");
+                    Assert.IsFalse(material.IsKeywordEnabled(
+                        FoliageShaderContract.DistanceFadeKeyword));
+                }
             }
             finally
             {

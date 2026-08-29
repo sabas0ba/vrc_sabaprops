@@ -250,6 +250,49 @@ namespace SabaProps.Foliage.Editors
                     break;
                 }
 
+                // A nearest-point projection can remain on a floor forever
+                // when an inclined or vertical surface overlaps it: the free
+                // candidate is deliberately kept close to the current plane.
+                // Probe the guide itself and accept a different surface only
+                // when it is both a substantially better guide fit and close
+                // enough to keep the generated stem connected.
+                float guideOffPlane = Mathf.Abs(Vector3.Dot(
+                    guideTarget - previousPosition,
+                    previousNormal));
+                if (guideOffPlane > settings.stepLength * 0.35f)
+                {
+                    SurfacePoint guidedSurface;
+                    if (projector(
+                            guideTarget,
+                            previousNormal,
+                            settings.projectionDistance,
+                            out guidedSurface))
+                    {
+                        float normalChange = Vector3.Dot(
+                            previousNormal.normalized,
+                            guidedSurface.normal.normalized);
+                        float currentGuideError = Vector3.Distance(
+                            guideTarget,
+                            projected.position);
+                        float guidedGuideError = Vector3.Distance(
+                            guideTarget,
+                            guidedSurface.position);
+                        float transitionLength = Vector3.Distance(
+                            previousPosition,
+                            guidedSurface.position);
+                        float maximumTransition = Mathf.Min(
+                            settings.projectionDistance * 0.75f,
+                            settings.stepLength * 3.5f);
+                        if (normalChange < 0.96f
+                            && guidedGuideError + settings.stepLength * 0.25f
+                                < currentGuideError
+                            && transitionLength <= maximumTransition)
+                        {
+                            projected = guidedSurface;
+                        }
+                    }
+                }
+
                 float edgeLength = Vector3.Distance(previousPosition, projected.position);
                 if (edgeLength < 1e-5f)
                 {

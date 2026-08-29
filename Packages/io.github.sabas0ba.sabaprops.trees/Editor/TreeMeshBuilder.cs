@@ -20,6 +20,7 @@ namespace SabaProps.Trees.Editors
             public int RadialSegments;
             public int SegmentsPerBranch;
             public float LeafFraction;
+            public float LeafScale;
         }
 
         private sealed class BuildContext
@@ -75,7 +76,11 @@ namespace SabaProps.Trees.Editors
                 BranchCount = Mathf.Max(1, structure.branchCount - (lodLevel == 2 ? 1 : 0)),
                 RadialSegments = Mathf.Max(3, structure.radialSegments - lodLevel * 2),
                 SegmentsPerBranch = Mathf.Max(1, structure.segmentsPerBranch - lodLevel),
-                LeafFraction = lodLevel == 0 ? 1f : lodLevel == 1 ? 0.55f : 0.22f,
+                LeafFraction = lodLevel == 0 ? 1f : lodLevel == 1 ? 0.68f : 0.52f,
+                // Low LODs trade many small leaves for fewer, broader cards.
+                // This keeps the crown silhouette continuous without restoring
+                // the full vertex count.
+                LeafScale = lodLevel == 0 ? 1f : lodLevel == 1 ? 1.12f : 1.45f,
             };
 
             var context = new BuildContext
@@ -96,6 +101,7 @@ namespace SabaProps.Trees.Editors
             BranchPath trunk = AddBranch(
                 context,
                 Vector3.zero,
+                Vector3.up,
                 Vector3.up,
                 structure.trunkLength,
                 structure.trunkRadius,
@@ -147,7 +153,8 @@ namespace SabaProps.Trees.Editors
                     Mathf.Lerp(0.78f, 0.35f, attach);
 
                 BuildRecursiveBranch(
-                    context, start, direction, length, radius, 1,
+                    context, start, trunk.DirectionAt(attach), direction,
+                    length, radius, 1,
                     start, 0f, 1f / context.Settings.MaxDepth);
             }
 
@@ -161,6 +168,7 @@ namespace SabaProps.Trees.Editors
         private static void BuildRecursiveBranch(
             BuildContext context,
             Vector3 start,
+            Vector3 junctionDirection,
             Vector3 direction,
             float length,
             float radius,
@@ -175,7 +183,8 @@ namespace SabaProps.Trees.Editors
             }
 
             BranchPath path = AddBranch(
-                context, start, direction, length, radius, windRoot,
+                context, start, junctionDirection, direction,
+                length, radius, windRoot,
                 EffectiveWindResponse(
                     context.Species.appearance,
                     context.Species.appearance.branchStiffness),
@@ -247,9 +256,26 @@ namespace SabaProps.Trees.Editors
                     1f,
                     childBendStart + (1f - childBendStart) / (remaining + 0.35f));
 
+                float parentTipRatio = Mathf.Min(
+                    0.72f,
+                    structure.radiusDecay);
+                float parentRadiusAtJunction = Mathf.Lerp(
+                    radius,
+                    radius * parentTipRatio,
+                    attach);
+                float requestedChildRadius = radius * (continuation
+                    ? Mathf.Min(0.72f, structure.radiusDecay)
+                    : Mathf.Min(
+                        structure.radiusDecay,
+                        0.88f / Mathf.Sqrt(Mathf.Max(1, childCount - 1))));
+                float childRadius = Mathf.Min(
+                    requestedChildRadius,
+                    parentRadiusAtJunction * (continuation ? 0.82f : 0.68f));
+
                 BuildRecursiveBranch(
                     context,
                     path.PointAt(attach),
+                    attachDirection,
                     childDirection,
                     length * structure.lengthDecay
                         * (continuation ? 0.98f : 0.76f)
@@ -258,11 +284,7 @@ namespace SabaProps.Trees.Editors
                             0.68f,
                             depth / (float)context.Settings.MaxDepth)
                         * context.Random.Range(0.90f, 1.10f),
-                    radius * (continuation
-                        ? Mathf.Min(0.72f, structure.radiusDecay)
-                        : Mathf.Min(
-                            structure.radiusDecay,
-                            0.88f / Mathf.Sqrt(Mathf.Max(1, childCount - 1)))),
+                    childRadius,
                     depth + 1,
                     windRoot,
                     childBendStart,
@@ -292,6 +314,7 @@ namespace SabaProps.Trees.Editors
         private static BranchPath AddBranch(
             BuildContext context,
             Vector3 start,
+            Vector3 junctionDirection,
             Vector3 initialDirection,
             float length,
             float radius,
@@ -310,10 +333,23 @@ namespace SabaProps.Trees.Editors
             var directions = new Vector3[segments];
             points[0] = start;
 
-            Vector3 direction = initialDirection.normalized;
+            junctionDirection = junctionDirection.normalized;
+            Vector3 targetDirection = initialDirection.normalized;
+            Vector3 direction = junctionDirection;
             float step = length / segments;
             for (int i = 0; i < segments; i++)
             {
+                float emergence = Mathf.SmoothStep(
+                    0f,
+                    1f,
+                    Mathf.Clamp01(i / Mathf.Max(1f, segments * 0.55f)));
+                Vector3 guidedDirection = Vector3.Slerp(
+                    junctionDirection,
+                    targetDirection,
+                    emergence).normalized;
+                direction = i == 0
+                    ? junctionDirection
+                    : Vector3.Slerp(direction, guidedDirection, 0.72f).normalized;
                 Vector3 side = Perpendicular(direction);
                 side = Quaternion.AngleAxis(context.Random.Range(0f, 360f), direction) * side;
                 float pathRatio = (i + 1f) / segments;
@@ -330,9 +366,12 @@ namespace SabaProps.Trees.Editors
                         * pathRatio * pathRatio * 0.08f
                         + Vector3.up * structure.tipUpturn
                         * (0.03f + pathRatio * pathRatio * 0.11f);
-                direction = (direction
-                    + side * structure.crookedness * context.Random.Signed()
-                    + tropism).normalized;
+                if (i > 0 || trunk)
+                {
+                    direction = (direction
+                        + side * structure.crookedness * context.Random.Signed()
+                        + tropism).normalized;
+                }
                 if (!trunk)
                 {
                     direction = ConstrainBranchElevation(
@@ -363,11 +402,22 @@ namespace SabaProps.Trees.Editors
                     : Mathf.Min(
                         0.72f,
                         context.Species.structure.radiusDecay);
-                float taperRatio = trunk ? Mathf.Pow(ratio, 2.4f) : ratio;
+                // A near-linear trunk taper reads as a wide butt, a steadily
+                // narrowing bole, and a slender leader. Delaying almost all
+                // taper until the crown makes the upper trunk look swollen.
+                float taperRatio = trunk ? Mathf.Pow(ratio, 1.15f) : ratio;
                 float ringRadius = Mathf.Lerp(
                     radius,
                     radius * tipRatio,
                     taperRatio);
+                if (trunk)
+                {
+                    float baseFlare = 1f - Mathf.SmoothStep(
+                        0f,
+                        1f,
+                        Mathf.Clamp01(ratio / 0.16f));
+                    ringRadius *= 1f + baseFlare * 0.16f;
+                }
                 float bend = trunk ? 0f : Mathf.Lerp(bendStart, bendEnd, ratio);
                 float age = trunk
                     ? ratio * 0.35f
@@ -493,8 +543,12 @@ namespace SabaProps.Trees.Editors
                     : appearance.leafShape == TreeLeafShape.Needle ? 0.56f : 0.32f;
                 Vector3 leafDirection = (branchDirection * forwardBias + radial).normalized;
 
-                float length = appearance.leafLength * context.Random.Range(0.82f, 1.18f);
-                float width = appearance.leafWidth * context.Random.Range(0.82f, 1.18f);
+                float length = appearance.leafLength
+                    * context.Settings.LeafScale
+                    * context.Random.Range(0.82f, 1.18f);
+                float width = appearance.leafWidth
+                    * context.Settings.LeafScale
+                    * context.Random.Range(0.82f, 1.18f);
                 if (appearance.leafShape == TreeLeafShape.Needle)
                 {
                     width *= 0.65f;

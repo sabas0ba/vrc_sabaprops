@@ -46,8 +46,8 @@ MonoBehaviour:
     leavesPerTip: 16
     leafLength: 0.25
     leafWidth: 0.19
-    leafBaseColor: {r: 0.12, g: 0.31, b: 0.07, a: 1}
-    leafTipColor: {r: 0.39, g: 0.57, b: 0.12, a: 1}
+    leafBaseColor: {r: 0.115, g: 0.285, b: 0.085, a: 1}
+    leafTipColor: {r: 0.31, g: 0.46, b: 0.14, a: 1}
     foliageDepth: 4
     windEnabled: 1
     windResponse: 1
@@ -58,7 +58,7 @@ MonoBehaviour:
     lod2DepthReduction: 2
     lod0ScreenHeight: 0.55
     lod1ScreenHeight: 0.25
-    lod2ScreenHeight: 0.08
+    lod2ScreenHeight: 0.015
   placement:
     placementWeight: 1
     minSpacing: 3

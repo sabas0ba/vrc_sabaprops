@@ -16,6 +16,11 @@ All notable changes to this package are documented in this file.
 
 ### Changed
 
+- Relicensed the package from MIT to Apache License 2.0.
+- Trunks now taper steadily from a flared base, child radii are capped at their junction, and branches emerge from the parent tangent before turning toward their target direction.
+- LOD1/LOD2 preserve crown mass with fewer, broader leaf cards and a longer far-distance range; the 192-tree load scene uses denser stands for silhouette and load evaluation.
+- Japanese red pine bark/needles and summer ginkgo foliage use less saturated colours.
+
 - 子枝の太さへ分岐数に基づく上限を設け、枝次数に応じて樹皮色を補間するようにしました
 - 掌状葉、鱗片状の短葉、2 針束、5 弁花、扇形葉を含む樹種別の葉配置へ変更しました
 - 構造枝の下向き成長を抑え、下垂を末端枝だけへ適用しました。継続枝は親枝終端の位置・半径を引き継ぎ、切断面を作りません

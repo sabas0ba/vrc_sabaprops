@@ -1255,7 +1255,11 @@ internal static class OfflineMeshTests
 
         foreach (Vector2 uv in uv0)
         {
-            Require(uv.y >= -1e-4f && uv.y <= 1f + 1e-4f, $"{label}: bend mask {uv.y} is outside [0,1]");
+            bool regularBend = uv.y >= -1e-4f && uv.y <= 1f + 1e-4f;
+            bool encodedSurfaceBend = uv.y >= -2f - 1e-4f && uv.y <= -1f + 1e-4f;
+            Require(
+                regularBend || encodedSurfaceBend,
+                $"{label}: bend mask {uv.y} is outside [0,1] or encoded surface range [-2,-1]");
         }
 
         foreach (Vector4 uv in uv3)

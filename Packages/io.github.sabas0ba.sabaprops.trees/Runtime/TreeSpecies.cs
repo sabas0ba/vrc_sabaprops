@@ -132,7 +132,7 @@ namespace SabaProps.Trees
         [Range(1, 4)] public int lod2DepthReduction = 2;
         [Range(0.2f, 0.9f)] public float lod0ScreenHeight = 0.55f;
         [Range(0.05f, 0.7f)] public float lod1ScreenHeight = 0.25f;
-        [Range(0.01f, 0.4f)] public float lod2ScreenHeight = 0.08f;
+        [Range(0.003f, 0.4f)] public float lod2ScreenHeight = 0.015f;
     }
 
     [Serializable]
@@ -463,14 +463,14 @@ namespace SabaProps.Trees
                     structure.branchLengthVariance = 0.22f;
                     structure.crownDensity = 1.15f;
                     appearance.barkRootColor = new Color(0.20f, 0.17f, 0.14f, 1f);
-                    appearance.barkTipColor = new Color(0.55f, 0.22f, 0.075f, 1f);
+                    appearance.barkTipColor = new Color(0.43f, 0.245f, 0.14f, 1f);
                     appearance.leafShape = TreeLeafShape.Needle;
                     appearance.leafArrangement = TreeLeafArrangement.FasciclePairs;
                     appearance.leavesPerTip = 16;
                     appearance.leafLength = 0.38f;
                     appearance.leafWidth = 0.025f;
                     appearance.leafBaseColor = new Color(0.08f, 0.24f, 0.09f, 1f);
-                    appearance.leafTipColor = new Color(0.20f, 0.39f, 0.13f, 1f);
+                    appearance.leafTipColor = new Color(0.18f, 0.34f, 0.14f, 1f);
                     appearance.foliageDepth = 4;
                     break;
 
@@ -532,8 +532,8 @@ namespace SabaProps.Trees
 
                 case TreeBotanicalPreset.GinkgoSummer:
                     ApplyGinkgoStructure();
-                    appearance.leafBaseColor = new Color(0.12f, 0.31f, 0.07f, 1f);
-                    appearance.leafTipColor = new Color(0.39f, 0.57f, 0.12f, 1f);
+                    appearance.leafBaseColor = new Color(0.115f, 0.285f, 0.085f, 1f);
+                    appearance.leafTipColor = new Color(0.31f, 0.46f, 0.14f, 1f);
                     break;
 
                 case TreeBotanicalPreset.GinkgoAutumn:
@@ -653,7 +653,7 @@ namespace SabaProps.Trees
             lod.lod1ScreenHeight = Mathf.Clamp(
                 lod.lod1ScreenHeight, 0.02f, lod.lod0ScreenHeight - 0.01f);
             lod.lod2ScreenHeight = Mathf.Clamp(
-                lod.lod2ScreenHeight, 0.01f, lod.lod1ScreenHeight - 0.01f);
+                lod.lod2ScreenHeight, 0.003f, lod.lod1ScreenHeight - 0.01f);
 
             placement.placementWeight = Mathf.Max(0f, placement.placementWeight);
             placement.minSpacing = Mathf.Max(0f, placement.minSpacing);

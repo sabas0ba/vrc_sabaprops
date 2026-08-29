@@ -15,9 +15,19 @@ namespace SabaProps.Foliage
 
         /// <summary>
         /// UV3.xyz is an element root in object space; UV3.w is wind
-        /// stiffness. UV0.y is the 0..1 bend coordinate from that root.
+        /// stiffness. UV0.y is the 0..1 bend coordinate from that root, or
+        /// -(1 + bend) when one-sided surface clipping is enabled.
         /// </summary>
         public const string WindDataDescription =
-            "UV3.xyz=rootOS, UV3.w=stiffness, UV0.y=bend";
+            "UV3.xyz=rootOS, UV3.w=stiffness, UV0.y=bendOrEncodedSurfaceBend";
+
+        /// <summary>
+        /// A UV0.y value in the -1..-2 range enables one-sided wind
+        /// displacement clipping against the vertex normal. The shader decodes
+        /// it back to a 0..1 bend coordinate before texture sampling. UV1 and
+        /// UV2 remain available for lightmaps.
+        /// </summary>
+        public const string SurfaceConstraintDescription =
+            "UV0.y=-(1+bend) enables oneSidedWindConstraint, normal=surfaceNormalOS";
     }
 }

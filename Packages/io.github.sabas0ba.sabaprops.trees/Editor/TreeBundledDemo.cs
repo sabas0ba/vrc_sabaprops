@@ -417,9 +417,9 @@ namespace SabaProps.Trees.Editors
                     TreeBotanicalPreset.JapaneseRedPine,
                 },
                 4301,
-                2.15f,
-                0.42f,
-                0.35f);
+                1.62f,
+                0.30f,
+                0.40f);
             CreateLoadGroup(
                 species,
                 "Load Group 2 - Conifer Plantation (64)",
@@ -432,9 +432,9 @@ namespace SabaProps.Trees.Editors
                     TreeBotanicalPreset.JapaneseRedPine,
                 },
                 4302,
-                2.05f,
-                0.18f,
-                0.34f);
+                1.52f,
+                0.16f,
+                0.39f);
             CreateLoadGroup(
                 species,
                 "Load Group 3 - Seasonal Mixed (64)",
@@ -447,9 +447,9 @@ namespace SabaProps.Trees.Editors
                     TreeBotanicalPreset.JapaneseMaple,
                 },
                 4303,
-                2.15f,
-                0.38f,
-                0.35f);
+                1.62f,
+                0.30f,
+                0.40f);
 
             CreateLabel(
                 "Forest load sample: 192 trees / 576 LOD renderers",
@@ -606,9 +606,9 @@ namespace SabaProps.Trees.Editors
             if (camera != null)
             {
                 camera.fieldOfView = 50f;
-                camera.transform.position = new Vector3(0f, 31f, -50f);
+                camera.transform.position = new Vector3(0f, 23f, -42f);
                 camera.transform.rotation = Quaternion.LookRotation(
-                    new Vector3(0f, 3f, 2f) - camera.transform.position,
+                    new Vector3(0f, 3.4f, 2f) - camera.transform.position,
                     Vector3.up);
                 camera.farClipPlane = 180f;
             }

@@ -275,25 +275,29 @@ namespace SabaProps.Foliage.Editors
                 parent.normal,
                 color,
                 new Vector2(0f, 0f),
-                pivot);
+                pivot,
+                true);
             int b = buffer.AddVertex(
                 parent.position + parentSide * halfRoot,
                 parent.normal,
                 color,
                 new Vector2(1f, 0f),
-                pivot);
+                pivot,
+                true);
             int c = buffer.AddVertex(
                 node.position + nodeSide * halfTip,
                 node.normal,
                 color,
                 new Vector2(1f, 0f),
-                pivot);
+                pivot,
+                true);
             int d = buffer.AddVertex(
                 node.position - nodeSide * halfTip,
                 node.normal,
                 color,
                 new Vector2(0f, 0f),
-                pivot);
+                pivot,
+                true);
             AddOrientedQuad(buffer, a, b, c, d, parent.normal);
         }
 
@@ -446,7 +450,7 @@ namespace SabaProps.Foliage.Editors
                 width,
                 color,
                 Color.Lerp(color, p.edgeColor, p.pigmentAmount),
-                Color.Lerp(color, p.veinColor, p.pigmentAmount),
+                Color.Lerp(color, p.veinColor, p.pigmentAmount * 0.42f),
                 p.pigmentPattern,
                 p.edgeWidth,
                 p.leafStiffness,
@@ -511,7 +515,6 @@ namespace SabaProps.Foliage.Editors
                 attach.y,
                 attach.z,
                 Mathf.Clamp01(stiffness));
-
             bool hasEdge = pigmentPattern == SurfaceLeafPigmentPattern.Edge
                 || pigmentPattern == SurfaceLeafPigmentPattern.EdgeAndVein;
             bool hasVein = pigmentPattern == SurfaceLeafPigmentPattern.Vein
@@ -531,7 +534,8 @@ namespace SabaProps.Foliage.Editors
                 normal,
                 color,
                 new Vector2(0.5f, profileCentre.y),
-                pivot);
+                pivot,
+                true);
             var inner = new int[profile.Length];
             var outline = hasEdge ? new int[profile.Length] : inner;
             float innerScale = 1f - Mathf.Clamp(edgeWidth, 0.02f, 0.4f);
@@ -553,7 +557,8 @@ namespace SabaProps.Foliage.Editors
                     normal,
                     innerColor,
                     new Vector2(innerPoint.x + 0.5f, innerPoint.y),
-                    pivot);
+                    pivot,
+                    true);
                 if (hasEdge)
                 {
                     outline[i] = buffer.AddVertex(
@@ -561,7 +566,8 @@ namespace SabaProps.Foliage.Editors
                         normal,
                         edgeColor,
                         new Vector2(point.x + 0.5f, point.y),
-                        pivot);
+                        pivot,
+                        true);
                 }
             }
 
@@ -590,7 +596,7 @@ namespace SabaProps.Foliage.Editors
                     side,
                     normal,
                     length,
-                    Mathf.Max(0.0005f, width * 0.035f),
+                    Mathf.Max(0.00025f, width * 0.014f),
                     veinColor,
                     pivot);
             }
@@ -621,10 +627,18 @@ namespace SabaProps.Foliage.Editors
             Vector3 lift = normal * 0.0006f;
             Vector3 start = attach + forward * (length * 0.08f) + lift;
             Vector3 end = attach + forward * (length * 0.88f) + lift;
-            int a = buffer.AddVertex(start - side * halfWidth, normal, color, new Vector2(0f, 0f), pivot);
-            int b = buffer.AddVertex(start + side * halfWidth, normal, color, new Vector2(1f, 0f), pivot);
-            int c = buffer.AddVertex(end + side * halfWidth * 0.35f, normal, color, new Vector2(1f, 1f), pivot);
-            int d = buffer.AddVertex(end - side * halfWidth * 0.35f, normal, color, new Vector2(0f, 1f), pivot);
+            int a = buffer.AddVertex(
+                start - side * halfWidth, normal, color,
+                new Vector2(0f, 0f), pivot, true);
+            int b = buffer.AddVertex(
+                start + side * halfWidth, normal, color,
+                new Vector2(1f, 0f), pivot, true);
+            int c = buffer.AddVertex(
+                end + side * halfWidth * 0.35f, normal, color,
+                new Vector2(1f, 1f), pivot, true);
+            int d = buffer.AddVertex(
+                end - side * halfWidth * 0.35f, normal, color,
+                new Vector2(0f, 1f), pivot, true);
             AddOrientedQuad(buffer, a, b, c, d, normal);
         }
 
@@ -635,20 +649,30 @@ namespace SabaProps.Foliage.Editors
                 case SurfaceLeafShape.Lobed:
                     return new[]
                     {
-                        new Vector2(-0.10f, 0.02f),
-                        new Vector2(-0.44f, 0.20f),
-                        new Vector2(-0.22f, 0.34f),
-                        new Vector2(-0.50f, 0.56f),
-                        new Vector2(-0.20f, 0.64f),
-                        new Vector2(-0.25f, 0.86f),
+                        new Vector2(-0.08f, 0.02f),
+                        new Vector2(-0.25f, 0.10f),
+                        new Vector2(-0.39f, 0.20f),
+                        new Vector2(-0.36f, 0.30f),
+                        new Vector2(-0.28f, 0.37f),
+                        new Vector2(-0.43f, 0.47f),
+                        new Vector2(-0.50f, 0.57f),
+                        new Vector2(-0.43f, 0.65f),
+                        new Vector2(-0.29f, 0.70f),
+                        new Vector2(-0.31f, 0.82f),
+                        new Vector2(-0.22f, 0.91f),
                         new Vector2(0f, 1f),
-                        new Vector2(0.25f, 0.86f),
-                        new Vector2(0.20f, 0.64f),
-                        new Vector2(0.50f, 0.56f),
-                        new Vector2(0.22f, 0.34f),
-                        new Vector2(0.44f, 0.20f),
-                        new Vector2(0.10f, 0.02f),
-                        new Vector2(0f, 0.12f),
+                        new Vector2(0.22f, 0.91f),
+                        new Vector2(0.31f, 0.82f),
+                        new Vector2(0.29f, 0.70f),
+                        new Vector2(0.43f, 0.65f),
+                        new Vector2(0.50f, 0.57f),
+                        new Vector2(0.43f, 0.47f),
+                        new Vector2(0.28f, 0.37f),
+                        new Vector2(0.36f, 0.30f),
+                        new Vector2(0.39f, 0.20f),
+                        new Vector2(0.25f, 0.10f),
+                        new Vector2(0.08f, 0.02f),
+                        new Vector2(0f, 0.09f),
                     };
                 case SurfaceLeafShape.Ovate:
                     return new[]

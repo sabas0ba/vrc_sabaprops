@@ -426,6 +426,8 @@ namespace SabaProps.Foliage.CITests
             mesh.GetUVs(FoliageShaderContract.WindDataUvChannel, uv3);
             Assert.AreEqual(mesh.vertexCount, uv0.Count);
             Assert.AreEqual(mesh.vertexCount, uv3.Count);
+            Assert.IsTrue(uv0.Exists(value => value.y <= -1f),
+                "surface-grown mesh should enable one-sided wind clipping");
         }
 
         private static bool ProjectWall(

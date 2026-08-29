@@ -24,6 +24,11 @@ namespace SabaProps.Foliage.Editors
         public const string ScenePath = OutputRoot + "/FoliageDemo.unity";
         public const string SpeciesScenePath =
             OutputRoot + "/FoliageSpeciesDemo.unity";
+        public const string LoadScenePath =
+            OutputRoot + "/FoliageLoadDemo.unity";
+        public const int SunflowerFieldPlantCount = 600;
+        public const int MixedMeadowPlantCount = 1920;
+        public const int LoadSampleRendererCount = 64;
         private const string AssetFolder = OutputRoot + "/Assets";
 
         [MenuItem("Tools/SabaProps/Foliage/Create Bundled Demo", false, 2)]
@@ -83,6 +88,14 @@ namespace SabaProps.Foliage.Editors
                 new Vector3(2.25f, 0.12f, 3.2f),
                 wallMaterial);
             slope.transform.rotation = Quaternion.Euler(-24f, 0f, 0f);
+            GameObject slopeGrowthSurface = CreatePrimitive(
+                PrimitiveType.Plane,
+                "Slope Growth Surface",
+                slope.transform.position + slope.transform.up * 0.061f,
+                new Vector3(0.225f, 1f, 0.32f),
+                wallMaterial);
+            slopeGrowthSurface.transform.rotation = slope.transform.rotation;
+            slopeGrowthSurface.GetComponent<MeshRenderer>().enabled = false;
             Physics.SyncTransforms();
 
             CreateSpeciesStrip(speciesMeshes, foliage);
@@ -119,7 +132,7 @@ namespace SabaProps.Foliage.Editors
                 ground.GetComponent<Collider>(),
                 new[]
                 {
-                    slope.GetComponent<Collider>(),
+                    slopeGrowthSurface.GetComponent<Collider>(),
                     wall.GetComponent<Collider>(),
                 },
                 foliage,
@@ -150,13 +163,217 @@ namespace SabaProps.Foliage.Editors
                 foliage,
                 groundMaterial,
                 wallMaterial);
+            CreateLoadScene(
+                speciesMeshes,
+                foliage,
+                groundMaterial);
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
             Scene openedScene = EditorSceneManager.OpenScene(ScenePath);
             Debug.Log(
                 "[SabaProps Foliage] Bundled demos created at "
-                + ScenePath + " and " + SpeciesScenePath);
+                + ScenePath + ", " + SpeciesScenePath + ", and " + LoadScenePath);
             return openedScene;
+        }
+
+        private static void CreateLoadScene(
+            IReadOnlyDictionary<FoliageSpeciesKind, Mesh> speciesMeshes,
+            Material foliage,
+            Material groundMaterial)
+        {
+            Scene scene = EditorSceneManager.NewScene(
+                NewSceneSetup.DefaultGameObjects,
+                NewSceneMode.Single);
+            ConfigureLoadCameraAndLight();
+
+            var loadFoliage = new Material(foliage)
+            {
+                name = "FoliageLoadDemo",
+                enableInstancing = true,
+            };
+            loadFoliage.SetFloat(FoliageShaderContract.DistanceFadeProperty, 0f);
+            loadFoliage.DisableKeyword(FoliageShaderContract.DistanceFadeKeyword);
+            AssetDatabase.CreateAsset(
+                loadFoliage,
+                AssetFolder + "/FoliageLoadDemo.mat");
+
+            CreatePrimitive(
+                PrimitiveType.Plane,
+                "Sunflower Field Ground",
+                new Vector3(-16f, -0.02f, 0f),
+                new Vector3(3f, 1f, 2.2f),
+                groundMaterial);
+            CreatePrimitive(
+                PrimitiveType.Plane,
+                "Mixed Meadow Ground",
+                new Vector3(16f, -0.02f, 0f),
+                new Vector3(3f, 1f, 2.2f),
+                groundMaterial);
+
+            Mesh[] sunflowerPatches =
+            {
+                CreatePatchMesh(
+                    "SunflowerPatchA", speciesMeshes,
+                    new[] { FoliageSpeciesKind.Sunflower }, 25, 4.5f, 4101),
+                CreatePatchMesh(
+                    "SunflowerPatchB", speciesMeshes,
+                    new[] { FoliageSpeciesKind.Sunflower }, 25, 4.5f, 4102),
+            };
+            var meadowKinds = new[]
+            {
+                FoliageSpeciesKind.Weed,
+                FoliageSpeciesKind.GrassClump,
+                FoliageSpeciesKind.Weed,
+                FoliageSpeciesKind.Clover,
+                FoliageSpeciesKind.GrassClump,
+                FoliageSpeciesKind.SmallFlower,
+                FoliageSpeciesKind.Weed,
+                FoliageSpeciesKind.Dandelion,
+            };
+            Mesh[] meadowPatches =
+            {
+                CreatePatchMesh(
+                    "MixedMeadowPatchA", speciesMeshes,
+                    meadowKinds, 48, 3.5f, 4201),
+                CreatePatchMesh(
+                    "MixedMeadowPatchB", speciesMeshes,
+                    meadowKinds, 48, 3.5f, 4202),
+            };
+
+            var fields = new GameObject("GPU Instanced Patch Fields");
+            CreateTiledPatchField(
+                fields.transform,
+                "Sunflower Field",
+                sunflowerPatches,
+                loadFoliage,
+                new Vector3(-16f, 0f, 0f),
+                6,
+                4,
+                4.5f);
+            CreateTiledPatchField(
+                fields.transform,
+                "Mixed Weed Meadow",
+                meadowPatches,
+                loadFoliage,
+                new Vector3(16f, 0f, 0f),
+                8,
+                5,
+                3.5f);
+
+            CreateLabel(
+                "Sunflower field: 600 plants / 24 renderers",
+                new Vector3(-29.2f, 0.05f, 11.1f),
+                0.32f);
+            CreateLabel(
+                "Mixed meadow: 1,920 plants / 40 renderers",
+                new Vector3(2.4f, 0.05f, 11.1f),
+                0.32f);
+            CreateLabel(
+                "2,520 plants / 4 shared patch meshes / 1 material",
+                new Vector3(-14f, 3.8f, 13.3f),
+                0.38f);
+
+            EditorSceneManager.SaveScene(scene, LoadScenePath);
+        }
+
+        private static Mesh CreatePatchMesh(
+            string name,
+            IReadOnlyDictionary<FoliageSpeciesKind, Mesh> speciesMeshes,
+            IReadOnlyList<FoliageSpeciesKind> kinds,
+            int plantCount,
+            float patchSize,
+            int seed)
+        {
+            var sources = new Dictionary<FoliageSpeciesKind, FoliageSourceMesh>();
+            var buffer = new FoliageMeshBuffer();
+            var random = new FoliageRandom(seed);
+            for (int i = 0; i < plantCount; i++)
+            {
+                FoliageSpeciesKind kind = kinds[random.RangeInt(0, kinds.Count)];
+                if (!sources.TryGetValue(kind, out FoliageSourceMesh source))
+                {
+                    source = FoliageSourceMesh.From(speciesMeshes[kind]);
+                    sources.Add(kind, source);
+                }
+
+                Vector3 position = new Vector3(
+                    random.Range(-patchSize * 0.46f, patchSize * 0.46f),
+                    0f,
+                    random.Range(-patchSize * 0.46f, patchSize * 0.46f));
+                float scale = kind == FoliageSpeciesKind.Sunflower
+                    ? random.Range(0.84f, 1.12f)
+                    : random.Range(0.72f, 1.18f);
+                Matrix4x4 transform = Matrix4x4.TRS(
+                    position,
+                    Quaternion.Euler(0f, random.Range(0f, 360f), 0f),
+                    Vector3.one * scale);
+                buffer.Append(source, transform);
+            }
+
+            Mesh mesh = buffer.ToMesh(name, 0.35f);
+            AssetDatabase.CreateAsset(mesh, AssetFolder + "/" + name + ".asset");
+            return mesh;
+        }
+
+        private static void CreateTiledPatchField(
+            Transform parent,
+            string name,
+            IReadOnlyList<Mesh> patchMeshes,
+            Material material,
+            Vector3 centre,
+            int columns,
+            int rows,
+            float spacing)
+        {
+            var root = new GameObject(name);
+            root.transform.SetParent(parent, false);
+            for (int row = 0; row < rows; row++)
+            {
+                for (int column = 0; column < columns; column++)
+                {
+                    int index = row * columns + column;
+                    var patch = new GameObject("Patch " + (index + 1));
+                    patch.transform.SetParent(root.transform, false);
+                    patch.transform.position = centre + new Vector3(
+                        (column - (columns - 1) * 0.5f) * spacing,
+                        0f,
+                        (row - (rows - 1) * 0.5f) * spacing);
+                    patch.transform.rotation = Quaternion.Euler(
+                        0f,
+                        ((column + row) & 3) * 90f,
+                        0f);
+                    patch.AddComponent<MeshFilter>().sharedMesh =
+                        patchMeshes[index % patchMeshes.Count];
+                    MeshRenderer renderer = patch.AddComponent<MeshRenderer>();
+                    renderer.sharedMaterial = material;
+                    renderer.shadowCastingMode =
+                        UnityEngine.Rendering.ShadowCastingMode.Off;
+                }
+            }
+        }
+
+        private static void ConfigureLoadCameraAndLight()
+        {
+            Camera camera = Object.FindObjectOfType<Camera>();
+            if (camera != null)
+            {
+                camera.orthographic = false;
+                camera.fieldOfView = 48f;
+                camera.transform.position = new Vector3(0f, 18f, -34f);
+                camera.transform.rotation = Quaternion.LookRotation(
+                    new Vector3(0f, 1.3f, 2f) - camera.transform.position,
+                    Vector3.up);
+                camera.farClipPlane = 140f;
+            }
+
+            Light light = Object.FindObjectOfType<Light>();
+            if (light != null)
+            {
+                light.transform.rotation = Quaternion.Euler(52f, -28f, 0f);
+                light.color = new Color(1f, 0.96f, 0.86f, 1f);
+                light.intensity = 1.1f;
+                light.shadows = LightShadows.Soft;
+            }
         }
 
         private static Dictionary<FoliageSpeciesKind, Mesh> CreateSpeciesAssets(
