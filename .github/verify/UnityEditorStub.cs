@@ -373,10 +373,15 @@ namespace UnityEditor.SceneManagement
 
     public enum NewSceneMode { Single = 0, Additive = 1 }
 
+    public enum OpenSceneMode { Single = 0, Additive = 1, AdditiveWithoutLoading = 2 }
+
     public static class EditorSceneManager
     {
         public static bool MarkSceneDirty(Scene scene) => false;
         public static Scene NewScene(NewSceneSetup setup, NewSceneMode mode) => default;
+        public static Scene OpenScene(
+            string scenePath,
+            OpenSceneMode mode = OpenSceneMode.Single) => default;
         public static bool SaveScene(Scene scene, string dstScenePath) => false;
         public static bool SaveCurrentModifiedScenesIfUserWantsTo() => false;
     }
