@@ -70,6 +70,7 @@ jobs:
           # An embedded package under Packages/ is picked up without a manifest
           # entry, and resolves against the working tree rather than a release.
           cp -r Packages/io.github.sabas0ba.sabaprops.foliage CIProject/Packages/io.github.sabas0ba.sabaprops.foliage
+          cp -r Packages/io.github.sabas0ba.sabaprops.trees CIProject/Packages/io.github.sabas0ba.sabaprops.trees
           find CIProject -maxdepth 3 -not -path '*/.*' | sort
 
       - name: Cache Unity Library
@@ -77,7 +78,7 @@ jobs:
         uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
           path: CIProject/Library
-          key: unity-library-${{ hashFiles('Packages/io.github.sabas0ba.sabaprops.foliage/**', '.github/verify/CIProject/**') }}
+          key: unity-library-${{ hashFiles('Packages/io.github.sabas0ba.sabaprops.foliage/**', 'Packages/io.github.sabas0ba.sabaprops.trees/**', '.github/verify/CIProject/**') }}
           restore-keys: |
             unity-library-
 
@@ -102,3 +103,13 @@ jobs:
           name: unity-editmode-results
           path: CIProject/TestResults
           if-no-files-found: ignore
+
+      - name: Upload regenerated bundled samples
+        if: steps.licence.outputs.available == 'true'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: bundled-samples
+          path: |
+            CIProject/Assets/SabaProps/FoliageBundledDemo
+            CIProject/Assets/SabaProps/TreesBundledDemo
+          if-no-files-found: error

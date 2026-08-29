@@ -129,6 +129,9 @@ namespace SabaProps.Foliage
         [Tooltip("Random change of the tangent direction at each step.")]
         [Range(0f, 1f)] public float directionJitter = 0.28f;
 
+        [Tooltip("Persistence of the seeded turning tendency. Higher values form broad arcs; lower values form short irregular turns.")]
+        [Range(0f, 0.98f)] public float directionPersistence = 0.82f;
+
         [Tooltip("How strongly a projected spline is attracted to its guide instead of following its own tangent walk.")]
         [Range(0f, 1f)] public float guideAttraction = 0.58f;
 

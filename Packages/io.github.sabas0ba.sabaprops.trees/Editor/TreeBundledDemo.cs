@@ -14,6 +14,11 @@ namespace SabaProps.Trees.Editors
         public const string ScenePath = OutputRoot + "/TreesDemo.unity";
         public const string SeasonalScenePath =
             OutputRoot + "/SeasonalTreesDemo.unity";
+        public const string LoadScenePath = OutputRoot + "/ForestLoadDemo.unity";
+        public const int LoadGroupSize = 64;
+        public const int LoadGroupCount = 3;
+        public const int LoadSampleTreeCount = LoadGroupSize * LoadGroupCount;
+        public const int LoadSampleRendererCount = LoadSampleTreeCount * 3;
         private const string AssetFolder = OutputRoot + "/Assets";
 
         private static readonly TreeBotanicalPreset[] AllPresets =
@@ -63,13 +68,14 @@ namespace SabaProps.Trees.Editors
 
             CreatePlantingScene();
             CreateSeasonalPlantingScene();
+            CreateForestLoadScene();
 
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
             Scene scene = EditorSceneManager.OpenScene(ScenePath);
             Debug.Log(
                 "[SabaProps Trees] Bundled grouped demos created at "
-                + ScenePath + " and " + SeasonalScenePath);
+                + ScenePath + ", " + SeasonalScenePath + ", and " + LoadScenePath);
             return scene;
         }
 
@@ -387,11 +393,119 @@ namespace SabaProps.Trees.Editors
             return root;
         }
 
+        private static void CreateForestLoadScene()
+        {
+            Scene scene = EditorSceneManager.NewScene(
+                NewSceneSetup.DefaultGameObjects,
+                NewSceneMode.Single);
+            IReadOnlyDictionary<TreeBotanicalPreset, TreeSpecies> species =
+                LoadSpeciesAssets();
+            Material groundMaterial = AssetDatabase.LoadAssetAtPath<Material>(
+                AssetFolder + "/TreesDemoGround.mat");
+            ConfigureLoadCameraAndLight();
+            CreateGround(groundMaterial, new Vector3(7f, 1f, 4f));
+
+            CreateLoadGroup(
+                species,
+                "Load Group 1 - Mixed Broadleaf (64)",
+                new Vector3(-22f, 0f, 2f),
+                new[]
+                {
+                    TreeBotanicalPreset.JapaneseZelkova,
+                    TreeBotanicalPreset.JapaneseMaple,
+                    TreeBotanicalPreset.JapaneseWhiteBirch,
+                    TreeBotanicalPreset.JapaneseRedPine,
+                },
+                4301,
+                2.15f,
+                0.42f,
+                0.35f);
+            CreateLoadGroup(
+                species,
+                "Load Group 2 - Conifer Plantation (64)",
+                new Vector3(0f, 0f, 2f),
+                new[]
+                {
+                    TreeBotanicalPreset.JapaneseCedar,
+                    TreeBotanicalPreset.HinokiCypress,
+                    TreeBotanicalPreset.JapaneseCedar,
+                    TreeBotanicalPreset.JapaneseRedPine,
+                },
+                4302,
+                2.05f,
+                0.18f,
+                0.34f);
+            CreateLoadGroup(
+                species,
+                "Load Group 3 - Seasonal Mixed (64)",
+                new Vector3(22f, 0f, 2f),
+                new[]
+                {
+                    TreeBotanicalPreset.SomeiYoshinoSummer,
+                    TreeBotanicalPreset.GinkgoSummer,
+                    TreeBotanicalPreset.JapaneseWhiteBirch,
+                    TreeBotanicalPreset.JapaneseMaple,
+                },
+                4303,
+                2.15f,
+                0.38f,
+                0.35f);
+
+            CreateLabel(
+                "Forest load sample: 192 trees / 576 LOD renderers",
+                new Vector3(-33f, 10.5f, 13.5f),
+                0.09f);
+            CreateLabel(
+                "Enable groups cumulatively: 64 / 128 / 192 trees",
+                new Vector3(-33f, 9.4f, 13.5f),
+                0.065f);
+
+            EditorSceneManager.SaveScene(scene, LoadScenePath);
+        }
+
+        private static void CreateLoadGroup(
+            IReadOnlyDictionary<TreeBotanicalPreset, TreeSpecies> species,
+            string name,
+            Vector3 center,
+            TreeBotanicalPreset[] presets,
+            int seed,
+            float spacing,
+            float jitter,
+            float scale)
+        {
+            var root = new GameObject(name);
+            var random = new FoliageRandom(seed);
+            int side = Mathf.RoundToInt(Mathf.Sqrt(LoadGroupSize));
+            float halfExtent = (side - 1) * spacing * 0.5f;
+            for (int index = 0; index < LoadGroupSize; index++)
+            {
+                int row = index / side;
+                int column = index % side;
+                TreeBotanicalPreset preset = presets[random.RangeInt(0, presets.Length)];
+                Vector3 position = center + new Vector3(
+                    column * spacing - halfExtent + random.Range(-jitter, jitter),
+                    0f,
+                    row * spacing - halfExtent + random.Range(-jitter, jitter));
+                CreateTreeInstance(
+                    root.transform,
+                    species[preset],
+                    "Tree " + (index + 1),
+                    position,
+                    scale * random.Range(0.82f, 1.18f),
+                    random.Range(0f, 360f));
+            }
+        }
+
         private static void CreateGround(Material material)
+        {
+            CreateGround(material, new Vector3(3f, 1f, 2.15f));
+        }
+
+        private static void CreateGround(Material material, Vector3 scale)
         {
             GameObject ground = GameObject.CreatePrimitive(PrimitiveType.Plane);
             ground.name = "Tree Demo Ground";
-            ground.transform.localScale = new Vector3(3f, 1f, 2.15f);
+            ground.transform.localScale = scale;
             ground.GetComponent<MeshRenderer>().sharedMaterial = material;
         }
 
@@ -482,6 +596,21 @@ namespace SabaProps.Trees.Editors
                 light.color = new Color(1f, 0.96f, 0.87f, 1f);
                 light.intensity = 1.15f;
                 light.shadows = LightShadows.Soft;
+            }
+        }
+
+        private static void ConfigureLoadCameraAndLight()
+        {
+            ConfigureCameraAndLight();
+            Camera camera = Camera.main;
+            if (camera != null)
+            {
+                camera.fieldOfView = 50f;
+                camera.transform.position = new Vector3(0f, 31f, -50f);
+                camera.transform.rotation = Quaternion.LookRotation(
+                    new Vector3(0f, 3f, 2f) - camera.transform.position,
+                    Vector3.up);
+                camera.farClipPlane = 180f;
             }
         }
     }

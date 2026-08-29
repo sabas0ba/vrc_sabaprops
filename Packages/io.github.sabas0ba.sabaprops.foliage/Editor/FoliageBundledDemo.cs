@@ -408,10 +408,17 @@ namespace SabaProps.Foliage.Editors
                 : profile == VineDemoProfile.BostonIvy ? 46f : 52f;
             vine.growth.branchAngleJitter = 16f;
             vine.growth.branchLengthVariance = 0.28f;
-            vine.growth.rootSpread = 0.14f;
-            vine.growth.guideAttraction = 0.64f;
+            vine.growth.rootSpread = 0.20f;
+            vine.growth.guideAttraction = profile == VineDemoProfile.BostonIvy
+                ? 0.58f
+                : profile == VineDemoProfile.CreepingFig ? 0.48f : 0.52f;
             vine.growth.pathLengthVariance = 0.16f;
-            vine.growth.directionJitter = 0.24f;
+            vine.growth.directionJitter = profile == VineDemoProfile.BostonIvy
+                ? 0.44f
+                : profile == VineDemoProfile.CreepingFig ? 0.62f : 0.55f;
+            vine.growth.directionPersistence = profile == VineDemoProfile.BostonIvy
+                ? 0.78f
+                : profile == VineDemoProfile.CreepingFig ? 0.90f : 0.86f;
             vine.growth.projectionDistance = 0.42f;
             vine.growth.nodeBudget = 2048;
             vine.growth.seed = seed;

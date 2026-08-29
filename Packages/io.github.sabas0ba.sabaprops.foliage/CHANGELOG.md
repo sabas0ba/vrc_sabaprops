@@ -32,6 +32,7 @@
 
 ### Changed
 
+- Surface Vine の方向揺らぎを持続的な旋回へ変更し、`Direction Persistence` で広い弧と短い不規則な折れを調整できるようにしました
 - Surface Vine の Guide を経路そのものから誘導場へ変更し、根元範囲、経路長、葉間隔、葉角度を Seed から散らすようにしました
 - Surface Vine の葉へ葉縁リング、主脈、葉柄の部分着色を追加しました。Boston Ivy preset は緑主体とし、葉全体の赤紫色を少数へ抑えました
 - Field Wizard と Foliage Palette の既定 Weight を `FoliageAssetLibrary.DefaultFieldWeight()` に集約しました

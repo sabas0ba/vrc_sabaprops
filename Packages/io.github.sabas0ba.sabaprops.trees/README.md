@@ -10,9 +10,11 @@ Foliage の shader と風チャンネル契約を共有しますが、草向け�
 ## 使い方
 
 Package Manager で `SabaProps Trees` を選び、`Samples > Trees Demo > Import` を実行すると、
-10 preset と各 3 段階 LOD を生成済みの 2 シーンを確認できます。`TreesDemo.unity` は
+10 preset と各 3 段階 LOD を生成済みの 3 シーンを確認できます。`TreesDemo.unity` は
 ケヤキ等の混交林、スギ・ヒノキの植林、ケヤキ街路樹、`SeasonalTreesDemo.unity` は
 シラカバ林、ソメイヨシノの春／夏の並木、イチョウの夏／秋の並木を収録しています。
+`ForestLoadDemo.unity` は 64 本単位の 3 群を収録し、群を順番に有効化して 64 / 128 / 192 本の
+描画負荷、樹冠の重なり、LOD 遷移を同じカメラ条件で比較できます。
 高さと向きに固定Seedの個体差を加え、各樹種のLOD Meshを全個体で共有しています。Demo は
 各 preset の既定分岐予算、樹冠、枝序、葉序、風応答をそのまま焼き込んでいます。
 

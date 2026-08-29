@@ -123,6 +123,7 @@ Species の形状パラメータが実際にどう効くかを、生成された
 | 経路 | `Mode` | `ProjectedSpline` はガイド曲線を優先し、`SurfaceCrawl` は接平面上をランダムに進みます |
 | 投影先 | `Target Surface` / `Additional Surfaces` | 主対象と、同じ経路で横断する隣接 Collider です。重複と null は無視されます |
 | 経路 | `Path Count` / `Coverage` | 主経路数と実際に使う割合。家全体の被覆率を決める最初の値です |
+| 経路 | `Direction Jitter` / `Direction Persistence` | 進行方向の最大揺らぎと、同じ旋回傾向が続く長さです。Persistence を高くすると広い弧、低くすると短い不規則な折れになります |
 | 経路 | `Guide Attraction` / `Root Spread` / `Path Length Variance` | ガイドへ戻る強さ、根元を散らす半径、個体ごとの長さ差です。固定的な平行線を崩す場合に先に調整します |
 | 分岐 | `Branches Per Metre` / `Max Branch Depth` / `Branch Length` | 1 m あたりの側枝開始頻度、再帰深度、親経路に対する長さ比です。密度を上げる場合は Node Budget も確認します |
 | 分岐 | `Branch Angle` / `Branch Angle Jitter` / `Branch Length Variance` | 親茎に対する側枝角、個々の角度差、長さ差です。角度を小さくすると主茎に沿い、大きくすると横へ広がります |

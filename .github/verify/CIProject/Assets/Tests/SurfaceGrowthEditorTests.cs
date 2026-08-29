@@ -52,6 +52,76 @@ namespace SabaProps.Foliage.CITests
         }
 
         [Test]
+        public void DirectionJitterCreatesSeededPersistentWander()
+        {
+            var settings = new SurfaceGrowthSettings
+            {
+                mode = SurfaceGrowthMode.ProjectedSpline,
+                pathCount = 1,
+                coverage = 1f,
+                stepLength = 0.08f,
+                maxPathLength = 3f,
+                branchesPerMetre = 0f,
+                rootSpread = 0f,
+                pathLengthVariance = 0f,
+                minimumSpacing = 0f,
+                directionJitter = 0.62f,
+                directionPersistence = 0.88f,
+                guideAttraction = 0.52f,
+                nodeBudget = 128,
+                seed = 7321,
+            };
+            var guides = new List<Vector3>
+            {
+                Vector3.zero,
+                new Vector3(0f, 3f, 0f),
+            };
+
+            SurfaceGrowthGraph first = SurfaceGrowthGraphBuilder.Build(
+                settings,
+                guides,
+                ProjectWall);
+            float minimumX = float.MaxValue;
+            float maximumX = float.MinValue;
+            foreach (SurfaceGrowthNode node in first.Nodes)
+            {
+                minimumX = Mathf.Min(minimumX, node.position.x);
+                maximumX = Mathf.Max(maximumX, node.position.x);
+            }
+            Assert.Greater(maximumX - minimumX, 0.12f,
+                "direction jitter should produce visible lateral wander");
+            Assert.Less(maximumX - minimumX, 1.5f,
+                "guide attraction should keep the path in a usable corridor");
+
+            settings.seed = 7322;
+            SurfaceGrowthGraph second = SurfaceGrowthGraphBuilder.Build(
+                settings,
+                guides,
+                ProjectWall);
+            int compared = Mathf.Min(first.Nodes.Count, second.Nodes.Count);
+            float seedDifference = 0f;
+            for (int i = 0; i < compared; i++)
+            {
+                seedDifference += Vector3.Distance(
+                    first.Nodes[i].position,
+                    second.Nodes[i].position);
+            }
+            Assert.Greater(seedDifference, 0.2f,
+                "different seeds should produce different growth directions");
+
+            settings.directionJitter = 0f;
+            SurfaceGrowthGraph straight = SurfaceGrowthGraphBuilder.Build(
+                settings,
+                guides,
+                ProjectWall);
+            foreach (SurfaceGrowthNode node in straight.Nodes)
+            {
+                Assert.Less(Mathf.Abs(node.position.x), 1e-4f,
+                    "zero jitter should preserve the guide direction");
+            }
+        }
+
+        [Test]
         public void BranchAngleControlsLateralGrowth()
         {
             var settings = new SurfaceGrowthSettings

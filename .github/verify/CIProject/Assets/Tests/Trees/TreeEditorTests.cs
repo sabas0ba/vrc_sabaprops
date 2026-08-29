@@ -1,15 +1,67 @@
 using System.Collections.Generic;
 using NUnit.Framework;
 using SabaProps.Foliage;
+using SabaProps.Foliage.Editors;
 using SabaProps.Trees.Editors;
 using UnityEditor;
+using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.Rendering;
+using UnityEngine.SceneManagement;
 
 namespace SabaProps.Trees.CITests
 {
     public sealed class TreeEditorTests
     {
+        [Test]
+        public void ForestLoadSampleProvidesThreeComparableDensitySteps()
+        {
+            Assert.AreEqual(64, TreeBundledDemo.LoadGroupSize);
+            Assert.AreEqual(3, TreeBundledDemo.LoadGroupCount);
+            Assert.AreEqual(192, TreeBundledDemo.LoadSampleTreeCount);
+            Assert.AreEqual(576, TreeBundledDemo.LoadSampleRendererCount);
+        }
+
+        [Test]
+        public void BundledSamplesGenerateDistributionAssets()
+        {
+            try
+            {
+                TreeBundledDemo.Create();
+                Assert.IsNotNull(AssetDatabase.LoadAssetAtPath<SceneAsset>(
+                    TreeBundledDemo.LoadScenePath));
+                Scene treeScene = EditorSceneManager.OpenScene(
+                    TreeBundledDemo.LoadScenePath);
+                Assert.IsTrue(treeScene.IsValid());
+
+                LODGroup[] groups = Object.FindObjectsOfType<LODGroup>();
+                Assert.AreEqual(TreeBundledDemo.LoadSampleTreeCount, groups.Length);
+                int rendererCount = 0;
+                foreach (LODGroup group in groups)
+                {
+                    foreach (LOD lod in group.GetLODs())
+                    {
+                        rendererCount += lod.renderers.Length;
+                    }
+                }
+                Assert.AreEqual(
+                    TreeBundledDemo.LoadSampleRendererCount,
+                    rendererCount);
+
+                FoliageBundledDemo.GenerateForDistribution();
+                Assert.IsNotNull(AssetDatabase.LoadAssetAtPath<SceneAsset>(
+                    FoliageBundledDemo.ScenePath));
+                Assert.IsNotNull(AssetDatabase.LoadAssetAtPath<SceneAsset>(
+                    FoliageBundledDemo.SpeciesScenePath));
+            }
+            finally
+            {
+                EditorSceneManager.NewScene(
+                    NewSceneSetup.EmptyScene,
+                    NewSceneMode.Single);
+            }
+        }
+
         [TearDown]
         public void CleanGeneratedAssets()
         {

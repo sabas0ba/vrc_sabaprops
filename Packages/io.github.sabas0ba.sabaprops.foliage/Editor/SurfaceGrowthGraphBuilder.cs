@@ -170,6 +170,7 @@ namespace SabaProps.Foliage.Editors
             Vector3 walkDirection = firstDirection;
             float lateralPhase = random.Range(0f, Mathf.PI * 2f);
             float lateralFrequency = random.Range(0.7f, 1.8f);
+            float directionBias = random.Signed();
 
             for (int step = 1;
                  step <= steps && graph.Nodes.Count < settings.nodeBudget;
@@ -194,18 +195,50 @@ namespace SabaProps.Foliage.Editors
                     side = AnyTangent(previousNormal);
                 }
                 Vector3 tangent = ProjectOnPlane(curveTangent, previousNormal).normalized;
+                if (tangent.sqrMagnitude < 1e-6f)
+                {
+                    tangent = walkDirection;
+                }
+                float jitter = Mathf.Clamp01(settings.directionJitter);
+                float persistence = Mathf.Clamp(
+                    settings.directionPersistence,
+                    0f,
+                    0.98f);
+                directionBias = Mathf.Lerp(
+                    random.Signed(),
+                    directionBias,
+                    persistence);
+                float wanderAngle = directionBias * jitter * 85f * Mathf.Deg2Rad;
+                Vector3 wanderDirection = (
+                    tangent * Mathf.Cos(wanderAngle)
+                    + side * Mathf.Sin(wanderAngle)).normalized;
                 walkDirection = ProjectOnPlane(
-                    walkDirection + tangent * settings.guideAttraction
-                    + side * random.Signed() * settings.directionJitter,
+                    Vector3.Slerp(
+                        walkDirection,
+                        wanderDirection,
+                        Mathf.Lerp(0.55f, 0.20f, persistence)),
                     previousNormal).normalized;
+
+                Vector3 guideDirection = ProjectOnPlane(
+                    guideTarget - previousPosition,
+                    previousNormal).normalized;
+                if (guideDirection.sqrMagnitude > 1e-6f)
+                {
+                    walkDirection = Vector3.Slerp(
+                        walkDirection,
+                        guideDirection,
+                        Mathf.Clamp01(settings.guideAttraction) * 0.12f).normalized;
+                }
                 Vector3 freeCandidate = previousPosition
                     + walkDirection * settings.stepLength
                     + side * Mathf.Sin(t * Mathf.PI * 2f * lateralFrequency + lateralPhase)
-                    * settings.directionJitter * settings.stepLength;
+                    * jitter * settings.stepLength * 0.25f;
+                float guideBlend = Mathf.Clamp01(settings.guideAttraction)
+                    * Mathf.Lerp(0.28f, 0.02f, jitter);
                 Vector3 candidate = Vector3.Lerp(
                     freeCandidate,
                     guideTarget,
-                    Mathf.Clamp01(settings.guideAttraction));
+                    guideBlend);
 
                 SurfacePoint projected;
                 if (!projector(
@@ -388,6 +421,7 @@ namespace SabaProps.Foliage.Editors
         {
             float travelled = 0f;
             int attempts = 0;
+            float directionBias = random.Signed();
             int maximumAttempts = Mathf.Max(
                 8,
                 Mathf.CeilToInt(
@@ -399,12 +433,30 @@ namespace SabaProps.Foliage.Editors
             {
                 SurfaceGrowthNode parentNode = graph.Nodes[parent];
                 Vector3 normal = parentNode.normal.normalized;
-                Vector3 randomDirection = RandomTangent(normal, ref random);
                 Vector3 gravity = ProjectOnPlane(Vector3.down, normal).normalized;
                 direction = ProjectOnPlane(direction, normal).normalized;
+                if (direction.sqrMagnitude < 1e-6f)
+                {
+                    direction = AnyTangent(normal);
+                }
+                float jitter = Mathf.Clamp01(settings.directionJitter);
+                float persistence = Mathf.Clamp(
+                    settings.directionPersistence,
+                    0f,
+                    0.98f);
+                directionBias = Mathf.Lerp(
+                    random.Signed(),
+                    directionBias,
+                    persistence);
+                Vector3 side = Vector3.Cross(normal, direction).normalized;
+                if (side.sqrMagnitude < 1e-6f)
+                {
+                    side = AnyTangent(normal);
+                }
+                float turnAngle = directionBias * jitter * 14f * Mathf.Deg2Rad;
                 direction = (
-                    direction
-                    + randomDirection * settings.directionJitter
+                    direction * Mathf.Cos(turnAngle)
+                    + side * Mathf.Sin(turnAngle)
                     + gravity * settings.gravityBias).normalized;
                 if (direction.sqrMagnitude < 1e-6f)
                 {

@@ -12,6 +12,7 @@ All notable changes to this package are documented in this file.
 - Species ごとの `Wind Enabled` / `Wind Response` と、主枝・葉密度を独立制御する `Crown Density` / `Foliage Depth`
 - Package Manager から導入できる、10 preset と 3 段階 LOD を生成済みの `Trees Demo` / `Seasonal Trees Demo` Sample
 - Demoを混交林、スギ・ヒノキ植林、街路樹、サクラ・イチョウ並木、シラカバ林の群生配置へ変更し、用途別の高さ揺らぎを追加しました
+- 64 / 128 / 192 本の群生を同一条件で比較できる `Forest Load Demo` Sample
 
 ### Changed
 

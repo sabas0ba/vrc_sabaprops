@@ -52,6 +52,7 @@ internal static class OfflineMeshTests
         Run("the dandelion keeps its rosette when the head goes", DandelionKeepsItsRosetteWhenTheHeadGoes);
         Run("the vine hangs below a rigid ledge anchor", VineHangsBelowItsAnchor);
         Run("projected surface paths are deterministic and budgeted", ProjectedSurfacePathsAreDeterministic);
+        Run("direction jitter creates seeded persistent wander", DirectionJitterCreatesPersistentWander);
         Run("surface crawl stays on its projector", SurfaceCrawlStaysProjected);
         Run("surface vine and rhizome meshes are well formed", SurfaceGrowthMeshesAreWellFormed);
 
@@ -144,6 +145,70 @@ internal static class OfflineMeshTests
                 "surface crawl left the projected ground");
             Require(Math.Abs(node.normal.y - 1f) < 1e-5f,
                 "surface crawl lost the projector normal");
+        }
+    }
+
+    private static void DirectionJitterCreatesPersistentWander()
+    {
+        var settings = new SurfaceGrowthSettings
+        {
+            mode = SurfaceGrowthMode.ProjectedSpline,
+            pathCount = 1,
+            coverage = 1f,
+            stepLength = 0.08f,
+            maxPathLength = 3f,
+            branchesPerMetre = 0f,
+            rootSpread = 0f,
+            pathLengthVariance = 0f,
+            minimumSpacing = 0f,
+            directionJitter = 0.62f,
+            directionPersistence = 0.88f,
+            guideAttraction = 0.52f,
+            nodeBudget = 128,
+            seed = 7321,
+        };
+        var guides = new List<Vector3>
+        {
+            Vector3.zero,
+            new Vector3(0f, 3f, 0f),
+        };
+
+        SurfaceGrowthGraph first = SurfaceGrowthGraphBuilder.Build(
+            settings, guides, ProjectWall);
+        float minimumX = float.MaxValue;
+        float maximumX = float.MinValue;
+        foreach (SurfaceGrowthNode node in first.Nodes)
+        {
+            minimumX = Mathf.Min(minimumX, node.position.x);
+            maximumX = Mathf.Max(maximumX, node.position.x);
+        }
+        float lateralSpan = maximumX - minimumX;
+        Require(lateralSpan > 0.12f,
+            $"direction jitter produced only {lateralSpan:0.000} m of lateral wander");
+        Require(maximumX - minimumX < 1.5f,
+            "guide attraction did not contain the lateral wander");
+
+        settings.seed = 7322;
+        SurfaceGrowthGraph second = SurfaceGrowthGraphBuilder.Build(
+            settings, guides, ProjectWall);
+        int compared = Mathf.Min(first.Nodes.Count, second.Nodes.Count);
+        float seedDifference = 0f;
+        for (int i = 0; i < compared; i++)
+        {
+            seedDifference += Vector3.Distance(
+                first.Nodes[i].position,
+                second.Nodes[i].position);
+        }
+        Require(seedDifference > 0.2f,
+            "different seeds did not change the growth direction");
+
+        settings.directionJitter = 0f;
+        SurfaceGrowthGraph straight = SurfaceGrowthGraphBuilder.Build(
+            settings, guides, ProjectWall);
+        foreach (SurfaceGrowthNode node in straight.Nodes)
+        {
+            Require(Mathf.Abs(node.position.x) < 1e-4f,
+                "zero jitter changed the guide direction");
         }
     }
 
