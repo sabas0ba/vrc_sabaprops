@@ -20,6 +20,9 @@ Foliage 単体では次のウィンドウを直接開けます。
 配置ウィンドウの表示言語は日本語が既定です。各ウィンドウ上部の `表示言語 / UI Language`
 から英語へ切り替えられ、設定は配置ウィンドウ間で共有されます。
 
+画面ごとの操作順、Palette の編集モード、Scene View のキー操作、自動再生成、World ビルド前の
+扱いは [配置・編集 UI 操作ガイド](Documentation~/placement-workflow.md) にまとめています。
+
 デモ生成は配置作業と分離し、`Tools > SabaProps > Debug` 以下にあります。
 
 ![地面配置向け 8 種の草花を混植し、同じ風になびかせた FoliageDemo のオフラインレンダリング](Documentation~/images/generated/foliage-demo-overview.svg)

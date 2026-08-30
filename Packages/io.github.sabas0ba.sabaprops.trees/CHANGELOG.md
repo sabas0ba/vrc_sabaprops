@@ -6,6 +6,7 @@ All notable changes to this package are documented in this file.
 
 ### Added
 
+- Added a link to the shared placement and editing UI guide for single-tree and Tree Field workflows.
 - Generated Tree Fields can rebuild automatically after debounced Inspector and Undo/Redo changes; first generation remains explicit.
 - `TreeField` is automatically excluded from builds with `DontSaveInBuild`; generated render objects remain and no manual component removal is required.
 - The shared placement workflow supports Japanese and English UI with Japanese as the default, using the same persistent language selection as the Foliage tools.

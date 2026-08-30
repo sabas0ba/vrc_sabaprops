@@ -8,6 +8,7 @@
 
 ### Added
 
+- Added a placement and editing UI guide covering palette edit modes, stamp controls, Surface Growth, trees, auto rebuild, and VRChat world-build handling.
 - Generated fields, vines, and rhizome patches can rebuild automatically after debounced Inspector, Scene-handle, and Undo/Redo changes; first generation remains explicit.
 - Foliage authoring and chunk-marker components are automatically excluded from builds with `DontSaveInBuild`; generated render objects remain and no manual component removal is required.
 - Placement workflow UI supports Japanese and English with Japanese as the default; the selected language is shared by the placement hub, Foliage Palette, quick field wizard, and Surface Growth placer.

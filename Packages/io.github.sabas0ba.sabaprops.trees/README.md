@@ -17,6 +17,10 @@ Foliage Palette、Surface Growth Placer、単木、Tree Field を同じウィン
 Scene View ハンドルを使ってスタンプ範囲を調整できます。
 デモ生成は `Tools > SabaProps > Debug` 以下にあります。
 
+単木・Tree Field を含む画面ごとの操作順、自動再生成、World ビルド前の扱いは
+[配置・編集 UI 操作ガイド](../io.github.sabas0ba.sabaprops.foliage/Documentation~/placement-workflow.md)
+を参照してください。
+
 ## 使い方
 
 Package Manager で `SabaProps Trees` を選び、`Samples > Trees Demo > Import` を実行すると、
