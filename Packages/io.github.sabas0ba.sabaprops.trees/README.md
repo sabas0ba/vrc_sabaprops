@@ -73,7 +73,7 @@ LOD Mesh は Species ごとに 3 個だけ生成し、すべての個体で共�
 - 子孫枝は一次枝の pivot と接続点の bend 値を継承するため、風で継ぎ目が開きません
 - `UV3.xyz` は object-space pivot、`UV3.w` は stiffness、`UV0.y` は bend です
 - Seed が同じなら頂点・index・LOD の生成結果は同じです
-- LOD1/LOD2 は再帰深度、断面数、枝分岐数、葉数を段階的に減らします
+- LOD1/LOD2 は同じ枝中心線と葉候補を維持しつつ、細枝の筒形状、断面数、枝区間数、葉カード数を段階的に減らし、残る葉を拡大して遠景の樹冠面積を保ちます
 - 一次枝と子枝は `Spiral` / `Opposite` / `Whorled` / `Irregular` の枝序で配置します
 - `Crown Shape` が高さごとの枝長包絡を、`Apical Dominance` が主幹と側枝の比率を決めます
 - `Crown Density` は再帰深度を変えずに主枝層を増減し、`Foliage Depth` は葉を付ける末端側の枝階層数を決めます

@@ -128,11 +128,13 @@ namespace SabaProps.Trees
     [Serializable]
     public sealed class TreeLodParams
     {
+        [Tooltip("LOD1 simplification strength. Branch centre lines and leaf candidates remain stable; higher values omit more fine branch tubes and leaf cards.")]
         [Range(1, 3)] public int lod1DepthReduction = 1;
+        [Tooltip("LOD2 simplification strength. Branch centre lines and leaf candidates remain stable; higher values omit more fine branch tubes and leaf cards.")]
         [Range(1, 4)] public int lod2DepthReduction = 2;
         [Range(0.2f, 0.9f)] public float lod0ScreenHeight = 0.55f;
         [Range(0.05f, 0.7f)] public float lod1ScreenHeight = 0.25f;
-        [Range(0.003f, 0.4f)] public float lod2ScreenHeight = 0.015f;
+        [Range(0.003f, 0.4f)] public float lod2ScreenHeight = 0.004f;
     }
 
     [Serializable]

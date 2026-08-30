@@ -21,6 +21,10 @@ All notable changes to this package are documented in this file.
 
 ### Changed
 
+- Tree LODs now share the same branch centre lines and deterministic leaf candidates; lower LODs omit fine branch tubes and use uniformly selected, larger leaf cards instead of rebuilding a different tree topology.
+- Low-LOD trunks retain enough radial and axial divisions for a stable flared-base silhouette, and distant culling starts at a smaller screen height.
+- Blossom and leaf planes now vary their roll per element; clustered Sakura and Ginkgo foliage is distributed along short generated twigs instead of stacking at one point.
+- Bundled-demo regeneration now updates existing assets in place so Mesh, Species, Material, and Scene GUIDs remain stable.
 - Tree scene-authoring entries now live under `GameObject > SabaProps > Placement`; bundled-demo generation moved under `Tools > SabaProps > Debug`.
 - Relicensed the package from MIT to Apache License 2.0.
 - Trunks now taper steadily from a flared base, child radii are capped at their junction, and branches emerge from the parent tangent before turning toward their target direction.

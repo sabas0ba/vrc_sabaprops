@@ -58,7 +58,7 @@ MonoBehaviour:
     lod2DepthReduction: 2
     lod0ScreenHeight: 0.55
     lod1ScreenHeight: 0.25
-    lod2ScreenHeight: 0.015
+    lod2ScreenHeight: 0.004
   placement:
     placementWeight: 1
     minSpacing: 3
@@ -66,7 +66,7 @@ MonoBehaviour:
     maxTilt: 3
     alignToGroundNormal: 0.15
     slopeLimits: {x: 0, y: 30}
-  lod0Mesh: {fileID: 4300000, guid: f94027b0e0de8094c973520991ce2ab8, type: 2}
-  lod1Mesh: {fileID: 4300000, guid: 96c6f5d54c411964ba7ce71731eab4d0, type: 2}
-  lod2Mesh: {fileID: 4300000, guid: 04dba0f5f1059d64e98e215036f31910, type: 2}
-  material: {fileID: 2100000, guid: 255c4fe71ad925f479c48c2deaeeb389, type: 2}
+  lod0Mesh: {fileID: 4300000, guid: 4facb385a79ec4747aec3062432cb594, type: 2}
+  lod1Mesh: {fileID: 4300000, guid: bb0fa3030ea87ea4da7003d6be032fb6, type: 2}
+  lod2Mesh: {fileID: 4300000, guid: d18cd290a70eeef4d94da957782f6244, type: 2}
+  material: {fileID: 2100000, guid: 6700e61b3d74ce0459f881904686c730, type: 2}

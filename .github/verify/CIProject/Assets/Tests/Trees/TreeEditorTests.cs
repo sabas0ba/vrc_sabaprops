@@ -66,6 +66,22 @@ namespace SabaProps.Trees.CITests
                     TreeBundledDemo.LoadSampleRendererCount,
                     rendererCount);
 
+                const string sampleMeshPath =
+                    "Assets/SabaProps/TreesBundledDemo/Assets/JapaneseZelkova_LOD0.asset";
+                string meshGuid = AssetDatabase.AssetPathToGUID(sampleMeshPath);
+                string sceneGuid = AssetDatabase.AssetPathToGUID(
+                    TreeBundledDemo.LoadScenePath);
+                Assert.IsNotEmpty(meshGuid);
+                Assert.IsNotEmpty(sceneGuid);
+
+                TreeBundledDemo.Create();
+                Assert.AreEqual(meshGuid,
+                    AssetDatabase.AssetPathToGUID(sampleMeshPath),
+                    "bundled mesh regeneration must preserve its GUID");
+                Assert.AreEqual(sceneGuid,
+                    AssetDatabase.AssetPathToGUID(TreeBundledDemo.LoadScenePath),
+                    "bundled scene regeneration must preserve its GUID");
+
                 FoliageBundledDemo.GenerateForDistribution();
                 Assert.IsNotNull(AssetDatabase.LoadAssetAtPath<SceneAsset>(
                     FoliageBundledDemo.ScenePath));
@@ -282,6 +298,8 @@ namespace SabaProps.Trees.CITests
                     ginkgoSummer.appearance.leafArrangement);
                 Assert.AreEqual(ginkgoSummer.meshSeed, ginkgoAutumn.meshSeed,
                     "seasonal Ginkgo variants should retain their branch structure");
+                Assert.LessOrEqual(sakuraSpring.lod.lod2ScreenHeight, 0.005f,
+                    "distant trees should retain their final LOD instead of culling early");
             }
             finally
             {

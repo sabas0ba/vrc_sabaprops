@@ -53,10 +53,6 @@ namespace SabaProps.Trees.Editors
         /// <summary>Creates and saves grouped planting and seasonal sample scenes.</summary>
         public static Scene Create()
         {
-            if (AssetDatabase.IsValidFolder(OutputRoot))
-            {
-                AssetDatabase.DeleteAsset(OutputRoot);
-            }
             TreeAssetLibrary.EnsureFolder(AssetFolder);
 
             Material treeMaterial = CreateTreeMaterial();
@@ -88,7 +84,7 @@ namespace SabaProps.Trees.Editors
                 species.name = displayName;
                 species.ApplyBotanicalPreset(preset);
                 species.material = material;
-                AssetDatabase.CreateAsset(
+                species = WriteAssetPreservingGuid(
                     species,
                     AssetFolder + "/" + displayName + ".asset");
 
@@ -97,7 +93,7 @@ namespace SabaProps.Trees.Editors
                 {
                     meshes[lod] = TreeMeshBuilder.Build(species, lod);
                     meshes[lod].name = displayName + "_LOD" + lod;
-                    AssetDatabase.CreateAsset(
+                    meshes[lod] = WriteAssetPreservingGuid(
                         meshes[lod],
                         AssetFolder + "/" + meshes[lod].name + ".asset");
                 }
@@ -534,8 +530,9 @@ namespace SabaProps.Trees.Editors
             material.DisableKeyword(FoliageShaderContract.DistanceFadeKeyword);
             material.SetFloat("_Cull", 2f);
             material.SetFloat("_WindStrength", 0.14f);
-            AssetDatabase.CreateAsset(material, AssetFolder + "/TreesDemo.mat");
-            return material;
+            return WriteAssetPreservingGuid(
+                material,
+                AssetFolder + "/TreesDemo.mat");
         }
 
         private static Material CreateGroundMaterial()
@@ -546,8 +543,9 @@ namespace SabaProps.Trees.Editors
                 color = new Color(0.20f, 0.24f, 0.17f, 1f),
             };
             material.SetFloat("_Glossiness", 0.03f);
-            AssetDatabase.CreateAsset(material, AssetFolder + "/TreesDemoGround.mat");
-            return material;
+            return WriteAssetPreservingGuid(
+                material,
+                AssetFolder + "/TreesDemoGround.mat");
         }
 
         private static Material CreateRoadMaterial()
@@ -558,8 +556,26 @@ namespace SabaProps.Trees.Editors
                 color = new Color(0.17f, 0.18f, 0.17f, 1f),
             };
             material.SetFloat("_Glossiness", 0.08f);
-            AssetDatabase.CreateAsset(material, AssetFolder + "/TreesDemoRoad.mat");
-            return material;
+            return WriteAssetPreservingGuid(
+                material,
+                AssetFolder + "/TreesDemoRoad.mat");
+        }
+
+        private static T WriteAssetPreservingGuid<T>(T generated, string path)
+            where T : UnityEngine.Object
+        {
+            T existing = AssetDatabase.LoadAssetAtPath<T>(path);
+            if (existing == null)
+            {
+                AssetDatabase.CreateAsset(generated, path);
+                return generated;
+            }
+
+            EditorUtility.CopySerialized(generated, existing);
+            existing.name = generated.name;
+            EditorUtility.SetDirty(existing);
+            UnityEngine.Object.DestroyImmediate(generated);
+            return existing;
         }
 
         private static void CreateLabel(string text, Vector3 position, float size)
