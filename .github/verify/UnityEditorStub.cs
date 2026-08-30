@@ -186,6 +186,7 @@ namespace UnityEditor
         public static T LoadAssetAtPath<T>(string assetPath) where T : UnityEngine.Object => null;
         public static string GetAssetPath(UnityEngine.Object assetObject) => string.Empty;
         public static string AssetPathToGUID(string path) => string.Empty;
+        public static string GenerateUniqueAssetPath(string path) => path;
         public static void SaveAssets() { }
         public static void Refresh() { }
         public static void ImportAsset(string path) { }
@@ -223,6 +224,8 @@ namespace UnityEditor
     public static class HandleUtility
     {
         public static float GetHandleSize(Vector3 position) => 1f;
+        public static void AddDefaultControl(int controlId) { }
+        public static Ray GUIPointToWorldRay(Vector2 position) => default;
     }
 
     public static class Handles
@@ -233,11 +236,13 @@ namespace UnityEditor
         public static Matrix4x4 matrix { get; set; }
 
         public static void DrawWireCube(Vector3 center, Vector3 size) { }
+        public static void DrawWireDisc(Vector3 center, Vector3 normal, float radius) { }
         public static void Label(Vector3 position, string text) { }
         public static void Label(Vector3 position, string text, GUIStyle style) { }
         public static void DrawLine(Vector3 p1, Vector3 p2) { }
 
         public static float RadiusHandle(Quaternion rotation, Vector3 position, float radius) => radius;
+        public static Vector3 PositionHandle(Vector3 position, Quaternion rotation) => position;
 
         public static float ScaleValueHandle(
             float value, Vector3 position, Quaternion rotation, float size,
@@ -257,10 +262,12 @@ namespace UnityEditor
 
     public class SceneView
     {
+        public static event Action<SceneView> duringSceneGui;
         public static SceneView lastActiveSceneView => null;
         public Vector3 pivot { get; set; }
         public void Repaint() { }
         public void LookAt(Vector3 point, Quaternion direction, float newSize) { }
+        public static void RepaintAll() { }
     }
 
     public class SceneAsset : UnityEngine.Object { }
@@ -318,6 +325,7 @@ namespace UnityEditor
         public static float FloatField(string label, float value, params GUILayoutOption[] options) => value;
 
         public static int IntField(string label, int value, params GUILayoutOption[] options) => value;
+        public static int IntSlider(string label, int value, int leftValue, int rightValue, params GUILayoutOption[] options) => value;
 
         public static Vector2 Vector2Field(string label, Vector2 value, params GUILayoutOption[] options) => value;
 

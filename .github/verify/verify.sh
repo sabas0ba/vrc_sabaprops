@@ -30,12 +30,15 @@
 #
 # Requirements: dotnet SDK 8+, glslangValidator, curl, unzip, and podman or
 # docker. Python is not required on the host: every script that needs it runs
-# in the pinned container that .github/scripts/run.sh starts.
+# in the pinned container that .github/scripts/run.sh starts. An isolated
+# repository development container may instead set SABAPROPS_PYTHON_INTERPRETER
+# to the interpreter supplied by its pinned Nix environment.
 set -euo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO="$(cd "$HERE/../.." && pwd)"
-PACKAGE="${1:-$REPO/Packages/io.github.sabas0ba.sabaprops.foliage}"
+FOLIAGE_PACKAGE="$REPO/Packages/io.github.sabas0ba.sabaprops.foliage"
+WATER_PACKAGE="$REPO/Packages/io.github.sabas0ba.sabaprops.water"
 
 WORK="${VERIFY_WORK_DIR:-$REPO/.verify}"
 REFS="$WORK/refs"
@@ -101,6 +104,7 @@ UNITY_ARGS=()
 for dll in "$UNITY_DIR"/*.dll; do UNITY_ARGS+=(-r:"$dll"); done
 
 # CS1701/1702: assembly version unification between net35 and net472 refs.
+# shellcheck disable=SC2054
 COMMON=(-nostdlib+ -noconfig -langversion:9.0 -nowarn:1701,1702 -target:library -nologo)
 
 csc() { dotnet "$CSC_DLL" "$@"; }
@@ -111,8 +115,8 @@ PYTHON="$REPO/.github/scripts/run.sh"
 # ---------------------------------------------------------------------------
 log "Compiling Runtime assembly (real UnityEngine references)"
 # ---------------------------------------------------------------------------
-mapfile -t RUNTIME_SOURCES < <(find "$PACKAGE/Runtime" -name '*.cs' | sort)
-[ "${#RUNTIME_SOURCES[@]}" -gt 0 ] || fail "no Runtime sources found under $PACKAGE"
+mapfile -t RUNTIME_SOURCES < <(find "$FOLIAGE_PACKAGE/Runtime" -name '*.cs' | sort)
+[ "${#RUNTIME_SOURCES[@]}" -gt 0 ] || fail "no Runtime sources found under $FOLIAGE_PACKAGE"
 
 csc "${COMMON[@]}" "${BCL[@]}" "${UNITY_ARGS[@]}" \
     -out:"$OUT/SabaProps.Foliage.Runtime.dll" "${RUNTIME_SOURCES[@]}"
@@ -128,13 +132,28 @@ echo "ok"
 # ---------------------------------------------------------------------------
 log "Compiling Editor assembly (real UnityEngine references + stub)"
 # ---------------------------------------------------------------------------
-mapfile -t EDITOR_SOURCES < <(find "$PACKAGE/Editor" -name '*.cs' | sort)
-[ "${#EDITOR_SOURCES[@]}" -gt 0 ] || fail "no Editor sources found under $PACKAGE"
+mapfile -t EDITOR_SOURCES < <(find "$FOLIAGE_PACKAGE/Editor" -name '*.cs' | sort)
+[ "${#EDITOR_SOURCES[@]}" -gt 0 ] || fail "no Editor sources found under $FOLIAGE_PACKAGE"
 
 csc "${COMMON[@]}" "${BCL[@]}" "${UNITY_ARGS[@]}" \
     -r:"$OUT/SabaProps.Foliage.Runtime.dll" -r:"$OUT/UnityEditor.dll" \
     -out:"$OUT/SabaProps.Foliage.Editor.dll" "${EDITOR_SOURCES[@]}"
 echo "ok: ${#EDITOR_SOURCES[@]} file(s)"
+
+# ---------------------------------------------------------------------------
+log "Compiling Water assemblies (real UnityEngine references + stub)"
+# ---------------------------------------------------------------------------
+mapfile -t WATER_RUNTIME_SOURCES < <(find "$WATER_PACKAGE/Runtime" -name '*.cs' | sort)
+mapfile -t WATER_EDITOR_SOURCES < <(find "$WATER_PACKAGE/Editor" -name '*.cs' | sort)
+[ "${#WATER_RUNTIME_SOURCES[@]}" -gt 0 ] || fail "no Runtime sources found under $WATER_PACKAGE"
+[ "${#WATER_EDITOR_SOURCES[@]}" -gt 0 ] || fail "no Editor sources found under $WATER_PACKAGE"
+
+csc "${COMMON[@]}" "${BCL[@]}" "${UNITY_ARGS[@]}" \
+    -out:"$OUT/SabaProps.Water.Runtime.dll" "${WATER_RUNTIME_SOURCES[@]}"
+csc "${COMMON[@]}" "${BCL[@]}" "${UNITY_ARGS[@]}" \
+    -r:"$OUT/SabaProps.Water.Runtime.dll" -r:"$OUT/UnityEditor.dll" \
+    -out:"$OUT/SabaProps.Water.Editor.dll" "${WATER_EDITOR_SOURCES[@]}"
+echo "ok: ${#WATER_RUNTIME_SOURCES[@]} Runtime, ${#WATER_EDITOR_SOURCES[@]} Editor file(s)"
 
 # ---------------------------------------------------------------------------
 log "Compiling the documentation capture tool"
@@ -177,10 +196,23 @@ else
     echo "skipped: no CI project"
 fi
 
+WATER_TEST_DIR="$HERE/CIProject/Assets/WaterTests"
+if [ -d "$WATER_TEST_DIR" ]; then
+    mapfile -t WATER_TEST_SOURCES < <(find "$WATER_TEST_DIR" -name '*.cs' | sort)
+    if [ "${#WATER_TEST_SOURCES[@]}" -gt 0 ]; then
+        csc "${COMMON[@]}" "${BCL[@]}" "${UNITY_ARGS[@]}" \
+            -r:"$OUT/SabaProps.Water.Runtime.dll" \
+            -r:"$OUT/SabaProps.Water.Editor.dll" \
+            -r:"$OUT/UnityEditor.dll" \
+            -out:"$OUT/SabaProps.Water.CITests.dll" "${WATER_TEST_SOURCES[@]}"
+        echo "ok: ${#WATER_TEST_SOURCES[@]} Water test file(s)"
+    fi
+fi
+
 # ---------------------------------------------------------------------------
 log "Type-checking shader HLSL"
 # ---------------------------------------------------------------------------
-SHADER_DIR="$PACKAGE/Runtime/Shaders"
+SHADER_DIR="$FOLIAGE_PACKAGE/Runtime/Shaders"
 SHADER="$SHADER_DIR/SabaFoliage.shader"
 [ -f "$SHADER" ] || fail "shader not found at $SHADER"
 
@@ -245,12 +277,12 @@ csc -nologo -langversion:9.0 -target:exe -nostdlib+ -noconfig \
     -out:"$OFFLINE_OUT/OfflineMeshTests.dll" \
     "$OFFLINE/UnityEngineShim.cs" \
     "$OFFLINE/OfflineMeshTests.cs" \
-    "$PACKAGE/Runtime/FoliageRandom.cs" \
-    "$PACKAGE/Runtime/FoliageSeason.cs" \
-    "$PACKAGE/Runtime/FoliageSpecies.cs" \
-    "$PACKAGE/Editor/FoliageMeshBuffer.cs" \
-    "$PACKAGE/Editor/FoliageMeshBuilder.cs" \
-    "$PACKAGE/Editor/FoliageSeasonPass.cs"
+    "$FOLIAGE_PACKAGE/Runtime/FoliageRandom.cs" \
+    "$FOLIAGE_PACKAGE/Runtime/FoliageSeason.cs" \
+    "$FOLIAGE_PACKAGE/Runtime/FoliageSpecies.cs" \
+    "$FOLIAGE_PACKAGE/Editor/FoliageMeshBuffer.cs" \
+    "$FOLIAGE_PACKAGE/Editor/FoliageMeshBuilder.cs" \
+    "$FOLIAGE_PACKAGE/Editor/FoliageSeasonPass.cs"
 
 cat > "$OFFLINE_OUT/OfflineMeshTests.runtimeconfig.json" <<'JSON'
 {
@@ -293,6 +325,7 @@ rm -rf "$OUT/site/docs"
 # ---------------------------------------------------------------------------
 log "Validating manifests"
 # ---------------------------------------------------------------------------
-"$PYTHON" .github/scripts/check_package.py "$REPO" "$PACKAGE"
+"$PYTHON" .github/scripts/check_package.py "$REPO" "$FOLIAGE_PACKAGE"
+"$PYTHON" .github/scripts/check_package.py "$REPO" "$WATER_PACKAGE"
 
 log "All checks passed"

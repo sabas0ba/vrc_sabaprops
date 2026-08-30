@@ -1,0 +1,25 @@
+{
+    "name": "SabaProps.Water.CITests",
+    "rootNamespace": "SabaProps.Water.CITests",
+    "references": [
+        "SabaProps.Water.Runtime",
+        "SabaProps.Water.Editor",
+        "UnityEngine.TestRunner",
+        "UnityEditor.TestRunner"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": true,
+    "precompiledReferences": [
+        "nunit.framework.dll"
+    ],
+    "autoReferenced": false,
+    "defineConstraints": [
+        "UNITY_INCLUDE_TESTS"
+    ],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
