@@ -8,6 +8,7 @@
 
 ### Added
 
+- `Window > SabaProps > Placement > Surface Growth`: primary/adjacent Colliders, botanical preset, initial growth direction, hierarchy parent, and immediate build can be configured before placing a Surface Vine or Rhizome Patch.
 - `FoliageLoadDemo.unity`: 600 sunflowers and a 1,920-plant mixed meadow using four shared GPU-instanced patch meshes and one material.
 
 - `SurfaceGrowthGraph` と `SurfaceVine`: ガイド点列の投影スプラインまたは決定的な表面クロールから分岐 Graph を作り、Collider 表面へツタを焼き込みます
@@ -34,6 +35,7 @@
 
 ### Changed
 
+- Scene authoring entries now live under `GameObject > SabaProps > Placement`; sample and bundled-demo generators moved under `Tools > SabaProps > Debug`.
 - Relicensed the package from MIT to Apache License 2.0.
 - Moved `SurfaceVine` and `RhizomePatch` into matching script files so generated scene components remain resolvable after assembly recompilation.
 - Projected surface vines can switch to an adjacent collider when the guide crosses a floor/slope/wall boundary, so the Slope sample remains on the ramp.

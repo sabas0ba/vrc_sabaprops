@@ -6,6 +6,7 @@ All notable changes to this package are documented in this file.
 
 ### Added
 
+- `Window > SabaProps > Placement`: a shared scene-authoring window for Foliage Palette, Surface Growth, single trees, and Tree Fields.
 - ケヤキ、イロハモミジ、スギ、シラカバ、アカマツ、ヒノキの実在種 preset
 - ソメイヨシノの春／夏とイチョウの夏／秋を、同一 Seed・同一枝構造で切り替える季節 preset
 - 樹冠形、枝序、主幹優勢、枝の下垂と先端上向き、葉序を分けた生成規則
@@ -16,6 +17,7 @@ All notable changes to this package are documented in this file.
 
 ### Changed
 
+- Tree scene-authoring entries now live under `GameObject > SabaProps > Placement`; bundled-demo generation moved under `Tools > SabaProps > Debug`.
 - Relicensed the package from MIT to Apache License 2.0.
 - Trunks now taper steadily from a flared base, child radii are capped at their junction, and branches emerge from the parent tangent before turning toward their target direction.
 - LOD1/LOD2 preserve crown mass with fewer, broader leaf cards and a longer far-distance range; the 192-tree load scene uses denser stands for silhouette and load evaluation.

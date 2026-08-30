@@ -265,6 +265,7 @@ namespace UnityEditor
     {
         public static event Action<SceneView> duringSceneGui;
         public static SceneView lastActiveSceneView => null;
+        public Camera camera { get; } = null;
         public Vector3 pivot { get; set; }
         public static void RepaintAll() { }
         public void Repaint() { }
@@ -345,6 +346,7 @@ namespace UnityEditor
         public static int IntField(string label, int value, params GUILayoutOption[] options) => value;
 
         public static Vector2 Vector2Field(string label, Vector2 value, params GUILayoutOption[] options) => value;
+        public static Vector3 Vector3Field(string label, Vector3 value, params GUILayoutOption[] options) => value;
 
         public static Enum EnumPopup(string label, Enum selected, params GUILayoutOption[] options) => selected;
 

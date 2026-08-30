@@ -26,7 +26,7 @@ namespace SabaProps.Trees.Editors
                 $"{TreeAssetLibrary.RootFolder} に作成しました。");
         }
 
-        [MenuItem("GameObject/SabaProps/Tree LOD Group", false, 11)]
+        [MenuItem("GameObject/SabaProps/Placement/Tree LOD Group", false, 11)]
         public static void CreateTree(MenuCommand command)
         {
             TreeSpecies species = Selection.activeObject as TreeSpecies;
@@ -39,7 +39,7 @@ namespace SabaProps.Trees.Editors
             TreeAssetLibrary.CreateLodGroup(species, parentObject != null ? parentObject.transform : null);
         }
 
-        [MenuItem("GameObject/SabaProps/Tree Field", false, 12)]
+        [MenuItem("GameObject/SabaProps/Placement/Tree Field", false, 12)]
         public static void CreateTreeField(MenuCommand command)
         {
             var fieldObject = new GameObject("Tree Field");

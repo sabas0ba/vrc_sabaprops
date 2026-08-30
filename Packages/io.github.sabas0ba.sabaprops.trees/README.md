@@ -7,6 +7,13 @@ VRChat ワールド向けのプロシージャル樹木ジェネレータです�
 Foliage の shader と風チャンネル契約を共有しますが、草向けの Distance Shrink と
 影 OFF の既定値は使いません。
 
+## 配置ツール
+
+`Window > SabaProps > Placement` または
+`Tools > SabaProps > Placement > Open Placement Window` から共通配置ウィンドウを開けます。
+Foliage Palette、Surface Growth Placer、単木、Tree Field を同じウィンドウから作成できます。
+デモ生成は `Tools > SabaProps > Debug` 以下にあります。
+
 ## 使い方
 
 Package Manager で `SabaProps Trees` を選び、`Samples > Trees Demo > Import` を実行すると、
@@ -22,7 +29,7 @@ Package Manager で `SabaProps Trees` を選び、`Samples > Trees Demo > Import
 2. `Assets/SabaProps/Trees/Species/` から `TreeSpecies` を選びます
 3. Inspector で構造・葉・LOD を調整し、`Rebuild LOD Meshes` を押します
 4. `Create LOD Group in Scene` を押すか、Hierarchy の
-   `GameObject > SabaProps > Tree LOD Group` を実行します
+   `GameObject > SabaProps > Placement > Tree LOD Group` を実行します
 
 既存の LOD Mesh は同じ GUID のまま更新されます。シーン参照は失われません。
 Mesh の AssetDatabase 書き出しは Unity Undo の対象外です。Scene に生成した
@@ -30,7 +37,7 @@ Mesh の AssetDatabase 書き出しは Unity Undo の対象外です。Scene に
 
 ## 複数個体の配置
 
-1. Hierarchy の `GameObject > SabaProps > Tree Field` を実行します
+1. Hierarchy の `GameObject > SabaProps > Placement > Tree Field` を実行します
 2. `Species` に配置する `TreeSpecies` と、必要ならフィールド固有の Weight を設定します
 3. エリア、密度、地面レイヤー、最小間隔などを調整して `Generate` を押します
 4. 再生成前の結果を削除する場合は `Clear` を押します

@@ -7,6 +7,18 @@ GPU インスタンシング前提の、軽量な草木スキャッタリング�
 - ワールド座標ハッシュによる個体差なので、per-instance データの送信が一切不要です
 - Built-in Render Pipeline / Unity 2022.3 / VRChat ワールド・アバターの両方で使えます
 
+## 配置ツール
+
+Trees package も導入した環境では、`Window > SabaProps > Placement` が
+草地・ツタ・根茎・樹木をシーンへ配置するための共通入口になります。
+Foliage 単体では次のウィンドウを直接開けます。
+
+- `Window > SabaProps > Foliage Palette`: 種の配合、形状プレビュー、Scene View 上での草地配置
+- `Window > SabaProps > Placement > Surface Growth`: 対象 Collider、隣接面、ツタの preset、初期成長方向を指定して Surface Vine / Rhizome Patch を配置
+- `GameObject > SabaProps > Placement`: 選択中の GameObject を基準にした簡易配置
+
+デモ生成は配置作業と分離し、`Tools > SabaProps > Debug` 以下にあります。
+
 ![地面配置向け 8 種の草花を混植し、同じ風になびかせた FoliageDemo のオフラインレンダリング](Documentation~/images/generated/foliage-demo-overview.svg)
 
 この図は実際のメッシュ生成器から作った 320 株を決定論的に配置し、シェーダーと同じ風の式を固定時刻で評価したものです。ライティングと地面は形状を読みやすくするためのオフライン近似で、Unity の画面を撮影したものではありません。
@@ -46,7 +58,7 @@ Package Manager で `SabaProps Foliage` を選び、`Samples > Foliage Demo > Im
 全 Species、地形、出力モード、季節を比較する大規模な検証用シーンは次のメニューから
 プロジェクト内へ生成できます。
 
-`Tools > SabaProps > Foliage > Create Sample Scene`
+`Tools > SabaProps > Debug > Foliage > Create Sample Scene`
 
 地面・起伏・傾斜・壁上のツタ・ライト・カメラと 29 の区画からなるデモシーンを生成し、
 **ビルドまで済ませた状態**で開きます。保存先は `Assets/SabaProps/Foliage/Samples/FoliageDemo.unity` です。
@@ -84,7 +96,7 @@ Inspector の統計で Renderer 数と推定ドローコールの差をそのま
 セクション 2 が使う Species アセットは `Assets/SabaProps/Foliage/Samples/Species/` に別途作られます。
 既定のプリセットは書き換えません。
 
-**移動が遅いと感じたら**: `Tools > SabaProps > Foliage > Import VRChat Demo Movement` を一度実行し、
+**移動が遅いと感じたら**: `Tools > SabaProps > Debug > Foliage > Import VRChat Demo Movement` を一度実行し、
 コンパイル後に Create Sample Scene をやり直してください。歩行 4 m/s・走行 9 m/s・ジャンプ可になります。
 
 VRChat の既定は歩行 2 m/s、ジャンプ不可です。これらは `VRCSceneDescriptor` の項目ではなく
@@ -122,7 +134,7 @@ VRChat Worlds SDK が入っているプロジェクトでは、`VRCSceneDescript
 
 1. 地面に Collider を付ける
    Terrain なら TerrainCollider、メッシュ地形なら MeshCollider。**これが無いと 1 本も生えません。**
-2. `GameObject > SabaProps > Foliage Field`
+2. `GameObject > SabaProps > Placement > Foliage Field...`
    ダイアログが開きます。配置する種と出現比率、エリア形状、密度、出力モードをここで決めます。
    必要な Species アセットとマテリアルは `Assets/SabaProps/Foliage/` に自動で作られます。
 3. **Create**
@@ -142,8 +154,8 @@ Species アセットだけ先に作りたい場合は `Tools > SabaProps > Folia
 
 Hierarchy で Collider を持つ壁または地面を選び、次を実行します。
 
-- `GameObject > SabaProps > Surface Vine`
-- `GameObject > SabaProps > Rhizome Patch`
+- `GameObject > SabaProps > Placement > Surface Vine`
+- `GameObject > SabaProps > Placement > Rhizome Patch`
 
 親の Collider は `Target Surface` へ自動設定されます。隣接する床・壁・斜面をまたぐ場合は
 `Additional Surfaces` に Collider を追加します。各候補へ投影して最も近い hit を選ぶため、

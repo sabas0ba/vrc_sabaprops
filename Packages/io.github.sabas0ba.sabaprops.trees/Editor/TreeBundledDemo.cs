@@ -35,7 +35,7 @@ namespace SabaProps.Trees.Editors
             TreeBotanicalPreset.GinkgoAutumn,
         };
 
-        [MenuItem("Tools/SabaProps/Trees/Create Bundled Demo", false, 2)]
+        [MenuItem("Tools/SabaProps/Debug/Trees/Create Bundled Demo", false, 20)]
         public static void CreateAndOpen()
         {
             if (EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo())

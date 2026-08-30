@@ -22,4 +22,4 @@ Surface Vine または Rhizome Patch を選ぶと、ガイド点、被覆率、�
 Mesh を `Assets/SabaProps/Foliage/Generated/SurfaceGrowth` 以下へ更新します。
 
 29区画で全パラメータ、地形、出力モード、季節を比較する従来の大規模Demoも残っています。
-`Tools > SabaProps > Foliage > Create Sample Scene` からプロジェクト内へ生成できます。
+`Tools > SabaProps > Debug > Foliage > Create Sample Scene` からプロジェクト内へ生成できます。

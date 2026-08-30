@@ -31,7 +31,7 @@ namespace SabaProps.Foliage.Editors
         public const int LoadSampleRendererCount = 64;
         private const string AssetFolder = OutputRoot + "/Assets";
 
-        [MenuItem("Tools/SabaProps/Foliage/Create Bundled Demo", false, 2)]
+        [MenuItem("Tools/SabaProps/Debug/Foliage/Create Bundled Demo", false, 20)]
         public static void CreateAndOpen()
         {
             if (EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo())

@@ -99,7 +99,7 @@ namespace SabaProps.Foliage.Editors
             get { return SectionZ(5) + PlotSize; }
         }
 
-        [MenuItem("Tools/SabaProps/Foliage/Create Sample Scene", false, 1)]
+        [MenuItem("Tools/SabaProps/Debug/Foliage/Create Sample Scene", false, 10)]
         public static void CreateAndOpen()
         {
             if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo())
@@ -900,7 +900,7 @@ namespace SabaProps.Foliage.Editors
                 text.AppendLine(movementAdded
                     ? "  移動設定: FoliageDemoMovement を配置しました。歩行 4 m/s・走行 9 m/s・ジャンプ可です。"
                     : "  移動設定: 未導入です。VRChat の既定は歩行 2 m/s・ジャンプ不可なので、"
-                      + " Tools > SabaProps > Foliage > Import VRChat Demo Movement のあと再実行すると追加されます。");
+                      + " Tools > SabaProps > Debug > Foliage > Import VRChat Demo Movement のあと再実行すると追加されます。");
             }
 
             return text.ToString().TrimEnd();

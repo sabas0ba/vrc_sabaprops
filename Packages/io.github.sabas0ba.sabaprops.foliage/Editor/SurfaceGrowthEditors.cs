@@ -179,7 +179,7 @@ namespace SabaProps.Foliage.Editors
 
     public static class SurfaceGrowthMenu
     {
-        [MenuItem("GameObject/SabaProps/Surface Vine", false, 13)]
+        [MenuItem("GameObject/SabaProps/Placement/Surface Vine", false, 13)]
         public static void CreateSurfaceVine(MenuCommand command)
         {
             var gameObject = new GameObject("Surface Vine");
@@ -200,7 +200,7 @@ namespace SabaProps.Foliage.Editors
             Selection.activeGameObject = gameObject;
         }
 
-        [MenuItem("GameObject/SabaProps/Rhizome Patch", false, 14)]
+        [MenuItem("GameObject/SabaProps/Placement/Rhizome Patch", false, 14)]
         public static void CreateRhizomePatch(MenuCommand command)
         {
             var gameObject = new GameObject("Rhizome Patch");
