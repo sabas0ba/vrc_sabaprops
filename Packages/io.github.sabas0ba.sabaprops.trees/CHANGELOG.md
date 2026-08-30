@@ -6,6 +6,8 @@ All notable changes to this package are documented in this file.
 
 ### Added
 
+- Generated Tree Fields can rebuild automatically after debounced Inspector and Undo/Redo changes; first generation remains explicit.
+- `TreeField` is automatically excluded from builds with `DontSaveInBuild`; generated render objects remain and no manual component removal is required.
 - The shared placement workflow supports Japanese and English UI with Japanese as the default, using the same persistent language selection as the Foliage tools.
 - `Window > SabaProps > Placement`: a shared scene-authoring window for Foliage Palette, Surface Growth, single trees, and Tree Fields.
 - ケヤキ、イロハモミジ、スギ、シラカバ、アカマツ、ヒノキの実在種 preset

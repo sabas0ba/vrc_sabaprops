@@ -45,6 +45,14 @@ Mesh の AssetDatabase 書き出しは Unity Undo の対象外です。Scene に
 3. エリア、密度、地面レイヤー、最小間隔などを調整して `Generate` を押します
 4. 再生成前の結果を削除する場合は `Clear` を押します
 
+生成後は `値変更時に自動再生成` が既定で有効になり、Inspector の値を変更すると短い待ち時間の
+後に LODGroup と Mesh が更新されます。大規模な林をまとめて編集する場合は無効にし、編集後に
+`Generate` を実行できます。初回生成は常に `Generate` を使用します。
+
+`TreeField` は Unity Editor 専用の authoring Component で、`DontSaveInBuild` により World
+ビルドから自動除外されます。ビルド前に手動で削除する必要はありません。生成済みの GameObject、
+`MeshFilter`、`MeshRenderer`、`LODGroup` は通常どおりビルドへ残ります。
+
 `TreeField` は Foliage 0.4.0 の共有サーフェス散布 API を利用します。矩形／円形、固定
 Seed、地面へのレイキャスト、高度制限、除外レイヤー、Density Mask の挙動は
 Foliage Field と共通です。種の選択、傾斜制限、最小間隔、スケールと姿勢だけを

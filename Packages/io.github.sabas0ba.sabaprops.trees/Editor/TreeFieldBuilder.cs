@@ -13,7 +13,9 @@ namespace SabaProps.Trees.Editors
     /// </summary>
     public static class TreeFieldBuilder
     {
-        public static TreeBuildStats Build(TreeField field)
+        public static TreeBuildStats Build(
+            TreeField field,
+            bool recordUndo = true)
         {
             if (field == null)
             {
@@ -21,8 +23,11 @@ namespace SabaProps.Trees.Editors
             }
 
             var stopwatch = Stopwatch.StartNew();
-            int undoGroup = Undo.GetCurrentGroup();
-            Undo.SetCurrentGroupName("Build Tree Field");
+            int undoGroup = recordUndo ? Undo.GetCurrentGroup() : -1;
+            if (recordUndo)
+            {
+                Undo.SetCurrentGroupName("Build Tree Field");
+            }
 
             try
             {
@@ -83,7 +88,7 @@ namespace SabaProps.Trees.Editors
                     AssetDatabase.StopAssetEditing();
                 }
 
-                Clear(field);
+                Clear(field, recordUndo);
 
                 var generated = new GameObject(TreeField.GeneratedRootName);
                 generated.transform.SetParent(field.transform, false);
@@ -144,10 +149,16 @@ namespace SabaProps.Trees.Editors
                 stats.buildSeconds = stopwatch.ElapsedMilliseconds / 1000f;
                 field.lastBuildStats = stats;
 
-                Undo.RegisterCreatedObjectUndo(generated, "Build Tree Field");
+                if (recordUndo)
+                {
+                    Undo.RegisterCreatedObjectUndo(generated, "Build Tree Field");
+                }
                 EditorUtility.SetDirty(field);
                 MarkSceneDirty(field);
-                Undo.CollapseUndoOperations(undoGroup);
+                if (recordUndo)
+                {
+                    Undo.CollapseUndoOperations(undoGroup);
+                }
                 return stats;
             }
             finally
@@ -157,7 +168,7 @@ namespace SabaProps.Trees.Editors
             }
         }
 
-        public static void Clear(TreeField field)
+        public static void Clear(TreeField field, bool recordUndo = true)
         {
             if (field == null)
             {
@@ -171,7 +182,14 @@ namespace SabaProps.Trees.Editors
             }
             if (existing != null)
             {
-                Undo.DestroyObjectImmediate(existing.gameObject);
+                if (recordUndo)
+                {
+                    Undo.DestroyObjectImmediate(existing.gameObject);
+                }
+                else
+                {
+                    Object.DestroyImmediate(existing.gameObject);
+                }
             }
 
             field.generatedRoot = null;

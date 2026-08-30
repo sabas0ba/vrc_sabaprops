@@ -6,10 +6,35 @@ namespace SabaProps.Foliage.Editors
     [CustomEditor(typeof(SurfaceVine))]
     public sealed class SurfaceVineEditor : UnityEditor.Editor
     {
+        private SerializedProperty _autoRebuild;
+
+        private void OnEnable()
+        {
+            _autoRebuild = serializedObject.FindProperty("autoRebuild");
+            Undo.undoRedoPerformed += OnUndoRedo;
+        }
+
+        private void OnDisable()
+        {
+            Undo.undoRedoPerformed -= OnUndoRedo;
+        }
+
         public override void OnInspectorGUI()
         {
-            DrawDefaultInspector();
             var vine = (SurfaceVine)target;
+            serializedObject.Update();
+            DrawPropertiesExcluding(serializedObject, "m_Script", "autoRebuild");
+            EditorGUILayout.PropertyField(
+                _autoRebuild,
+                new GUIContent(SabaPropsEditorLocalization.Text(
+                    "値変更時に自動再生成",
+                    "Auto Rebuild on Changes")));
+            if (serializedObject.ApplyModifiedProperties())
+            {
+                ScheduleAutoRebuild(vine);
+            }
+
+            DrawBuildExclusionHelp();
 
             EditorGUILayout.Space(8f);
             if (vine.generatedGraph != null)
@@ -23,10 +48,12 @@ namespace SabaProps.Foliage.Editors
             {
                 if (GUILayout.Button("Build / Rebuild", GUILayout.Height(24f)))
                 {
+                    SabaPropsAutoRebuild.Cancel(vine);
                     SurfaceGrowthAuthoringBuilder.Build(vine);
                 }
                 if (GUILayout.Button("Clear", GUILayout.Height(24f)))
                 {
+                    SabaPropsAutoRebuild.Cancel(vine);
                     SurfaceGrowthAuthoringBuilder.Clear(vine);
                 }
             }
@@ -55,30 +82,91 @@ namespace SabaProps.Foliage.Editors
             Undo.RecordObject(vine, "Apply Surface Vine Preset");
             preset();
             EditorUtility.SetDirty(vine);
+            ScheduleAutoRebuild(vine);
         }
 
         private void OnSceneGUI()
         {
             var vine = (SurfaceVine)target;
-            SurfaceGrowthSceneHandles.DrawGuideHandles(
+            if (SurfaceGrowthSceneHandles.DrawGuideHandles(
                 vine.transform,
                 vine.guidePoints,
                 vine,
-                "Move Vine Guide Point");
+                "Move Vine Guide Point"))
+            {
+                ScheduleAutoRebuild(vine);
+            }
             SurfaceGrowthSceneHandles.DrawGraph(
                 vine.transform,
                 vine.generatedGraph,
                 new Color(0.18f, 0.65f, 0.16f, 1f));
+        }
+
+        private void OnUndoRedo()
+        {
+            ScheduleAutoRebuild((SurfaceVine)target);
+        }
+
+        private static void ScheduleAutoRebuild(SurfaceVine vine)
+        {
+            MeshFilter filter = vine != null ? vine.GetComponent<MeshFilter>() : null;
+            if (vine == null || !vine.autoRebuild || filter == null || filter.sharedMesh == null)
+            {
+                SabaPropsAutoRebuild.Cancel(vine);
+                return;
+            }
+
+            SabaPropsAutoRebuild.Schedule(
+                vine,
+                () => SurfaceGrowthAuthoringBuilder.Build(vine, false));
+        }
+
+        private static void DrawBuildExclusionHelp()
+        {
+            EditorGUILayout.HelpBox(
+                SabaPropsEditorLocalization.Text(
+                    "生成済みの内容だけを値・ガイド・Undo/Redo の変更後に更新します。初回は Build / Rebuild を使用してください。Component は World ビルド時に自動除外されるため、手動で削除する必要はありません。",
+                    "Updates existing generated content after value, guide, or Undo/Redo changes. Use Build / Rebuild for the first build. The component is automatically excluded from world builds and does not need to be removed manually."),
+                MessageType.None);
         }
     }
 
     [CustomEditor(typeof(RhizomePatch))]
     public sealed class RhizomePatchEditor : UnityEditor.Editor
     {
+        private SerializedProperty _autoRebuild;
+
+        private void OnEnable()
+        {
+            _autoRebuild = serializedObject.FindProperty("autoRebuild");
+            Undo.undoRedoPerformed += OnUndoRedo;
+        }
+
+        private void OnDisable()
+        {
+            Undo.undoRedoPerformed -= OnUndoRedo;
+        }
+
         public override void OnInspectorGUI()
         {
-            DrawDefaultInspector();
             var patch = (RhizomePatch)target;
+            serializedObject.Update();
+            DrawPropertiesExcluding(serializedObject, "m_Script", "autoRebuild");
+            EditorGUILayout.PropertyField(
+                _autoRebuild,
+                new GUIContent(SabaPropsEditorLocalization.Text(
+                    "値変更時に自動再生成",
+                    "Auto Rebuild on Changes")));
+            if (serializedObject.ApplyModifiedProperties())
+            {
+                ScheduleAutoRebuild(patch);
+            }
+
+            EditorGUILayout.HelpBox(
+                SabaPropsEditorLocalization.Text(
+                    "生成済みの内容だけを値・ガイド・Undo/Redo の変更後に更新します。初回は Build / Rebuild を使用してください。Component は World ビルド時に自動除外されるため、手動で削除する必要はありません。",
+                    "Updates existing generated content after value, guide, or Undo/Redo changes. Use Build / Rebuild for the first build. The component is automatically excluded from world builds and does not need to be removed manually."),
+                MessageType.None);
 
             EditorGUILayout.Space(8f);
             if (patch.generatedGraph != null)
@@ -92,10 +180,12 @@ namespace SabaProps.Foliage.Editors
             {
                 if (GUILayout.Button("Build / Rebuild", GUILayout.Height(24f)))
                 {
+                    SabaPropsAutoRebuild.Cancel(patch);
                     SurfaceGrowthAuthoringBuilder.Build(patch);
                 }
                 if (GUILayout.Button("Clear", GUILayout.Height(24f)))
                 {
+                    SabaPropsAutoRebuild.Cancel(patch);
                     SurfaceGrowthAuthoringBuilder.Clear(patch);
                 }
             }
@@ -104,21 +194,43 @@ namespace SabaProps.Foliage.Editors
         private void OnSceneGUI()
         {
             var patch = (RhizomePatch)target;
-            SurfaceGrowthSceneHandles.DrawGuideHandles(
+            if (SurfaceGrowthSceneHandles.DrawGuideHandles(
                 patch.transform,
                 patch.guidePoints,
                 patch,
-                "Move Rhizome Seed Point");
+                "Move Rhizome Seed Point"))
+            {
+                ScheduleAutoRebuild(patch);
+            }
             SurfaceGrowthSceneHandles.DrawGraph(
                 patch.transform,
                 patch.generatedGraph,
                 new Color(0.52f, 0.30f, 0.12f, 1f));
         }
+
+        private void OnUndoRedo()
+        {
+            ScheduleAutoRebuild((RhizomePatch)target);
+        }
+
+        private static void ScheduleAutoRebuild(RhizomePatch patch)
+        {
+            MeshFilter filter = patch != null ? patch.GetComponent<MeshFilter>() : null;
+            if (patch == null || !patch.autoRebuild || filter == null || filter.sharedMesh == null)
+            {
+                SabaPropsAutoRebuild.Cancel(patch);
+                return;
+            }
+
+            SabaPropsAutoRebuild.Schedule(
+                patch,
+                () => SurfaceGrowthAuthoringBuilder.Build(patch, false));
+        }
     }
 
     internal static class SurfaceGrowthSceneHandles
     {
-        public static void DrawGuideHandles(
+        public static bool DrawGuideHandles(
             Transform transform,
             System.Collections.Generic.List<Vector3> guidePoints,
             Object owner,
@@ -126,8 +238,9 @@ namespace SabaProps.Foliage.Editors
         {
             if (transform == null || guidePoints == null)
             {
-                return;
+                return false;
             }
+            bool changed = false;
             using (new Handles.DrawingScope(transform.localToWorldMatrix))
             {
                 Handles.color = new Color(0.95f, 0.72f, 0.12f, 1f);
@@ -147,9 +260,11 @@ namespace SabaProps.Foliage.Editors
                         Undo.RecordObject(owner, undoName);
                         guidePoints[i] = moved;
                         EditorUtility.SetDirty(owner);
+                        changed = true;
                     }
                 }
             }
+            return changed;
         }
 
         public static void DrawGraph(

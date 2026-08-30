@@ -3,7 +3,10 @@ using UnityEngine;
 
 namespace SabaProps.Foliage
 {
-    /// <summary>Authoring component for vines that follow a Collider surface.</summary>
+    /// <summary>
+    /// Authoring component for vines that follow a Collider surface. It is
+    /// automatically omitted from builds; users do not need to remove it.
+    /// </summary>
     [DisallowMultipleComponent]
     [RequireComponent(typeof(MeshFilter), typeof(MeshRenderer))]
     public sealed class SurfaceVine : MonoBehaviour
@@ -28,5 +31,21 @@ namespace SabaProps.Foliage
         [HideInInspector] public SurfaceGrowthGraph generatedGraph =
             new SurfaceGrowthGraph();
         [HideInInspector] public Mesh generatedMesh;
+        [HideInInspector] public bool autoRebuild = true;
+
+        private void Reset()
+        {
+            ExcludeAuthoringComponentFromBuild();
+        }
+
+        private void OnValidate()
+        {
+            ExcludeAuthoringComponentFromBuild();
+        }
+
+        private void ExcludeAuthoringComponentFromBuild()
+        {
+            hideFlags |= HideFlags.DontSaveInBuild;
+        }
     }
 }

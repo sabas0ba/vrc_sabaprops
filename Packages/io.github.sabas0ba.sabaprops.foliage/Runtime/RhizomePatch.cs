@@ -3,7 +3,10 @@ using UnityEngine;
 
 namespace SabaProps.Foliage
 {
-    /// <summary>Authoring component for rhizome-connected ground-cover shoots.</summary>
+    /// <summary>
+    /// Authoring component for rhizome-connected ground-cover shoots. It is
+    /// automatically omitted from builds; users do not need to remove it.
+    /// </summary>
     [DisallowMultipleComponent]
     [RequireComponent(typeof(MeshFilter), typeof(MeshRenderer))]
     public sealed class RhizomePatch : MonoBehaviour
@@ -33,5 +36,21 @@ namespace SabaProps.Foliage
         [HideInInspector] public SurfaceGrowthGraph generatedGraph =
             new SurfaceGrowthGraph();
         [HideInInspector] public Mesh generatedMesh;
+        [HideInInspector] public bool autoRebuild = true;
+
+        private void Reset()
+        {
+            ExcludeAuthoringComponentFromBuild();
+        }
+
+        private void OnValidate()
+        {
+            ExcludeAuthoringComponentFromBuild();
+        }
+
+        private void ExcludeAuthoringComponentFromBuild()
+        {
+            hideFlags |= HideFlags.DontSaveInBuild;
+        }
     }
 }

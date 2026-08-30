@@ -37,6 +37,11 @@ Foliage 単体では次のウィンドウを直接開けます。
 VRChat のワールドとアバターでは、**実行時に C# が動きません**（動くのは Udon だけです）。
 つまり `Graphics.DrawMeshInstanced` を毎フレーム呼ぶタイプの実装はアップロード後に何も描画しません。
 
+`FoliageField`、`FoliageChunk`、`SurfaceVine`、`RhizomePatch` は Unity Editor での
+生成条件を保持する authoring Component です。各 Component には `DontSaveInBuild` が自動設定され、
+World ビルドには含まれません。利用者がビルド前に手動で削除する必要はありません。
+生成済みの `MeshFilter`、`MeshRenderer`、`LODGroup` と GameObject は通常どおりビルドへ残ります。
+
 そこでこのパッケージは、実際に VRChat で効く 2 つの方法だけを採用しています。
 
 | モード | 仕組み | 向いている場面 |
@@ -144,7 +149,10 @@ VRChat Worlds SDK が入っているプロジェクトでは、`VRCSceneDescript
 3. **Create**
    シーンビューの中心にフィールドが置かれ、Generate now が ON なら生成まで済ませます。
 
-やり直したいときは Inspector の **Clear**、パラメータを変えたら **Generate** で作り直します。
+初回生成には Inspector の **Generate**、生成結果を削除する場合は **Clear** を使います。
+生成後は **値変更時に自動再生成** が既定で有効になり、Inspector の値や Scene View の範囲を
+変更すると、操作完了から短い待ち時間の後に生成結果も更新されます。大規模な Field をまとめて
+編集する場合は無効にし、編集後に **Generate** を実行できます。
 `Seed` が同じなら何度ビルドしても同じ配置になるので、他の PC でも結果は一致します。
 
 種の構成や比率は後から Inspector の **Species / Mix** でも変えられます。
@@ -180,6 +188,8 @@ Surface Vine には Creeping Fig / English Ivy / Boston Ivy の形態 preset が
 Rhizome Patch の既定形態はドクダミで、地下 Graph の Node から心形葉と花を立ち上げます。
 生成結果は `Assets/SabaProps/Foliage/Generated/SurfaceGrowth/` の Mesh asset へ保存され、
 実行時 C# を必要としません。
+一度生成した後は **値変更時に自動再生成** が Inspector の値、ガイド点、Undo/Redo を監視し、
+短い待ち時間の後に Mesh を更新します。初回生成だけは **Build / Rebuild** を使用します。
 
 詳細は [パラメータと見た目の対応](Documentation~/parameters.md#surface-vine) と
 [ロードマップの設計記録](Documentation~/roadmap.md#060-ツタ)を参照してください。

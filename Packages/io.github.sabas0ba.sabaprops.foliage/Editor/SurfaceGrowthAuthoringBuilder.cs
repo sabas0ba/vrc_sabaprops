@@ -12,7 +12,7 @@ namespace SabaProps.Foliage.Editors
         private const string GeneratedFolder =
             FoliageAssetLibrary.GeneratedFolder + "/SurfaceGrowth";
 
-        public static bool Build(SurfaceVine vine)
+        public static bool Build(SurfaceVine vine, bool recordUndo = true)
         {
             if (vine == null || vine.targetSurface == null)
             {
@@ -43,10 +43,18 @@ namespace SabaProps.Foliage.Editors
                 graph,
                 vine.growth,
                 vine.morphology);
-            Undo.RecordObject(vine, "Build Surface Vine");
+            if (recordUndo)
+            {
+                Undo.RecordObject(vine, "Build Surface Vine");
+            }
             vine.generatedGraph = graph;
             vine.generatedMesh = WriteMesh(vine.generatedMesh, mesh, vine.name + "_SurfaceVine");
-            Bind(vine.gameObject, vine.generatedMesh, vine.material, out Material material);
+            Bind(
+                vine.gameObject,
+                vine.generatedMesh,
+                vine.material,
+                recordUndo,
+                out Material material);
             vine.material = material;
             EditorUtility.SetDirty(vine);
             MarkSceneDirty(vine.gameObject);
@@ -54,7 +62,7 @@ namespace SabaProps.Foliage.Editors
             return true;
         }
 
-        public static bool Build(RhizomePatch patch)
+        public static bool Build(RhizomePatch patch, bool recordUndo = true)
         {
             if (patch == null || patch.targetSurface == null)
             {
@@ -85,13 +93,21 @@ namespace SabaProps.Foliage.Editors
                 graph,
                 patch.growth,
                 patch.morphology);
-            Undo.RecordObject(patch, "Build Rhizome Patch");
+            if (recordUndo)
+            {
+                Undo.RecordObject(patch, "Build Rhizome Patch");
+            }
             patch.generatedGraph = graph;
             patch.generatedMesh = WriteMesh(
                 patch.generatedMesh,
                 mesh,
                 patch.name + "_RhizomePatch");
-            Bind(patch.gameObject, patch.generatedMesh, patch.material, out Material material);
+            Bind(
+                patch.gameObject,
+                patch.generatedMesh,
+                patch.material,
+                recordUndo,
+                out Material material);
             patch.material = material;
             EditorUtility.SetDirty(patch);
             MarkSceneDirty(patch.gameObject);
@@ -167,12 +183,16 @@ namespace SabaProps.Foliage.Editors
             GameObject gameObject,
             Mesh mesh,
             Material requestedMaterial,
+            bool recordUndo,
             out Material material)
         {
             MeshFilter filter = gameObject.GetComponent<MeshFilter>();
             MeshRenderer renderer = gameObject.GetComponent<MeshRenderer>();
-            Undo.RecordObject(filter, "Bind Surface Growth Mesh");
-            Undo.RecordObject(renderer, "Bind Surface Growth Material");
+            if (recordUndo)
+            {
+                Undo.RecordObject(filter, "Bind Surface Growth Mesh");
+                Undo.RecordObject(renderer, "Bind Surface Growth Material");
+            }
             filter.sharedMesh = mesh;
             material = requestedMaterial != null
                 ? requestedMaterial

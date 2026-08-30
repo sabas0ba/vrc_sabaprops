@@ -11,6 +11,106 @@ using UnityEngine.SceneManagement;
 
 namespace SabaProps.Foliage.CITests
 {
+    public class AuthoringComponentBuildSafetyTests
+    {
+        [Test]
+        public void AutoRebuildCoalescesRepeatedChangesForOneComponent()
+        {
+            var owner = new GameObject("Auto Rebuild Owner");
+            int firstBuilds = 0;
+            int latestBuilds = 0;
+            try
+            {
+                SabaPropsAutoRebuild.Schedule(owner, () => firstBuilds++);
+                SabaPropsAutoRebuild.Schedule(owner, () => latestBuilds++);
+
+                MethodInfo flush = typeof(SabaPropsAutoRebuild).GetMethod(
+                    "FlushDueBuilds",
+                    BindingFlags.NonPublic | BindingFlags.Static);
+                Assert.IsNotNull(flush);
+
+                // The production path waits 0.4 seconds. Move the editor clock
+                // far enough ahead without making the test suite sleep.
+                FieldInfo pendingField = typeof(SabaPropsAutoRebuild).GetField(
+                    "Pending",
+                    BindingFlags.NonPublic | BindingFlags.Static);
+                Assert.IsNotNull(pendingField);
+                var pending = pendingField.GetValue(null) as System.Collections.IDictionary;
+                Assert.IsNotNull(pending);
+                object pendingBuild = pending[owner.GetInstanceID()];
+                Assert.IsNotNull(pendingBuild);
+                FieldInfo dueAt = pendingBuild.GetType().GetField("dueAt");
+                Assert.IsNotNull(dueAt);
+                dueAt.SetValue(pendingBuild, double.MinValue);
+
+                flush.Invoke(null, null);
+
+                Assert.AreEqual(0, firstBuilds,
+                    "an older queued rebuild was not replaced");
+                Assert.AreEqual(1, latestBuilds,
+                    "the latest change did not produce exactly one rebuild");
+            }
+            finally
+            {
+                SabaPropsAutoRebuild.Cancel(owner);
+                Object.DestroyImmediate(owner);
+            }
+        }
+
+        [Test]
+        public void FoliageAuthoringComponentsAreExcludedButRenderersRemain()
+        {
+            var objects = new List<GameObject>();
+            try
+            {
+                var fieldObject = new GameObject("Field");
+                objects.Add(fieldObject);
+                AssertExcluded(fieldObject.AddComponent<FoliageField>());
+
+                var chunkObject = new GameObject("Chunk");
+                objects.Add(chunkObject);
+                AssertExcluded(chunkObject.AddComponent<FoliageChunk>());
+
+                var vineObject = new GameObject("Vine");
+                objects.Add(vineObject);
+                SurfaceVine vine = vineObject.AddComponent<SurfaceVine>();
+                AssertExcluded(vine);
+                AssertIncluded(vineObject.GetComponent<MeshFilter>());
+                AssertIncluded(vineObject.GetComponent<MeshRenderer>());
+
+                var patchObject = new GameObject("Patch");
+                objects.Add(patchObject);
+                RhizomePatch patch = patchObject.AddComponent<RhizomePatch>();
+                AssertExcluded(patch);
+                AssertIncluded(patchObject.GetComponent<MeshFilter>());
+                AssertIncluded(patchObject.GetComponent<MeshRenderer>());
+            }
+            finally
+            {
+                foreach (GameObject gameObject in objects)
+                {
+                    Object.DestroyImmediate(gameObject);
+                }
+            }
+        }
+
+        private static void AssertExcluded(Component component)
+        {
+            Assert.AreNotEqual(
+                0,
+                (int)(component.hideFlags & HideFlags.DontSaveInBuild),
+                component.GetType().Name + " must not be included in a world build");
+        }
+
+        private static void AssertIncluded(Component component)
+        {
+            Assert.AreEqual(
+                0,
+                (int)(component.hideFlags & HideFlags.DontSaveInBuild),
+                component.GetType().Name + " is baked output and must remain in the build");
+        }
+    }
+
     public class FoliageFieldWizardTests
     {
         [Test]

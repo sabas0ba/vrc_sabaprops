@@ -8,6 +8,8 @@
 
 ### Added
 
+- Generated fields, vines, and rhizome patches can rebuild automatically after debounced Inspector, Scene-handle, and Undo/Redo changes; first generation remains explicit.
+- Foliage authoring and chunk-marker components are automatically excluded from builds with `DontSaveInBuild`; generated render objects remain and no manual component removal is required.
 - Placement workflow UI supports Japanese and English with Japanese as the default; the selected language is shared by the placement hub, Foliage Palette, quick field wizard, and Surface Growth placer.
 - Foliage Palette stamp controls provide rectangle/circle selection, numeric dimensions, 2 / 5 / 10 / 20 m presets, instance estimates, and pinned Scene View resize handles.
 - `Window > SabaProps > Placement > Surface Growth`: primary/adjacent Colliders, botanical preset, initial growth direction, hierarchy parent, and immediate build can be configured before placing a Surface Vine or Rhizome Patch.

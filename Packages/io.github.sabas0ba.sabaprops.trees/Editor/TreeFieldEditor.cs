@@ -1,5 +1,6 @@
 using UnityEditor;
 using UnityEngine;
+using SabaProps.Foliage.Editors;
 
 namespace SabaProps.Trees.Editors
 {
@@ -7,12 +8,40 @@ namespace SabaProps.Trees.Editors
     [CanEditMultipleObjects]
     public sealed class TreeFieldEditor : UnityEditor.Editor
     {
+        private SerializedProperty _autoRebuild;
+
+        private void OnEnable()
+        {
+            _autoRebuild = serializedObject.FindProperty("autoRebuild");
+            Undo.undoRedoPerformed += OnUndoRedo;
+        }
+
+        private void OnDisable()
+        {
+            Undo.undoRedoPerformed -= OnUndoRedo;
+        }
+
         public override void OnInspectorGUI()
         {
             serializedObject.Update();
             DrawPropertiesExcluding(
-                serializedObject, "m_Script", "generatedRoot", "lastBuildStats");
-            serializedObject.ApplyModifiedProperties();
+                serializedObject, "m_Script", "generatedRoot", "lastBuildStats",
+                "autoRebuild");
+            EditorGUILayout.PropertyField(
+                _autoRebuild,
+                new GUIContent(SabaPropsEditorLocalization.Text(
+                    "値変更時に自動再生成",
+                    "Auto Rebuild on Changes")));
+            EditorGUILayout.HelpBox(
+                SabaPropsEditorLocalization.Text(
+                    "生成済みの内容だけを値変更後に更新します。初回は Generate を使用してください。Component は World ビルド時に自動除外されるため、手動で削除する必要はありません。",
+                    "Updates existing generated content after value changes. Use Generate for the first build. The component is automatically excluded from world builds and does not need to be removed manually."),
+                MessageType.None);
+
+            if (serializedObject.ApplyModifiedProperties())
+            {
+                ScheduleAutoRebuilds();
+            }
             EditorGUILayout.Space(8f);
 
             using (new EditorGUILayout.HorizontalScope())
@@ -21,6 +50,7 @@ namespace SabaProps.Trees.Editors
                 {
                     foreach (Object each in targets)
                     {
+                        SabaPropsAutoRebuild.Cancel(each);
                         TreeFieldBuilder.Build((TreeField)each);
                     }
                 }
@@ -30,6 +60,7 @@ namespace SabaProps.Trees.Editors
                 {
                     foreach (Object each in targets)
                     {
+                        SabaPropsAutoRebuild.Cancel(each);
                         TreeFieldBuilder.Clear((TreeField)each);
                     }
                 }
@@ -39,6 +70,34 @@ namespace SabaProps.Trees.Editors
             {
                 DrawStats((TreeField)target);
             }
+        }
+
+        private void OnUndoRedo()
+        {
+            ScheduleAutoRebuilds();
+        }
+
+        private void ScheduleAutoRebuilds()
+        {
+            foreach (Object each in targets)
+            {
+                var field = each as TreeField;
+                if (field == null || !field.autoRebuild || !HasGeneratedOutput(field))
+                {
+                    SabaPropsAutoRebuild.Cancel(each);
+                    continue;
+                }
+
+                SabaPropsAutoRebuild.Schedule(
+                    field,
+                    () => TreeFieldBuilder.Build(field, false));
+            }
+        }
+
+        private static bool HasGeneratedOutput(TreeField field)
+        {
+            return field.generatedRoot != null ||
+                field.transform.Find(TreeField.GeneratedRootName) != null;
         }
 
         private static void DrawStats(TreeField field)

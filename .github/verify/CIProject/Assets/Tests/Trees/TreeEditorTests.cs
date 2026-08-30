@@ -14,6 +14,24 @@ namespace SabaProps.Trees.CITests
     public sealed class TreeEditorTests
     {
         [Test]
+        public void TreeFieldAuthoringComponentIsExcludedFromBuilds()
+        {
+            var gameObject = new GameObject("Tree Field");
+            try
+            {
+                TreeField field = gameObject.AddComponent<TreeField>();
+                Assert.AreNotEqual(
+                    0,
+                    (int)(field.hideFlags & HideFlags.DontSaveInBuild),
+                    "TreeField must not be included in a world build");
+            }
+            finally
+            {
+                Object.DestroyImmediate(gameObject);
+            }
+        }
+
+        [Test]
         public void ForestLoadSampleProvidesThreeComparableDensitySteps()
         {
             Assert.AreEqual(64, TreeBundledDemo.LoadGroupSize);

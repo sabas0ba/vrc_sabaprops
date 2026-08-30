@@ -18,6 +18,8 @@ namespace SabaProps.Trees
     /// <summary>
     /// Area that bakes TreeSpecies into ordinary LODGroups at edit time.
     /// No C# executes in a built VRChat world.
+    /// The authoring component is automatically omitted from builds; users do
+    /// not need to remove it before building or uploading a world.
     /// </summary>
     [AddComponentMenu("SabaProps/Tree Field")]
     [DisallowMultipleComponent]
@@ -56,6 +58,8 @@ namespace SabaProps.Trees
         public List<TreeSpecies> species = new List<TreeSpecies>();
         public List<float> speciesWeights = new List<float>();
 
+        [HideInInspector] public bool autoRebuild = true;
+
         [Header("State (read only)")]
         public Transform generatedRoot;
         public TreeBuildStats lastBuildStats;
@@ -84,6 +88,7 @@ namespace SabaProps.Trees
 
         private void OnValidate()
         {
+            ExcludeAuthoringComponentFromBuild();
             size.x = Mathf.Max(0.1f, size.x);
             size.y = Mathf.Max(0.1f, size.y);
             radius = Mathf.Max(0.1f, radius);
@@ -98,6 +103,16 @@ namespace SabaProps.Trees
                 altitudeLimits = new Vector2(
                     altitudeLimits.y, altitudeLimits.x);
             }
+        }
+
+        private void Reset()
+        {
+            ExcludeAuthoringComponentFromBuild();
+        }
+
+        private void ExcludeAuthoringComponentFromBuild()
+        {
+            hideFlags |= HideFlags.DontSaveInBuild;
         }
 
         private void OnDrawGizmosSelected()

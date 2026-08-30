@@ -65,6 +65,8 @@ namespace SabaProps.Foliage
     /// This component intentionally has no runtime logic. VRChat worlds and
     /// avatars cannot execute C#, so everything is baked at edit time and what
     /// ships is plain MeshRenderers driven by an instancing-aware shader.
+    /// The authoring component is automatically omitted from builds; users do
+    /// not need to remove it before building or uploading a world.
     /// </para>
     /// </summary>
     [AddComponentMenu("SabaProps/Foliage Field")]
@@ -145,6 +147,8 @@ namespace SabaProps.Foliage
 
         [Tooltip("チャンクの一辺 (m)。カリング粒度とドローコール数のトレードオフ。")]
         [Min(1f)] public float chunkSize = 12f;
+
+        [HideInInspector] public bool autoRebuild = true;
 
         [Header("State (read only)")]
         [SerializeField] private string buildId;
@@ -235,6 +239,7 @@ namespace SabaProps.Foliage
 
         private void OnValidate()
         {
+            ExcludeAuthoringComponentFromBuild();
             size.x = Mathf.Max(0.1f, size.x);
             size.y = Mathf.Max(0.1f, size.y);
 
@@ -242,6 +247,16 @@ namespace SabaProps.Foliage
             {
                 altitudeLimits = new Vector2(altitudeLimits.y, altitudeLimits.x);
             }
+        }
+
+        private void Reset()
+        {
+            ExcludeAuthoringComponentFromBuild();
+        }
+
+        private void ExcludeAuthoringComponentFromBuild()
+        {
+            hideFlags |= HideFlags.DontSaveInBuild;
         }
 
         private void OnDrawGizmosSelected()

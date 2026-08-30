@@ -295,6 +295,13 @@ namespace UnityEditor
         }
     }
 
+    public static class EditorApplication
+    {
+        public static event Action update;
+        public static double timeSinceStartup => 0d;
+        public static bool isPlayingOrWillChangePlaymode => false;
+    }
+
     public class PreviewRenderUtility
     {
         public PreviewRenderUtility(bool renderFullScene = false) { }
