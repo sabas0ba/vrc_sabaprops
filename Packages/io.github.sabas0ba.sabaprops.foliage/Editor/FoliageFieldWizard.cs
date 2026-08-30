@@ -47,7 +47,10 @@ namespace SabaProps.Foliage.Editors
 
         public static void Open(GameObject parent)
         {
-            var window = GetWindow<FoliageFieldWizard>(true, "Create Foliage Field", true);
+            var window = GetWindow<FoliageFieldWizard>(
+                true,
+                SabaPropsEditorLocalization.Text("植生フィールドを作成", "Create Foliage Field"),
+                true);
             window._parent = parent;
             window.minSize = new Vector2(380f, 480f);
             window.ResetEntries();
@@ -76,10 +79,13 @@ namespace SabaProps.Foliage.Editors
         {
             _scroll = EditorGUILayout.BeginScrollView(_scroll);
 
-            EditorGUILayout.LabelField("Species", EditorStyles.boldLabel);
+            SabaPropsEditorLocalization.DrawLanguageSelector();
+            EditorGUILayout.Space(6f);
+            EditorGUILayout.LabelField(L("Species", "Species"), EditorStyles.boldLabel);
             EditorGUILayout.LabelField(
-                "チェックした種だけを配置します。Weight は種どうしの出現比率で、"
-                + "このフィールドにのみ効きます（Species アセットは書き換えません）。",
+                L(
+                    "チェックした種だけを配置します。Weight は種どうしの出現比率で、このフィールドにのみ効きます（Species アセットは書き換えません）。",
+                    "Only checked species are placed. Weight controls their relative frequency in this field without changing Species assets."),
                 EditorStyles.wordWrappedMiniLabel);
 
             float total = 0f;
@@ -117,75 +123,107 @@ namespace SabaProps.Foliage.Editors
 
             if (total <= 0f)
             {
-                EditorGUILayout.HelpBox("種を 1 つ以上選んでください。", MessageType.Warning);
+                EditorGUILayout.HelpBox(
+                    L("種を 1 つ以上選んでください。", "Select at least one species."),
+                    MessageType.Warning);
             }
 
             EditorGUILayout.Space(10f);
-            EditorGUILayout.LabelField("Area", EditorStyles.boldLabel);
+            EditorGUILayout.LabelField(L("範囲", "Area"), EditorStyles.boldLabel);
 
-            _shape = (FoliageAreaShape)EditorGUILayout.EnumPopup("Shape", _shape);
+            _shape = (FoliageAreaShape)SabaPropsEditorLocalization.Popup(
+                "形状",
+                "Shape",
+                (int)_shape,
+                new[] { "矩形", "円形" },
+                new[] { "Rectangle", "Circle" });
             if (_shape == FoliageAreaShape.Circle)
             {
-                _radius = Mathf.Max(0.1f, EditorGUILayout.FloatField("Radius (m)", _radius));
+                _radius = FoliageStampUtility.SanitizeRadius(
+                    EditorGUILayout.FloatField(L("半径 (m)", "Radius (m)"), _radius));
             }
             else
             {
-                _size = EditorGUILayout.Vector2Field("Size (m)", _size);
+                _size = FoliageStampUtility.SanitizeSize(
+                    EditorGUILayout.Vector2Field(L("寸法 X/Z (m)", "Size X/Z (m)"), _size));
             }
 
-            _density = Mathf.Max(0.001f, EditorGUILayout.FloatField("Density (/m²)", _density));
-            _seed = EditorGUILayout.IntField("Seed", _seed);
+            _density = Mathf.Max(
+                0.001f,
+                EditorGUILayout.FloatField(L("密度 (/m²)", "Density (/m²)"), _density));
+            _seed = EditorGUILayout.IntField(L("シード", "Seed"), _seed);
 
             EditorGUILayout.Space(10f);
-            EditorGUILayout.LabelField("Where it may grow", EditorStyles.boldLabel);
+            EditorGUILayout.LabelField(L("生育条件", "Where It May Grow"), EditorStyles.boldLabel);
 
             _skinnedGround = EditorGUILayout.ObjectField(
-                "Skinned Ground", _skinnedGround, typeof(SkinnedMeshRenderer), true) as SkinnedMeshRenderer;
+                L("Skinned 地面", "Skinned Ground"), _skinnedGround, typeof(SkinnedMeshRenderer), true) as SkinnedMeshRenderer;
 
             EditorGUILayout.LabelField(
-                "SkinnedMeshRenderer を地面にする場合に指定します。生成時だけ現在のポーズをベイクした"
-                + "一時 Collider を作るので、対象に Collider を付けておく必要はありません。",
+                L(
+                    "SkinnedMeshRenderer を地面にする場合に指定します。生成時だけ現在のポーズをベイクした一時 Collider を作るため、対象に Collider は不要です。",
+                    "Set a SkinnedMeshRenderer as ground. A temporary collider is baked from its current pose during generation."),
                 EditorStyles.wordWrappedMiniLabel);
 
-            _limitAltitude = EditorGUILayout.Toggle("Limit by height", _limitAltitude);
+            _limitAltitude = EditorGUILayout.Toggle(L("高度を制限", "Limit by Height"), _limitAltitude);
             using (new EditorGUI.DisabledScope(!_limitAltitude))
             {
-                _altitudeLimits = EditorGUILayout.Vector2Field("Height (m, world Y)", _altitudeLimits);
+                _altitudeLimits = EditorGUILayout.Vector2Field(
+                    L("高度 (m, ワールド Y)", "Height (m, World Y)"),
+                    _altitudeLimits);
             }
 
             _densityMask = EditorGUILayout.ObjectField(
-                "Density Mask", _densityMask, typeof(Texture2D), false) as Texture2D;
+                L("密度マスク", "Density Mask"), _densityMask, typeof(Texture2D), false) as Texture2D;
 
             using (new EditorGUI.DisabledScope(_densityMask == null))
             {
-                _densityMaskThreshold = EditorGUILayout.Slider("Mask Threshold", _densityMaskThreshold, 0f, 1f);
-                _invertDensityMask = EditorGUILayout.Toggle("Invert Mask", _invertDensityMask);
+                _densityMaskThreshold = EditorGUILayout.Slider(
+                    L("マスク閾値", "Mask Threshold"), _densityMaskThreshold, 0f, 1f);
+                _invertDensityMask = EditorGUILayout.Toggle(
+                    L("マスクを反転", "Invert Mask"), _invertDensityMask);
             }
 
             if (_densityMask != null && !_densityMask.isReadable)
             {
                 EditorGUILayout.HelpBox(
-                    "このテクスチャは Read/Write Enabled が OFF です。インポート設定で有効にしてください。",
+                    L(
+                        "このテクスチャは Read/Write Enabled が OFF です。インポート設定で有効にしてください。",
+                        "Read/Write Enabled is off for this texture. Enable it in the import settings."),
                     MessageType.Warning);
             }
 
             EditorGUILayout.Space(10f);
-            EditorGUILayout.LabelField("Output", EditorStyles.boldLabel);
+            EditorGUILayout.LabelField(L("出力", "Output"), EditorStyles.boldLabel);
 
-            _outputMode = (FoliageOutputMode)EditorGUILayout.EnumPopup("Mode", _outputMode);
-            _chunkSize = Mathf.Max(1f, EditorGUILayout.FloatField("Chunk Size (m)", _chunkSize));
+            _outputMode = (FoliageOutputMode)SabaPropsEditorLocalization.Popup(
+                "モード",
+                "Mode",
+                (int)_outputMode,
+                new[] { "GPU インスタンシング", "チャンク結合" },
+                new[] { "GPU Instanced", "Merged Chunks" });
+            _chunkSize = Mathf.Max(
+                1f,
+                EditorGUILayout.FloatField(L("チャンク寸法 (m)", "Chunk Size (m)"), _chunkSize));
 
             EditorGUILayout.HelpBox(
                 _outputMode == FoliageOutputMode.GpuInstanced
-                    ? "1 個体 1 Renderer。個体ごとのカリングと距離縮退が効きます。数千個体まで。"
-                    : "チャンク単位でメッシュ結合。1 チャンク 1 ドローコール。数千〜数万個体向け。",
+                    ? L(
+                        "1 個体 1 Renderer。個体ごとのカリングと距離縮退が効きます。数千個体まで。",
+                        "One Renderer per instance, with per-instance culling and distance reduction. Suitable for thousands of instances.")
+                    : L(
+                        "チャンク単位でメッシュ結合。1 チャンク 1 ドローコール。数千〜数万個体向け。",
+                        "Meshes are merged per chunk, with one draw call per chunk. Suitable for thousands to tens of thousands."),
                 MessageType.None);
 
             EditorGUILayout.Space(6f);
-            _buildImmediately = EditorGUILayout.Toggle("Generate now", _buildImmediately);
+            _buildImmediately = EditorGUILayout.Toggle(
+                L("作成時に生成", "Generate on Creation"), _buildImmediately);
 
             EditorGUILayout.LabelField(
-                $"概算 {EstimatedCount():N0} 個体",
+                L(
+                    $"概算 {EstimatedCount():N0} 個体",
+                    $"Estimated {EstimatedCount():N0} instances"),
                 EditorStyles.miniLabel);
 
             EditorGUILayout.EndScrollView();
@@ -194,7 +232,7 @@ namespace SabaProps.Foliage.Editors
 
             using (new EditorGUI.DisabledScope(total <= 0f))
             {
-                if (GUILayout.Button("Create", GUILayout.Height(28f)))
+                if (GUILayout.Button(L("作成", "Create"), GUILayout.Height(28f)))
                 {
                     Create();
                 }
@@ -203,11 +241,8 @@ namespace SabaProps.Foliage.Editors
 
         private int EstimatedCount()
         {
-            float area = _shape == FoliageAreaShape.Circle
-                ? Mathf.PI * _radius * _radius
-                : Mathf.Abs(_size.x) * Mathf.Abs(_size.y);
-
-            return Mathf.RoundToInt(area * _density);
+            return FoliageStampUtility.EstimateInstanceCount(
+                _shape, _size, _radius, _density);
         }
 
         private void Create()
@@ -280,6 +315,11 @@ namespace SabaProps.Foliage.Editors
             }
 
             Close();
+        }
+
+        private static string L(string japanese, string english)
+        {
+            return SabaPropsEditorLocalization.Text(japanese, english);
         }
     }
 }

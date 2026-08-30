@@ -12,6 +12,9 @@ Foliage の shader と風チャンネル契約を共有しますが、草向け�
 `Window > SabaProps > Placement` または
 `Tools > SabaProps > Placement > Open Placement Window` から共通配置ウィンドウを開けます。
 Foliage Palette、Surface Growth Placer、単木、Tree Field を同じウィンドウから作成できます。
+表示言語は日本語が既定で、ウィンドウ上部から英語へ切り替えられます。設定は Foliage の
+配置ウィンドウと共通です。Foliage Palette では矩形／円形、数値寸法、範囲プリセット、
+Scene View ハンドルを使ってスタンプ範囲を調整できます。
 デモ生成は `Tools > SabaProps > Debug` 以下にあります。
 
 ## 使い方

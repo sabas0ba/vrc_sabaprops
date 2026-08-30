@@ -19,6 +19,44 @@ namespace SabaProps.Foliage.Editors
         DirectAsset = 1,
     }
 
+    /// <summary>Range calculations shared by the palette UI and its tests.</summary>
+    public static class FoliageStampUtility
+    {
+        public static Vector2 SanitizeSize(Vector2 value)
+        {
+            return new Vector2(
+                Mathf.Max(0.1f, Mathf.Abs(value.x)),
+                Mathf.Max(0.1f, Mathf.Abs(value.y)));
+        }
+
+        public static float SanitizeRadius(float value)
+        {
+            return Mathf.Max(0.1f, Mathf.Abs(value));
+        }
+
+        public static float Area(FoliageAreaShape shape, Vector2 size, float radius)
+        {
+            if (shape == FoliageAreaShape.Circle)
+            {
+                float safeRadius = SanitizeRadius(radius);
+                return Mathf.PI * safeRadius * safeRadius;
+            }
+
+            Vector2 safeSize = SanitizeSize(size);
+            return safeSize.x * safeSize.y;
+        }
+
+        public static int EstimateInstanceCount(
+            FoliageAreaShape shape,
+            Vector2 size,
+            float radius,
+            float density)
+        {
+            return Mathf.Max(0, Mathf.RoundToInt(
+                Area(shape, size, radius) * Mathf.Max(0f, density)));
+        }
+    }
+
     /// <summary>
     /// Dockable workspace for composing, shaping, previewing and placing a
     /// foliage field without moving between the field and Species inspectors.
@@ -51,6 +89,8 @@ namespace SabaProps.Foliage.Editors
         [SerializeField] private bool buildImmediately = true;
         [SerializeField] private GameObject parent;
         [SerializeField] private bool placing;
+        [SerializeField] private bool editStampSizeInScene = true;
+        [SerializeField] private bool stampPreviewPinned;
 
         private Vector2 scroll;
         private readonly List<FoliageSpecies> retiredWorkingCopies = new List<FoliageSpecies>();
@@ -63,7 +103,10 @@ namespace SabaProps.Foliage.Editors
         [MenuItem("Window/SabaProps/Foliage Palette", false, 2100)]
         public static void Open()
         {
-            var window = GetWindow<FoliagePaletteWindow>(false, "Foliage Palette", true);
+            var window = GetWindow<FoliagePaletteWindow>(
+                false,
+                SabaPropsEditorLocalization.Text("植生パレット", "Foliage Palette"),
+                true);
             window.minSize = new Vector2(390f, 520f);
             window.Show();
         }
@@ -118,6 +161,8 @@ namespace SabaProps.Foliage.Editors
 
             scroll = EditorGUILayout.BeginScrollView(scroll);
 
+            SabaPropsEditorLocalization.DrawLanguageSelector();
+            EditorGUILayout.Space(8f);
             DrawMode();
             EditorGUILayout.Space(8f);
             DrawComposition();
@@ -125,6 +170,8 @@ namespace SabaProps.Foliage.Editors
             DrawParameters();
             EditorGUILayout.Space(8f);
             DrawPreview();
+            EditorGUILayout.Space(8f);
+            DrawStampSettings();
             EditorGUILayout.Space(8f);
             DrawFieldSettings();
 
@@ -136,9 +183,14 @@ namespace SabaProps.Foliage.Editors
 
         private void DrawMode()
         {
-            EditorGUILayout.LabelField("Editing", EditorStyles.boldLabel);
+            EditorGUILayout.LabelField(L("編集", "Editing"), EditorStyles.boldLabel);
 
-            var next = (FoliagePaletteEditMode)EditorGUILayout.EnumPopup("Mode", editMode);
+            var next = (FoliagePaletteEditMode)SabaPropsEditorLocalization.Popup(
+                "モード",
+                "Mode",
+                (int)editMode,
+                new[] { "作業用コピー", "アセットを直接編集" },
+                new[] { "Working Copy", "Direct Asset" });
             if (next != editMode)
             {
                 Undo.RecordObject(this, "Change Foliage Palette Mode");
@@ -149,16 +201,22 @@ namespace SabaProps.Foliage.Editors
 
             EditorGUILayout.HelpBox(
                 editMode == FoliagePaletteEditMode.WorkingCopy
-                    ? "作業用コピーだけを変更します。配置時に新しい Species アセットとして保存され、既存フィールドには影響しません。"
-                    : "既存 Species アセットを直接変更します。同じアセットを参照する全フィールドへ反映されます。",
+                    ? L(
+                        "作業用コピーだけを変更します。配置時に新しい Species アセットとして保存され、既存フィールドには影響しません。",
+                        "Only the working copy is changed. Placement saves a new Species asset and does not affect existing fields.")
+                    : L(
+                        "既存 Species アセットを直接変更します。同じアセットを参照する全フィールドへ反映されます。",
+                        "Edits the existing Species asset. Changes affect every field that references the same asset."),
                 editMode == FoliagePaletteEditMode.WorkingCopy ? MessageType.Info : MessageType.Warning);
         }
 
         private void DrawComposition()
         {
-            EditorGUILayout.LabelField("Composition", EditorStyles.boldLabel);
+            EditorGUILayout.LabelField(L("配合", "Composition"), EditorStyles.boldLabel);
             EditorGUILayout.LabelField(
-                "有効な種の Weight がフィールド内の出現比率になります。種名を押すと形状パラメータを編集できます。",
+                L(
+                    "有効な種の Weight がフィールド内の出現比率になります。種名を押すと形状パラメータを編集できます。",
+                    "Enabled species weights determine their share in the field. Select a species name to edit its shape."),
                 EditorStyles.wordWrappedMiniLabel);
 
             float total = TotalWeight();
@@ -215,7 +273,7 @@ namespace SabaProps.Foliage.Editors
                 }
             }
 
-            if (GUILayout.Button("Add Species"))
+            if (GUILayout.Button(L("Species を追加", "Add Species")))
             {
                 Undo.RecordObject(this, "Add Foliage Species");
                 entries.Add(new Entry());
@@ -224,18 +282,26 @@ namespace SabaProps.Foliage.Editors
 
             if (EnabledSpeciesCount() == 0)
             {
-                EditorGUILayout.HelpBox("配置する Species を 1 つ以上有効にしてください。", MessageType.Warning);
+                EditorGUILayout.HelpBox(
+                    L(
+                        "配置する Species を 1 つ以上有効にしてください。",
+                        "Enable at least one Species for placement."),
+                    MessageType.Warning);
             }
         }
 
         private void DrawParameters()
         {
-            EditorGUILayout.LabelField("Parameters", EditorStyles.boldLabel);
+            EditorGUILayout.LabelField(L("形状パラメータ", "Parameters"), EditorStyles.boldLabel);
 
             FoliageSpecies species = CurrentSpecies();
             if (species == null)
             {
-                EditorGUILayout.HelpBox("Composition から Species を選択してください。", MessageType.Info);
+                EditorGUILayout.HelpBox(
+                    L(
+                        "配合から Species を選択してください。",
+                        "Select a Species from Composition."),
+                    MessageType.Info);
                 return;
             }
 
@@ -263,7 +329,7 @@ namespace SabaProps.Foliage.Editors
 
         private void DrawPreview()
         {
-            EditorGUILayout.LabelField("Preview", EditorStyles.boldLabel);
+            EditorGUILayout.LabelField(L("プレビュー", "Preview"), EditorStyles.boldLabel);
 
             Rect rect = GUILayoutUtility.GetRect(10f, 230f, GUILayout.ExpandWidth(true));
             FoliageSpecies species = CurrentSpecies();
@@ -272,7 +338,12 @@ namespace SabaProps.Foliage.Editors
             if (species == null || species.material == null)
             {
                 EditorGUI.DrawRect(rect, new Color(0.12f, 0.12f, 0.12f, 1f));
-                GUI.Label(rect, "Material を持つ Species を選択してください。", EditorStyles.whiteBoldLabel);
+                GUI.Label(
+                    rect,
+                    L(
+                        "Material を持つ Species を選択してください。",
+                        "Select a Species with a Material."),
+                    EditorStyles.whiteBoldLabel);
                 return;
             }
 
@@ -302,43 +373,109 @@ namespace SabaProps.Foliage.Editors
             preview.EndAndDrawPreview(rect);
         }
 
-        private void DrawFieldSettings()
+        private void DrawStampSettings()
         {
-            EditorGUILayout.LabelField("Field", EditorStyles.boldLabel);
+            EditorGUILayout.LabelField(L("スタンプ範囲", "Stamp Range"), EditorStyles.boldLabel);
+            EditorGUILayout.LabelField(
+                L(
+                    "形状と範囲は配置中でも変更できます。Space でプレビュー位置を固定すると Scene View のハンドルで調整できます。",
+                    "Shape and range remain editable while placing. Press Space to pin the preview and resize it with Scene View handles."),
+                EditorStyles.wordWrappedMiniLabel);
 
-            FoliageAreaShape nextShape = (FoliageAreaShape)EditorGUILayout.EnumPopup("Shape", shape);
+            FoliageAreaShape nextShape = (FoliageAreaShape)SabaPropsEditorLocalization.Popup(
+                "形状",
+                "Shape",
+                (int)shape,
+                new[] { "矩形", "円形" },
+                new[] { "Rectangle", "Circle" });
             Vector2 nextSize = size;
             float nextRadius = radius;
 
             if (nextShape == FoliageAreaShape.Circle)
             {
-                nextRadius = Mathf.Max(0.1f, EditorGUILayout.FloatField("Radius (m)", radius));
+                nextRadius = FoliageStampUtility.SanitizeRadius(
+                    EditorGUILayout.FloatField(L("半径 (m)", "Radius (m)"), radius));
             }
             else
             {
-                nextSize = EditorGUILayout.Vector2Field("Size (m)", size);
-                nextSize.x = Mathf.Max(0.1f, Mathf.Abs(nextSize.x));
-                nextSize.y = Mathf.Max(0.1f, Mathf.Abs(nextSize.y));
+                nextSize = FoliageStampUtility.SanitizeSize(
+                    EditorGUILayout.Vector2Field(L("寸法 X/Z (m)", "Size X/Z (m)"), size));
             }
 
-            float nextDensity = Mathf.Max(0.001f, EditorGUILayout.FloatField("Density (/m²)", density));
-            int nextSeed = EditorGUILayout.IntField("Seed", seed);
-            FoliageOutputMode nextOutput =
-                (FoliageOutputMode)EditorGUILayout.EnumPopup("Output", outputMode);
-            float nextChunk = Mathf.Max(1f, EditorGUILayout.FloatField("Chunk Size (m)", chunkSize));
-            bool nextBuild = EditorGUILayout.Toggle("Generate now", buildImmediately);
-            GameObject nextParent = EditorGUILayout.ObjectField(
-                "Parent", parent, typeof(GameObject), true) as GameObject;
+            EditorGUILayout.LabelField(
+                nextShape == FoliageAreaShape.Circle
+                    ? L("直径プリセット", "Diameter Presets")
+                    : L("正方形プリセット", "Square Presets"),
+                EditorStyles.miniLabel);
+            using (new EditorGUILayout.HorizontalScope())
+            {
+                float[] extents = { 2f, 5f, 10f, 20f };
+                for (int i = 0; i < extents.Length; i++)
+                {
+                    float extent = extents[i];
+                    if (GUILayout.Button($"{extent:0} m"))
+                    {
+                        if (nextShape == FoliageAreaShape.Circle)
+                        {
+                            nextRadius = extent * 0.5f;
+                        }
+                        else
+                        {
+                            nextSize = new Vector2(extent, extent);
+                        }
+                    }
+                }
+            }
 
-            if (nextShape != shape || nextSize != size || !Mathf.Approximately(nextRadius, radius)
-                || !Mathf.Approximately(nextDensity, density) || nextSeed != seed
+            bool nextEditInScene = EditorGUILayout.Toggle(
+                L("Scene View で範囲を編集", "Edit Range in Scene View"),
+                editStampSizeInScene);
+
+            if (nextShape != shape || nextSize != size
+                || !Mathf.Approximately(nextRadius, radius)
+                || nextEditInScene != editStampSizeInScene)
+            {
+                Undo.RecordObject(this, "Edit Foliage Stamp Range");
+                shape = nextShape;
+                size = nextSize;
+                radius = nextRadius;
+                editStampSizeInScene = nextEditInScene;
+                SceneView.RepaintAll();
+            }
+
+            int estimate = FoliageStampUtility.EstimateInstanceCount(
+                shape, size, radius, density);
+            EditorGUILayout.LabelField(
+                L($"概算 {estimate:N0} 個体", $"Estimated {estimate:N0} instances"),
+                EditorStyles.miniLabel);
+        }
+
+        private void DrawFieldSettings()
+        {
+            EditorGUILayout.LabelField(L("フィールド設定", "Field Settings"), EditorStyles.boldLabel);
+
+            float nextDensity = Mathf.Max(
+                0.001f,
+                EditorGUILayout.FloatField(L("密度 (/m²)", "Density (/m²)"), density));
+            int nextSeed = EditorGUILayout.IntField(L("シード", "Seed"), seed);
+            FoliageOutputMode nextOutput = (FoliageOutputMode)SabaPropsEditorLocalization.Popup(
+                "出力",
+                "Output",
+                (int)outputMode,
+                new[] { "GPU インスタンシング", "チャンク結合" },
+                new[] { "GPU Instanced", "Merged Chunks" });
+            float nextChunk = Mathf.Max(
+                1f,
+                EditorGUILayout.FloatField(L("チャンク寸法 (m)", "Chunk Size (m)"), chunkSize));
+            bool nextBuild = EditorGUILayout.Toggle(L("配置時に生成", "Generate on Placement"), buildImmediately);
+            GameObject nextParent = EditorGUILayout.ObjectField(
+                L("親", "Parent"), parent, typeof(GameObject), true) as GameObject;
+
+            if (!Mathf.Approximately(nextDensity, density) || nextSeed != seed
                 || nextOutput != outputMode || !Mathf.Approximately(nextChunk, chunkSize)
                 || nextBuild != buildImmediately || nextParent != parent)
             {
                 Undo.RecordObject(this, "Edit Foliage Field Settings");
-                shape = nextShape;
-                size = nextSize;
-                radius = nextRadius;
                 density = nextDensity;
                 seed = nextSeed;
                 outputMode = nextOutput;
@@ -346,11 +483,6 @@ namespace SabaProps.Foliage.Editors
                 buildImmediately = nextBuild;
                 parent = nextParent;
             }
-
-            float area = shape == FoliageAreaShape.Circle
-                ? Mathf.PI * radius * radius
-                : size.x * size.y;
-            EditorGUILayout.LabelField($"概算 {Mathf.RoundToInt(area * density):N0} 個体", EditorStyles.miniLabel);
         }
 
         private void DrawPlacementActions()
@@ -359,17 +491,23 @@ namespace SabaProps.Foliage.Editors
             {
                 using (new EditorGUI.DisabledScope(EnabledSpeciesCount() == 0))
                 {
-                    string label = placing ? "Stop Scene Placement" : "Place in Scene";
+                    string label = placing
+                        ? L("配置を終了", "Stop Scene Placement")
+                        : L("Scene View でスタンプ配置", "Stamp in Scene View");
                     if (GUILayout.Button(label, GUILayout.Height(30f)))
                     {
                         Undo.RecordObject(this, "Toggle Foliage Placement");
                         placing = !placing;
                         hasPlacementPoint = false;
+                        stampPreviewPinned = false;
                         SceneView.RepaintAll();
                     }
                 }
 
-                if (GUILayout.Button("Place at Scene Pivot", GUILayout.Height(30f), GUILayout.Width(150f)))
+                if (GUILayout.Button(
+                    L("Scene Pivot に配置", "Place at Scene Pivot"),
+                    GUILayout.Height(30f),
+                    GUILayout.Width(150f)))
                 {
                     SceneView scene = SceneView.lastActiveSceneView;
                     CreateFieldAt(scene != null ? scene.pivot : Vector3.zero);
@@ -390,6 +528,7 @@ namespace SabaProps.Foliage.Editors
                 Undo.RecordObject(this, "Stop Foliage Placement");
                 placing = false;
                 hasPlacementPoint = false;
+                stampPreviewPinned = false;
                 current.Use();
                 Repaint();
                 return;
@@ -400,10 +539,23 @@ namespace SabaProps.Foliage.Editors
                 return;
             }
 
-            HandleUtility.AddDefaultControl(GUIUtility.GetControlID(FocusType.Passive));
+            int placementControl = GUIUtility.GetControlID(FocusType.Passive);
+            HandleUtility.AddDefaultControl(placementControl);
 
-            Ray ray = HandleUtility.GUIPointToWorldRay(current.mousePosition);
-            hasPlacementPoint = TryFindPlacementPoint(ray, out placementPoint);
+            if (current.type == EventType.KeyDown && current.keyCode == KeyCode.Space
+                && hasPlacementPoint)
+            {
+                stampPreviewPinned = !stampPreviewPinned;
+                current.Use();
+                Repaint();
+                sceneView.Repaint();
+            }
+
+            if (!stampPreviewPinned)
+            {
+                Ray ray = HandleUtility.GUIPointToWorldRay(current.mousePosition);
+                hasPlacementPoint = TryFindPlacementPoint(ray, out placementPoint);
+            }
 
             if (hasPlacementPoint)
             {
@@ -421,10 +573,23 @@ namespace SabaProps.Foliage.Editors
                     Handles.DrawWireCube(placementPoint, new Vector3(size.x, 0f, size.y));
                 }
 
-                Handles.Label(placementPoint + Vector3.up * 0.2f, "Click to place Foliage Field");
+                if (editStampSizeInScene && stampPreviewPinned)
+                {
+                    DrawStampRangeHandles();
+                }
+
+                string instruction = stampPreviewPinned
+                    ? L(
+                        "範囲を調整 / クリックで配置 / Space で追従再開 / Esc で終了",
+                        "Resize / Click to place / Space to resume tracking / Esc to stop")
+                    : L(
+                        "クリックで配置 / Space で位置固定 / Esc で終了",
+                        "Click to place / Space to pin / Esc to stop");
+                Handles.Label(placementPoint + Vector3.up * 0.2f, instruction);
             }
 
-            if (current.type == EventType.MouseDown && current.button == 0 && hasPlacementPoint)
+            if (current.type == EventType.MouseDown && current.button == 0
+                && hasPlacementPoint && HandleUtility.nearestControl == placementControl)
             {
                 CreateFieldAt(placementPoint);
                 current.Use();
@@ -433,6 +598,52 @@ namespace SabaProps.Foliage.Editors
             if (current.type == EventType.MouseMove)
             {
                 sceneView.Repaint();
+            }
+        }
+
+        private void DrawStampRangeHandles()
+        {
+            EditorGUI.BeginChangeCheck();
+            Vector2 nextSize = size;
+            float nextRadius = radius;
+
+            if (shape == FoliageAreaShape.Circle)
+            {
+                nextRadius = Handles.RadiusHandle(
+                    Quaternion.Euler(90f, 0f, 0f),
+                    placementPoint,
+                    radius);
+            }
+            else
+            {
+                float halfX = size.x * 0.5f;
+                float halfZ = size.y * 0.5f;
+                Vector3 xPosition = placementPoint + Vector3.right * halfX;
+                Vector3 zPosition = placementPoint + Vector3.forward * halfZ;
+
+                halfX = Handles.ScaleValueHandle(
+                    halfX,
+                    xPosition,
+                    Quaternion.Euler(0f, 90f, 0f),
+                    HandleUtility.GetHandleSize(xPosition) * 1.2f,
+                    Handles.ConeHandleCap,
+                    0.1f);
+                halfZ = Handles.ScaleValueHandle(
+                    halfZ,
+                    zPosition,
+                    Quaternion.identity,
+                    HandleUtility.GetHandleSize(zPosition) * 1.2f,
+                    Handles.ConeHandleCap,
+                    0.1f);
+                nextSize = new Vector2(halfX * 2f, halfZ * 2f);
+            }
+
+            if (EditorGUI.EndChangeCheck())
+            {
+                Undo.RecordObject(this, "Resize Foliage Stamp Range");
+                radius = FoliageStampUtility.SanitizeRadius(nextRadius);
+                size = FoliageStampUtility.SanitizeSize(nextSize);
+                Repaint();
             }
         }
 
@@ -732,6 +943,11 @@ namespace SabaProps.Foliage.Editors
                 preview.Cleanup();
                 preview = null;
             }
+        }
+
+        private static string L(string japanese, string english)
+        {
+            return SabaPropsEditorLocalization.Text(japanese, english);
         }
     }
 }

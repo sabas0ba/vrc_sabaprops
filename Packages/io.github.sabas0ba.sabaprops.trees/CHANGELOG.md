@@ -6,6 +6,7 @@ All notable changes to this package are documented in this file.
 
 ### Added
 
+- The shared placement workflow supports Japanese and English UI with Japanese as the default, using the same persistent language selection as the Foliage tools.
 - `Window > SabaProps > Placement`: a shared scene-authoring window for Foliage Palette, Surface Growth, single trees, and Tree Fields.
 - ケヤキ、イロハモミジ、スギ、シラカバ、アカマツ、ヒノキの実在種 preset
 - ソメイヨシノの春／夏とイチョウの夏／秋を、同一 Seed・同一枝構造で切り替える季節 preset

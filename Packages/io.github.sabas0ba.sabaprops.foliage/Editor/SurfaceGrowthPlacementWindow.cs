@@ -197,7 +197,9 @@ namespace SabaProps.Foliage.Editors
         public static void Open(Collider suggestedSurface)
         {
             var window = GetWindow<SurfaceGrowthPlacementWindow>(
-                false, "Surface Growth", true);
+                false,
+                SabaPropsEditorLocalization.Text("表面植生", "Surface Growth"),
+                true);
             window.minSize = new Vector2(360f, 440f);
             if (suggestedSurface != null)
             {
@@ -231,32 +233,49 @@ namespace SabaProps.Foliage.Editors
         private void OnGUI()
         {
             scroll = EditorGUILayout.BeginScrollView(scroll);
-            EditorGUILayout.LabelField("Surface Growth Placement", EditorStyles.boldLabel);
+            SabaPropsEditorLocalization.DrawLanguageSelector();
+            EditorGUILayout.Space(6f);
+            EditorGUILayout.LabelField(L("表面植生の配置", "Surface Growth Placement"), EditorStyles.boldLabel);
             EditorGUILayout.HelpBox(
-                "Select a Collider, choose the growth type, then create an authoring object. " +
-                "Guide points remain editable in the Scene view.",
+                L(
+                    "Collider と成長タイプを選び、編集用オブジェクトを作成します。ガイド点は作成後も Scene View で編集できます。",
+                    "Select a Collider, choose the growth type, then create an authoring object. " +
+                    "Guide points remain editable in the Scene view."),
                 MessageType.Info);
 
-            kind = (SurfaceGrowthPlacementKind)EditorGUILayout.EnumPopup("Type", kind);
+            kind = (SurfaceGrowthPlacementKind)SabaPropsEditorLocalization.Popup(
+                "種類",
+                "Type",
+                (int)kind,
+                new[] { "表面ツタ", "根茎パッチ" },
+                new[] { "Surface Vine", "Rhizome Patch" });
             if (kind == SurfaceGrowthPlacementKind.SurfaceVine)
             {
-                vinePreset = (SurfaceVinePlacementPreset)EditorGUILayout.EnumPopup(
-                    "Botanical Preset", vinePreset);
-                direction = (SurfaceGrowthPlacementDirection)EditorGUILayout.EnumPopup(
-                    "Initial Direction", direction);
+                vinePreset = (SurfaceVinePlacementPreset)SabaPropsEditorLocalization.Popup(
+                    "植物プリセット",
+                    "Botanical Preset",
+                    (int)vinePreset,
+                    new[] { "オオイタビ", "セイヨウキヅタ", "アメリカヅタ" },
+                    new[] { "Creeping Fig", "English Ivy", "Boston Ivy" });
+                direction = (SurfaceGrowthPlacementDirection)SabaPropsEditorLocalization.Popup(
+                    "初期成長方向",
+                    "Initial Direction",
+                    (int)direction,
+                    new[] { "上", "下", "右", "左", "カスタム" },
+                    new[] { "World Up", "World Down", "World Right", "World Left", "Custom" });
                 if (direction == SurfaceGrowthPlacementDirection.Custom)
                 {
                     customDirection = EditorGUILayout.Vector3Field(
-                        "World Direction", customDirection);
+                        L("ワールド方向", "World Direction"), customDirection);
                 }
                 guideLength = Mathf.Max(
-                    0.1f, EditorGUILayout.FloatField("Guide Length (m)", guideLength));
+                    0.1f, EditorGUILayout.FloatField(L("ガイド長 (m)", "Guide Length (m)"), guideLength));
             }
 
             EditorGUILayout.Space(8f);
-            EditorGUILayout.LabelField("Surfaces", EditorStyles.boldLabel);
+            EditorGUILayout.LabelField(L("対象面", "Surfaces"), EditorStyles.boldLabel);
             Collider nextTarget = EditorGUILayout.ObjectField(
-                "Primary Collider", targetSurface, typeof(Collider), true) as Collider;
+                L("主 Collider", "Primary Collider"), targetSurface, typeof(Collider), true) as Collider;
             if (nextTarget != targetSurface)
             {
                 targetSurface = nextTarget;
@@ -268,7 +287,7 @@ namespace SabaProps.Foliage.Editors
                 using (new EditorGUILayout.HorizontalScope())
                 {
                     additionalSurfaces[i] = EditorGUILayout.ObjectField(
-                        "Adjacent " + (i + 1),
+                        L("隣接面 ", "Adjacent ") + (i + 1),
                         additionalSurfaces[i],
                         typeof(Collider),
                         true) as Collider;
@@ -279,43 +298,47 @@ namespace SabaProps.Foliage.Editors
                     }
                 }
             }
-            if (GUILayout.Button("Add Adjacent Collider"))
+            if (GUILayout.Button(L("隣接 Collider を追加", "Add Adjacent Collider")))
             {
                 additionalSurfaces.Add(null);
             }
 
             EditorGUILayout.Space(8f);
-            EditorGUILayout.LabelField("Placement", EditorStyles.boldLabel);
+            EditorGUILayout.LabelField(L("配置", "Placement"), EditorStyles.boldLabel);
             hierarchyParent = EditorGUILayout.ObjectField(
-                "Hierarchy Parent", hierarchyParent, typeof(GameObject), true) as GameObject;
-            worldStart = EditorGUILayout.Vector3Field("World Start", worldStart);
-            if (GUILayout.Button("Use Scene View / Surface Point"))
+                L("Hierarchy 親", "Hierarchy Parent"), hierarchyParent, typeof(GameObject), true) as GameObject;
+            worldStart = EditorGUILayout.Vector3Field(L("開始位置（ワールド）", "World Start"), worldStart);
+            if (GUILayout.Button(L("Scene View / 表面位置を使用", "Use Scene View / Surface Point")))
             {
                 SuggestStart();
             }
             material = EditorGUILayout.ObjectField(
-                "Material", material, typeof(Material), false) as Material;
-            buildImmediately = EditorGUILayout.Toggle("Build Immediately", buildImmediately);
+                L("マテリアル", "Material"), material, typeof(Material), false) as Material;
+            buildImmediately = EditorGUILayout.Toggle(L("作成時にビルド", "Build Immediately"), buildImmediately);
 
             if (hierarchyParent != null && !ApproximatelyOne(
                 hierarchyParent.transform.lossyScale))
             {
                 EditorGUILayout.HelpBox(
-                    "A scaled parent changes metre-based growth values. Prefer an unscaled " +
-                    "organizer object.",
+                    L(
+                        "拡大縮小された親はメートル単位の成長値へ影響します。Scale 1 の整理用オブジェクトを推奨します。",
+                        "A scaled parent changes metre-based growth values. Prefer an unscaled " +
+                        "organizer object."),
                     MessageType.Warning);
             }
             if (!hasSuggestedStart)
             {
                 EditorGUILayout.HelpBox(
-                    "Set the start point from the Scene view before creating the object.",
+                    L(
+                        "作成前に Scene View から開始位置を設定してください。",
+                        "Set the start point from the Scene view before creating the object."),
                     MessageType.Warning);
             }
 
             EditorGUILayout.EndScrollView();
             using (new EditorGUI.DisabledScope(targetSurface == null))
             {
-                if (GUILayout.Button("Create in Scene", GUILayout.Height(30f)))
+                if (GUILayout.Button(L("シーンに作成", "Create in Scene"), GUILayout.Height(30f)))
                 {
                     Create();
                 }
@@ -376,6 +399,11 @@ namespace SabaProps.Foliage.Editors
             return Mathf.Abs(value.x - 1f) < 0.001f
                 && Mathf.Abs(value.y - 1f) < 0.001f
                 && Mathf.Abs(value.z - 1f) < 0.001f;
+        }
+
+        private static string L(string japanese, string english)
+        {
+            return SabaPropsEditorLocalization.Text(japanese, english);
         }
     }
 }

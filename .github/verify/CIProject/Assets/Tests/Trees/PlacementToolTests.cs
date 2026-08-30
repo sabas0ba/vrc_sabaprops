@@ -2,12 +2,63 @@ using NUnit.Framework;
 using SabaProps.Foliage;
 using SabaProps.Foliage.Editors;
 using SabaProps.Trees.Editors;
+using UnityEditor;
 using UnityEngine;
 
 namespace SabaProps.Trees.CITests
 {
     public sealed class PlacementToolTests
     {
+        [Test]
+        public void PlacementLanguageDefaultsToJapaneseAndCanSwitchToEnglish()
+        {
+            const string key = "SabaProps.Editor.Language";
+            bool hadPreference = EditorPrefs.HasKey(key);
+            int previous = EditorPrefs.GetInt(key, 0);
+            try
+            {
+                EditorPrefs.DeleteKey(key);
+                Assert.AreEqual(SabaPropsEditorLanguage.Japanese, SabaPropsEditorLocalization.Language);
+                Assert.AreEqual("配置", SabaPropsEditorLocalization.Text("配置", "Placement"));
+
+                SabaPropsEditorLocalization.Language = SabaPropsEditorLanguage.English;
+                Assert.AreEqual("Placement", SabaPropsEditorLocalization.Text("配置", "Placement"));
+            }
+            finally
+            {
+                if (hadPreference)
+                {
+                    EditorPrefs.SetInt(key, previous);
+                }
+                else
+                {
+                    EditorPrefs.DeleteKey(key);
+                }
+            }
+        }
+
+        [Test]
+        public void FoliageStampRangeSanitizesDimensionsAndEstimatesArea()
+        {
+            Vector2 size = FoliageStampUtility.SanitizeSize(new Vector2(-4f, 0f));
+            Assert.AreEqual(new Vector2(4f, 0.1f), size);
+            Assert.AreEqual(0.1f, FoliageStampUtility.SanitizeRadius(0f), 0.0001f);
+
+            int rectangle = FoliageStampUtility.EstimateInstanceCount(
+                FoliageAreaShape.Rectangle,
+                new Vector2(4f, 5f),
+                1f,
+                2f);
+            int circle = FoliageStampUtility.EstimateInstanceCount(
+                FoliageAreaShape.Circle,
+                Vector2.one,
+                2f,
+                1f);
+
+            Assert.AreEqual(40, rectangle);
+            Assert.AreEqual(13, circle);
+        }
+
         [Test]
         public void SurfaceGrowthPlacementCreatesConfiguredEditableVine()
         {

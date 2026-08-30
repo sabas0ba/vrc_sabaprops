@@ -82,7 +82,9 @@ namespace SabaProps.Trees.Editors
         public static void Open()
         {
             var window = GetWindow<SabaPropsPlacementWindow>(
-                false, "SabaProps Placement", true);
+                false,
+                SabaPropsEditorLocalization.Text("SabaProps 配置", "SabaProps Placement"),
+                true);
             window.minSize = new Vector2(380f, 470f);
             window.UseSelectionIfRelevant();
             window.Show();
@@ -103,65 +105,73 @@ namespace SabaProps.Trees.Editors
         private void OnGUI()
         {
             scroll = EditorGUILayout.BeginScrollView(scroll);
-            EditorGUILayout.LabelField("Scene Placement", EditorStyles.boldLabel);
+            SabaPropsEditorLocalization.DrawLanguageSelector();
+            EditorGUILayout.Space(6f);
+            EditorGUILayout.LabelField(L("シーン配置", "Scene Placement"), EditorStyles.boldLabel);
             EditorGUILayout.HelpBox(
-                "Use this window for authoring objects. Demo generators are under " +
-                "Tools > SabaProps > Debug.",
+                L(
+                    "配置用オブジェクトはこのウィンドウから作成します。デモ生成は Tools > SabaProps > Debug にあります。",
+                    "Use this window for authoring objects. Demo generators are under " +
+                    "Tools > SabaProps > Debug."),
                 MessageType.Info);
 
             hierarchyParent = EditorGUILayout.ObjectField(
-                "Hierarchy Parent", hierarchyParent, typeof(GameObject), true) as GameObject;
+                L("Hierarchy 親", "Hierarchy Parent"), hierarchyParent, typeof(GameObject), true) as GameObject;
 
             EditorGUILayout.Space(10f);
-            EditorGUILayout.LabelField("Ground Foliage", EditorStyles.boldLabel);
+            EditorGUILayout.LabelField(L("地表の植生", "Ground Foliage"), EditorStyles.boldLabel);
             EditorGUILayout.LabelField(
-                "Compose species, preview them, then place a field by clicking in the Scene view.",
+                L(
+                    "植物を配合・プレビューし、Scene View をクリックしてフィールドを配置します。",
+                    "Compose species, preview them, then place a field by clicking in the Scene view."),
                 EditorStyles.wordWrappedMiniLabel);
             using (new EditorGUILayout.HorizontalScope())
             {
-                if (GUILayout.Button("Open Foliage Palette", GUILayout.Height(28f)))
+                if (GUILayout.Button(L("植生パレットを開く", "Open Foliage Palette"), GUILayout.Height(28f)))
                 {
                     FoliagePaletteWindow.Open();
                 }
-                if (GUILayout.Button("Quick Field...", GUILayout.Height(28f)))
+                if (GUILayout.Button(L("簡易フィールド...", "Quick Field..."), GUILayout.Height(28f)))
                 {
                     FoliageFieldWizard.Open(hierarchyParent);
                 }
             }
 
             EditorGUILayout.Space(10f);
-            EditorGUILayout.LabelField("Surface Growth", EditorStyles.boldLabel);
+            EditorGUILayout.LabelField(L("表面植生", "Surface Growth"), EditorStyles.boldLabel);
             surface = EditorGUILayout.ObjectField(
-                "Selected Collider", surface, typeof(Collider), true) as Collider;
+                L("対象 Collider", "Selected Collider"), surface, typeof(Collider), true) as Collider;
             EditorGUILayout.LabelField(
-                "Creates Surface Vine or Rhizome Patch with a botanical preset, " +
-                "initial direction, adjacent surfaces, and optional immediate build.",
+                L(
+                    "植物プリセット、初期方向、隣接面を指定して表面ツタまたは根茎パッチを作成します。",
+                    "Creates Surface Vine or Rhizome Patch with a botanical preset, " +
+                    "initial direction, adjacent surfaces, and optional immediate build."),
                 EditorStyles.wordWrappedMiniLabel);
-            if (GUILayout.Button("Open Surface Growth Placer", GUILayout.Height(28f)))
+            if (GUILayout.Button(L("表面植生の配置を開く", "Open Surface Growth Placer"), GUILayout.Height(28f)))
             {
                 SurfaceGrowthPlacementWindow.Open(surface);
             }
 
             EditorGUILayout.Space(10f);
-            EditorGUILayout.LabelField("Trees", EditorStyles.boldLabel);
+            EditorGUILayout.LabelField(L("樹木", "Trees"), EditorStyles.boldLabel);
             treeSpecies = EditorGUILayout.ObjectField(
-                "Tree Species", treeSpecies, typeof(TreeSpecies), false) as TreeSpecies;
+                L("樹種", "Tree Species"), treeSpecies, typeof(TreeSpecies), false) as TreeSpecies;
             using (new EditorGUI.DisabledScope(treeSpecies == null))
             {
-                if (GUILayout.Button("Place One Tree at Scene Pivot", GUILayout.Height(28f)))
+                if (GUILayout.Button(L("Scene Pivot に単木を配置", "Place One Tree at Scene Pivot"), GUILayout.Height(28f)))
                 {
                     TreePlacementUtility.CreateTree(
                         treeSpecies, hierarchyParent, ScenePivot());
                 }
 
                 treeFieldSize = EditorGUILayout.Vector2Field(
-                    "Field Size (m)", treeFieldSize);
+                    L("フィールド寸法 (m)", "Field Size (m)"), treeFieldSize);
                 treeDensity = Mathf.Max(
                     0.0001f,
-                    EditorGUILayout.FloatField("Density (/m²)", treeDensity));
+                    EditorGUILayout.FloatField(L("密度 (/m²)", "Density (/m²)"), treeDensity));
                 buildTreeFieldImmediately = EditorGUILayout.Toggle(
-                    "Build Immediately", buildTreeFieldImmediately);
-                if (GUILayout.Button("Create Tree Field at Scene Pivot", GUILayout.Height(28f)))
+                    L("作成時にビルド", "Build Immediately"), buildTreeFieldImmediately);
+                if (GUILayout.Button(L("Scene Pivot に樹木フィールドを作成", "Create Tree Field at Scene Pivot"), GUILayout.Height(28f)))
                 {
                     TreePlacementUtility.CreateField(
                         treeSpecies,
@@ -176,9 +186,11 @@ namespace SabaProps.Trees.Editors
             if (treeSpecies == null)
             {
                 EditorGUILayout.HelpBox(
-                    "Select a TreeSpecies asset to enable tree placement.",
+                    L(
+                        "樹木を配置するには TreeSpecies アセットを選択してください。",
+                        "Select a TreeSpecies asset to enable tree placement."),
                     MessageType.Warning);
-                if (GUILayout.Button("Select / Create Default Broadleaf"))
+                if (GUILayout.Button(L("既定の広葉樹を選択 / 作成", "Select / Create Default Broadleaf")))
                 {
                     treeSpecies = TreeAssetLibrary.CreateOrLoadSpecies(
                         TreeArchetype.Broadleaf);
@@ -219,6 +231,11 @@ namespace SabaProps.Trees.Editors
         {
             SceneView scene = SceneView.lastActiveSceneView;
             return scene != null ? scene.pivot : Vector3.zero;
+        }
+
+        private static string L(string japanese, string english)
+        {
+            return SabaPropsEditorLocalization.Text(japanese, english);
         }
     }
 }

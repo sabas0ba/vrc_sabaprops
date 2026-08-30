@@ -17,6 +17,9 @@ Foliage 単体では次のウィンドウを直接開けます。
 - `Window > SabaProps > Placement > Surface Growth`: 対象 Collider、隣接面、ツタの preset、初期成長方向を指定して Surface Vine / Rhizome Patch を配置
 - `GameObject > SabaProps > Placement`: 選択中の GameObject を基準にした簡易配置
 
+配置ウィンドウの表示言語は日本語が既定です。各ウィンドウ上部の `表示言語 / UI Language`
+から英語へ切り替えられ、設定は配置ウィンドウ間で共有されます。
+
 デモ生成は配置作業と分離し、`Tools > SabaProps > Debug` 以下にあります。
 
 ![地面配置向け 8 種の草花を混植し、同じ風になびかせた FoliageDemo のオフラインレンダリング](Documentation~/images/generated/foliage-demo-overview.svg)
@@ -117,8 +120,9 @@ VRChat Worlds SDK が入っているプロジェクトでは、`VRCSceneDescript
 
 1. Composition で使う Species を有効にし、Weight を決める
 2. 種名を選び、Parameters を変更する。Preview は変更のたびに更新されます
-3. Shape、Density、Output を決め、**Place in Scene** を押す
-4. Scene ビュー上の地面をクリックする。`Esc` で配置モードを終了します
+3. スタンプ範囲の形状、寸法、Density、Output を決め、**Scene View でスタンプ配置**を押す
+4. Scene View 上の地面をクリックする。配置中も形状、寸法、2 / 5 / 10 / 20 m のプリセットを変更できます
+5. `Space` でプレビュー位置を固定すると、矩形の X/Z ハンドルまたは円形の半径ハンドルで範囲を調整できます。もう一度 `Space` を押すと地面追従へ戻り、`Esc` で配置モードを終了します
 
 編集先は 2 つあります。
 

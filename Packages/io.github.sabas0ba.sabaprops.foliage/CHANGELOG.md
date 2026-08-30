@@ -8,6 +8,8 @@
 
 ### Added
 
+- Placement workflow UI supports Japanese and English with Japanese as the default; the selected language is shared by the placement hub, Foliage Palette, quick field wizard, and Surface Growth placer.
+- Foliage Palette stamp controls provide rectangle/circle selection, numeric dimensions, 2 / 5 / 10 / 20 m presets, instance estimates, and pinned Scene View resize handles.
 - `Window > SabaProps > Placement > Surface Growth`: primary/adjacent Colliders, botanical preset, initial growth direction, hierarchy parent, and immediate build can be configured before placing a Surface Vine or Rhizome Patch.
 - `FoliageLoadDemo.unity`: 600 sunflowers and a 1,920-plant mixed meadow using four shared GPU-instanced patch meshes and one material.
 
@@ -35,6 +37,7 @@
 
 ### Changed
 
+- Foliage Palette scene placement can pin the stamp preview with `Space`, resize it without moving the placement point, resume surface tracking with `Space`, and stop with `Esc`.
 - Scene authoring entries now live under `GameObject > SabaProps > Placement`; sample and bundled-demo generators moved under `Tools > SabaProps > Debug`.
 - Relicensed the package from MIT to Apache License 2.0.
 - Moved `SurfaceVine` and `RhizomePatch` into matching script files so generated scene components remain resolvable after assembly recompilation.

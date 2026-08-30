@@ -224,6 +224,7 @@ namespace UnityEditor
 
     public static class HandleUtility
     {
+        public static int nearestControl => 0;
         public static float GetHandleSize(Vector3 position) => 1f;
         public static void AddDefaultControl(int controlId) { }
         public static Ray GUIPointToWorldRay(Vector2 position) => default;
@@ -349,6 +350,7 @@ namespace UnityEditor
         public static Vector3 Vector3Field(string label, Vector3 value, params GUILayoutOption[] options) => value;
 
         public static Enum EnumPopup(string label, Enum selected, params GUILayoutOption[] options) => selected;
+        public static int Popup(string label, int selectedIndex, string[] displayedOptions, params GUILayoutOption[] options) => selectedIndex;
 
         public static Vector2 BeginScrollView(Vector2 position, params GUILayoutOption[] options) => position;
         public static void EndScrollView() { }
@@ -366,6 +368,14 @@ namespace UnityEditor
             public VerticalScope(GUIStyle style, params GUILayoutOption[] options) { }
             public void Dispose() { }
         }
+    }
+
+    public static class EditorPrefs
+    {
+        public static bool HasKey(string key) => false;
+        public static int GetInt(string key, int defaultValue = 0) => defaultValue;
+        public static void SetInt(string key, int value) { }
+        public static void DeleteKey(string key) { }
     }
 }
 
