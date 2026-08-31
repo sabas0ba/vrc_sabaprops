@@ -16,19 +16,19 @@ MonoBehaviour:
   botanicalPreset: 8
   meshSeed: 1709
   structure:
-    trunkLength: 5.4
-    trunkRadius: 0.28
+    trunkLength: 5.7
+    trunkRadius: 0.3
     radialSegments: 7
     segmentsPerBranch: 4
     maxDepth: 4
-    branchCount: 3
-    branchAngle: 54
+    branchCount: 4
+    branchAngle: 51
     branchAngleJitter: 8
-    lengthDecay: 0.67
+    lengthDecay: 0.72
     radiusDecay: 0.58
     trunkBranchStart: 0.27
     crookedness: 0.055
-    maxBranches: 620
+    maxBranches: 760
     crownShape: 0
     branchArrangement: 0
     whorlSize: 3
@@ -38,17 +38,19 @@ MonoBehaviour:
     azimuthJitter: 11
     branchLengthVariance: 0.12
     crownDensity: 1.25
+    crownEnvelopeStrength: 1
+    crownWidthScale: 1.08
   appearance:
     barkRootColor: {r: 0.18, g: 0.16, b: 0.15, a: 1}
     barkTipColor: {r: 0.31, g: 0.25, b: 0.22, a: 1}
     leafShape: 1
     leafArrangement: 0
-    leavesPerTip: 22
+    leavesPerTip: 6
     leafLength: 0.29
     leafWidth: 0.125
     leafBaseColor: {r: 0.085, g: 0.26, b: 0.065, a: 1}
     leafTipColor: {r: 0.28, g: 0.48, b: 0.12, a: 1}
-    foliageDepth: 4
+    foliageDepth: 2
     windEnabled: 1
     windResponse: 1
     branchStiffness: 0.32

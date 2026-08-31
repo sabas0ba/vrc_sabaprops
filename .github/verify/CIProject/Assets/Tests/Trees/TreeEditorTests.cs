@@ -252,6 +252,54 @@ namespace SabaProps.Trees.CITests
                 "botanical families should retain several distinct generated topologies");
         }
 
+        [TestCase(TreeBotanicalPreset.JapaneseMaple)]
+        [TestCase(TreeBotanicalPreset.JapaneseWhiteBirch)]
+        public void LowerBoleTapersWithoutAPinchedBand(
+            TreeBotanicalPreset preset)
+        {
+            TreeSpecies species = CreateSpecies(preset);
+            try
+            {
+                Mesh mesh = TreeMeshBuilder.Build(species, 0);
+                try
+                {
+                    Vector3[] vertices = mesh.vertices;
+                    int sides = species.structure.radialSegments;
+                    var radii = new float[3];
+                    for (int ring = 0; ring < radii.Length; ring++)
+                    {
+                        Vector3 centre = Vector3.zero;
+                        for (int side = 0; side < sides; side++)
+                        {
+                            centre += vertices[ring * sides + side];
+                        }
+                        centre /= sides;
+
+                        for (int side = 0; side < sides; side++)
+                        {
+                            radii[ring] += Vector3.Distance(
+                                centre,
+                                vertices[ring * sides + side]);
+                        }
+                        radii[ring] /= sides;
+                    }
+
+                    Assert.GreaterOrEqual(radii[0] + 1e-5f, radii[1]);
+                    Assert.GreaterOrEqual(radii[1] + 1e-5f, radii[2]);
+                    Assert.GreaterOrEqual(radii[2], radii[0] * 0.70f,
+                        "the lower quarter of the trunk must not collapse into a waist");
+                }
+                finally
+                {
+                    Object.DestroyImmediate(mesh);
+                }
+            }
+            finally
+            {
+                Object.DestroyImmediate(species);
+            }
+        }
+
         [Test]
         public void BotanicalPresetsEncodeObservedBranchAndLeafArrangements()
         {
@@ -270,6 +318,8 @@ namespace SabaProps.Trees.CITests
                     maple.structure.branchArrangement);
                 Assert.AreEqual(TreeLeafArrangement.Opposite,
                     maple.appearance.leafArrangement);
+                Assert.AreEqual(1f, maple.structure.crownEnvelopeStrength,
+                    "street-tree presets should keep branches inside their crown envelope");
                 Assert.AreEqual(TreeBranchArrangement.Whorled,
                     cedar.structure.branchArrangement);
                 Assert.AreEqual(TreeCrownShape.Pyramidal,
@@ -282,6 +332,8 @@ namespace SabaProps.Trees.CITests
                     pine.appearance.leafArrangement);
                 Assert.AreEqual(TreeCrownShape.OpenIrregular,
                     pine.structure.crownShape);
+                Assert.Less(pine.structure.crownEnvelopeStrength, 0.25f,
+                    "open red-pine crowns should retain irregular growth");
                 Assert.AreEqual(TreeLeafShape.Scale,
                     hinoki.appearance.leafShape);
                 Assert.AreEqual(TreeLeafArrangement.Opposite,
@@ -292,12 +344,20 @@ namespace SabaProps.Trees.CITests
                     sakuraSummer.appearance.leafShape);
                 Assert.AreEqual(sakuraSpring.meshSeed, sakuraSummer.meshSeed,
                     "seasonal Sakura variants should retain their branch structure");
+                Assert.GreaterOrEqual(sakuraSpring.structure.branchCount, 4,
+                    "seasonal Sakura needs a visible structural crown");
+                Assert.AreEqual(2, sakuraSpring.appearance.foliageDepth,
+                    "seasonal Sakura foliage should stay on terminal branches");
                 Assert.AreEqual(TreeLeafShape.Fan,
                     ginkgoSummer.appearance.leafShape);
                 Assert.AreEqual(TreeLeafArrangement.Clustered,
                     ginkgoSummer.appearance.leafArrangement);
                 Assert.AreEqual(ginkgoSummer.meshSeed, ginkgoAutumn.meshSeed,
                     "seasonal Ginkgo variants should retain their branch structure");
+                Assert.GreaterOrEqual(ginkgoSummer.structure.branchCount, 3,
+                    "seasonal Ginkgo needs a visible structural crown");
+                Assert.AreEqual(2, ginkgoSummer.appearance.foliageDepth,
+                    "seasonal Ginkgo foliage should stay on terminal branches");
                 Assert.LessOrEqual(sakuraSpring.lod.lod2ScreenHeight, 0.005f,
                     "distant trees should retain their final LOD instead of culling early");
             }
@@ -355,6 +415,64 @@ namespace SabaProps.Trees.CITests
         }
 
         [Test]
+        public void CrownEnvelopeStrengthConstrainsUpwardBranchGrowth()
+        {
+            TreeSpecies species = CreateSpecies(TreeArchetype.Broadleaf);
+            try
+            {
+                species.structure.crownShape = TreeCrownShape.Rounded;
+                species.structure.branchAngle = 10f;
+                species.structure.branchAngleJitter = 0f;
+                species.structure.maxDepth = 5;
+                species.structure.branchCount = 3;
+                species.structure.lengthDecay = 0.82f;
+                species.structure.trunkBranchStart = 0.20f;
+                species.structure.crookedness = 0f;
+                species.structure.tipUpturn = 0.4f;
+                species.appearance.leafShape = TreeLeafShape.None;
+
+                species.structure.crownEnvelopeStrength = 0f;
+                Mesh freeGrowth = TreeMeshBuilder.Build(species, 0);
+                species.structure.crownEnvelopeStrength = 1f;
+                Mesh constrained = TreeMeshBuilder.Build(species, 0);
+                try
+                {
+                    AssertMesh(freeGrowth, "free-growth crown");
+                    AssertMesh(constrained, "constrained crown");
+                    float freeMaximumY = float.MinValue;
+                    foreach (Vector3 vertex in freeGrowth.vertices)
+                    {
+                        freeMaximumY = Mathf.Max(freeMaximumY, vertex.y);
+                    }
+                    float constrainedMaximumY = float.MinValue;
+                    foreach (Vector3 vertex in constrained.vertices)
+                    {
+                        constrainedMaximumY = Mathf.Max(
+                            constrainedMaximumY,
+                            vertex.y);
+                    }
+                    Assert.Greater(
+                        freeMaximumY,
+                        constrainedMaximumY + 0.2f,
+                        "the envelope should visibly trim upward branch growth");
+                    Assert.LessOrEqual(
+                        constrainedMaximumY,
+                        species.structure.trunkLength + 0.03f,
+                        "the trunk apex should remain the highest structural point");
+                }
+                finally
+                {
+                    Object.DestroyImmediate(freeGrowth);
+                    Object.DestroyImmediate(constrained);
+                }
+            }
+            finally
+            {
+                Object.DestroyImmediate(species);
+            }
+        }
+
+        [Test]
         public void ValidationClampsUnsafeApiValues()
         {
             TreeSpecies species = CreateSpecies(TreeArchetype.Broadleaf);
@@ -367,6 +485,8 @@ namespace SabaProps.Trees.CITests
                 species.structure.lengthDecay = 4f;
                 species.structure.crookedness = 4f;
                 species.structure.crownDensity = 4f;
+                species.structure.crownEnvelopeStrength = -1f;
+                species.structure.crownWidthScale = 4f;
                 species.appearance.leafLength = 0f;
                 species.appearance.foliageDepth = 99;
                 species.appearance.windResponse = 4f;
@@ -390,6 +510,10 @@ namespace SabaProps.Trees.CITests
                 Assert.AreEqual(0.85f, species.structure.lengthDecay, 1e-6f);
                 Assert.AreEqual(0.5f, species.structure.crookedness, 1e-6f);
                 Assert.AreEqual(1.5f, species.structure.crownDensity, 1e-6f);
+                Assert.AreEqual(0f,
+                    species.structure.crownEnvelopeStrength, 1e-6f);
+                Assert.AreEqual(1.5f,
+                    species.structure.crownWidthScale, 1e-6f);
                 Assert.AreEqual(0.01f, species.appearance.leafLength, 1e-6f);
                 Assert.AreEqual(4, species.appearance.foliageDepth);
                 Assert.AreEqual(2f, species.appearance.windResponse, 1e-6f);

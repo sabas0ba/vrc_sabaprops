@@ -6,6 +6,7 @@ All notable changes to this package are documented in this file.
 
 ### Added
 
+- Added `Crown Envelope Strength` and `Crown Width Scale` generation parameters for rounded street-tree crowns and deliberately open growth habits.
 - Added a link to the shared placement and editing UI guide for single-tree and Tree Field workflows.
 - Generated Tree Fields can rebuild automatically after debounced Inspector and Undo/Redo changes; first generation remains explicit.
 - `TreeField` is automatically excluded from builds with `DontSaveInBuild`; generated render objects remain and no manual component removal is required.
@@ -21,6 +22,7 @@ All notable changes to this package are documented in this file.
 
 ### Changed
 
+- Trunks now use a transported ring frame and a slower monotonic lower-bole taper; seasonal Sakura and Ginkgo use larger, denser branch structures with foliage restricted to terminal branch orders.
 - Tree LODs now share the same branch centre lines and deterministic leaf candidates; lower LODs omit fine branch tubes and use uniformly selected, larger leaf cards instead of rebuilding a different tree topology.
 - Low-LOD trunks retain enough radial and axial divisions for a stable flared-base silhouette, and distant culling starts at a smaller screen height.
 - Blossom and leaf planes now vary their roll per element; clustered Sakura and Ginkgo foliage is distributed along short generated twigs instead of stacking at one point.

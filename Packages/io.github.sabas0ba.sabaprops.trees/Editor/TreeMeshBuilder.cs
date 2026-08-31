@@ -33,6 +33,7 @@ namespace SabaProps.Trees.Editors
             public BuildSettings Settings;
             public FoliageRandom Random;
             public int BranchesBuilt;
+            public BranchPath Trunk;
         }
 
         private sealed class BranchPath
@@ -128,6 +129,7 @@ namespace SabaProps.Trees.Editors
                 0,
                 true,
                 true);
+            context.Trunk = trunk;
 
             int primaryCount = PrimaryBranchCount(context);
 
@@ -350,7 +352,7 @@ namespace SabaProps.Trees.Editors
             // enough axial and radial divisions avoids a triangular low-LOD
             // section rotating into an hourglass silhouette near the ground.
             int segments = trunk
-                ? Mathf.Max(4, context.Settings.SegmentsPerBranch)
+                ? Mathf.Max(8, context.Settings.SegmentsPerBranch)
                 : context.Settings.SegmentsPerBranch;
             int sides = trunk
                 ? Mathf.Max(6, context.Settings.RadialSegments)
@@ -406,8 +408,18 @@ namespace SabaProps.Trees.Editors
                         context.Settings.MaxDepth,
                         structure.branchDroop);
                 }
+                Vector3 nextPoint = points[i] + direction * step;
+                if (!trunk)
+                {
+                    nextPoint = ConstrainToCrownEnvelope(context, nextPoint);
+                    Vector3 constrainedDirection = nextPoint - points[i];
+                    if (constrainedDirection.sqrMagnitude > 1e-8f)
+                    {
+                        direction = constrainedDirection.normalized;
+                    }
+                }
                 directions[i] = direction;
-                points[i + 1] = points[i] + direction * step;
+                points[i + 1] = nextPoint;
             }
 
             float elementSeed = context.Random.Value01();
@@ -444,6 +456,8 @@ namespace SabaProps.Trees.Editors
 
             int[,] rings = new int[meshSegments + 1, sides];
 
+            Vector3 previousTangent = Vector3.zero;
+            Vector3 transportedRight = Vector3.zero;
             for (int ring = 0; ring <= meshSegments; ring++)
             {
                 float ratio = ring / (float)meshSegments;
@@ -451,18 +465,38 @@ namespace SabaProps.Trees.Editors
                     ? meshDirections[0]
                     : ring == meshSegments ? meshDirections[meshSegments - 1]
                     : (meshDirections[ring - 1] + meshDirections[ring]).normalized;
-                Vector3 right = Perpendicular(tangent);
+                if (ring == 0)
+                {
+                    transportedRight = Perpendicular(tangent);
+                }
+                else
+                {
+                    transportedRight = Quaternion.FromToRotation(
+                        previousTangent,
+                        tangent) * transportedRight;
+                    transportedRight = Vector3.ProjectOnPlane(
+                        transportedRight,
+                        tangent).normalized;
+                    if (transportedRight.sqrMagnitude < 1e-6f)
+                    {
+                        transportedRight = Perpendicular(tangent);
+                    }
+                }
+                Vector3 right = transportedRight;
                 Vector3 up = Vector3.Cross(tangent, right).normalized;
+                previousTangent = tangent;
                 bool terminal = branchOrder >= context.Settings.MaxDepth;
                 float tipRatio = trunk || terminal
                     ? 0.06f
                     : Mathf.Min(
                         0.72f,
                         context.Species.structure.radiusDecay);
-                // A near-linear trunk taper reads as a wide butt, a steadily
-                // narrowing bole, and a slender leader. Delaying almost all
-                // taper until the crown makes the upper trunk look swollen.
-                float taperRatio = trunk ? Mathf.Pow(ratio, 1.15f) : ratio;
+                // A slower lower-bole taper reads as a wide butt followed by
+                // a steadily narrowing trunk. The upper curve still reaches
+                // a slender leader without pinching the first visible rings.
+                float taperRatio = trunk
+                    ? Mathf.Pow(ratio, 1.65f)
+                    : Mathf.Pow(ratio, 1.08f);
                 float ringRadius = Mathf.Lerp(
                     radius,
                     radius * tipRatio,
@@ -472,8 +506,11 @@ namespace SabaProps.Trees.Editors
                     float baseFlare = 1f - Mathf.SmoothStep(
                         0f,
                         1f,
-                        Mathf.Clamp01(ratio / 0.22f));
-                    ringRadius *= 1f + baseFlare * 0.28f;
+                        Mathf.Clamp01(ratio / 0.30f));
+                    // Add the buttress to the monotonic bole radius. Both
+                    // terms decrease towards the crown, so a coarse ring can
+                    // no longer create a pinched band above the root flare.
+                    ringRadius += radius * baseFlare * 0.24f;
                 }
                 float bend = trunk ? 0f : Mathf.Lerp(bendStart, bendEnd, ratio);
                 float age = trunk
@@ -1218,6 +1255,79 @@ namespace SabaProps.Trees.Editors
                 case TreeCrownShape.Rounded:
                 default:
                     return 0.62f + Mathf.Sin(height * Mathf.PI) * 0.48f;
+            }
+        }
+
+        private static Vector3 ConstrainToCrownEnvelope(
+            BuildContext context,
+            Vector3 point)
+        {
+            TreeStructureParams structure = context.Species.structure;
+            float strength = structure.crownEnvelopeStrength;
+            if (strength <= 0f || context.Trunk == null)
+            {
+                return point;
+            }
+
+            Vector3 apex = context.Trunk.PointAt(1f);
+            Vector3 crownBase = context.Trunk.PointAt(
+                structure.trunkBranchStart);
+            float crownHeight = Mathf.Max(0.05f, apex.y - crownBase.y);
+            if (point.y <= crownBase.y)
+            {
+                return point;
+            }
+
+            float height = Mathf.Clamp01(
+                (point.y - crownBase.y) / crownHeight);
+            float trunkRatio = Mathf.Clamp01(point.y / Mathf.Max(0.05f, apex.y));
+            Vector3 centre = context.Trunk.PointAt(trunkRatio);
+            Vector3 radial = point - centre;
+            radial.y = 0f;
+
+            float maximumRadius = structure.trunkLength
+                * structure.lengthDecay
+                * structure.crownWidthScale
+                * Mathf.Lerp(1.08f, 0.90f, structure.apicalDominance);
+            float allowedRadius = maximumRadius
+                * CrownEnvelopeProfile(structure.crownShape, height);
+
+            Vector3 target = point;
+            target.y = Mathf.Min(target.y, apex.y);
+            float radialLength = radial.magnitude;
+            if (radialLength > allowedRadius)
+            {
+                Vector3 limitedRadial = radialLength > 1e-6f
+                    ? radial * (allowedRadius / radialLength)
+                    : Vector3.zero;
+                target.x = centre.x + limitedRadial.x;
+                target.z = centre.z + limitedRadial.z;
+            }
+
+            return Vector3.Lerp(point, target, strength);
+        }
+
+        private static float CrownEnvelopeProfile(
+            TreeCrownShape shape,
+            float height)
+        {
+            height = Mathf.Clamp01(height);
+            float rounded = Mathf.Sqrt(
+                Mathf.Max(0f, 4f * height * (1f - height)));
+            switch (shape)
+            {
+                case TreeCrownShape.Vase:
+                    return rounded * Mathf.Lerp(0.68f, 1.10f, height);
+                case TreeCrownShape.Layered:
+                    return rounded
+                        * (0.93f + Mathf.Sin(height * Mathf.PI * 4f) * 0.07f);
+                case TreeCrownShape.Pyramidal:
+                    return 1f - height;
+                case TreeCrownShape.OpenIrregular:
+                    return Mathf.Lerp(0.82f, 0.28f, height);
+                case TreeCrownShape.Rounded:
+                default:
+                    return rounded;
             }
         }
 

@@ -76,6 +76,8 @@ LOD Mesh は Species ごとに 3 個だけ生成し、すべての個体で共�
 - LOD1/LOD2 は同じ枝中心線と葉候補を維持しつつ、細枝の筒形状、断面数、枝区間数、葉カード数を段階的に減らし、残る葉を拡大して遠景の樹冠面積を保ちます
 - 一次枝と子枝は `Spiral` / `Opposite` / `Whorled` / `Irregular` の枝序で配置します
 - `Crown Shape` が高さごとの枝長包絡を、`Apical Dominance` が主幹と側枝の比率を決めます
+- `Crown Envelope Strength` は枝を樹冠包絡へ収める強さです。`0` は自由成長、`1` は主幹頂点を最高点として包絡内へ収めます
+- `Crown Width Scale` は木の高さを変えずに樹冠包絡の横幅を調整します。街路樹は `Crown Shape = Rounded`、強度 `1` を基準に調整できます
 - `Crown Density` は再帰深度を変えずに主枝層を増減し、`Foliage Depth` は葉を付ける末端側の枝階層数を決めます
 - 構造枝は水平より下へ向けず、`Branch Droop` は細い末端枝だけへ適用します。`Tip Upturn` は先端の上向きを加えます
 - 子枝半径は分岐数の平方根で上限を設け、親より太い末端枝が生じないようにします

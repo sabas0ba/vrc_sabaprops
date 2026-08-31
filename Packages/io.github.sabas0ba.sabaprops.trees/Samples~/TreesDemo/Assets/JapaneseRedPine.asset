@@ -38,6 +38,8 @@ MonoBehaviour:
     azimuthJitter: 18
     branchLengthVariance: 0.22
     crownDensity: 1.15
+    crownEnvelopeStrength: 0.12
+    crownWidthScale: 1.12
   appearance:
     barkRootColor: {r: 0.2, g: 0.17, b: 0.14, a: 1}
     barkTipColor: {r: 0.43, g: 0.245, b: 0.14, a: 1}
