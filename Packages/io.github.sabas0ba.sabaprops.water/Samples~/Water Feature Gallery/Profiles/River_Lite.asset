@@ -1,0 +1,32 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: befd95ac67c94fc3ae63d453113b2cdf, type: 3}
+  m_Name: River_Lite
+  m_EditorClassIdentifier:
+  bodyKind: 1
+  quality: 0
+  material: {fileID: 2100000, guid: 5d2911882ac91da4891177d89504b95f, type: 2}
+  shallowColor: {r: 0.16, g: 0.48, b: 0.55, a: 1}
+  deepColor: {r: 0.015, g: 0.11, b: 0.18, a: 1}
+  opacity: 0.66
+  smoothness: 0.78
+  waveScale: 2.8
+  waveStrength: 0.09
+  waveSpeed: 0.85
+  flowDirection: {x: 0, y: 1}
+  vertexWaveHeight: 0
+  edgeFade: 0
+  rippleStrength: 0.12
+  rippleDensity: 1.5
+  rippleSpeed: 0.8
+  refractionStrength: 0.018
+  depthDistance: 1.5

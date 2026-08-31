@@ -12,7 +12,17 @@ VRChat World向けの水面、雨、霧、雲、水中エフェクトをEditor�
 
 ## クイックスタート
 
-最初に以下を実行します。
+全機能をまとめて確認する場合は、Package Managerの`Samples`から`Water Feature Gallery`をimportします。
+import後の`WaterFeatureGallery.unity`を開き、Play Modeに入ると雨、衝突波紋、霧、雲が動作します。
+各展示rootは`[Copy Ready]`と命名されており、そのまま対象Sceneへコピーできます。
+
+同じGalleryを現在のprojectへ直接生成する場合は、次を実行します。
+
+`Tools > SabaProps > Water > Create Feature Gallery`
+
+詳細な構成と撮影用Cameraは[Water Feature Gallery](Documentation~/sample-gallery.md)を参照してください。
+
+個別に作り始める場合は、最初に以下を実行します。
 
 `Tools > SabaProps > Water > Create Default Assets`
 
@@ -118,4 +128,5 @@ StandardはGrabPassのためPC向けです。水面を複数作る場合はStand
 - Fog Volume Highは描画pixelごとに20 sampleを取ります。cameraを覆う大volumeではfill rateが支配的になります。
 - 透明surfaceは重なりとmirrorで描画回数が増えます。Material variant数、描画面積、overdrawを併せて確認してください。
 
-詳細は[設計と制約](Documentation~/architecture.md)および[配置・調整手順](Documentation~/authoring.md)を参照してください。
+詳細は[設計と制約](Documentation~/architecture.md)、[配置・調整手順](Documentation~/authoring.md)、
+[Water Feature Gallery](Documentation~/sample-gallery.md)を参照してください。

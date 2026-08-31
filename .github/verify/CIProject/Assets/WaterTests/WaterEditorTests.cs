@@ -2,7 +2,9 @@ using System.Collections.Generic;
 using NUnit.Framework;
 using SabaProps.Water.Editors;
 using UnityEditor;
+using UnityEditor.SceneManagement;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 namespace SabaProps.Water.CITests
 {
@@ -183,6 +185,73 @@ namespace SabaProps.Water.CITests
 
             Assert.IsFalse(lite.IsKeywordEnabled("_FOG_HIGH_QUALITY"));
             Assert.IsTrue(high.IsKeywordEnabled("_FOG_HIGH_QUALITY"));
+        }
+    }
+
+    /// <summary>
+    /// The gallery is both the first-run sample and the source for documentation
+    /// captures, so its hierarchy and portable asset references are CI contracts.
+    /// </summary>
+    public class WaterSampleSceneTests
+    {
+        [Test]
+        public void FeatureGallery_CoversEveryFeatureAndIsSelfContained()
+        {
+            Scene scene = WaterSampleScene.Create();
+            try
+            {
+                Assert.IsTrue(scene.IsValid(), "feature gallery scene was not created");
+                Assert.IsNotNull(
+                    AssetDatabase.LoadAssetAtPath<SceneAsset>(WaterSampleScene.ScenePath),
+                    "feature gallery scene was not saved");
+
+                Assert.IsNotNull(GameObject.Find(WaterSampleScene.SurfaceRootName));
+                Assert.IsNotNull(GameObject.Find(WaterSampleScene.RainRootName));
+                Assert.IsNotNull(GameObject.Find(WaterSampleScene.AtmosphereRootName));
+                Assert.IsNotNull(GameObject.Find(WaterSampleScene.UnderwaterRootName));
+                Assert.IsNotNull(GameObject.Find(WaterSampleScene.OverviewCameraName));
+                Assert.IsNotNull(GameObject.Find(WaterSampleScene.UnderwaterCameraName));
+                WaterSampleScene.ValidateOpenGallery();
+
+                Assert.AreEqual(2, Object.FindObjectsOfType<WaterPath>().Length,
+                    "gallery must include editable Lite and Standard rivers");
+                Assert.Greater(Object.FindObjectsOfType<ParticleSystem>().Length, 4,
+                    "gallery must include rain, splash, ripple, fog and cloud particles");
+
+                foreach (Renderer renderer in Object.FindObjectsOfType<Renderer>())
+                {
+                    foreach (Material material in renderer.sharedMaterials)
+                    {
+                        if (material == null)
+                        {
+                            continue;
+                        }
+
+                        string path = AssetDatabase.GetAssetPath(material);
+                        Assert.IsTrue(
+                            path.StartsWith(WaterSampleScene.SampleFolder + "/"),
+                            renderer.name + " references a material outside the sample: " + path);
+                    }
+                }
+
+                foreach (MeshFilter filter in Object.FindObjectsOfType<MeshFilter>())
+                {
+                    string path = AssetDatabase.GetAssetPath(filter.sharedMesh);
+                    if (!path.StartsWith("Assets/"))
+                    {
+                        continue;
+                    }
+
+                    Assert.IsTrue(
+                        path.StartsWith(WaterSampleScene.SampleFolder + "/"),
+                        filter.name + " references a mesh outside the sample: " + path);
+                }
+            }
+            finally
+            {
+                EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
+                AssetDatabase.DeleteAsset(WaterAssetLibrary.RootFolder);
+            }
         }
     }
 }

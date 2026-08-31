@@ -13,6 +13,13 @@
   "documentationUrl": "https://github.com/sabas0ba/vrc_sabaprops/blob/main/Packages/io.github.sabas0ba.sabaprops.water/README.md",
   "changelogUrl": "https://github.com/sabas0ba/vrc_sabaprops/blob/main/Packages/io.github.sabas0ba.sabaprops.water/CHANGELOG.md",
   "vpmDependencies": {},
+  "samples": [
+    {
+      "displayName": "Water Feature Gallery",
+      "description": "水面、雨、波紋、霧、雲、水中表現を比較し、各rigをコピーして利用できるサンプルSceneです。",
+      "path": "Samples~/Water Feature Gallery"
+    }
+  ],
   "keywords": [
     "vrchat",
     "world",

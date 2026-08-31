@@ -360,6 +360,7 @@ namespace UnityEditor.SceneManagement
     {
         public static bool MarkSceneDirty(Scene scene) => false;
         public static Scene NewScene(NewSceneSetup setup, NewSceneMode mode) => default;
+        public static Scene OpenScene(string scenePath) => default;
         public static bool SaveScene(Scene scene, string dstScenePath) => false;
         public static bool SaveCurrentModifiedScenesIfUserWantsTo() => false;
     }

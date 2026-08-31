@@ -10,3 +10,4 @@
 - 衝突時のsplashと波紋を含む雨rig generator
 - 局所霧、広域霧、雲layerのgeneratorとvolume Shader
 - 水中の色収差、歪み、コースティクス、light shaft用Shaderとvolume generator
+- 全Featureを比較してcopyできるWater Feature GalleryサンプルSceneと再生成menu
