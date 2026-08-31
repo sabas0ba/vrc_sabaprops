@@ -3,12 +3,12 @@
   "displayName": "SabaProps Foliage",
   "version": "0.3.0",
   "unity": "2022.3",
-  "description": "GPU インスタンシング前提の軽量な草木スキャッタリングツール。草叢、花、雑草、穀物など 8 種をプロシージャルに生成し、風揺れ・個体差・距離縮退を 1 マテリアルで処理します。テクスチャ不要、頂点カラーベースなのでバイナリアセットを含みません。",
+  "description": "GPU インスタンシング前提の軽量な草木スキャッタリングツール。草叢、花、雑草、穀物、ツタなど 9 種をプロシージャルに生成し、風揺れ・個体差・距離縮退を 1 マテリアルで処理します。テクスチャ不要、頂点カラーベースなのでバイナリアセットを含みません。",
   "author": {
     "name": "sabas0ba",
     "url": "https://github.com/sabas0ba"
   },
-  "license": "MIT",
+  "license": "Apache-2.0",
   "licensesUrl": "https://github.com/sabas0ba/vrc_sabaprops/blob/main/LICENSE",
   "documentationUrl": "https://github.com/sabas0ba/vrc_sabaprops/blob/main/Packages/io.github.sabas0ba.sabaprops.foliage/README.md",
   "changelogUrl": "https://github.com/sabas0ba/vrc_sabaprops/blob/main/Packages/io.github.sabas0ba.sabaprops.foliage/CHANGELOG.md",
@@ -24,5 +24,17 @@
     "sunflower",
     "gpu-instancing",
     "optimization"
+  ],
+  "samples": [
+    {
+      "displayName": "Foliage Demo",
+      "description": "Three prebuilt scenes showing all nine species, floor-wall-slope surface growth, and a 2,520-plant lightweight load demo.",
+      "path": "Samples~/FoliageDemo"
+    },
+    {
+      "displayName": "VRChat Demo Movement",
+      "description": "Optional movement settings for walking through the generated documentation demo in a VRChat world.",
+      "path": "Samples~/VRChatDemoMovement"
+    }
   ]
 }

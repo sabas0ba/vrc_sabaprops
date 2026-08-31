@@ -51,7 +51,7 @@ namespace SabaProps.Foliage.Editors
         /// again once the editor has finished compiling.
         /// </para>
         /// </summary>
-        [MenuItem("Tools/SabaProps/Foliage/Import VRChat Demo Movement", false, 2)]
+        [MenuItem("Tools/SabaProps/Debug/Foliage/Import VRChat Demo Movement", false, 30)]
         public static void ImportDemoMovement()
         {
             if (!FoliageVrcWorld.IsSdkPresent)
@@ -95,7 +95,7 @@ namespace SabaProps.Foliage.Editors
                 + "コンパイルが終わったら Create Sample Scene を実行し直すと、デモに移動設定が付きます。");
         }
 
-        [MenuItem("GameObject/SabaProps/Foliage Field", false, 10)]
+        [MenuItem("GameObject/SabaProps/Placement/Foliage Field...", false, 10)]
         public static void CreateFoliageField(MenuCommand command)
         {
             FoliageFieldWizard.Open(command.context as GameObject);

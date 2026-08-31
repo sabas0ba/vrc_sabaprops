@@ -50,6 +50,11 @@ internal static class OfflineMeshTests
         Run("weed leaves are broad and uneven", WeedLeavesAreBroadAndUneven);
         Run("the grain ear bows under its droop", GrainEarBowsUnderItsDroop);
         Run("the dandelion keeps its rosette when the head goes", DandelionKeepsItsRosetteWhenTheHeadGoes);
+        Run("the vine hangs below a rigid ledge anchor", VineHangsBelowItsAnchor);
+        Run("projected surface paths are deterministic and budgeted", ProjectedSurfacePathsAreDeterministic);
+        Run("direction jitter creates seeded persistent wander", DirectionJitterCreatesPersistentWander);
+        Run("surface crawl stays on its projector", SurfaceCrawlStaysProjected);
+        Run("surface vine and rhizome meshes are well formed", SurfaceGrowthMeshesAreWellFormed);
 
         Run("degenerate parameters stay finite", DegenerateParametersStayFinite);
         Run("merging preserves counts and moves the wind pivots", MergePreservesChannels);
@@ -67,6 +72,216 @@ internal static class OfflineMeshTests
     // ----------------------------------------------------------------------
     // Checks
     // ----------------------------------------------------------------------
+
+    private static void ProjectedSurfacePathsAreDeterministic()
+    {
+        var settings = new SurfaceGrowthSettings
+        {
+            mode = SurfaceGrowthMode.ProjectedSpline,
+            pathCount = 6,
+            coverage = 0.75f,
+            stepLength = 0.1f,
+            maxPathLength = 2f,
+            branchesPerMetre = 1.2f,
+            maxBranchDepth = 2,
+            nodeBudget = 180,
+            seed = 4401,
+        };
+        var guides = new List<Vector3>
+        {
+            Vector3.zero,
+            new Vector3(0.2f, 0.8f, 0f),
+            new Vector3(-0.15f, 1.5f, 0f),
+            new Vector3(0.35f, 2.1f, 0f),
+        };
+
+        SurfaceGrowthGraph first = SurfaceGrowthGraphBuilder.Build(
+            settings, guides, ProjectWall);
+        SurfaceGrowthGraph second = SurfaceGrowthGraphBuilder.Build(
+            settings, guides, ProjectWall);
+
+        Require(first.Nodes.Count > settings.pathCount, "projected spline produced too few nodes");
+        Require(first.Nodes.Count <= settings.nodeBudget, "projected spline exceeded node budget");
+        Require(first.Nodes.Count == second.Nodes.Count, "same surface seed changed node count");
+
+        for (int i = 0; i < first.Nodes.Count; i++)
+        {
+            SurfaceGrowthNode a = first.Nodes[i];
+            SurfaceGrowthNode b = second.Nodes[i];
+            Require(a.position.x == b.position.x
+                    && a.position.y == b.position.y
+                    && a.position.z == b.position.z,
+                $"surface node {i} changed for the same seed");
+            Require(Math.Abs(a.position.z - settings.surfaceOffset) < 1e-5f,
+                $"surface node {i} left the projected wall");
+            Require(a.parentIndex < i, $"surface node {i} has a forward parent reference");
+        }
+    }
+
+    private static void SurfaceCrawlStaysProjected()
+    {
+        var settings = new SurfaceGrowthSettings
+        {
+            mode = SurfaceGrowthMode.SurfaceCrawl,
+            pathCount = 5,
+            coverage = 0.8f,
+            stepLength = 0.12f,
+            maxPathLength = 1.4f,
+            branchesPerMetre = 0.8f,
+            maxBranchDepth = 1,
+            nodeBudget = 150,
+            seed = 4402,
+        };
+        SurfaceGrowthGraph graph = SurfaceGrowthGraphBuilder.Build(
+            settings,
+            new List<Vector3> { Vector3.zero },
+            ProjectGround);
+
+        Require(graph.Nodes.Count > 5, "surface crawl produced too few nodes");
+        Require(graph.Nodes.Count <= settings.nodeBudget, "surface crawl exceeded node budget");
+        foreach (SurfaceGrowthNode node in graph.Nodes)
+        {
+            Require(Math.Abs(node.position.y - settings.surfaceOffset) < 1e-5f,
+                "surface crawl left the projected ground");
+            Require(Math.Abs(node.normal.y - 1f) < 1e-5f,
+                "surface crawl lost the projector normal");
+        }
+    }
+
+    private static void DirectionJitterCreatesPersistentWander()
+    {
+        var settings = new SurfaceGrowthSettings
+        {
+            mode = SurfaceGrowthMode.ProjectedSpline,
+            pathCount = 1,
+            coverage = 1f,
+            stepLength = 0.08f,
+            maxPathLength = 3f,
+            branchesPerMetre = 0f,
+            rootSpread = 0f,
+            pathLengthVariance = 0f,
+            minimumSpacing = 0f,
+            directionJitter = 0.62f,
+            directionPersistence = 0.88f,
+            guideAttraction = 0.52f,
+            nodeBudget = 128,
+            seed = 7321,
+        };
+        var guides = new List<Vector3>
+        {
+            Vector3.zero,
+            new Vector3(0f, 3f, 0f),
+        };
+
+        SurfaceGrowthGraph first = SurfaceGrowthGraphBuilder.Build(
+            settings, guides, ProjectWall);
+        float minimumX = float.MaxValue;
+        float maximumX = float.MinValue;
+        foreach (SurfaceGrowthNode node in first.Nodes)
+        {
+            minimumX = Mathf.Min(minimumX, node.position.x);
+            maximumX = Mathf.Max(maximumX, node.position.x);
+        }
+        float lateralSpan = maximumX - minimumX;
+        Require(lateralSpan > 0.12f,
+            $"direction jitter produced only {lateralSpan:0.000} m of lateral wander");
+        Require(maximumX - minimumX < 1.5f,
+            "guide attraction did not contain the lateral wander");
+
+        settings.seed = 7322;
+        SurfaceGrowthGraph second = SurfaceGrowthGraphBuilder.Build(
+            settings, guides, ProjectWall);
+        int compared = Mathf.Min(first.Nodes.Count, second.Nodes.Count);
+        float seedDifference = 0f;
+        for (int i = 0; i < compared; i++)
+        {
+            seedDifference += Vector3.Distance(
+                first.Nodes[i].position,
+                second.Nodes[i].position);
+        }
+        Require(seedDifference > 0.2f,
+            "different seeds did not change the growth direction");
+
+        settings.directionJitter = 0f;
+        SurfaceGrowthGraph straight = SurfaceGrowthGraphBuilder.Build(
+            settings, guides, ProjectWall);
+        foreach (SurfaceGrowthNode node in straight.Nodes)
+        {
+            Require(Mathf.Abs(node.position.x) < 1e-4f,
+                "zero jitter changed the guide direction");
+        }
+    }
+
+    private static void SurfaceGrowthMeshesAreWellFormed()
+    {
+        var wallSettings = new SurfaceGrowthSettings
+        {
+            mode = SurfaceGrowthMode.ProjectedSpline,
+            pathCount = 3,
+            coverage = 0.7f,
+            stepLength = 0.1f,
+            maxPathLength = 1.4f,
+            branchesPerMetre = 0.6f,
+            seed = 4403,
+        };
+        var guides = new List<Vector3>
+        {
+            Vector3.zero,
+            new Vector3(0.2f, 0.7f, 0f),
+            new Vector3(-0.1f, 1.4f, 0f),
+        };
+        SurfaceGrowthGraph wallGraph = SurfaceGrowthGraphBuilder.Build(
+            wallSettings, guides, ProjectWall);
+        var sparse = new SurfaceVineParams { leavesPerMetre = 2f };
+        var dense = new SurfaceVineParams { leavesPerMetre = 12f };
+        Mesh sparseMesh = SurfaceGrowthMeshBuilder.BuildVine(wallGraph, wallSettings, sparse);
+        Mesh denseMesh = SurfaceGrowthMeshBuilder.BuildVine(wallGraph, wallSettings, dense);
+        AssertWellFormed(sparseMesh, "surface vine sparse");
+        AssertWellFormed(denseMesh, "surface vine dense");
+        Require(denseMesh.vertexCount > sparseMesh.vertexCount,
+            "leavesPerMetre did not increase surface vine geometry");
+
+        var groundSettings = new SurfaceGrowthSettings
+        {
+            mode = SurfaceGrowthMode.SurfaceCrawl,
+            pathCount = 4,
+            coverage = 0.75f,
+            maxPathLength = 1f,
+            stepLength = 0.12f,
+            seed = 4404,
+        };
+        SurfaceGrowthGraph groundGraph = SurfaceGrowthGraphBuilder.Build(
+            groundSettings,
+            new List<Vector3> { Vector3.zero },
+            ProjectGround);
+        Mesh rhizome = SurfaceGrowthMeshBuilder.BuildRhizomePatch(
+            groundGraph,
+            groundSettings,
+            new RhizomePatchParams { flowerChance = 0.4f });
+        AssertWellFormed(rhizome, "rhizome patch");
+    }
+
+    private static bool ProjectWall(
+        Vector3 candidate,
+        Vector3 normalHint,
+        float maximumDistance,
+        out SurfacePoint point)
+    {
+        candidate.z = 0f;
+        point = new SurfacePoint(candidate, Vector3.forward);
+        return true;
+    }
+
+    private static bool ProjectGround(
+        Vector3 candidate,
+        Vector3 normalHint,
+        float maximumDistance,
+        out SurfacePoint point)
+    {
+        candidate.y = 0f;
+        point = new SurfacePoint(candidate, Vector3.up);
+        return true;
+    }
 
     private static void RandomIsDeterministic()
     {
@@ -124,7 +339,8 @@ internal static class OfflineMeshTests
     {
         // Unity leaves newly added serializable reference fields null when it
         // loads an asset written before those fields existed. Switching such a
-        // 0.2 asset to a 0.3 species must create the new block before dispatch.
+        // An older asset switched to a newer species kind must create the new
+        // parameter block before dispatch.
         var smallFlower = new FoliageSpecies { kind = FoliageSpeciesKind.SmallFlower };
         smallFlower.smallFlower = null;
         AssertWellFormed(FoliageMeshBuilder.Build(smallFlower), "upgraded small flower");
@@ -144,6 +360,11 @@ internal static class OfflineMeshTests
         dandelion.dandelion = null;
         AssertWellFormed(FoliageMeshBuilder.Build(dandelion), "upgraded dandelion");
         Require(dandelion.dandelion != null, "dandelion parameters stayed null");
+
+        var vine = new FoliageSpecies { kind = FoliageSpeciesKind.Vine };
+        vine.vine = null;
+        AssertWellFormed(FoliageMeshBuilder.Build(vine), "upgraded vine");
+        Require(vine.vine != null, "vine parameters stayed null");
     }
 
     private static void EverySpeciesIsDeterministic()
@@ -216,6 +437,45 @@ internal static class OfflineMeshTests
         // tallest blade. Ankle-high grass reads as moss from standing height.
         Require(tallest > 0.4f, $"default grass is only {tallest:0.00} m tall");
         Require(tallest < 1.5f, $"default grass is {tallest:0.00} m tall");
+    }
+
+    private static void VineHangsBelowItsAnchor()
+    {
+        var species = new FoliageSpecies
+        {
+            kind = FoliageSpeciesKind.Vine,
+            meshSeed = 79,
+        };
+        Mesh mesh = FoliageMeshBuilder.Build(species);
+        AssertWellFormed(mesh, "vine");
+
+        float lowest = 0f;
+        float highest = float.MinValue;
+        foreach (Vector3 vertex in mesh.vertices)
+        {
+            lowest = Mathf.Min(lowest, vertex.y);
+            highest = Mathf.Max(highest, vertex.y);
+        }
+        Require(lowest < -1f, $"the default vine only hangs to {lowest:0.00} m");
+        Require(highest <= 1e-5f,
+            $"the vine grew above its ledge anchor to {highest:0.000} m");
+
+        var uv0 = new List<Vector2>();
+        var uv3 = new List<Vector4>();
+        mesh.GetUVs(0, uv0);
+        mesh.GetUVs(3, uv3);
+
+        int rigidRoots = 0;
+        for (int i = 0; i < mesh.vertexCount; i++)
+        {
+            Require(Math.Abs(uv3[i].y) <= 1e-6f,
+                $"vine vertex {i} has a wind pivot below the ledge");
+            if (Math.Abs(mesh.vertices[i].y) <= 1e-5f && uv0[i].y <= 1e-5f)
+            {
+                rigidRoots++;
+            }
+        }
+        Require(rigidRoots > 0, "the vine has no rigid root vertices");
     }
 
     private static void SinglePlantsShareOneWindPhase()
@@ -917,6 +1177,7 @@ internal static class OfflineMeshTests
         FoliageSpeciesKind.Weed,
         FoliageSpeciesKind.Grain,
         FoliageSpeciesKind.Dandelion,
+        FoliageSpeciesKind.Vine,
     };
 
     private static FoliageSeason[] AllSeasons() => new[]
@@ -994,7 +1255,11 @@ internal static class OfflineMeshTests
 
         foreach (Vector2 uv in uv0)
         {
-            Require(uv.y >= -1e-4f && uv.y <= 1f + 1e-4f, $"{label}: bend mask {uv.y} is outside [0,1]");
+            bool regularBend = uv.y >= -1e-4f && uv.y <= 1f + 1e-4f;
+            bool encodedSurfaceBend = uv.y >= -2f - 1e-4f && uv.y <= -1f + 1e-4f;
+            Require(
+                regularBend || encodedSurfaceBend,
+                $"{label}: bend mask {uv.y} is outside [0,1] or encoded surface range [-2,-1]");
         }
 
         foreach (Vector4 uv in uv3)

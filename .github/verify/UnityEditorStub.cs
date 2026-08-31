@@ -186,6 +186,7 @@ namespace UnityEditor
         public static T LoadAssetAtPath<T>(string assetPath) where T : UnityEngine.Object => null;
         public static string GetAssetPath(UnityEngine.Object assetObject) => string.Empty;
         public static string AssetPathToGUID(string path) => string.Empty;
+        public static string GenerateUniqueAssetPath(string path) => path;
         public static void SaveAssets() { }
         public static void Refresh() { }
         public static void ImportAsset(string path) { }
@@ -204,6 +205,7 @@ namespace UnityEditor
 
     public static class Undo
     {
+        public static event Action undoRedoPerformed;
         public static void RegisterCreatedObjectUndo(UnityEngine.Object objectToUndo, string name) { }
         public static void DestroyObjectImmediate(UnityEngine.Object objectToUndo) { }
         public static void RecordObject(UnityEngine.Object objectToUndo, string name) { }
@@ -222,7 +224,10 @@ namespace UnityEditor
 
     public static class HandleUtility
     {
+        public static int nearestControl => 0;
         public static float GetHandleSize(Vector3 position) => 1f;
+        public static void AddDefaultControl(int controlId) { }
+        public static Ray GUIPointToWorldRay(Vector2 position) => default;
     }
 
     public static class Handles
@@ -236,8 +241,10 @@ namespace UnityEditor
         public static void Label(Vector3 position, string text) { }
         public static void Label(Vector3 position, string text, GUIStyle style) { }
         public static void DrawLine(Vector3 p1, Vector3 p2) { }
+        public static void DrawWireDisc(Vector3 center, Vector3 normal, float radius) { }
 
         public static float RadiusHandle(Quaternion rotation, Vector3 position, float radius) => radius;
+        public static Vector3 PositionHandle(Vector3 position, Quaternion rotation) => position;
 
         public static float ScaleValueHandle(
             float value, Vector3 position, Quaternion rotation, float size,
@@ -257,8 +264,11 @@ namespace UnityEditor
 
     public class SceneView
     {
+        public static event Action<SceneView> duringSceneGui;
         public static SceneView lastActiveSceneView => null;
+        public Camera camera { get; } = null;
         public Vector3 pivot { get; set; }
+        public static void RepaintAll() { }
         public void Repaint() { }
         public void LookAt(Vector3 point, Quaternion direction, float newSize) { }
     }
@@ -269,6 +279,7 @@ namespace UnityEditor
     {
         public static void BeginChangeCheck() { }
         public static bool EndChangeCheck() => false;
+        public static void DrawRect(Rect rect, Color color) { }
 
         public class IndentLevelScope : IDisposable
         {
@@ -282,6 +293,28 @@ namespace UnityEditor
             public DisabledScope(bool disabled) { }
             public void Dispose() { }
         }
+    }
+
+    public static class EditorApplication
+    {
+        public static event Action update;
+        public static double timeSinceStartup => 0d;
+        public static bool isPlayingOrWillChangePlaymode => false;
+    }
+
+    public class PreviewRenderUtility
+    {
+        public PreviewRenderUtility(bool renderFullScene = false) { }
+
+        public Camera camera { get; } = null;
+        public Light[] lights { get; } = new Light[2];
+        public Color ambientColor { get; set; }
+
+        public void BeginPreview(Rect rect, GUIStyle background) { }
+        public void DrawMesh(Mesh mesh, Matrix4x4 matrix, Material material, int subMeshIndex) { }
+        public void Render(bool allowScriptableRenderPipeline = false, bool updatefov = true) { }
+        public void EndAndDrawPreview(Rect rect) { }
+        public void Cleanup() { }
     }
 
     public static class EditorGUILayout
@@ -308,6 +341,7 @@ namespace UnityEditor
         public static UnityEngine.Object ObjectField(UnityEngine.Object obj, Type objType, bool allowSceneObjects, params GUILayoutOption[] options) => obj;
         public static UnityEngine.Object ObjectField(string label, UnityEngine.Object obj, Type objType, bool allowSceneObjects, params GUILayoutOption[] options) => obj;
 
+        public static bool Toggle(bool value, params GUILayoutOption[] options) => value;
         public static bool Toggle(string label, bool value, params GUILayoutOption[] options) => value;
         public static bool ToggleLeft(string label, bool value, params GUILayoutOption[] options) => value;
 
@@ -320,8 +354,10 @@ namespace UnityEditor
         public static int IntField(string label, int value, params GUILayoutOption[] options) => value;
 
         public static Vector2 Vector2Field(string label, Vector2 value, params GUILayoutOption[] options) => value;
+        public static Vector3 Vector3Field(string label, Vector3 value, params GUILayoutOption[] options) => value;
 
         public static Enum EnumPopup(string label, Enum selected, params GUILayoutOption[] options) => selected;
+        public static int Popup(string label, int selectedIndex, string[] displayedOptions, params GUILayoutOption[] options) => selectedIndex;
 
         public static Vector2 BeginScrollView(Vector2 position, params GUILayoutOption[] options) => position;
         public static void EndScrollView() { }
@@ -340,6 +376,14 @@ namespace UnityEditor
             public void Dispose() { }
         }
     }
+
+    public static class EditorPrefs
+    {
+        public static bool HasKey(string key) => false;
+        public static int GetInt(string key, int defaultValue = 0) => defaultValue;
+        public static void SetInt(string key, int value) { }
+        public static void DeleteKey(string key) { }
+    }
 }
 
 namespace UnityEditor.SceneManagement
@@ -348,10 +392,15 @@ namespace UnityEditor.SceneManagement
 
     public enum NewSceneMode { Single = 0, Additive = 1 }
 
+    public enum OpenSceneMode { Single = 0, Additive = 1, AdditiveWithoutLoading = 2 }
+
     public static class EditorSceneManager
     {
         public static bool MarkSceneDirty(Scene scene) => false;
         public static Scene NewScene(NewSceneSetup setup, NewSceneMode mode) => default;
+        public static Scene OpenScene(
+            string scenePath,
+            OpenSceneMode mode = OpenSceneMode.Single) => default;
         public static bool SaveScene(Scene scene, string dstScenePath) => false;
         public static bool SaveCurrentModifiedScenesIfUserWantsTo() => false;
     }
@@ -419,8 +468,23 @@ namespace NUnit.Framework
 
         public static void Greater(double arg1, double arg2) { }
         public static void Greater(double arg1, double arg2, string message) { }
+        public static void GreaterOrEqual(double arg1, double arg2) { }
+        public static void GreaterOrEqual(double arg1, double arg2, string message) { }
         public static void Less(double arg1, double arg2) { }
         public static void Less(double arg1, double arg2, string message) { }
+        public static void LessOrEqual(double arg1, double arg2) { }
+        public static void LessOrEqual(double arg1, double arg2, string message) { }
+    }
+
+    public static class CollectionAssert
+    {
+        public static void AreEqual(
+            System.Collections.IEnumerable expected,
+            System.Collections.IEnumerable actual) { }
+        public static void AreEqual(
+            System.Collections.IEnumerable expected,
+            System.Collections.IEnumerable actual,
+            string message) { }
     }
 }
 

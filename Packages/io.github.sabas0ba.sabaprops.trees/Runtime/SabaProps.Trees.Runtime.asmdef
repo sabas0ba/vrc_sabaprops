@@ -1,0 +1,16 @@
+{
+    "name": "SabaProps.Trees.Runtime",
+    "rootNamespace": "SabaProps.Trees",
+    "references": [
+        "SabaProps.Foliage.Runtime"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

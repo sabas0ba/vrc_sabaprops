@@ -112,7 +112,9 @@ namespace SabaProps.Foliage.Editors
             // a field does not end up bending as one.
             for (int i = 0; i < positions.Count; i++)
             {
-                float t = i < uv0.Count ? Mathf.Clamp01(uv0[i].y) : 0f;
+                float encodedBend = i < uv0.Count ? uv0[i].y : 0f;
+                float t = Mathf.Clamp01(
+                    encodedBend <= -0.5f ? -encodedBend - 1f : encodedBend);
                 if (t <= 0f)
                 {
                     continue;

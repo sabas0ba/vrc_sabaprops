@@ -1,17 +1,35 @@
 # SabaProps Foliage
 
 GPU インスタンシング前提の、軽量な草木スキャッタリングツールです。
-草叢・クローバー・ひまわり・葦・小花・雑草・穀物・たんぽぽをプロシージャルに生成し、広い範囲に大量配置できます。
+草叢・クローバー・ひまわり・葦・小花・雑草・穀物・たんぽぽ・ツタをプロシージャルに生成し、広い範囲に大量配置できます。Collider 表面を這うツタと、地下茎で連結したグラウンドカバーも Editor 時に焼き込めます。
 
-- テクスチャ不要（頂点カラー駆動）。パッケージにバイナリアセットを含みません
+- テクスチャ不要（頂点カラー駆動）。実装本体はバイナリアセット不要で、Package Manager から任意に導入する Demo Sample だけが生成済み Mesh を含みます
 - ワールド座標ハッシュによる個体差なので、per-instance データの送信が一切不要です
 - Built-in Render Pipeline / Unity 2022.3 / VRChat ワールド・アバターの両方で使えます
 
-![8 種の草花を混植し、同じ風になびかせた FoliageDemo のオフラインレンダリング](Documentation~/images/generated/foliage-demo-overview.svg)
+## 配置ツール
+
+Trees package も導入した環境では、`Window > SabaProps > Placement` が
+草地・ツタ・根茎・樹木をシーンへ配置するための共通入口になります。
+Foliage 単体では次のウィンドウを直接開けます。
+
+- `Window > SabaProps > Foliage Palette`: 種の配合、形状プレビュー、Scene View 上での草地配置
+- `Window > SabaProps > Placement > Surface Growth`: 対象 Collider、隣接面、ツタの preset、初期成長方向を指定して Surface Vine / Rhizome Patch を配置
+- `GameObject > SabaProps > Placement`: 選択中の GameObject を基準にした簡易配置
+
+配置ウィンドウの表示言語は日本語が既定です。各ウィンドウ上部の `表示言語 / UI Language`
+から英語へ切り替えられ、設定は配置ウィンドウ間で共有されます。
+
+画面ごとの操作順、Palette の編集モード、Scene View のキー操作、自動再生成、World ビルド前の
+扱いは [配置・編集 UI 操作ガイド](Documentation~/placement-workflow.md) にまとめています。
+
+デモ生成は配置作業と分離し、`Tools > SabaProps > Debug` 以下にあります。
+
+![地面配置向け 8 種の草花を混植し、同じ風になびかせた FoliageDemo のオフラインレンダリング](Documentation~/images/generated/foliage-demo-overview.svg)
 
 この図は実際のメッシュ生成器から作った 320 株を決定論的に配置し、シェーダーと同じ風の式を固定時刻で評価したものです。ライティングと地面は形状を読みやすくするためのオフライン近似で、Unity の画面を撮影したものではありません。
 
-![草叢・クローバー・ひまわり・葦・小花・雑草・穀物・たんぽぽを同じ縮尺で並べた比較図](Documentation~/images/generated/species-overview.svg)
+![地面配置向けの草叢・クローバー・ひまわり・葦・小花・雑草・穀物・たんぽぽを同じ縮尺で並べた比較図](Documentation~/images/generated/species-overview.svg)
 
 図はすべて実際の生成器の出力です。パラメータを変えると形状がどう動くかは [パラメータと見た目の対応](Documentation~/parameters.md) に一覧があります。
 
@@ -21,6 +39,11 @@ GPU インスタンシング前提の、軽量な草木スキャッタリング�
 
 VRChat のワールドとアバターでは、**実行時に C# が動きません**（動くのは Udon だけです）。
 つまり `Graphics.DrawMeshInstanced` を毎フレーム呼ぶタイプの実装はアップロード後に何も描画しません。
+
+`FoliageField`、`FoliageChunk`、`SurfaceVine`、`RhizomePatch` は Unity Editor での
+生成条件を保持する authoring Component です。各 Component には `DontSaveInBuild` が自動設定され、
+World ビルドには含まれません。利用者がビルド前に手動で削除する必要はありません。
+生成済みの `MeshFilter`、`MeshRenderer`、`LODGroup` と GameObject は通常どおりビルドへ残ります。
 
 そこでこのパッケージは、実際に VRChat で効く 2 つの方法だけを採用しています。
 
@@ -38,9 +61,17 @@ VRChat のワールドとアバターでは、**実行時に C# が動きませ�
 
 ### まず動くものを見る
 
-`Tools > SabaProps > Foliage > Create Sample Scene`
+Package Manager で `SabaProps Foliage` を選び、`Samples > Foliage Demo > Import` を
+実行すると、床・壁・斜面を這う3パターンのツタと根茎パッチを含む
+`FoliageDemo.unity`、ヒマワリを含む全9 Speciesを小群落で並べた
+`FoliageSpeciesDemo.unity` が `Assets/Samples/` 以下へコピーされます。生成操作なしで開けます。
 
-地面・起伏・傾斜・ライト・カメラと 28 の区画からなるデモシーンを生成し、
+全 Species、地形、出力モード、季節を比較する大規模な検証用シーンは次のメニューから
+プロジェクト内へ生成できます。
+
+`Tools > SabaProps > Debug > Foliage > Create Sample Scene`
+
+地面・起伏・傾斜・壁上のツタ・ライト・カメラと 29 の区画からなるデモシーンを生成し、
 **ビルドまで済ませた状態**で開きます。保存先は `Assets/SabaProps/Foliage/Samples/FoliageDemo.unity` です。
 
 シーンは 7 m 角の区画を並べた庭のような構成です。隣り合う区画は 1 つだけ条件が違うので、
@@ -48,15 +79,15 @@ VRChat のワールドとアバターでは、**実行時に C# が動きませ�
 
 | セクション | 区画 | 変えているもの |
 | --- | --- | --- |
-| 1 Single Species | Grass / Clover / Sunflower / Reed / Small Flower / Weed / Grain / Dandelion | 種のみ。サイズ・シードは共通 |
+| 1 Single Species | Grass / Clover / Sunflower / Reed / Small Flower / Weed / Grain / Dandelion / Vine | 種のみ。Vine は壁上の細い区画から下へ垂らす |
 | 2 Parameter Variants | Grass - Tall / Clover - Broad / Sunflower - Dwarf / Reed - Splayed / Grain - Rice | 同じ種の形状パラメータ |
 | 3 Terrain | Mound / Ramp / Terrace / Skinned Mesh | 地面の形だけ。フィールド設定は共通 |
 | 4 Combinations | Meadow / Waterside / Flowerbed / Flower Field | 種の組み合わせと比率 |
 | 5 Output Modes | GPU Instanced / Merged Chunks | 出力モードのみ |
 | 6 Seasons | Spring / Summer / Autumn / Winter Snow / Winter Bare | 季節のみ。種・比率・シードは共通 |
 
-合計 11,522 個体、677 Renderer、376,648 三角形です。
-Unity 2022.3.22f1 の検証環境では生成に約 5.3 秒かかりました（生成時間は環境に依存します）。
+合計 11,524 個体、679 Renderer、376,966 三角形です。
+Unity 2022.3.22f1 の検証環境では生成に約 3.2 秒かかりました（生成時間は環境に依存します）。
 
 セクション 6 は同じシードなので、5 区画は同じ位置に生えています。違うのは季節だけです。
 使う Species アセット（`GrassSeed_Autumn` など）は `Assets/SabaProps/Foliage/Species/` に作られます。
@@ -65,13 +96,18 @@ Unity 2022.3.22f1 の検証環境では生成に約 5.3 秒かかりました（
 Mound では地面法線への追従、Terrace では段差への吸着が見えます。いずれも追加設定はしていません。
 Skinned Mesh はボーンで変形させた起伏地形で、**Collider を一切持ちません**（後述の Skinned Ground）。
 
+Vine はローカル Y=0 を根として −Y 方向へ伸びます。壁の上端に細い
+`FoliageField` を置き、上面 Collider を Ground Layers に含めて Generate すると、
+通常の地面吸着経路だけで壁面へ垂らせます。壁表面を探索して這う配置は 0.6.0 の
+第 2 段階です。
+
 セクション 5 は同じ設定・同じシードの区画を 2 つ並べてあるので、
 Inspector の統計で Renderer 数と推定ドローコールの差をそのまま比較できます。
 
 セクション 2 が使う Species アセットは `Assets/SabaProps/Foliage/Samples/Species/` に別途作られます。
 既定のプリセットは書き換えません。
 
-**移動が遅いと感じたら**: `Tools > SabaProps > Foliage > Import VRChat Demo Movement` を一度実行し、
+**移動が遅いと感じたら**: `Tools > SabaProps > Debug > Foliage > Import VRChat Demo Movement` を一度実行し、
 コンパイル後に Create Sample Scene をやり直してください。歩行 4 m/s・走行 9 m/s・ジャンプ可になります。
 
 VRChat の既定は歩行 2 m/s、ジャンプ不可です。これらは `VRCSceneDescriptor` の項目ではなく
@@ -85,23 +121,81 @@ VRChat Worlds SDK が入っているプロジェクトでは、`VRCSceneDescript
 
 現在開いているシーンは置き換えられます。未保存の変更があるときは確認ダイアログが出ます。
 
+### Palette で調整して置く
+
+`Window > SabaProps > Foliage Palette` は、配合、形状パラメータ、プレビュー、配置を
+1 つにまとめたドッキング可能なウィンドウです。
+
+1. Composition で使う Species を有効にし、Weight を決める
+2. 種名を選び、Parameters を変更する。Preview は変更のたびに更新されます
+3. スタンプ範囲の形状、寸法、Density、Output を決め、**Scene View でスタンプ配置**を押す
+4. Scene View 上の地面をクリックする。配置中も形状、寸法、2 / 5 / 10 / 20 m のプリセットを変更できます
+5. `Space` でプレビュー位置を固定すると、矩形の X/Z ハンドルまたは円形の半径ハンドルで範囲を調整できます。もう一度 `Space` を押すと地面追従へ戻り、`Esc` で配置モードを終了します
+
+編集先は 2 つあります。
+
+| Mode | 挙動 |
+| --- | --- |
+| `WorkingCopy` | ウィンドウ内の一時コピーを編集します。配置時に `Assets/SabaProps/Foliage/Species/Palette/` へ新しい Species アセットを書き出すため、既存フィールドは変わりません |
+| `DirectAsset` | Composition で指定した既存 Species とその Mesh を直接更新します。同じアセットを参照するすべてのフィールドに変更が即時反映されます |
+
+ウィンドウ内の編集とフィールド配置は Undo に対応します。ただし Unity の仕様上、
+`AssetDatabase` が書き出した Species と Mesh アセット自体は Undo では削除されません。
+
 ### 自分のシーンに置く
 
 1. 地面に Collider を付ける
    Terrain なら TerrainCollider、メッシュ地形なら MeshCollider。**これが無いと 1 本も生えません。**
-2. `GameObject > SabaProps > Foliage Field`
+2. `GameObject > SabaProps > Placement > Foliage Field...`
    ダイアログが開きます。配置する種と出現比率、エリア形状、密度、出力モードをここで決めます。
    必要な Species アセットとマテリアルは `Assets/SabaProps/Foliage/` に自動で作られます。
 3. **Create**
    シーンビューの中心にフィールドが置かれ、Generate now が ON なら生成まで済ませます。
 
-やり直したいときは Inspector の **Clear**、パラメータを変えたら **Generate** で作り直します。
+初回生成には Inspector の **Generate**、生成結果を削除する場合は **Clear** を使います。
+生成後は **値変更時に自動再生成** が既定で有効になり、Inspector の値や Scene View の範囲を
+変更すると、操作完了から短い待ち時間の後に生成結果も更新されます。大規模な Field をまとめて
+編集する場合は無効にし、編集後に **Generate** を実行できます。
 `Seed` が同じなら何度ビルドしても同じ配置になるので、他の PC でも結果は一致します。
 
 種の構成や比率は後から Inspector の **Species / Mix** でも変えられます。
 Mix はフィールドごとの値で、Species アセットは書き換えません。0 にすると Species 側の `Placement Weight` に従います。
 
 Species アセットだけ先に作りたい場合は `Tools > SabaProps > Foliage > Create Default Assets` で全種そろいます。
+
+---
+
+## 表面を這うツタと根茎パッチ
+
+Hierarchy で Collider を持つ壁または地面を選び、次を実行します。
+
+- `GameObject > SabaProps > Placement > Surface Vine`
+- `GameObject > SabaProps > Placement > Rhizome Patch`
+
+親の Collider は `Target Surface` へ自動設定されます。隣接する床・壁・斜面をまたぐ場合は
+`Additional Surfaces` に Collider を追加します。各候補へ投影して最も近い hit を選ぶため、
+ガイドを境界の先まで伸ばすと1本の経路として連続します。Collider 間の隙間は
+`Projection Distance` 以下にし、鋭い角では `Step Length` を短くしてください。
+
+Inspector のローカル Guide Points、経路密度、分岐、
+葉形、葉数、サイズ、色を調整し、`Build / Rebuild` を押します。`ProjectedSpline` は
+ガイド点列を Catmull–Rom 補間した流れへ各経路を引き寄せながら表面へ投影し、
+`SurfaceCrawl` は表面の接平面上を
+決定的な乱数で進みます。どちらも同じ `SurfaceGrowthGraph` を生成します。
+
+Surface Vine には Creeping Fig / English Ivy / Boston Ivy の形態 preset があります。
+根元の範囲、経路長、葉間隔、葉角度は Seed から個体ごとに変化します。葉色は葉全体の
+季節色に加え、葉縁・主脈・葉柄だけへ別の頂点色を焼き込めます。
+根元は最初の経路と逆方向へ短いテーパー付き collar を延ばします。`Root Anchor Length` が
+長さ、`Root Collar Scale` が始端側の太さを決め、壁や床の途中で茎が切れて見える状態を防ぎます。
+Rhizome Patch の既定形態はドクダミで、地下 Graph の Node から心形葉と花を立ち上げます。
+生成結果は `Assets/SabaProps/Foliage/Generated/SurfaceGrowth/` の Mesh asset へ保存され、
+実行時 C# を必要としません。
+一度生成した後は **値変更時に自動再生成** が Inspector の値、ガイド点、Undo/Redo を監視し、
+短い待ち時間の後に Mesh を更新します。初回生成だけは **Build / Rebuild** を使用します。
+
+詳細は [パラメータと見た目の対応](Documentation~/parameters.md#surface-vine) と
+[ロードマップの設計記録](Documentation~/roadmap.md#060-ツタ)を参照してください。
 
 ---
 
@@ -337,7 +431,9 @@ Built-in RP のサーフェスシェーダーです。
 | `Assets/SabaProps/Foliage/Species/` | Species プリセット |
 | `Assets/SabaProps/Foliage/Generated/Species/` | Species ごとのメッシュ（再ビルドで上書き。GUID は維持されます） |
 | `Assets/SabaProps/Foliage/Generated/Merged/<field>/` | Merged Chunks モードの結合メッシュ。Clear で削除されます |
+| `Assets/SabaProps/Foliage/Generated/SurfaceGrowth/` | Surface Vine / Rhizome Patch の永続メッシュ |
 | `Assets/SabaProps/Foliage/Samples/` | `Create Sample Scene` が作るデモシーンと地面マテリアル |
+| `Assets/SabaProps/Foliage/Species/Palette/` | Palette の `WorkingCopy` モードで配置時に保存される Species のスナップショット |
 
 生成物はパッケージフォルダの外に置かれます。VCC はアップグレード時にパッケージフォルダを丸ごと置き換えるためです。
 
@@ -353,4 +449,4 @@ Built-in RP のサーフェスシェーダーです。
 
 ## ライセンス
 
-MIT License. リポジトリの [LICENSE](https://github.com/sabas0ba/vrc_sabaprops/blob/main/LICENSE) を参照してください。
+Apache License 2.0. リポジトリの [LICENSE](https://github.com/sabas0ba/vrc_sabaprops/blob/main/LICENSE) を参照してください。

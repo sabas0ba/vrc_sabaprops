@@ -1,0 +1,259 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8be36d79f9154b838b73343abde7c779, type: 3}
+  m_Name: Sunflower
+  m_EditorClassIdentifier:
+  kind: 1
+  material: {fileID: 2100000, guid: 4aeefa6999fee3944b0a80eb27050a24, type: 2}
+  meshSeed: 7
+  season: 1
+  seasonPalette:
+    spring:
+      appearance: 0
+      target: {r: 0.478, g: 0.678, b: 0.243, a: 1}
+      blend: 0.35
+      saturation: 1.1
+      brightness: 1
+      windScale: 1
+      droop: 0
+    summer:
+      appearance: 0
+      target: {r: 0.29, g: 0.443, b: 0.161, a: 1}
+      blend: 0
+      saturation: 1
+      brightness: 1
+      windScale: 1
+      droop: 0
+    autumn:
+      appearance: 0
+      target: {r: 0.478, g: 0.29, b: 0.106, a: 1}
+      blend: 0.78
+      saturation: 0.8
+      brightness: 0.78
+      windScale: 0.45
+      droop: 0.35
+    winterSnow:
+      appearance: 0
+      target: {r: 0.573, g: 0.51, b: 0.376, a: 1}
+      blend: 0.8
+      saturation: 0.45
+      brightness: 0.8
+      windScale: 0.3
+      droop: 0.5
+    winterBare:
+      appearance: 0
+      target: {r: 0.235, g: 0.18, b: 0.129, a: 1}
+      blend: 0.85
+      saturation: 0.5
+      brightness: 0.62
+      windScale: 0.3
+      droop: 0.55
+  placementWeight: 1
+  minSpacing: 0.05
+  scaleRange: {x: 0.85, y: 1.2}
+  maxTilt: 7
+  faceSun: 0
+  faceSunJitter: 18
+  alignToGroundNormal: 0.3
+  slopeLimits: {x: 0, y: 40}
+  castShadows: 0
+  receiveShadows: 1
+  useLightProbes: 1
+  grass:
+    bladeCount: 6
+    segments: 3
+    clumpRadius: 0.08
+    height: 0.6
+    heightVariance: 0.35
+    width: 0.022
+    widthVariance: 0.25
+    bend: 0.45
+    taper: 0.8
+    normalUpBlend: 0.7
+    rootColor: {r: 0.129, g: 0.212, b: 0.078, a: 1}
+    tipColor: {r: 0.408, g: 0.573, b: 0.18, a: 1}
+    rootOcclusion: 0.35
+    perBladeTintJitter: 0.08
+    stiffness: 1
+  sunflower:
+    height: 1.35
+    heightVariance: 0.18
+    stemWidth: 0.028
+    stemSegments: 4
+    lean: 0.18
+    stemColor: {r: 0.204, g: 0.325, b: 0.11, a: 1}
+    leafCount: 3
+    leafLength: 0.24
+    leafWidth: 0.13
+    leafDroop: 22
+    leafColor: {r: 0.243, g: 0.404, b: 0.129, a: 1}
+    headRadius: 0.085
+    headSides: 9
+    headColor: {r: 0.243, g: 0.145, b: 0.063, a: 1}
+    headRimColor: {r: 0.361, g: 0.227, b: 0.086, a: 1}
+    headTilt: 38
+    petalCount: 15
+    petalLength: 0.11
+    petalWidth: 0.042
+    petalCurl: 0.018
+    petalBaseColor: {r: 0.902, g: 0.596, b: 0.086, a: 1}
+    petalTipColor: {r: 0.976, g: 0.816, b: 0.212, a: 1}
+    stemStiffness: 0.5
+    petalStiffness: 0.85
+  clover:
+    leafletCount: 3
+    height: 0.11
+    heightVariance: 0.3
+    stemWidth: 0.006
+    leafLength: 0.055
+    leafWidth: 0.062
+    leafDroop: 16
+    notch: 0.22
+    leafColor: {r: 0.208, g: 0.361, b: 0.145, a: 1}
+    leafRimColor: {r: 0.325, g: 0.498, b: 0.204, a: 1}
+    rootOcclusion: 0.3
+    perPlantTintJitter: 0.07
+    stiffness: 0.75
+  reed:
+    bladeCount: 4
+    segments: 3
+    height: 1.05
+    heightVariance: 0.28
+    width: 0.017
+    widthVariance: 0.2
+    spread: 0.16
+    clumpRadius: 0.035
+    taper: 1.1
+    normalUpBlend: 0.6
+    rootColor: {r: 0.243, g: 0.298, b: 0.129, a: 1}
+    tipColor: {r: 0.475, g: 0.478, b: 0.239, a: 1}
+    rootOcclusion: 0.3
+    spike: 1
+    spikeLength: 0.14
+    spikeWidth: 0.024
+    spikeColor: {r: 0.318, g: 0.208, b: 0.114, a: 1}
+    stiffness: 0.55
+  smallFlower:
+    height: 0.17
+    heightVariance: 0.3
+    stemWidth: 0.005
+    lean: 0.045
+    stemColor: {r: 0.243, g: 0.376, b: 0.153, a: 1}
+    leafCount: 3
+    leafLength: 0.05
+    leafWidth: 0.022
+    leafDroop: 18
+    leafColor: {r: 0.278, g: 0.435, b: 0.18, a: 1}
+    flowerCount: 2
+    petalCount: 5
+    petalLength: 0.024
+    petalWidth: 0.02
+    petalRounding: 0.75
+    flowerTilt: 22
+    centerRadius: 0.005
+    centerColor: {r: 0.965, g: 0.949, b: 0.831, a: 1}
+    petalBaseColor: {r: 0.929, g: 0.949, b: 0.98, a: 1}
+    petalTipColor: {r: 0.451, g: 0.616, b: 0.878, a: 1}
+    stiffness: 0.8
+    petalStiffness: 0.9
+  weed:
+    leafCount: 6
+    segments: 3
+    clumpRadius: 0.045
+    height: 0.24
+    heightVariance: 0.5
+    width: 0.052
+    widthVariance: 0.3
+    bend: 1.15
+    taper: 0.9
+    normalUpBlend: 0.65
+    rootColor: {r: 0.18, g: 0.243, b: 0.098, a: 1}
+    tipColor: {r: 0.361, g: 0.443, b: 0.169, a: 1}
+    rootOcclusion: 0.3
+    perLeafTintJitter: 0.1
+    shootCount: 1
+    shootHeight: 0.46
+    shootWidth: 0.008
+    shootColor: {r: 0.404, g: 0.427, b: 0.22, a: 1}
+    stiffness: 0.9
+  grain:
+    bladeCount: 3
+    segments: 3
+    height: 0.85
+    heightVariance: 0.2
+    width: 0.015
+    widthVariance: 0.18
+    spread: 0.24
+    clumpRadius: 0.03
+    taper: 1
+    normalUpBlend: 0.6
+    rootColor: {r: 0.463, g: 0.451, b: 0.216, a: 1}
+    tipColor: {r: 0.706, g: 0.647, b: 0.322, a: 1}
+    rootOcclusion: 0.28
+    earLength: 0.17
+    earWidth: 0.026
+    grainRows: 5
+    earDroop: 0.15
+    awnLength: 0.1
+    awnCount: 6
+    earColor: {r: 0.769, g: 0.671, b: 0.353, a: 1}
+    awnColor: {r: 0.812, g: 0.749, b: 0.478, a: 1}
+    stiffness: 0.5
+  dandelion:
+    leafCount: 6
+    segments: 5
+    clumpRadius: 0.03
+    height: 0.14
+    heightVariance: 0.35
+    width: 0.042
+    widthVariance: 0.25
+    bend: 1.35
+    toothDepth: 0.4
+    taper: 0.85
+    normalUpBlend: 0.7
+    rootColor: {r: 0.157, g: 0.243, b: 0.106, a: 1}
+    tipColor: {r: 0.318, g: 0.435, b: 0.169, a: 1}
+    rootOcclusion: 0.32
+    perLeafTintJitter: 0.09
+    stalkCount: 1
+    stalkHeight: 0.24
+    stalkHeightVariance: 0.3
+    stalkWidth: 0.007
+    stalkColor: {r: 0.31, g: 0.408, b: 0.176, a: 1}
+    seedHead: 0
+    headRadius: 0.026
+    rayCount: 18
+    flowerColor: {r: 0.973, g: 0.784, b: 0.169, a: 1}
+    flowerRimColor: {r: 0.937, g: 0.639, b: 0.106, a: 1}
+    seedLength: 0.022
+    seedColor: {r: 0.902, g: 0.902, b: 0.867, a: 1}
+    stiffness: 0.75
+    stalkStiffness: 0.9
+  vine:
+    strandCount: 3
+    segments: 8
+    length: 1.6
+    lengthVariance: 0.25
+    rootSpread: 0.08
+    lateralSway: 0.28
+    stemWidth: 0.012
+    stemRootColor: {r: 0.106, g: 0.188, b: 0.071, a: 1}
+    stemTipColor: {r: 0.208, g: 0.349, b: 0.118, a: 1}
+    leavesPerStrand: 7
+    leafLength: 0.13
+    leafWidth: 0.085
+    leafSizeVariance: 0.22
+    leafDroop: 0.28
+    leafBaseColor: {r: 0.149, g: 0.314, b: 0.098, a: 1}
+    leafTipColor: {r: 0.329, g: 0.506, b: 0.165, a: 1}
+    stiffness: 0.72
+  generatedMesh: {fileID: 4300000, guid: b7c6b93548bcc8946a5a2c3f28066c9b, type: 2}

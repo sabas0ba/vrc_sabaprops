@@ -6,6 +6,52 @@
 
 ## [Unreleased]
 
+### Added
+
+- Added a placement and editing UI guide covering palette edit modes, stamp controls, Surface Growth, trees, auto rebuild, and VRChat world-build handling.
+- Generated fields, vines, and rhizome patches can rebuild automatically after debounced Inspector, Scene-handle, and Undo/Redo changes; first generation remains explicit.
+- Foliage authoring and chunk-marker components are automatically excluded from builds with `DontSaveInBuild`; generated render objects remain and no manual component removal is required.
+- Placement workflow UI supports Japanese and English with Japanese as the default; the selected language is shared by the placement hub, Foliage Palette, quick field wizard, and Surface Growth placer.
+- Foliage Palette stamp controls provide rectangle/circle selection, numeric dimensions, 2 / 5 / 10 / 20 m presets, instance estimates, and pinned Scene View resize handles.
+- `Window > SabaProps > Placement > Surface Growth`: primary/adjacent Colliders, botanical preset, initial growth direction, hierarchy parent, and immediate build can be configured before placing a Surface Vine or Rhizome Patch.
+- `FoliageLoadDemo.unity`: 600 sunflowers and a 1,920-plant mixed meadow using four shared GPU-instanced patch meshes and one material.
+
+- `SurfaceGrowthGraph` と `SurfaceVine`: ガイド点列の投影スプラインまたは決定的な表面クロールから分岐 Graph を作り、Collider 表面へツタを焼き込みます
+  - 経路数、被覆率、分岐頻度、Node 予算、葉数、葉サイズ、4 種類の葉形、若葉・成葉・秋色・枯葉パレットを個別に制御できます
+  - Creeping Fig / English Ivy / Boston Ivy の形態 preset を追加しました
+  - `Additional Surfaces` により、接する床・壁・斜面 Collider を1本の経路で横断できます
+  - 根 Node に長さ・太さを設定できるテーパー付き collar を追加し、始端の切断面を隠します
+- `RhizomePatch`: 同じ Graph を地下茎として使い、ドクダミ型の心形葉、紫赤色の差し色、白い苞を持つ地上茎を生成します
+- Package Manager から導入できる、床→壁、垂直壁、床→斜面→壁のツタと根茎パッチを含む生成済み `Foliage Demo` Sample
+- 分岐角度、角度揺らぎ、長さ揺らぎを追加し、高密度な側枝を調整できるようにしました
+- ヒマワリを含む全9 Speciesを小群落で比較する生成済み `Foliage Species Demo` Sample
+
+- `Window > SabaProps > Foliage Palette`: 配合、選択中 Species の形状パラメータ、メッシュプレビュー、Scene 配置をまとめた常設 Editor ウィンドウ
+  - `WorkingCopy` は一時コピーだけを編集し、配置時に新しい Species アセットへ保存します。試行中に既存フィールドの見た目を変えません
+  - `DirectAsset` は既存 Species を `SerializedObject` 経由で直接編集し、同じ GUID の Mesh を更新します。同じアセットを参照するフィールドへ変更が即時反映されます
+  - Scene ビューで地面をクリックすると、現在の配合と Field 設定で生成します。地面に Collider が無い場合は Y=0 平面へ配置します
+  - パネル操作とフィールド生成は Undo に対応します。`AssetDatabase` による Species／Mesh の書き出しは Unity の Undo 対象外です
+- `FoliageSurfaceScatterer`: エリア走査、Density Mask、地面レイキャスト、高度制限、除外判定を prop パッケージ間で共有する決定的な Editor API
+  - 種の選択、サーフェス条件、最小間隔、最終姿勢は callback として分離し、既存 Foliage Field の Seed 列を維持します
+- `FoliageAreaUtility`: 矩形／円形の面積、範囲、包含判定、Mask UV 変換を共有する Runtime API
+- `Vine`: 壁上の根から −Y 方向へ垂れる複数の茎と不透明な葉を生成する決定的メッシュ
+  - 既存 Foliage Field を壁上端に細く配置して使う第 1 段階です。UV0 bend と UV3 root/stiffness は既存の風 shader 契約を使います
+  - サンプルシーンに壁上配置の Vine 区画を追加しました
+
+### Changed
+
+- Foliage Palette scene placement can pin the stamp preview with `Space`, resize it without moving the placement point, resume surface tracking with `Space`, and stop with `Esc`.
+- Scene authoring entries now live under `GameObject > SabaProps > Placement`; sample and bundled-demo generators moved under `Tools > SabaProps > Debug`.
+- Relicensed the package from MIT to Apache License 2.0.
+- Moved `SurfaceVine` and `RhizomePatch` into matching script files so generated scene components remain resolvable after assembly recompilation.
+- Projected surface vines can switch to an adjacent collider when the guide crosses a floor/slope/wall boundary, so the Slope sample remains on the ramp.
+- Surface-grown stems and leaves clip only the wind component entering their supporting surface; lobed leaves use a smoother outline and a narrower, lower-contrast vein.
+
+- Surface Vine の方向揺らぎを持続的な旋回へ変更し、`Direction Persistence` で広い弧と短い不規則な折れを調整できるようにしました
+- Surface Vine の Guide を経路そのものから誘導場へ変更し、根元範囲、経路長、葉間隔、葉角度を Seed から散らすようにしました
+- Surface Vine の葉へ葉縁リング、主脈、葉柄の部分着色を追加しました。Boston Ivy preset は緑主体とし、葉全体の赤紫色を少数へ抑えました
+- Field Wizard と Foliage Palette の既定 Weight を `FoliageAssetLibrary.DefaultFieldWeight()` に集約しました
+
 ## [0.3.0] - 2026-08-26
 
 ### Added

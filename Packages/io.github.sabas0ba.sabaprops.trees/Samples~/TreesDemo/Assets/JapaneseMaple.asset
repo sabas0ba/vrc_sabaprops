@@ -1,0 +1,74 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8bb7ae45c5bf4a40a7e7436fb8c6f627, type: 3}
+  m_Name: JapaneseMaple
+  m_EditorClassIdentifier:
+  archetype: 0
+  botanicalPreset: 2
+  meshSeed: 1201
+  structure:
+    trunkLength: 4.3
+    trunkRadius: 0.23
+    radialSegments: 7
+    segmentsPerBranch: 4
+    maxDepth: 5
+    branchCount: 2
+    branchAngle: 51
+    branchAngleJitter: 11
+    lengthDecay: 0.72
+    radiusDecay: 0.64
+    trunkBranchStart: 0.2
+    crookedness: 0.11
+    maxBranches: 560
+    crownShape: 2
+    branchArrangement: 1
+    whorlSize: 3
+    apicalDominance: 0.27
+    branchDroop: 0.025
+    tipUpturn: 0.12
+    azimuthJitter: 10
+    branchLengthVariance: 0.14
+    crownDensity: 1.08
+    crownEnvelopeStrength: 1
+    crownWidthScale: 1.04
+  appearance:
+    barkRootColor: {r: 0.16, g: 0.13, b: 0.105, a: 1}
+    barkTipColor: {r: 0.25, g: 0.2, b: 0.14, a: 1}
+    leafShape: 3
+    leafArrangement: 1
+    leavesPerTip: 6
+    leafLength: 0.31
+    leafWidth: 0.24
+    leafBaseColor: {r: 0.1, g: 0.27, b: 0.07, a: 1}
+    leafTipColor: {r: 0.31, g: 0.49, b: 0.13, a: 1}
+    foliageDepth: 4
+    windEnabled: 1
+    windResponse: 1
+    branchStiffness: 0.32
+    leafStiffness: 0.78
+  lod:
+    lod1DepthReduction: 1
+    lod2DepthReduction: 2
+    lod0ScreenHeight: 0.55
+    lod1ScreenHeight: 0.25
+    lod2ScreenHeight: 0.004
+  placement:
+    placementWeight: 1
+    minSpacing: 3
+    scaleRange: {x: 0.85, y: 1.2}
+    maxTilt: 3
+    alignToGroundNormal: 0.15
+    slopeLimits: {x: 0, y: 30}
+  lod0Mesh: {fileID: 4300000, guid: 2b11ddaeeae7ca345bbebf54b1e8b09e, type: 2}
+  lod1Mesh: {fileID: 4300000, guid: 60e8e4701f81bac48ad3575fed1d4578, type: 2}
+  lod2Mesh: {fileID: 4300000, guid: c3d1731fd3aab874098e9aa5bdbdd780, type: 2}
+  material: {fileID: 2100000, guid: 6700e61b3d74ce0459f881904686c730, type: 2}
