@@ -1,0 +1,37 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: befd95ac67c94fc3ae63d453113b2cdf, type: 3}
+  m_Name: Puddle_Standard
+  m_EditorClassIdentifier:
+  bodyKind: 0
+  quality: 1
+  material: {fileID: 2100000, guid: 127774b254bb13248b2ec9d41d715db0, type: 2}
+  shallowColor: {r: 0.24, g: 0.34, b: 0.36, a: 1}
+  deepColor: {r: 0.08, g: 0.12, b: 0.13, a: 1}
+  opacity: 0.58
+  smoothness: 0.9
+  waveScale: 5
+  waveStrength: 0.025
+  waveSpeed: 0.12
+  flowDirection: {x: 0.9805807, y: 0.19611615}
+  vertexWaveHeight: 0
+  edgeFade: 0.22
+  rippleStrength: 0.9
+  rippleDensity: 1.35
+  rippleSpeed: 0.8
+  shallowEdgeWidth: 0.24
+  foamColor: {r: 0.86, g: 0.95, b: 1, a: 1}
+  foamStrength: 0.05
+  crestFoamThreshold: 0.8
+  shoreFoamWidth: 0
+  refractionStrength: 0.018
+  depthDistance: 0.25

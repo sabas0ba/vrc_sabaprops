@@ -1,0 +1,49 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!21 &2100000
+Material:
+  serializedVersion: 8
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: Water_Lake_Standard
+  m_Shader: {fileID: 4800000, guid: 19db89ee62f7434b950e3045f791a902, type: 3}
+  m_Parent: {fileID: 0}
+  m_ModifiedSerializedProperties: 0
+  m_ValidKeywords: []
+  m_InvalidKeywords: []
+  m_LightmapFlags: 4
+  m_EnableInstancingVariants: 1
+  m_DoubleSidedGI: 0
+  m_CustomRenderQueue: -1
+  stringTagMap: {}
+  disabledShaderPasses: []
+  m_LockedProperties:
+  m_SavedProperties:
+    serializedVersion: 3
+    m_TexEnvs: []
+    m_Ints: []
+    m_Floats:
+    - _CrestFoamThreshold: 0.8
+    - _DepthDistance: 4
+    - _EdgeFade: 0
+    - _FoamStrength: 0.08
+    - _Opacity: 0.78
+    - _RefractionStrength: 0.018
+    - _RippleDensity: 1.5
+    - _RippleSpeed: 0.8
+    - _RippleStrength: 0.32
+    - _ShallowEdgeWidth: 0.08
+    - _ShoreFoamWidth: 0
+    - _Smoothness: 0.9
+    - _VertexWaveHeight: 0.045
+    - _WaveScale: 1.4
+    - _WaveSpeed: 0.22
+    - _WaveStrength: 0.08
+    m_Colors:
+    - _DeepColor: {r: 0.015, g: 0.11, b: 0.18, a: 1}
+    - _FlowDirection: {r: 0.9805807, g: 0.19611615, b: 0, a: 0}
+    - _FoamColor: {r: 0.86, g: 0.95, b: 1, a: 1}
+    - _ShallowColor: {r: 0.16, g: 0.48, b: 0.55, a: 1}
+  m_BuildTextureStacks: []
