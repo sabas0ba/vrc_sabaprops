@@ -2,7 +2,7 @@
 
 VRChat 向けのアセットを **VCC (VRChat Creator Companion) / VPM** で配布するためのリポジトリです。
 
-複数パッケージの集合体として育てていく前提の構成になっています。第一弾として、GPU インスタンシング前提の軽量な草木配置パッケージ **SabaProps Foliage** を収録しています。
+複数パッケージの集合体として、GPU インスタンシング前提の草木配置パッケージ **SabaProps Foliage** と、PC VRChat向けの接触変形家具パッケージ **SabaProps Soft Props** を収録しています。
 
 ---
 
@@ -26,12 +26,15 @@ https://sabas0ba.github.io/vrc_sabaprops/index.json
 | Package ID | 名前 | 概要 |
 | --- | --- | --- |
 | `io.github.sabas0ba.sabaprops.foliage` | SabaProps Foliage | GPU インスタンシング対応の草木スキャッタリングツール。グラスシード／ひまわりをプロシージャル生成し、大量配置しても軽量。 |
+| `io.github.sabas0ba.sabaprops.softprops` | SabaProps Soft Props | World Contactsでユーザーの接触を検知し、ふとん、ベッド、ソファー、クッションを最大8点で変形するPC向けprop集。 |
 
 各パッケージの詳細は `Packages/<package-id>/README.md` を参照してください。
 
 導入後に動作を確認する最短手順は `Tools > SabaProps > Foliage > Create Sample Scene` です。
 地面・ライト・カメラと 2 種類の出力モードのフィールドを含むデモシーンが、ビルド済みの状態で生成されます。
 VRChat Worlds SDK が入っているプロジェクトでは `VRCSceneDescriptor` と Spawn も配置され、そのままアップロードできます。
+
+Soft Propsは `Tools > SabaProps > Soft Props > Generate All Prefabs` で4種の家具Prefabと、指／棒／板の接触比較Prefabを生成します。
 
 ---
 
@@ -40,10 +43,11 @@ VRChat Worlds SDK が入っているプロジェクトでは `VRCSceneDescriptor
 ```
 .
 ├── Packages/                       # 配布する VPM パッケージ群（1 フォルダ = 1 パッケージ）
-│   └── io.github.sabas0ba.sabaprops.foliage/
+│   ├── io.github.sabas0ba.sabaprops.foliage/
+│   └── io.github.sabas0ba.sabaprops.softprops/
 │       ├── package.json            # VPM マニフェスト
-│       ├── Runtime/                # シーンに残る最小限のコンポーネントとシェーダー
-│       ├── Editor/                 # 生成・配置ツール（ビルドには含まれない）
+│       ├── Runtime/                # Udon controllerと変形shader
+│       ├── Editor/                 # Mesh／Material／Prefab生成器
 │       └── Documentation~/
 ├── Website/                        # GitHub Pages で公開するリスティングサイト
 ├── source.json                     # VPM リスティングのメタ情報

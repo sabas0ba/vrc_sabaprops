@@ -1,0 +1,17 @@
+{
+    "name": "SabaProps.SoftProps.Runtime",
+    "rootNamespace": "SabaProps.SoftProps",
+    "references": [
+        "UdonSharp.Runtime",
+        "VRC.Dynamics"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

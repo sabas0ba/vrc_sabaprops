@@ -214,6 +214,27 @@ for variant in "${variants[@]}"; do
     fi
 done
 
+# Soft PropsはVRChat/Udon型を参照するためC#のoffline compile対象には
+# 入れないが、shader本体は同じglslang経路で検査できる。
+SOFT_SHADER_DIR="$REPO/Packages/io.github.sabas0ba.sabaprops.softprops/Runtime/Shaders"
+SOFT_SHADER="$SOFT_SHADER_DIR/SabaSoftSurface.shader"
+if [ -f "$SOFT_SHADER" ]; then
+    "$PYTHON" .github/verify/extract_shader_body.py \
+        "$SOFT_SHADER" "$OUT/soft_shader_body.hlsl"
+    cp "$HERE/soft_shader_harness.hlsl" "$OUT/soft_shader_harness.hlsl"
+
+    if glslangValidator -D -e main -S vert --target-env vulkan1.0 \
+        -o "$OUT/soft_shader.spv" \
+        -I"$SOFT_SHADER_DIR" -I"$OUT" "$OUT/soft_shader_harness.hlsl" >/dev/null; then
+        echo "ok: SabaProps/Soft Surface"
+    else
+        glslangValidator -D -e main -S vert --target-env vulkan1.0 \
+            -o "$OUT/soft_shader.spv" \
+            -I"$SOFT_SHADER_DIR" -I"$OUT" "$OUT/soft_shader_harness.hlsl" || true
+        fail "soft surface shader failed"
+    fi
+fi
+
 # ---------------------------------------------------------------------------
 log "Running mesh generation (no Unity)"
 # ---------------------------------------------------------------------------
@@ -293,6 +314,9 @@ rm -rf "$OUT/site/docs"
 # ---------------------------------------------------------------------------
 log "Validating manifests"
 # ---------------------------------------------------------------------------
-"$PYTHON" .github/scripts/check_package.py "$REPO" "$PACKAGE"
+for package_dir in "$REPO"/Packages/*; do
+    [ -d "$package_dir" ] || continue
+    "$PYTHON" .github/scripts/check_package.py "$REPO" "$package_dir"
+done
 
 log "All checks passed"
