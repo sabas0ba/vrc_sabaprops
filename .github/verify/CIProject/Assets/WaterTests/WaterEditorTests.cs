@@ -21,8 +21,12 @@ namespace SabaProps.Water.CITests
             WaterAssetLibrary.FogVolumeShaderName,
             WaterAssetLibrary.UnderwaterLiteShaderName,
             WaterAssetLibrary.UnderwaterStandardShaderName,
+            WaterAssetLibrary.UnderwaterSurfaceLiteShaderName,
+            WaterAssetLibrary.UnderwaterSurfaceStandardShaderName,
             WaterAssetLibrary.CausticsShaderName,
             WaterAssetLibrary.LightShaftShaderName,
+            WaterAssetLibrary.WhitewaterShaderName,
+            WaterAssetLibrary.WetSurfaceShaderName,
         };
 
         [Test]
@@ -161,6 +165,8 @@ namespace SabaProps.Water.CITests
                 ParticleSystem rain = rig.transform.Find("Rain").GetComponent<ParticleSystem>();
                 Assert.IsTrue(rain.collision.enabled);
                 Assert.AreEqual(2, rain.subEmitters.subEmittersCount);
+                Assert.IsTrue(rain.main.playOnAwake);
+                Assert.IsTrue(rain.main.prewarm);
 
                 Transform rippleTransform = rig.transform.Find("Rain/Collision Ripple");
                 Assert.IsNotNull(rippleTransform);
@@ -209,14 +215,21 @@ namespace SabaProps.Water.CITests
                 Assert.IsNotNull(GameObject.Find(WaterSampleScene.RainRootName));
                 Assert.IsNotNull(GameObject.Find(WaterSampleScene.AtmosphereRootName));
                 Assert.IsNotNull(GameObject.Find(WaterSampleScene.UnderwaterRootName));
+                Assert.IsNotNull(GameObject.Find(WaterSampleScene.WetSurfaceRootName));
+                Assert.IsNotNull(GameObject.Find(WaterVrcWorld.WorldObjectName));
+                Assert.IsNotNull(GameObject.Find(WaterVrcWorld.SpawnObjectName));
                 Assert.IsNotNull(GameObject.Find(WaterSampleScene.OverviewCameraName));
                 Assert.IsNotNull(GameObject.Find(WaterSampleScene.UnderwaterCameraName));
                 WaterSampleScene.ValidateOpenGallery();
 
                 Assert.AreEqual(2, Object.FindObjectsOfType<WaterPath>().Length,
                     "gallery must include editable Lite and Standard rivers");
-                Assert.Greater(Object.FindObjectsOfType<ParticleSystem>().Length, 4,
-                    "gallery must include rain, splash, ripple, fog and cloud particles");
+                Assert.Greater(Object.FindObjectsOfType<ParticleSystem>().Length, 6,
+                    "gallery must include rain, splash, ripple, fog, cloud and waterfall particles");
+                Assert.IsNotNull(GameObject.Find("Whitewater Crest [Copy Ready]"));
+                Assert.IsNotNull(GameObject.Find("Underwater Surface View"));
+                Assert.IsNotNull(GameObject.Find("DROPLETS Surface Mannequin [Copy Ready]"));
+                Assert.IsNotNull(GameObject.Find("Fog Point Light"));
 
                 foreach (Renderer renderer in Object.FindObjectsOfType<Renderer>())
                 {

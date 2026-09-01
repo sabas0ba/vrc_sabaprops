@@ -98,9 +98,32 @@ namespace SabaProps.Water.Editors
                 ParticleSystemSubEmitterType.Collision,
                 ParticleSystemSubEmitterProperties.InheritNothing);
 
+            // Establish an editor preview state after all sub-emitters are
+            // connected. Runtime startup is guaranteed by playOnAwake/prewarm.
+            rain.Clear(true);
+            rain.Play(true);
+            ParticleSystem.MainModule startup = rain.main;
+            startup.playOnAwake = true;
+            startup.prewarm = true;
+            EditorUtility.SetDirty(rain);
+
             Undo.RegisterCreatedObjectUndo(root, "Create Rain Rig");
             Selection.activeGameObject = root;
             return root;
+        }
+
+        public static GameObject CreateWetSurfacePreview(GameObject parent = null)
+        {
+            WaterAssetLibrary.CreateOrLoadDefaults();
+            Vector3 position = PlacementPosition(parent);
+            GameObject preview = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+            preview.name = "Wet Surface Preview";
+            ParentAndPosition(preview, parent, position + Vector3.up);
+            preview.GetComponent<MeshRenderer>().sharedMaterial =
+                WaterAssetLibrary.CreateOrLoadEnvironmentMaterial(WaterAssetLibrary.WetSurfaceMaterialName);
+            Undo.RegisterCreatedObjectUndo(preview, "Create Wet Surface Preview");
+            Selection.activeGameObject = preview;
+            return preview;
         }
 
         public static GameObject CreateFogVolume(bool highQuality, GameObject parent = null)
@@ -135,6 +158,7 @@ namespace SabaProps.Water.Editors
             ParticleSystem.MainModule main = particles.main;
             main.loop = true;
             main.playOnAwake = true;
+            main.prewarm = true;
             main.simulationSpace = ParticleSystemSimulationSpace.World;
             main.scalingMode = ParticleSystemScalingMode.Hierarchy;
             main.startLifetime = clouds
@@ -218,6 +242,16 @@ namespace SabaProps.Water.Editors
                 surfaceProfile != null ? surfaceProfile.material : null,
                 root,
                 surfacePosition);
+            GameObject underside = CreateMeshObject(
+                "Underwater Surface View",
+                surfaceMesh,
+                WaterAssetLibrary.CreateOrLoadEnvironmentMaterial(
+                    standard
+                        ? WaterAssetLibrary.UnderwaterSurfaceStandardMaterialName
+                        : WaterAssetLibrary.UnderwaterSurfaceLiteMaterialName),
+                root,
+                surfacePosition + Vector3.down * 0.025f);
+            ConfigureTransparentRenderer(underside.GetComponent<MeshRenderer>());
 
             Mesh causticsMesh = WaterAssetLibrary.WriteUniqueMesh(
                 WaterMeshBuilder.BuildGrid(19f, 19f, 1, 1),
@@ -258,6 +292,7 @@ namespace SabaProps.Water.Editors
             ParticleSystem.MainModule main = rain.main;
             main.loop = true;
             main.playOnAwake = true;
+            main.prewarm = true;
             main.simulationSpace = ParticleSystemSimulationSpace.World;
             main.scalingMode = ParticleSystemScalingMode.Hierarchy;
             main.startLifetime = new ParticleSystem.MinMaxCurve(0.75f, 1.15f);
@@ -301,6 +336,7 @@ namespace SabaProps.Water.Editors
             renderer.sharedMaterial = WaterAssetLibrary.CreateOrLoadEnvironmentMaterial(
                 WaterAssetLibrary.RainMaterialName);
             ConfigureTransparentRenderer(renderer);
+
         }
 
         private static void ConfigureSplash(ParticleSystem splash)

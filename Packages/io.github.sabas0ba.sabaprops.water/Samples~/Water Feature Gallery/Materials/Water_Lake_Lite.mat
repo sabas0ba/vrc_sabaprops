@@ -25,13 +25,17 @@ Material:
     m_TexEnvs: []
     m_Ints: []
     m_Floats:
+    - _CrestFoamThreshold: 0.8
     - _DepthDistance: 4
     - _EdgeFade: 0
+    - _FoamStrength: 0.08
     - _Opacity: 0.66
     - _RefractionStrength: 0.018
     - _RippleDensity: 1.5
     - _RippleSpeed: 0.8
-    - _RippleStrength: 0.18
+    - _RippleStrength: 0.32
+    - _ShallowEdgeWidth: 0.08
+    - _ShoreFoamWidth: 0
     - _Smoothness: 0.78
     - _VertexWaveHeight: 0.01
     - _WaveScale: 1.4
@@ -40,5 +44,6 @@ Material:
     m_Colors:
     - _DeepColor: {r: 0.015, g: 0.11, b: 0.18, a: 1}
     - _FlowDirection: {r: 0.9805807, g: 0.19611615, b: 0, a: 0}
+    - _FoamColor: {r: 0.86, g: 0.95, b: 1, a: 1}
     - _ShallowColor: {r: 0.16, g: 0.48, b: 0.55, a: 1}
   m_BuildTextureStacks: []

@@ -22,6 +22,10 @@
 幅が急変する河川は現時点の一定幅pathでは表現しません。区間ごとに複数pathへ分けるか、生成Meshを通常の
 modeling toolで編集します。岸への自動intersectionやterrain carvingは行いません。
 
+control pointのYを変えると斜面と落差を持つstripを生成できます。滝の前後は制御点間隔を短くし、
+`Whitewater` Materialの狭い補助stripと`Splash` Particle Systemを重ねます。GalleryのRiver rootは、浅い上流、
+底が見えにくい下流、落差、白泡、飛沫を含む編集例です。
+
 ## 雨
 
 雨rigの初期値は22 m四方、最大6000 particleです。次の順で削減します。
@@ -42,8 +46,14 @@ soft intersectionが無効になるため、particle sizeとalphaを下げて境
 Fog Volume Highは小さなvolumeに限定します。World全体を覆う霧はUnity RenderSettingsのFogまたは
 距離別の遠景materialと組み合わせます。
 
+局所光はFog Materialの`Local Light`項目へVolume object spaceで設定します。静的なPoint Light表現向けで、
+Light componentからruntime同期はしません。
+
 ## 水中
 
 Underwater rigのroot位置が水面高です。`Underwater Volume` childの上面を水面へ合わせたまま、深さと水平範囲を
 調整します。底面の`Caustics Receiver Overlay`は実際の地形形状へ自動追従しないため、平坦でない水底では複製して
 小区画へ分けるか、対象Meshを水底に沿う形へ置換します。
+
+水中から水上を見せる場合は`Underwater Surface View`を水面直下へ置きます。Liteは背景取得なし、Standardは
+通常CameraとMirror Cameraを分離する専用GrabPassで水上景色を取得します。

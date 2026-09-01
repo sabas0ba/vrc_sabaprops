@@ -7,7 +7,7 @@ Material:
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_Name: FogVolume_Lite
+  m_Name: Fog_Lite
   m_Shader: {fileID: 4800000, guid: 4c97236ec62c4dc68aab9c70e3d56799, type: 3}
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
@@ -28,9 +28,13 @@ Material:
     - _Density: 0.16
     - _HeightFalloff: 1.5
     - _HighQuality: 0
+    - _LocalLightIntensity: 0
+    - _LocalLightRange: 0
     - _NoiseAmount: 0.45
     - _NoiseScale: 0.18
     m_Colors:
     - _Color: {r: 0.62, g: 0.7, b: 0.72, a: 1}
+    - _LocalLightColor: {r: 1, g: 0.75, b: 0.45, a: 1}
+    - _LocalLightPosition: {r: 0, g: 0, b: 0, a: 1}
     - _NoiseSpeed: {r: 0.03, g: 0.01, b: 0.02, a: 0}
   m_BuildTextureStacks: []

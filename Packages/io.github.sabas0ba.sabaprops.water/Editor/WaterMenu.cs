@@ -80,6 +80,30 @@ namespace SabaProps.Water.Editors
         public static void CreateUnderwaterStandard(MenuCommand command) =>
             WaterRigFactory.CreateUnderwaterRig(true, command.context as GameObject);
 
+        [MenuItem("GameObject/SabaProps/Water/Wet Surface Preview", false, 60)]
+        public static void CreateWetSurfacePreview(MenuCommand command) =>
+            WaterRigFactory.CreateWetSurfacePreview(command.context as GameObject);
+
+        [MenuItem("Tools/SabaProps/Water/Configure VRChat World Descriptor", false, 3)]
+        public static void ConfigureVrcWorldDescriptor()
+        {
+            GameObject world = WaterVrcWorld.CreateWorld(
+                new Vector3(0f, 0.05f, -13f), Quaternion.identity, Camera.main);
+            Selection.activeGameObject = world;
+            EditorUtility.SetDirty(world);
+
+            if (WaterVrcWorld.IsSdkPresent)
+            {
+                Debug.Log("[SabaProps Water] VRCSceneDescriptor と Spawn を設定しました。");
+            }
+            else
+            {
+                Debug.LogWarning(
+                    "[SabaProps Water] VRChat Worlds SDK が見つかりません。" +
+                    "VRCWorld と Spawn のみ作成しました。");
+            }
+        }
+
         [MenuItem("Tools/SabaProps/Water/Documentation", false, 100)]
         public static void OpenDocumentation()
         {

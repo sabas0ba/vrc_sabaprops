@@ -75,8 +75,8 @@ SDK 側の起動順の問題でこちらから直せないため、ワールド�
 
 ## これで検証できること
 
-`FoliageVrcWorld` が SDK を見つけ、`VRCWorld` ルートと Spawn を作り、
-`VRCSceneDescriptor` を実際に AddComponent できること。
+`FoliageVrcWorld` と `WaterVrcWorld` が SDK を見つけ、`VRCWorld` ルートと Spawn を作り、
+`VRCSceneDescriptor` を実際に AddComponent できること。Water Galleryでは Reference Camera も検証します。
 `FoliageSampleSceneTests.SampleScene_MatchesTheVrchatSdkThatIsInstalled` が
 SDK の有無を見て期待値を切り替えるため、同じテストが両方の環境で意味を持ちます。
 

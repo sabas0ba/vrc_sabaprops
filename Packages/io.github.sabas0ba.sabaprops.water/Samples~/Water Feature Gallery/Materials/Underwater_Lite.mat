@@ -26,7 +26,7 @@ Material:
     m_Ints: []
     m_Floats:
     - _CausticsScale: 1.5
-    - _CausticsStrength: 0.18
+    - _CausticsStrength: 0.025
     - _Density: 0.08
     - _DistortionStrength: 0.006
     m_Colors:

@@ -15,6 +15,11 @@ Shader "SabaProps/Water/Surface Lite"
         _RippleStrength ("Rain Ripple Strength", Range(0, 1)) = 0
         _RippleDensity ("Rain Ripple Density", Float) = 1.5
         _RippleSpeed ("Rain Ripple Speed", Float) = 0.8
+        _ShallowEdgeWidth ("Shallow Edge Width", Range(0, 0.5)) = 0
+        _FoamColor ("Foam Color", Color) = (0.86, 0.95, 1, 1)
+        _FoamStrength ("Foam Strength", Range(0, 1)) = 0
+        _CrestFoamThreshold ("Crest Foam Threshold", Range(0, 1)) = 0.8
+        _ShoreFoamWidth ("Shore Foam Width", Range(0, 0.5)) = 0
         [HideInInspector] _RefractionStrength ("Refraction Strength", Range(0, 0.1)) = 0
         [HideInInspector] _DepthDistance ("Depth Distance", Float) = 3
     }
@@ -60,6 +65,11 @@ Shader "SabaProps/Water/Surface Lite"
             float _RippleStrength;
             float _RippleDensity;
             float _RippleSpeed;
+            float _ShallowEdgeWidth;
+            fixed4 _FoamColor;
+            float _FoamStrength;
+            float _CrestFoamThreshold;
+            float _ShoreFoamWidth;
 
             struct appdata
             {
@@ -117,12 +127,21 @@ Shader "SabaProps/Water/Surface Lite"
 
                 float ripple = SabaRainRipple(
                     input.worldPosition.xz, _RippleDensity, _RippleSpeed) * _RippleStrength;
-                float colourDepth = saturate(fresnel * 0.55 + (1.0 - diffuse) * 0.2);
+                float shallowEdge = 1.0 - SabaUvEdgeFade(input.uv, _ShallowEdgeWidth);
+                float colourDepth = saturate(
+                    (1.0 - shallowEdge) * 0.72 + fresnel * 0.2 + (1.0 - diffuse) * 0.08);
                 float3 water = lerp(_ShallowColor.rgb, _DeepColor.rgb, colourDepth);
                 float3 reflection = SabaReflectionProbe(viewDirection, normal);
                 water = lerp(water, reflection, fresnel * (0.25 + _Smoothness * 0.35));
                 water += _LightColor0.rgb * (diffuse * 0.08 + specular * 0.65 + ripple * 0.22);
                 water += UNITY_LIGHTMODEL_AMBIENT.rgb * 0.12;
+
+                float waveHeight = SabaWaterHeight(
+                    input.worldPosition, _WaveScale, _WaveSpeed, _FlowDirection.xy) * 0.5 + 0.5;
+                float crest = smoothstep(_CrestFoamThreshold, 1.0, waveHeight) * _FoamStrength;
+                float shore = (1.0 - SabaUvEdgeFade(input.uv, _ShoreFoamWidth)) * _FoamStrength;
+                float foam = saturate(crest + shore + ripple * _FoamStrength * 0.18);
+                water = lerp(water, _FoamColor.rgb, foam);
 
                 float alpha = _Opacity * SabaUvEdgeFade(input.uv, _EdgeFade);
                 return fixed4(water, alpha);

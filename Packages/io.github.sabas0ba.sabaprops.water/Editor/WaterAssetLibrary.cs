@@ -24,8 +24,12 @@ namespace SabaProps.Water.Editors
         public const string FogVolumeShaderName = "SabaProps/Water/Fog Volume";
         public const string UnderwaterLiteShaderName = "SabaProps/Water/Underwater Lite";
         public const string UnderwaterStandardShaderName = "SabaProps/Water/Underwater Standard";
+        public const string UnderwaterSurfaceLiteShaderName = "SabaProps/Water/Underwater Surface Lite";
+        public const string UnderwaterSurfaceStandardShaderName = "SabaProps/Water/Underwater Surface Standard";
         public const string CausticsShaderName = "SabaProps/Water/Caustics";
         public const string LightShaftShaderName = "SabaProps/Water/Light Shaft";
+        public const string WhitewaterShaderName = "SabaProps/Water/Whitewater";
+        public const string WetSurfaceShaderName = "SabaProps/Water/Wet Surface";
 
         public const string RainMaterialName = "Rain";
         public const string SplashMaterialName = "Splash";
@@ -36,8 +40,12 @@ namespace SabaProps.Water.Editors
         public const string FogVolumeHighMaterialName = "FogVolume_High";
         public const string UnderwaterLiteMaterialName = "Underwater_Lite";
         public const string UnderwaterStandardMaterialName = "Underwater_Standard";
+        public const string UnderwaterSurfaceLiteMaterialName = "UnderwaterSurface_Lite";
+        public const string UnderwaterSurfaceStandardMaterialName = "UnderwaterSurface_Standard";
         public const string CausticsMaterialName = "Caustics";
         public const string LightShaftMaterialName = "LightShaft";
+        public const string WhitewaterMaterialName = "Whitewater";
+        public const string WetSurfaceMaterialName = "WetSurface";
 
         public static readonly WaterBodyKind[] AllBodyKinds =
         {
@@ -296,8 +304,12 @@ namespace SabaProps.Water.Editors
             yield return FogVolumeHighMaterialName;
             yield return UnderwaterLiteMaterialName;
             yield return UnderwaterStandardMaterialName;
+            yield return UnderwaterSurfaceLiteMaterialName;
+            yield return UnderwaterSurfaceStandardMaterialName;
             yield return CausticsMaterialName;
             yield return LightShaftMaterialName;
+            yield return WhitewaterMaterialName;
+            yield return WetSurfaceMaterialName;
         }
 
         private static string ShaderForMaterial(string materialName)
@@ -313,8 +325,12 @@ namespace SabaProps.Water.Editors
                 case FogVolumeHighMaterialName: return FogVolumeShaderName;
                 case UnderwaterLiteMaterialName: return UnderwaterLiteShaderName;
                 case UnderwaterStandardMaterialName: return UnderwaterStandardShaderName;
+                case UnderwaterSurfaceLiteMaterialName: return UnderwaterSurfaceLiteShaderName;
+                case UnderwaterSurfaceStandardMaterialName: return UnderwaterSurfaceStandardShaderName;
                 case CausticsMaterialName: return CausticsShaderName;
                 case LightShaftMaterialName: return LightShaftShaderName;
+                case WhitewaterMaterialName: return WhitewaterShaderName;
+                case WetSurfaceMaterialName: return WetSurfaceShaderName;
                 default: throw new ArgumentOutOfRangeException(nameof(materialName), materialName, null);
             }
         }
@@ -347,9 +363,27 @@ namespace SabaProps.Water.Editors
                     break;
                 case UnderwaterLiteMaterialName:
                     material.SetColor("_Tint", new Color(0.02f, 0.24f, 0.32f, 0.48f));
+                    material.SetFloat("_CausticsStrength", 0.025f);
                     break;
                 case UnderwaterStandardMaterialName:
                     material.SetColor("_Tint", new Color(0.015f, 0.2f, 0.3f, 1f));
+                    material.SetFloat("_CausticsStrength", 0.025f);
+                    break;
+                case UnderwaterSurfaceLiteMaterialName:
+                    material.SetColor("_ShallowColor", new Color(0.19f, 0.64f, 0.76f, 1f));
+                    material.SetFloat("_Opacity", 0.58f);
+                    break;
+                case UnderwaterSurfaceStandardMaterialName:
+                    material.SetColor("_Tint", new Color(0.12f, 0.48f, 0.58f, 1f));
+                    material.SetFloat("_DistortionStrength", 0.022f);
+                    break;
+                case WhitewaterMaterialName:
+                    material.SetColor("_Color", new Color(0.88f, 0.96f, 1f, 1f));
+                    material.SetFloat("_Opacity", 0.82f);
+                    break;
+                case WetSurfaceMaterialName:
+                    material.SetColor("_Color", new Color(0.32f, 0.42f, 0.48f, 1f));
+                    material.SetFloat("_Wetness", 0.8f);
                     break;
             }
         }
@@ -369,6 +403,11 @@ namespace SabaProps.Water.Editors
             profile.rippleStrength = 0f;
             profile.rippleDensity = 1.5f;
             profile.rippleSpeed = 0.8f;
+            profile.shallowEdgeWidth = 0f;
+            profile.foamColor = new Color(0.86f, 0.95f, 1f, 1f);
+            profile.foamStrength = 0f;
+            profile.crestFoamThreshold = 0.8f;
+            profile.shoreFoamWidth = 0f;
             profile.refractionStrength = 0.018f;
             profile.depthDistance = 3f;
 
@@ -383,7 +422,9 @@ namespace SabaProps.Water.Editors
                     profile.waveSpeed = 0.12f;
                     profile.edgeFade = 0.22f;
                     profile.rippleStrength = 0.9f;
-                    profile.rippleDensity = 1.8f;
+                    profile.rippleDensity = 1.35f;
+                    profile.shallowEdgeWidth = 0.24f;
+                    profile.foamStrength = 0.05f;
                     profile.depthDistance = 0.25f;
                     break;
                 case WaterBodyKind.River:
@@ -393,6 +434,9 @@ namespace SabaProps.Water.Editors
                     profile.flowDirection = Vector2.up;
                     profile.vertexWaveHeight = profile.quality == WaterQuality.Standard ? 0.025f : 0f;
                     profile.rippleStrength = 0.12f;
+                    profile.foamStrength = profile.quality == WaterQuality.Standard ? 0.52f : 0.34f;
+                    profile.crestFoamThreshold = 0.68f;
+                    profile.shoreFoamWidth = 0.12f;
                     profile.depthDistance = 1.5f;
                     break;
                 case WaterBodyKind.Ocean:
@@ -402,6 +446,10 @@ namespace SabaProps.Water.Editors
                     profile.waveStrength = profile.quality == WaterQuality.Standard ? 0.24f : 0.14f;
                     profile.waveSpeed = 0.42f;
                     profile.vertexWaveHeight = profile.quality == WaterQuality.Standard ? 0.18f : 0.05f;
+                    profile.shallowEdgeWidth = 0.3f;
+                    profile.foamStrength = profile.quality == WaterQuality.Standard ? 0.38f : 0.24f;
+                    profile.crestFoamThreshold = 0.7f;
+                    profile.shoreFoamWidth = 0.16f;
                     profile.depthDistance = 8f;
                     break;
                 case WaterBodyKind.Lake:
@@ -410,7 +458,9 @@ namespace SabaProps.Water.Editors
                     profile.waveStrength = 0.08f;
                     profile.waveSpeed = 0.22f;
                     profile.vertexWaveHeight = profile.quality == WaterQuality.Standard ? 0.045f : 0.01f;
-                    profile.rippleStrength = 0.18f;
+                    profile.rippleStrength = 0.32f;
+                    profile.shallowEdgeWidth = 0.08f;
+                    profile.foamStrength = 0.08f;
                     profile.depthDistance = 4f;
                     break;
             }

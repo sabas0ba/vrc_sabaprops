@@ -8,6 +8,10 @@ Shader "SabaProps/Water/Fog Volume"
         _NoiseAmount ("Noise Amount", Range(0, 1)) = 0.45
         _NoiseSpeed ("Noise Speed", Vector) = (0.03, 0.01, 0.02, 0)
         _HeightFalloff ("Height Falloff", Range(0, 8)) = 1.5
+        _LocalLightPosition ("Local Light Position", Vector) = (0, 0, 0, 1)
+        _LocalLightColor ("Local Light Color", Color) = (1, 0.75, 0.45, 1)
+        _LocalLightRange ("Local Light Range", Float) = 0
+        _LocalLightIntensity ("Local Light Intensity", Range(0, 8)) = 0
         [Toggle(_FOG_HIGH_QUALITY)] _HighQuality ("High Quality (20 samples)", Float) = 0
     }
 
@@ -34,6 +38,10 @@ Shader "SabaProps/Water/Fog Volume"
             float _NoiseAmount;
             float4 _NoiseSpeed;
             float _HeightFalloff;
+            float4 _LocalLightPosition;
+            fixed4 _LocalLightColor;
+            float _LocalLightRange;
+            float _LocalLightIntensity;
 
             struct appdata
             {
@@ -95,6 +103,9 @@ Shader "SabaProps/Water/Fog Volume"
 
                 float transmittance = 1.0;
                 float accumulated = 0.0;
+                float3 accumulatedColour = 0.0;
+                float3 localLightWorldPosition = mul(
+                    unity_ObjectToWorld, float4(_LocalLightPosition.xyz, 1.0)).xyz;
                 [loop]
                 for (int sampleIndex = 0; sampleIndex < sampleCount; sampleIndex++)
                 {
@@ -103,11 +114,20 @@ Shader "SabaProps/Water/Fog Volume"
                     float3 worldSample = lerp(worldStart, worldEnd, fraction);
                     float localDensity = densityAt(localSample, worldSample);
                     float alpha = 1.0 - exp(-_Density * localDensity * worldLength / sampleCount);
-                    accumulated += transmittance * alpha;
+                    float contribution = transmittance * alpha;
+                    float lightDistance = distance(worldSample, localLightWorldPosition);
+                    float localLight = saturate(
+                        1.0 - lightDistance / max(0.001, _LocalLightRange));
+                    localLight *= localLight * step(0.001, _LocalLightRange) * _LocalLightIntensity;
+                    accumulatedColour += contribution * (
+                        _Color.rgb + _LocalLightColor.rgb * localLight);
+                    accumulated += contribution;
                     transmittance *= 1.0 - alpha;
                 }
 
-                return fixed4(_Color.rgb, saturate(accumulated * _Color.a));
+                float safeAccumulated = max(1e-4, accumulated);
+                float3 colour = accumulatedColour / safeAccumulated;
+                return fixed4(colour, saturate(accumulated * _Color.a));
             }
             ENDCG
         }

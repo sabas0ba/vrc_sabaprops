@@ -9,6 +9,7 @@ VRChat World向けの水面、雨、霧、雲、水中エフェクトをEditor�
 - 雨の地面衝突はParticle System collisionとsub-emitterで処理
 - 水たまりと河川のMeshはEditorでbake
 - 水面、霧、水中表現はLite／StandardまたはHighを分離
+- Worlds SDKがある場合だけ`VRCSceneDescriptor`を追加する任意連携
 
 ## クイックスタート
 
@@ -33,6 +34,7 @@ import後の`WaterFeatureGallery.unity`を開き、Play Modeに入ると雨、�
 
 - `SabaProps > Water > Puddle / River / Lake / Ocean`
 - `SabaProps > Water > Underwater Lake`
+- `SabaProps > Water > Wet Surface Preview`
 - `SabaProps > Weather > Rain Rig / Ground Fog / Cloud Layer / Fog Volume`
 
 ## 水面
@@ -48,11 +50,15 @@ import後の`WaterFeatureGallery.unity`を開き、Play Modeに入ると雨、�
 
 | Quality | 内容 | 主な制約 |
 | --- | --- | --- |
-| Lite | procedural normal、reflection probe、Fresnel、任意の頂点波、疑似波紋 | GrabPassなし。depthに基づく岸表現なし |
-| Standard | Liteにrefractionとscene depthによる水深色を追加 | PC向け。GrabPassとcamera depthを使用 |
+| Lite | 非周期の複合波、reflection probe、Fresnel、頂点波、疑似波紋、UV境界による浅瀬近似 | GrabPassなし。実際の水深は取得しない |
+| Standard | Liteにrefraction、scene depthによる水深色、岸泡を追加 | PC向け。GrabPassとcamera depthを使用 |
 
 Material parameterを直接編集することもできますが、再利用する設定は
 `Assets/SabaProps/Water/Profiles`の`WaterSurfaceProfile`で管理し、`Apply to Material`を実行します。
+
+`Wave Scale`は方向、周波数、速度が異なる4成分をまとめて拡縮します。単一の格子模様にはなりません。
+`Shallow Edge Width`はLiteで浅瀬を近似し、Standardではscene depthの浅瀬判定を補助します。
+`Foam Strength`、`Crest Foam Threshold`、`Shore Foam Width`で波頭と岸の白泡を調整します。
 
 ### 水たまりstamp
 
@@ -87,7 +93,8 @@ VRChat buildではcustom `MonoBehaviour`が実行されません。`WaterPath`�
 衝突するrigはplayer周辺または見せたい場所に限定する構成を推奨します。
 
 水面Materialの`Rain Ripple Strength`はcollisionとは独立した安価な疑似波紋です。水たまり等の指定Materialだけで
-有効にでき、個々の雨滴との位置同期や波動simulationは行いません。
+有効にでき、個々の雨滴との位置同期や波動simulationは行いません。回転、密度、周期が異なる3層を合成するため、
+波紋同士は重なり、規則的な1 cell 1波紋の配置にはなりません。
 
 ## 霧と雲
 
@@ -104,11 +111,17 @@ local playerへ追従させます。本packageはUdonSharp依存を追加せず�
 Fog Volumeは透明objectの後段合成や完全なatmospheric scatteringを行うpost effectではありません。
 opaque geometryとの前後関係を優先する局所volumeです。World全体を覆う高品質volumeは使用しないでください。
 
+Fog Volumeは1灯分の局所散乱をMaterialの`Local Light Position / Color / Range / Intensity`で追加できます。
+位置はVolumeのobject spaceです。Galleryの`Point-lit Fog High`はPoint Lightと同じ値を設定した静的例であり、
+任意のLight componentをruntimeで自動検索しません。Volume rootごと移動する場合は再設定不要ですが、Lightだけを
+移動した場合はMaterialの位置も更新してください。
+
 ## 水中
 
 `Underwater Lake Lite`または`Underwater Lake Standard`は次をまとめて生成します。
 
 - 水面
+- 水中から見た水面裏面用のLite／Standard Shader
 - cameraが内部にある場合だけ描画するbox volume
 - 底面用procedural caustics overlay
 - additive light shaft mesh
@@ -117,14 +130,38 @@ Liteはtint、distance fog、causticsをalpha blendします。StandardはGrabPa
 chromatic aberration、scene depth連動のfogを追加します。volumeの上面を水面と一致させ、側面と底面が水域を
 完全に覆うようscaleしてください。
 
+水面裏面のLiteは着色とFresnel highlightだけで水上方向を近似します。Standardは専用GrabPassで水上の景色を
+取得し、波normalで屈折させます。通常CameraとMirror Cameraの誤共有を避けるため、他の水面GrabPassは再利用しません。
+
 camera-inside判定には各cameraの`_WorldSpaceCameraPos`を使うため、通常cameraとmirror cameraは個別に判定されます。
 StandardはGrabPassのためPC向けです。水面を複数作る場合はStandardの使用数を抑え、mirrorを含めた実測で判断します。
+
+## 濡れた表面とアバター
+
+`SabaProps/Water/Wet Surface`は、Albedoの暗化、Smoothness上昇、procedural水滴normal、垂れる水滴速度を
+`Wetness`で制御する標準Surface Shaderです。`Wet Surface Preview`またはGalleryのDry／Wet／Droplets比較で
+Material設定を確認できます。外部textureは不要です。
+
+World側から任意のアバターMaterialを変更することはできません。アバターで使用する場合は、そのアバターの
+Materialへ本Shaderを割り当てるか、既存Shaderへ同等のwetness処理を組み込む必要があります。PoiyomiやlilToon等の
+第三者Shaderへ本packageから自動patchは行いません。Galleryの人型はWorld objectのproxyであり、任意アバターへの
+強制適用を示すものではありません。
+
+## VRChat World Descriptor
+
+GalleryにはSDKの有無にかかわらず`VRCWorld/Spawn`を配置します。Worlds SDKが導入済みの場合は、Gallery生成時に
+`VRCSceneDescriptor`、Spawn、Reference Cameraを設定します。import済みGalleryへ後から追加する場合は次を実行します。
+
+`Tools > SabaProps > Water > Configure VRChat World Descriptor`
+
+SDK型はreflectionで参照するため、本package自体にはVPM依存を追加しません。
 
 ## 対応範囲と性能
 
 - 初期対象はVRChat WorldのPC版です。
 - Lite water、rain、splash、ripple、particle fogはQuest移植候補ですが、Android buildでのShader検証と実機計測が必要です。
-- Standard water／underwaterはGrabPassを使用するためQuest対象外です。
+- Standard water／underwaterはGrabPassを使用するためQuest対象外です。Standard水中rigはVolumeと水面裏面で
+  それぞれ背景取得を行います。
 - Fog Volume Highは描画pixelごとに20 sampleを取ります。cameraを覆う大volumeではfill rateが支配的になります。
 - 透明surfaceは重なりとmirrorで描画回数が増えます。Material variant数、描画面積、overdrawを併せて確認してください。
 

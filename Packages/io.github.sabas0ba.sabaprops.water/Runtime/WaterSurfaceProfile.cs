@@ -49,6 +49,13 @@ namespace SabaProps.Water
         [Min(0.1f)] public float rippleDensity = 1.5f;
         [Min(0f)] public float rippleSpeed = 0.8f;
 
+        [Header("Depth and foam")]
+        [Range(0f, 0.5f)] public float shallowEdgeWidth;
+        public Color foamColor = new Color(0.86f, 0.95f, 1f, 1f);
+        [Range(0f, 1f)] public float foamStrength;
+        [Range(0f, 1f)] public float crestFoamThreshold = 0.8f;
+        [Range(0f, 0.5f)] public float shoreFoamWidth;
+
         [Header("Standard quality")]
         [Range(0f, 0.1f)] public float refractionStrength = 0.018f;
         [Min(0f)] public float depthDistance = 3f;
@@ -63,6 +70,10 @@ namespace SabaProps.Water
             rippleStrength = Mathf.Clamp01(rippleStrength);
             rippleDensity = Mathf.Max(0.1f, rippleDensity);
             rippleSpeed = Mathf.Max(0f, rippleSpeed);
+            shallowEdgeWidth = Mathf.Clamp(shallowEdgeWidth, 0f, 0.5f);
+            foamStrength = Mathf.Clamp01(foamStrength);
+            crestFoamThreshold = Mathf.Clamp01(crestFoamThreshold);
+            shoreFoamWidth = Mathf.Clamp(shoreFoamWidth, 0f, 0.5f);
             refractionStrength = Mathf.Clamp(refractionStrength, 0f, 0.1f);
             depthDistance = Mathf.Max(0.01f, depthDistance);
 
@@ -108,6 +119,11 @@ namespace SabaProps.Water
             material.SetFloat("_RippleStrength", rippleStrength);
             material.SetFloat("_RippleDensity", rippleDensity);
             material.SetFloat("_RippleSpeed", rippleSpeed);
+            material.SetFloat("_ShallowEdgeWidth", shallowEdgeWidth);
+            material.SetColor("_FoamColor", foamColor);
+            material.SetFloat("_FoamStrength", foamStrength);
+            material.SetFloat("_CrestFoamThreshold", crestFoamThreshold);
+            material.SetFloat("_ShoreFoamWidth", shoreFoamWidth);
             material.SetFloat("_RefractionStrength", refractionStrength);
             material.SetFloat("_DepthDistance", depthDistance);
             material.enableInstancing = true;
