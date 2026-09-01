@@ -1,0 +1,30 @@
+{
+  "name": "io.github.sabas0ba.sabaprops.softprops",
+  "displayName": "SabaProps Soft Props",
+  "version": "0.1.0",
+  "unity": "2022.3",
+  "description": "PC VRChat worlds向けの接触変形シェーダーと、ふとん、ベッド、ソファー、クッションのprocedural model／Prefab生成器。World ContactsとUdonSharpで最大8点の沈み込みと復元を処理します。",
+  "author": {
+    "name": "sabas0ba",
+    "url": "https://github.com/sabas0ba"
+  },
+  "license": "MIT",
+  "licensesUrl": "https://github.com/sabas0ba/vrc_sabaprops/blob/main/LICENSE",
+  "documentationUrl": "https://github.com/sabas0ba/vrc_sabaprops/blob/main/Packages/io.github.sabas0ba.sabaprops.softprops/README.md",
+  "changelogUrl": "https://github.com/sabas0ba/vrc_sabaprops/blob/main/Packages/io.github.sabas0ba.sabaprops.softprops/CHANGELOG.md",
+  "vpmDependencies": {
+    "com.vrchat.worlds": "3.10.x"
+  },
+  "keywords": [
+    "vrchat",
+    "world",
+    "soft-body",
+    "contact",
+    "futon",
+    "bed",
+    "sofa",
+    "cushion",
+    "udonsharp",
+    "shader"
+  ]
+}

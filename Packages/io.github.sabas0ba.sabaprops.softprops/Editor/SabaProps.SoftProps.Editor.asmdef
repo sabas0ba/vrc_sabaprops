@@ -1,0 +1,19 @@
+{
+    "name": "SabaProps.SoftProps.Editor",
+    "rootNamespace": "SabaProps.SoftProps.Editors",
+    "references": [
+        "SabaProps.SoftProps.Runtime",
+        "UdonSharp.Runtime"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
