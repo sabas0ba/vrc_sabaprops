@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier:
   bodyKind: 1
   quality: 1
-  material: {fileID: 2100000, guid: b05451b15c1f4814cbf8faa22e1e9b42, type: 2}
+  material: {fileID: 2100000, guid: 51df9ed355b75a34881aceb04b885c7e, type: 2}
   shallowColor: {r: 0.16, g: 0.48, b: 0.55, a: 1}
   deepColor: {r: 0.015, g: 0.11, b: 0.18, a: 1}
   opacity: 0.78

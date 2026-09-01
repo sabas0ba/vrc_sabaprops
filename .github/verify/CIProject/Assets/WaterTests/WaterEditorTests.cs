@@ -200,6 +200,10 @@ namespace SabaProps.Water.CITests
     /// </summary>
     public class WaterSampleSceneTests
     {
+        private const string PackageSamplePath =
+            "Packages/io.github.sabas0ba.sabaprops.water/Samples~/Water Feature Gallery";
+        private const string ImportedSamplePath = "Assets/ImportedWaterFeatureGalleryTest";
+
         [Test]
         public void FeatureGallery_CoversEveryFeatureAndIsSelfContained()
         {
@@ -235,10 +239,7 @@ namespace SabaProps.Water.CITests
                 {
                     foreach (Material material in renderer.sharedMaterials)
                     {
-                        if (material == null)
-                        {
-                            continue;
-                        }
+                        Assert.IsNotNull(material, renderer.name + " has a missing material");
 
                         string path = AssetDatabase.GetAssetPath(material);
                         Assert.IsTrue(
@@ -264,6 +265,28 @@ namespace SabaProps.Water.CITests
             {
                 EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
                 AssetDatabase.DeleteAsset(WaterAssetLibrary.RootFolder);
+            }
+        }
+
+        [Test]
+        public void DistributedGallery_ImportsWithAllReferences()
+        {
+            EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
+            AssetDatabase.DeleteAsset(ImportedSamplePath);
+            FileUtil.CopyFileOrDirectory(PackageSamplePath, ImportedSamplePath);
+            AssetDatabase.Refresh();
+
+            try
+            {
+                string scenePath = ImportedSamplePath + "/WaterFeatureGallery.unity";
+                Scene scene = EditorSceneManager.OpenScene(scenePath);
+                Assert.IsTrue(scene.IsValid(), "distributed gallery scene could not be opened");
+                WaterSampleScene.ValidateOpenGallery();
+            }
+            finally
+            {
+                EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
+                AssetDatabase.DeleteAsset(ImportedSamplePath);
             }
         }
     }

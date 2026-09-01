@@ -196,6 +196,11 @@ namespace UnityEditor
         public static void AddObjectToAsset(UnityEngine.Object objectToAdd, UnityEngine.Object assetObject) { }
     }
 
+    public static class FileUtil
+    {
+        public static void CopyFileOrDirectory(string source, string destination) { }
+    }
+
     public static class Selection
     {
         public static GameObject activeGameObject { get; set; }

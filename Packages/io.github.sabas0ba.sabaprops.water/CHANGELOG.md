@@ -17,3 +17,7 @@
 - 水中から水上を見るためのLite／Standard水面裏面Shader
 - procedural水滴とwetnessを持つWet Surface Shaderおよび人型proxyサンプル
 - Worlds SDKを任意検出するVRCWorld、Spawn、VRCSceneDescriptor設定menu
+
+### Fixed
+
+- Water Feature Gallery配布SampleのScene参照とMaterial、Mesh、Profileのmeta GUID不一致
