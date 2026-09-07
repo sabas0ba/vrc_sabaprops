@@ -279,7 +279,7 @@ namespace SabaProps.SoftProps.Editors
             GameObject root = new GameObject("Contact Probe Test");
             try
             {
-                CreateSoftSurface(root.transform, "SkinSurface", "ContactProbeSurface",
+                GameObject skin = CreateSoftSurface(root.transform, "SkinSurface", "ContactProbeSurface",
                     new Vector3(1.75f, 0.18f, 0.78f), new Vector3(0f, 0.09f, 0f),
                     Quaternion.identity, 0.07f, 72, 34, skinMaterial, preset);
 
@@ -300,6 +300,12 @@ namespace SabaProps.SoftProps.Editors
                 CreateProbeLabel(root.transform, "Finger", new Vector3(-0.58f, 0.49f, 0.33f));
                 CreateProbeLabel(root.transform, "Rod", new Vector3(0f, 0.49f, 0.33f));
                 CreateProbeLabel(root.transform, "Plate", new Vector3(0.58f, 0.49f, 0.33f));
+                var controller = skin.GetComponent<SoftSurfaceContactController>();
+                controller.probeColliders = new Collider[] {
+                    root.transform.Find("Finger Probe").GetComponent<Collider>(),
+                    root.transform.Find("Rod Probe").GetComponent<Collider>(),
+                    root.transform.Find("Plate Probe").GetComponent<Collider>() };
+                controller.probeKinds = new[] { 0, 1, 2 };
                 SavePrefab(root, "ContactProbeTest");
             }
             finally
@@ -333,6 +339,36 @@ namespace SabaProps.SoftProps.Editors
             visual.transform.SetParent(probe.transform, false);
             visual.transform.localScale = visualScale;
             visual.GetComponent<MeshRenderer>().sharedMaterial = material;
+            UnityEngine.Object.DestroyImmediate(visual.GetComponent<Collider>());
+            if (contactShape == "Sphere")
+                probe.AddComponent<SphereCollider>().radius = contactRadius;
+            else if (contactShape == "Box")
+                probe.AddComponent<BoxCollider>().size = contactSize;
+            else
+            {
+                var capsule = probe.AddComponent<CapsuleCollider>();
+                capsule.radius = contactRadius;
+                capsule.height = contactHeight;
+                // Cylinderと球端で、非等方scaleの引き伸ばされた半球を避ける。
+                UnityEngine.Object.DestroyImmediate(visual);
+                float halfSegment = contactHeight * 0.5f - contactRadius;
+                visual = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+                visual.name = "Rod Body";
+                visual.transform.SetParent(probe.transform, false);
+                visual.transform.localScale = new Vector3(contactRadius * 2f, halfSegment, contactRadius * 2f);
+                visual.GetComponent<Renderer>().sharedMaterial = material;
+                UnityEngine.Object.DestroyImmediate(visual.GetComponent<Collider>());
+                for (int end = -1; end <= 1; end += 2)
+                {
+                    var tip = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+                    tip.name = "Rod End";
+                    tip.transform.SetParent(probe.transform, false);
+                    tip.transform.localPosition = Vector3.up * halfSegment * end;
+                    tip.transform.localScale = Vector3.one * contactRadius * 2f;
+                    tip.GetComponent<Renderer>().sharedMaterial = material;
+                    UnityEngine.Object.DestroyImmediate(tip.GetComponent<Collider>());
+                }
+            }
 
             var rigidbody = probe.AddComponent<Rigidbody>();
             rigidbody.mass = mass;
@@ -418,6 +454,7 @@ namespace SabaProps.SoftProps.Editors
             controller.responseSeconds = preset.responseSeconds;
             controller.recoverySeconds = preset.recoverySeconds;
             controller.surfacePlaneY = planeY;
+            controller.surfaceHalfSize = new Vector2(size.x * 0.48f, size.z * 0.48f);
             return surface;
         }
 

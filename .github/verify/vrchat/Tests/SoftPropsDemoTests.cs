@@ -23,7 +23,7 @@ namespace SabaProps.SoftProps.WorldTests
                 demo.GetMethod("ImportSample", BindingFlags.Public | BindingFlags.Static).Invoke(null, null);
                 Assert.AreEqual(1, AssetDatabase.FindAssets("SoftSurfaceContactController t:UdonSharpProgramAsset",
                     new[] { "Assets" }).Length, "Demo import must share the controller program");
-                var scene = EditorSceneManager.OpenScene("Assets/SabaProps/SoftPropsDemo/SoftPropsDemo.unity");
+                var scene = EditorSceneManager.OpenScene("Assets/SabaProps/SoftPropsDemoMotion/SoftPropsDemo.unity");
                 var roots = scene.GetRootGameObjects();
                 foreach (string name in new[] { "Futon", "Bed", "Sofa", "Cushion", "ContactProbeTest",
                     "Static Finger", "Static Rod", "Static Plate", "Floor", "VRCWorld" })
@@ -48,7 +48,24 @@ namespace SabaProps.SoftProps.WorldTests
                 Assert.IsNotNull(spawns[0]);
                 Assert.Greater(spawns[0].position.y, 0f);
                 Assert.AreEqual(3, components.Count(component => component.GetType().Name == "VRCPickup"));
-                Assert.AreEqual(10, components.Count(component => component.GetType().Name == "SoftSurfaceContactController"));
+                Assert.AreEqual(13, components.Count(component => component.GetType().Name == "SoftSurfaceContactController"));
+                for (int profile = 0; profile < 3; profile++)
+                {
+                    var comparison = roots.Single(root => root.name == "Automatic comparison " + profile);
+                    var controller = comparison.GetComponentsInChildren<Component>()
+                        .Single(component => component.GetType().Name == "SoftSurfaceContactController");
+                    Type type = controller.GetType();
+                    Assert.IsTrue((bool)type.GetField("automaticProbe").GetValue(controller));
+                    Assert.AreEqual(profile == 0 ? 0.15f : profile == 1 ? 0.45f : 0.80f,
+                        (float)type.GetField("hardness").GetValue(controller));
+                    var probes = (Collider[])type.GetField("probeColliders").GetValue(controller);
+                    Assert.AreEqual(3, probes.Length);
+                    foreach (var probe in probes)
+                    {
+                        Assert.IsNotNull(probe);
+                        Assert.IsTrue(probe.GetComponent<Rigidbody>().isKinematic);
+                    }
+                }
                 foreach (var behaviour in components.Where(component => component.GetType().Name == "UdonBehaviour"))
                 {
                     var serialized = new SerializedObject(behaviour);

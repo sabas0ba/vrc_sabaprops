@@ -8,6 +8,8 @@
 - 接触slot: 8
 - 接触中のMaterial write: 位置とfootprintの`Vector4`を各8個、既定30 Hz
 - shader: vertexごとに最大8接触点。pixel側は通常のopaque surface shaderと織り目計算のみ
+- 登録world probe: 最大8 Colliderの支持点を既定30 Hzで計算。全sceneのCollider探索はしない
+- ローカル立位補助: 接地状態・面内座標・高さを満たす場合だけ、下向きRaycastを1回実行する
 
 VRChatはworld内のactive Contact Sender／Receiver合計に1024個の上限を設けています。Sofaは6 Receiverを使用するため、同じSofaを100台置くと600 Receiverになります。通常の家具配置では上限よりshaderのvertex costが先に問題になります。
 

@@ -39,12 +39,14 @@ VPM依存として`com.vrchat.worlds 3.10.x`を宣言しています。3.10.4で
 
 各変形面は次の構成です。
 
-1. 表面上方12 mm、下方最大18 mmの薄いBox型`VRCContactReceiver`がavatar標準Senderとtest probeを検出する
-2. `SoftSurfaceContactController`が最大8 Senderの現在位置、回転、進入速度、接触tagを保持する
+1. 登録済みworld probeはSphere／Capsule／Box Colliderの底面と未変形面の距離を評価する。距離が0以上なら新たな荷重を発生させない
+2. Avatarの接触は薄いBox型`VRCContactReceiver`、立位荷重は`OnPlayerCollisionStay`で検出し、登録probeと合わせて最大8接触を保持する
 3. 荷重とfootprintを応答／復元の時定数で補間し、instance化したMaterialへlocal座標で渡す
 4. `SabaProps/Soft Surface`がvertex stageで沈み込み、周辺隆起、横方向の逃げ、しわ、normal補正を計算する
 
-Receiver外では荷重を生成しないため、物体の表面が接触する直前まで変形しません。Avatar側`ContactSenderProxy`から元のSender寸法は取得できないため、標準tagはFinger／Hand／Foot／Torsoごとの軽量な円形近似を使います。検証用の`SoftProbeFinger`、`SoftProbeRod`、`SoftProbePlate`は既知寸法とSender回転から形状別footprintを生成します。
+登録probeの中心沈み込みはColliderの侵入量以下に制限します。離脱後は復元途中の凹みが残ります。Avatar側`ContactSenderProxy`から元のSender寸法は取得できないため、初回接触点のroot相対offsetを追跡する近似であり、任意avatarに対する接触開始の一致は保証しません。Finger／Hand／Foot／Torsoは円形、検証用の指／棒／板は形状別footprintを使います。
+
+立位荷重は上向きの面に対するplayer capsuleの衝突と足元の高さから検出します。ローカルプレイヤーには接地状態と下向きRaycastによる支持Collider照合も使用し、標準Senderや衝突イベントのないClientSimでも確認できます。この補助経路は自分の足元のみを評価し、リモートプレイヤーはSDKイベントに依存します。足のmeshや左右の足の接地を解く方式ではありません。
 
 接触状態はnetwork同期しません。各clientが既に受信しているavatar poseとWorld Contactsから同じ見た目を再構成するため、Udonのnetwork trafficは発生しません。
 
@@ -66,14 +68,18 @@ Prefab内の変形面にある`SoftSurfaceContactController`で設定します�
 | Recovery Seconds | 離れた後に復元する時定数 |
 | Update Rate | Material parameter更新頻度。既定30 Hz |
 | Impact Response | 進入速度による瞬間的な追加荷重 |
+| Probe Colliders / Kinds | 評価対象のColliderと形状（0=指、1=棒、2=板）。配列の先頭から接触slotを予約する |
+| Player Standing Load | 上向き面でplayer capsule衝突を立位荷重として扱う |
+| Automatic Probe / Cycle Seconds | 登録probeを所定の周期で上下させるデモ制御 |
+| Approach Height / Press Depth | 自動デモの退避距離／侵入距離。local単位 |
 
-接触開始距離を変更する場合は、変形面の`VRCContactReceiver`にあるBoxのY寸法と中心位置を変更します。既定値は見た目の表面から上方12 mmです。大きくすると非接触に見える反応が再発するため、avatar Sender形状のばらつきを吸収できる範囲に留めてください。
+Avatar Contactの検出領域は`VRCContactReceiver`のBoxで調整します。既定は表面上方12 mm、下方最大18 mmです。これは検出領域であり、登録probeの荷重開始距離ではありません。登録probeはCollider底面が未変形面を通過してから反応します。
 
 実行開始時にcontrollerが同じ値をMaterialへ反映します。Material側の値だけを変更してもruntimeに上書きされるため、物理presetはcontroller側で調整してください。色、織り目、surface grain、SmoothnessはMaterialで変更します。
 
 ## 性能
 
-- 非接触時はcontrollerごとに4 Hzまで更新頻度を下げる
+- probe未登録かつ非接触時はcontrollerごとに4 Hzまで更新頻度を下げる。登録probeは移動検出のため既定30 Hzで評価する
 - 接触時は既定30 Hzで最大8組の接触位置／footprint `Vector4`をMaterialへ設定する
 - 変形はvertex stageのみ。接触点のloopをfragment stageへ持ち込まない
 - World Contact Receiver数はFuton 1、Bed 1、Sofa 6、Cushion 1
@@ -84,7 +90,9 @@ VRChatのWorld Contactsにはworld全体でactive component数の上限があり
 ## 制限
 
 - Unity Colliderおよびplayer capsuleは変形しません。見た目の沈み込みとcollision surfaceには最大沈み込み分の差が生じます。
-- Contact permissionやSafe Modeでavatar Senderが無効な場合は変形しません。
+- Contact permissionやSafe Modeでavatar Senderが無効な場合、手・頭・胴体のContact経路は反応しません。立位荷重と登録world Colliderは別経路です。
+- 任意のColliderを自動探索しません。world物体は対象面のProbe Collidersへ明示的に登録します。MeshColliderは未対応です。
+- 自動デモはkinematic Colliderの規定運動であり、剛体と柔軟体の連成simulationではありません。
 - avatar標準Senderの形状はavatarごとに異なるため、厳密な圧力や質量のsimulationではありません。
 - shaderはlocal +Y方向を表面法線として扱います。縦置きの背面cushionはGameObjectを回転して使用してください。
 - 静的batchingは使用できません。shaderの`DisableBatching=True`は、object-localの接触座標を維持するために必要です。

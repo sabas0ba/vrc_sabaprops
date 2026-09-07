@@ -3,7 +3,8 @@
     "rootNamespace": "SabaProps.SoftProps",
     "references": [
         "UdonSharp.Runtime",
-        "VRC.Dynamics"
+        "VRC.Dynamics",
+        "Unity.ugui"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

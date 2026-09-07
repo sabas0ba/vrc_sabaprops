@@ -3,7 +3,8 @@
     "rootNamespace": "SabaProps.SoftProps.Editors",
     "references": [
         "SabaProps.SoftProps.Runtime",
-        "UdonSharp.Runtime"
+        "UdonSharp.Runtime",
+        "Unity.ugui"
     ],
     "includePlatforms": [
         "Editor"

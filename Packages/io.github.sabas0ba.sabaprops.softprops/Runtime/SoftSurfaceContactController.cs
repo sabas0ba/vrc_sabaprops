@@ -1,6 +1,7 @@
 using UdonSharp;
 using UnityEngine;
 using VRC.Dynamics;
+using VRC.SDKBase;
 
 namespace SabaProps.SoftProps
 {
@@ -86,6 +87,31 @@ namespace SabaProps.SoftProps
         [Tooltip("変形面のlocal Y座標です。generatorがmodelごとに設定します。")]
         public float surfacePlaneY = 0.05f;
 
+        [Header("World collider probes")]
+        public Collider[] probeColliders = new Collider[0];
+        [Tooltip("0=指、1=棒、2=板。probeCollidersと同順です。")]
+        public int[] probeKinds = new int[0];
+        public bool automaticProbe;
+        public float cycleSeconds = 5f;
+        public float approachHeight = 0.12f;
+        public float pressDepth = 0.045f;
+        public Vector2 surfaceHalfSize = new Vector2(0.5f, 0.5f);
+        public bool playerStandingLoad = true;
+
+        [HideInInspector] public float measuredGap;
+        [HideInInspector] public float appliedPressure;
+        [HideInInspector] public int playerCollisionEvents;
+        [HideInInspector] public int standingSupportSamples;
+        private Collider _supportCollider;
+        public UnityEngine.UI.Text statusLabel;
+        private Vector3[] _probeRestPositions = new Vector3[SlotCount];
+        private float[] _probeRestGaps = new float[SlotCount];
+        private float _nextStatus;
+        private VRCPlayerApi[] _players = new VRCPlayerApi[SlotCount];
+        private float[] _playerSeen = new float[SlotCount];
+        private Vector3[] _senderOffsets = new Vector3[SlotCount];
+        private Vector4[] _lastShapes = new Vector4[SlotCount];
+
         private ContactSenderProxy[] _senders = new ContactSenderProxy[SlotCount];
         private Vector3[] _positions = new Vector3[SlotCount];
         private float[] _pressures = new float[SlotCount];
@@ -114,6 +140,11 @@ namespace SabaProps.SoftProps
                 return;
             }
 
+            // 既知のworld probeはCollider経由で評価し、Contactとの二重加算を防ぐ。
+            if (contactInfo.matchingTags != null && probeColliders.Length > 0)
+                for (int t = 0; t < contactInfo.matchingTags.Length; t++)
+                    if (contactInfo.matchingTags[t].StartsWith("SoftProbe")) return;
+
             int slot = FindSender(sender);
             if (slot < 0)
             {
@@ -126,6 +157,8 @@ namespace SabaProps.SoftProps
             }
 
             _senders[slot] = sender;
+            _senderOffsets[slot] = Quaternion.Inverse(sender.rotation)
+                * (contactInfo.contactPoint - sender.position);
             _positions[slot] = ToSurfaceLocal(contactInfo.contactPoint);
             _positions[slot].y = surfacePlaneY;
             _weights[slot] = WeightForTags(contactInfo.matchingTags);
@@ -158,6 +191,40 @@ namespace SabaProps.SoftProps
 
             float interval = 1f / Mathf.Max(updateRate, 1f);
             _nextUpdate = Time.time + interval;
+            VRCPlayerApi localPlayer = Networking.LocalPlayer;
+            if (playerStandingLoad && _supportCollider != null && localPlayer != null
+                && localPlayer.IsValid() && localPlayer.IsPlayerGrounded()
+                && Vector3.Dot(surfaceTransform.up, Vector3.up) > 0.7f)
+            {
+                Vector3 feetWorld = localPlayer.GetPosition();
+                Vector3 feetLocal = ToSurfaceLocal(feetWorld);
+                if (Mathf.Abs(feetLocal.y - surfacePlaneY) < 0.035f
+                    && Mathf.Abs(feetLocal.x) < surfaceHalfSize.x && Mathf.Abs(feetLocal.z) < surfaceHalfSize.y)
+                {
+                    RaycastHit supportHit;
+                    if (Physics.Raycast(feetWorld + Vector3.up * 0.03f, Vector3.down,
+                        out supportHit, 0.08f, -1, QueryTriggerInteraction.Ignore)
+                        && supportHit.collider == _supportCollider)
+                    {
+                        standingSupportSamples++;
+                        RecordStandingPlayer(localPlayer);
+                    }
+                }
+            }
+
+            if (automaticProbe && probeColliders.Length > 0 && probeColliders[0] != null)
+            {
+                float phase = Mathf.Repeat(Time.time / Mathf.Max(cycleSeconds, 1f), 1f);
+                float travel = phase < 0.2f ? 0f : phase < 0.45f
+                    ? Mathf.SmoothStep(0f, 1f, (phase - 0.2f) / 0.25f)
+                    : phase < 0.65f ? 1f : phase < 0.85f
+                    ? 1f - Mathf.SmoothStep(0f, 1f, (phase - 0.65f) / 0.2f) : 0f;
+                float gap = Mathf.Lerp(approachHeight, -pressDepth, travel);
+                for (int p = 0; p < Mathf.Min(probeColliders.Length, SlotCount); p++)
+                    if (probeColliders[p] != null)
+                        probeColliders[p].transform.position = _probeRestPositions[p]
+                            + surfaceTransform.up * (gap - _probeRestGaps[p]) * surfaceTransform.lossyScale.y;
+            }
 
             bool anyVisible = false;
             for (int i = 0; i < SlotCount; i++)
@@ -165,17 +232,51 @@ namespace SabaProps.SoftProps
                 ContactSenderProxy sender = _senders[i];
                 bool active = sender != null && sender.isValid;
                 float target = 0f;
+                float penetrationLimit = 1f;
 
-                if (active)
+                if (i < probeColliders.Length && probeColliders[i] != null)
                 {
-                    Vector3 local = ToSurfaceLocal(sender.position);
+                    Collider probe = probeColliders[i];
+                    active = probe.enabled && probe.gameObject.activeInHierarchy;
+                    Vector3 center = ToSurfaceLocal(probe.bounds.center);
+                    float gap = ColliderGap(probe);
+                    if (i == 0) measuredGap = gap;
+                    active = active && Mathf.Abs(center.x) < surfaceHalfSize.x
+                        && Mathf.Abs(center.z) < surfaceHalfSize.y;
+                    _positions[i] = new Vector3(center.x, surfacePlaneY, center.z);
+                    int kind = i < probeKinds.Length ? probeKinds[i] : 0;
+                    _shapeKinds[i] = kind;
+                    _shapeLengths[i] = kind == 1 ? rodHalfLength : kind == 2 ? plateHalfLength : 0f;
+                    _shapeWidths[i] = kind == 1 ? rodRadius : kind == 2 ? plateHalfWidth : fingerRadius;
+                    Vector3 axis = surfaceTransform.InverseTransformDirection(kind == 1
+                        ? probe.transform.up : probe.transform.right);
+                    _lastShapes[i] = new Vector4(axis.x, axis.z, _shapeLengths[i],
+                        kind == 2 ? -_shapeWidths[i] : _shapeWidths[i]);
+                    penetrationLimit = Mathf.Clamp01(-gap / Mathf.Max(EffectiveDepth(), 0.001f));
+                    target = active ? penetrationLimit : 0f;
+                }
+                else if (_players[i] != null && _players[i].IsValid()
+                    && Time.time - _playerSeen[i] < 0.2f)
+                {
+                    Vector3 feet = ToSurfaceLocal(_players[i].GetPosition());
+                    active = Mathf.Abs(feet.y - surfacePlaneY) < 0.035f
+                        && Mathf.Abs(feet.x) < surfaceHalfSize.x && Mathf.Abs(feet.z) < surfaceHalfSize.y;
+                    _positions[i] = new Vector3(feet.x, surfacePlaneY, feet.z);
+                    _lastShapes[i] = new Vector4(1f, 0f, 0f, Mathf.Min(contactRadius, 0.22f));
+                    target = active ? 0.72f : 0f;
+                }
+                else if (active)
+                {
+                    Vector3 local = ToSurfaceLocal(sender.position + sender.rotation * _senderOffsets[i]);
+                    float penetration = Mathf.Max(0f, surfacePlaneY - local.y);
                     local.y = surfacePlaneY;
                     _positions[i] = Vector3.Lerp(_positions[i], local, 0.55f);
 
-                    // Receiverを表面近傍の薄い層に限定するため、Enter前には荷重を
-                    // 発生させず、Sender中心高から疑似penetrationも生成しない。
-                    target = _weights[i];
-                    target = Mathf.Clamp01(target + _impulses[i]);
+                    // 初回接触点をSender rootに対するoffsetとして追跡する近似。
+                    // Avatar Senderの寸法を取得できないため、Collider経路ほど厳密ではない。
+                    penetrationLimit = Mathf.Clamp01(penetration / Mathf.Max(EffectiveDepth(), 0.001f));
+                    target = Mathf.Min(_weights[i] + _impulses[i], penetrationLimit);
+                    _lastShapes[i] = ShapeForSender(sender, i);
                 }
                 else if (sender != null)
                 {
@@ -185,6 +286,8 @@ namespace SabaProps.SoftProps
                 float seconds = target > _pressures[i] ? responseSeconds : recoverySeconds;
                 float blend = 1f - Mathf.Exp(-interval / Mathf.Max(seconds, 0.001f));
                 _pressures[i] = Mathf.Lerp(_pressures[i], target, blend);
+                // 接触中は物体下面より深く掘らない。離脱後のみ残留変形を復元する。
+                if (active && target > 0f) _pressures[i] = Mathf.Min(_pressures[i], penetrationLimit);
                 _impulses[i] = Mathf.MoveTowards(_impulses[i], 0f, interval * 2.5f);
 
                 if (_pressures[i] < 0.001f && !active)
@@ -201,13 +304,21 @@ namespace SabaProps.SoftProps
                     _positions[i].y,
                     _positions[i].z,
                     _pressures[i]));
-                ApplyShapeSlot(i, ShapeForSender(sender, i));
+                ApplyShapeSlot(i, _lastShapes[i]);
+                if (i == 0) appliedPressure = _pressures[i];
             }
 
-            if (!anyVisible)
+            if (!anyVisible && probeColliders.Length == 0)
             {
                 // idle中のUdon実行を30 Hzで継続しない。
                 _nextUpdate = Time.time + 0.25f;
+            }
+            if (statusLabel != null && Time.time >= _nextStatus)
+            {
+                _nextStatus = Time.time + 0.1f;
+                statusLabel.text = "Gap: " + (measuredGap * 1000f).ToString("F0") + " mm"
+                    + " / compression: " + (appliedPressure * 100f).ToString("F0") + "%"
+                    + "\nPlayer collision events: " + playerCollisionEvents;
             }
         }
 
@@ -236,12 +347,22 @@ namespace SabaProps.SoftProps
             // renderer.materialはinstanceごとのmaterialを作る。複数配置したPrefabが
             // 同じcontact parameterを上書きしないために必要である。
             _material = targetRenderer.material;
+            _supportCollider = GetComponent<Collider>();
             _material.SetFloat("_Hardness", hardness);
             _material.SetFloat("_MaximumIndent", maximumIndent);
             _material.SetFloat("_ContactRadius", contactRadius);
             _material.SetFloat("_RimLift", rimLift);
             _material.SetFloat("_WrinkleStrength", wrinkleStrength);
             _material.SetFloat("_WrinkleFrequency", wrinkleFrequency);
+            if (automaticProbe && probeColliders.Length > 0 && probeColliders[0] != null)
+            {
+                for (int p = 0; p < Mathf.Min(probeColliders.Length, SlotCount); p++)
+                    if (probeColliders[p] != null)
+                    {
+                        _probeRestPositions[p] = probeColliders[p].transform.position;
+                        _probeRestGaps[p] = ColliderGap(probeColliders[p]);
+                    }
+            }
 
             for (int i = 0; i < SlotCount; i++)
             {
@@ -280,8 +401,9 @@ namespace SabaProps.SoftProps
             int quietest = -1;
             float quietestPressure = 2f;
 
-            for (int i = 0; i < SlotCount; i++)
+            for (int i = Mathf.Min(probeColliders.Length, SlotCount); i < SlotCount; i++)
             {
+                if (_players[i] != null && _players[i].IsValid() && Time.time - _playerSeen[i] < 0.2f) continue;
                 ContactSenderProxy sender = _senders[i];
                 if (sender == null || !sender.isValid)
                 {
@@ -294,6 +416,72 @@ namespace SabaProps.SoftProps
             }
 
             return quietest;
+        }
+
+        public override void OnPlayerCollisionStay(VRCPlayerApi player)
+        {
+            if (!playerStandingLoad || player == null || !player.IsValid()) return;
+            Initialize();
+            if (Vector3.Dot(surfaceTransform.up, Vector3.up) < 0.7f) return;
+            playerCollisionEvents++;
+            RecordStandingPlayer(player);
+        }
+
+        private void RecordStandingPlayer(VRCPlayerApi player)
+        {
+            int slot = -1;
+            for (int i = probeColliders.Length; i < SlotCount; i++)
+                if (_players[i] == player) slot = i;
+            if (slot < 0) slot = FindAvailableSlot();
+            if (slot < 0) return;
+            _players[slot] = player;
+            _playerSeen[slot] = Time.time;
+            _nextUpdate = Mathf.Min(_nextUpdate, Time.time + 1f / Mathf.Max(updateRate, 1f));
+        }
+
+        private float EffectiveDepth()
+        {
+            return maximumIndent * Mathf.Lerp(1f, 0.28f, hardness);
+        }
+
+        public float ColliderGap(Collider probe)
+        {
+            Transform t = probe.transform;
+            Vector3 n = surfaceTransform.up;
+            Vector3 scale = t.lossyScale;
+            scale = new Vector3(Mathf.Abs(scale.x), Mathf.Abs(scale.y), Mathf.Abs(scale.z));
+            Vector3 center = probe.bounds.center;
+            float support = 0f;
+            if (probe.GetType() == typeof(SphereCollider))
+            {
+                SphereCollider sphere = (SphereCollider)probe;
+                center = t.TransformPoint(sphere.center);
+                support = sphere.radius * Mathf.Max(scale.x, Mathf.Max(scale.y, scale.z));
+            }
+            else if (probe.GetType() == typeof(CapsuleCollider))
+            {
+                CapsuleCollider capsule = (CapsuleCollider)probe;
+                center = t.TransformPoint(capsule.center);
+                Vector3 axis = capsule.direction == 0 ? t.right : capsule.direction == 1 ? t.up : t.forward;
+                float axialScale = capsule.direction == 0 ? scale.x : capsule.direction == 1 ? scale.y : scale.z;
+                float radialScale = capsule.direction == 0 ? Mathf.Max(scale.y, scale.z)
+                    : capsule.direction == 1 ? Mathf.Max(scale.x, scale.z) : Mathf.Max(scale.x, scale.y);
+                float radius = capsule.radius * radialScale;
+                support = radius + Mathf.Max(0f, capsule.height * axialScale * 0.5f - radius)
+                    * Mathf.Abs(Vector3.Dot(n, axis));
+            }
+            else if (probe.GetType() == typeof(BoxCollider))
+            {
+                BoxCollider box = (BoxCollider)probe;
+                center = t.TransformPoint(box.center);
+                Vector3 half = Vector3.Scale(box.size, scale) * 0.5f;
+                support = Mathf.Abs(Vector3.Dot(n, t.right)) * half.x
+                    + Mathf.Abs(Vector3.Dot(n, t.up)) * half.y
+                    + Mathf.Abs(Vector3.Dot(n, t.forward)) * half.z;
+            }
+            else return 1f;
+            return (Vector3.Dot(center - surfaceTransform.TransformPoint(new Vector3(0f, surfacePlaneY, 0f)), n)
+                - support) / Mathf.Max(Mathf.Abs(surfaceTransform.lossyScale.y), 0.001f);
         }
 
         private float WeightForTags(string[] tags)

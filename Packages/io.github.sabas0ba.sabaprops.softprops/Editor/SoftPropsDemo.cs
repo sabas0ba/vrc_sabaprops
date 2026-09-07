@@ -14,7 +14,7 @@ namespace SabaProps.SoftProps.Editors
     {
         public const string PackageRoot = "Packages/io.github.sabas0ba.sabaprops.softprops";
         public const string SampleRoot = PackageRoot + "/Samples~/ReviewDemo";
-        public const string ImportRoot = "Assets/SabaProps/SoftPropsDemo";
+        public const string ImportRoot = "Assets/SabaProps/SoftPropsDemoMotion";
         public const string SceneName = "SoftPropsDemo.unity";
         public const string GeneratedScene = SoftPropGenerator.OutputRoot + "/" + SceneName;
 
@@ -41,6 +41,14 @@ namespace SabaProps.SoftProps.Editors
             }
             Directory.CreateDirectory("Assets/SabaProps");
             FileUtil.CopyFileOrDirectory(SampleRoot, ImportRoot);
+            var importGuids = new Dictionary<string, string>();
+            foreach (string meta in Directory.GetFiles(ImportRoot, "*.meta", SearchOption.AllDirectories))
+            {
+                string guid = Regex.Match(File.ReadAllText(meta), @"guid: ([a-f0-9]{32})").Groups[1].Value;
+                if (guid.Length == 32) importGuids[guid] = Guid.NewGuid().ToString("N");
+            }
+            foreach (string path in Directory.GetFiles(ImportRoot, "*", SearchOption.AllDirectories))
+                CopySampleFile(path, path, importGuids);
             string existingProgram = SoftPropsVrcBridge.FindControllerProgram();
             if (existingProgram != null)
             {
@@ -97,7 +105,7 @@ namespace SabaProps.SoftProps.Editors
         {
             return path.StartsWith(SoftPropGenerator.OutputRoot + "/", StringComparison.Ordinal)
                 ? SampleRoot + path.Substring(SoftPropGenerator.OutputRoot.Length)
-                : SampleRoot + "/Programs/" + Path.GetFileName(path);
+                : SampleRoot + "/Programs/SoftSurfaceContactController.asset";
         }
 
         private static void CopySampleFile(string source, string destination, Dictionary<string, string> replacements)
@@ -175,6 +183,39 @@ namespace SabaProps.SoftProps.Editors
             Preview("Finger", 1.15f, new Vector4(1f, 0f, 0f, 0.055f));
             Preview("Rod", 2f, new Vector4(1f, 0f, 0.22f, 0.045f));
             Preview("Plate", 2.85f, new Vector4(1f, 0f, 0.20f, -0.12f));
+            for (int profile = 0; profile < 3; profile++)
+            {
+                float x = (profile - 1) * 3f;
+                float hardness = profile == 0 ? 0.15f : profile == 1 ? 0.45f : 0.80f;
+                float recovery = profile == 0 ? 0.8f : profile == 1 ? 0.4f : 0.12f;
+                Box("Automatic table " + profile, new Vector3(x, 0.38f, -3f), new Vector3(2.1f, 0.76f, 1f), table);
+                var comparison = Place("ContactProbeTest", new Vector3(x, 0.76f, -3f));
+                comparison.name = "Automatic comparison " + profile;
+                var controller = comparison.GetComponentInChildren<SoftSurfaceContactController>();
+                controller.automaticProbe = true;
+                controller.hardness = hardness;
+                controller.recoverySeconds = recovery;
+                controller.pressDepth = controller.maximumIndent * Mathf.Lerp(1f, 0.28f, hardness) * 0.65f;
+                foreach (Rigidbody body in comparison.GetComponentsInChildren<Rigidbody>())
+                {
+                    body.isKinematic = true;
+                    body.useGravity = false;
+                    foreach (Component component in body.GetComponents<Component>())
+                        if (component.GetType().Name == "VRCPickup" || component.GetType().Name == "VRCObjectSync"
+                            || component.GetType().Name == "VRCContactSender")
+                            UnityEngine.Object.DestroyImmediate(component);
+                }
+                foreach (TextMesh label in comparison.GetComponentsInChildren<TextMesh>())
+                {
+                    label.transform.rotation = Quaternion.identity;
+                    label.transform.localScale = Vector3.one * 0.4f;
+                }
+                Label("AUTO / hardness " + hardness + " / recovery " + recovery + "s",
+                    new Vector3(x, 1.65f, -2.45f), 0.052f);
+                Label("Prescribed motion / hardness-scaled travel\nPlay: approach - press - hold - release", new Vector3(x, 1.43f, -2.45f), 0.032f);
+                controller.statusLabel = StatusLabel(new Vector3(x, 1.05f, -3.55f));
+            }
+            SoftPropsVrcBridge.CompileControllerProgram(SoftPropGenerator.ProgramAssetPath);
             Label("SABA PROPS / SOFT SURFACES", new Vector3(0f, 2.4f, 6.65f), 0.12f);
             AssetDatabase.SaveAssets();
             if (!EditorSceneManager.SaveScene(scene, GeneratedScene))
@@ -233,7 +274,7 @@ namespace SabaProps.SoftProps.Editors
             box.GetComponent<Renderer>().sharedMaterial = material;
         }
 
-        private static void Label(string text, Vector3 position, float size)
+        private static TextMesh Label(string text, Vector3 position, float size)
         {
             var label = new GameObject(text.Split('\n')[0]).AddComponent<TextMesh>();
             label.transform.position = position;
@@ -245,6 +286,25 @@ namespace SabaProps.SoftProps.Editors
             label.anchor = TextAnchor.MiddleCenter;
             label.alignment = TextAlignment.Center;
             label.color = new Color(0.93f, 0.95f, 0.96f);
+            return label;
+        }
+
+        private static UnityEngine.UI.Text StatusLabel(Vector3 position)
+        {
+            var canvas = new GameObject("Probe status", typeof(RectTransform), typeof(Canvas)).GetComponent<Canvas>();
+            canvas.renderMode = RenderMode.WorldSpace;
+            canvas.transform.position = position;
+            canvas.transform.localScale = Vector3.one * 0.001f;
+            var label = new GameObject("Status", typeof(RectTransform), typeof(UnityEngine.UI.Text))
+                .GetComponent<UnityEngine.UI.Text>();
+            label.transform.SetParent(canvas.transform, false);
+            label.rectTransform.sizeDelta = new Vector2(1900f, 120f);
+            label.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            label.fontSize = 32;
+            label.alignment = TextAnchor.MiddleCenter;
+            label.text = "Gap / compression";
+            label.raycastTarget = false;
+            return label;
         }
 
         private static void Capture(Camera camera, string name)

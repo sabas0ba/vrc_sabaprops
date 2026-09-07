@@ -189,7 +189,7 @@ namespace SabaProps.SoftProps.Editors
             var world = new GameObject("VRCWorld");
             var spawn = new GameObject("Spawn");
             spawn.transform.SetParent(world.transform, false);
-            spawn.transform.position = new Vector3(0f, 0.1f, -4f);
+            spawn.transform.position = new Vector3(0f, 0.1f, -5f);
             Component descriptor = world.AddComponent(descriptorType);
             SetMember(descriptor, "spawns", new[] { spawn.transform });
             SetMember(descriptor, "RespawnHeightY", -10f);
@@ -236,6 +236,10 @@ namespace SabaProps.SoftProps.Editors
 
             // UdonSharpCompileOptionsのoptional argumentへnullを渡し、SDK既定値を使う。
             compileSync.Invoke(null, new object[] { null });
+            MethodInfo hasError = programAsset.GetType().GetMethod(
+                "AnyUdonSharpScriptHasError", BindingFlags.Public | BindingFlags.Static);
+            if (hasError == null || (bool)hasError.Invoke(null, null))
+                throw new InvalidOperationException("UdonSharp compilation did not succeed. See Console for details.");
 
             programAsset = AssetDatabase.LoadAssetAtPath<ScriptableObject>(programAssetPath);
             MethodInfo updateProgram = programAsset.GetType().GetMethod(
