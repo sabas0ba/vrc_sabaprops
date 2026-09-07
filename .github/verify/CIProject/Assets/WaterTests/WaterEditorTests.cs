@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using NUnit.Framework;
 using SabaProps.Water.Editors;
@@ -54,6 +55,56 @@ namespace SabaProps.Water.CITests
                 Assert.Fail($"shader '{shaderName}' failed to compile:\n" + string.Join("\n", details));
             }
         }
+
+        [Test]
+        public void StereoDependentShaders_RestoreTheEyeIndexInFragments()
+        {
+            string[] stereoDependentShaders =
+            {
+                WaterSurfaceProfile.LiteShaderName,
+                WaterSurfaceProfile.StandardShaderName,
+                WaterAssetLibrary.FogParticleShaderName,
+                WaterAssetLibrary.FogVolumeShaderName,
+                WaterAssetLibrary.UnderwaterLiteShaderName,
+                WaterAssetLibrary.UnderwaterStandardShaderName,
+                WaterAssetLibrary.UnderwaterSurfaceLiteShaderName,
+                WaterAssetLibrary.UnderwaterSurfaceStandardShaderName,
+            };
+
+            foreach (string shaderName in stereoDependentShaders)
+            {
+                AssertSourceContains(
+                    shaderName,
+                    "UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX");
+            }
+        }
+
+        [Test]
+        public void VolumeShaders_UseDepthAndInwardFacingBoundaryPasses()
+        {
+            string fogSource = ReadShaderSource(WaterAssetLibrary.FogVolumeShaderName);
+            Assert.IsTrue(fogSource.Contains("ZTest Always"));
+            Assert.IsTrue(fogSource.Contains("_CameraDepthTexture"));
+            Assert.IsTrue(fogSource.Contains("depthFraction"));
+
+            AssertSourceContains(WaterAssetLibrary.UnderwaterSurfaceLiteShaderName, "Cull Front");
+            AssertSourceContains(WaterAssetLibrary.UnderwaterSurfaceStandardShaderName, "Cull Front");
+        }
+
+        private static void AssertSourceContains(string shaderName, string expected)
+        {
+            Assert.IsTrue(
+                ReadShaderSource(shaderName).Contains(expected),
+                shaderName + " must contain " + expected);
+        }
+
+        private static string ReadShaderSource(string shaderName)
+        {
+            Shader shader = Shader.Find(shaderName);
+            Assert.IsNotNull(shader, shaderName);
+            string assetPath = AssetDatabase.GetAssetPath(shader);
+            return File.ReadAllText(assetPath);
+        }
     }
 
     public class WaterMeshTests
@@ -100,11 +151,16 @@ namespace SabaProps.Water.CITests
                 Assert.AreEqual(first.vertexCount, second.vertexCount);
                 Assert.AreEqual(first.triangles.Length, second.triangles.Length);
                 AssertFinite(first);
+                Assert.IsTrue(
+                    first.normals.Any(normal => normal.y < 0.999f),
+                    "sloped river samples must not retain flat upward normals");
 
                 for (int index = 0; index < first.vertexCount; index++)
                 {
                     Assert.AreEqual(first.vertices[index], second.vertices[index]);
                     Assert.AreEqual(first.uv[index], second.uv[index]);
+                    Assert.AreEqual(first.normals[index], second.normals[index]);
+                    Assert.AreEqual(1f, first.normals[index].magnitude, 1e-4f);
                     if (index >= 2)
                     {
                         Assert.Greater(first.uv[index].y + 1e-5f, first.uv[index - 2].y);

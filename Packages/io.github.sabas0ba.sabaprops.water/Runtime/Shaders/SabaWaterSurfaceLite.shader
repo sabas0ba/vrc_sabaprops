@@ -144,6 +144,7 @@ Shader "SabaProps/Water/Surface Lite"
 
             fixed4 frag(v2f input) : SV_Target
             {
+                UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(input);
                 float3 baseNormal = normalize(input.worldNormal);
                 float3 proceduralNormal = SabaWaterNormal(
                     input.worldPosition,
@@ -277,12 +278,15 @@ Shader "SabaProps/Water/Surface Lite"
                 float3 worldNormal : TEXCOORD1;
                 float2 uv : TEXCOORD2;
                 LIGHTING_COORDS(3, 4)
+                UNITY_VERTEX_OUTPUT_STEREO
             };
 
             v2fAdd vertAdd(appdataAdd v)
             {
                 v2fAdd output;
                 UNITY_SETUP_INSTANCE_ID(v);
+                UNITY_INITIALIZE_OUTPUT(v2fAdd, output);
+                UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(output);
                 float3 worldPosition = mul(unity_ObjectToWorld, v.vertex).xyz;
                 worldPosition.y += SabaWaterHeight(
                     worldPosition, _WaveScale, _WaveSpeed, _FlowDirection.xy) * _VertexWaveHeight;
@@ -297,6 +301,7 @@ Shader "SabaProps/Water/Surface Lite"
 
             fixed4 fragAdd(v2fAdd input) : SV_Target
             {
+                UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(input);
                 float3 normal = normalize(input.worldNormal + SabaWaterNormal(
                     input.worldPosition, _WaveScale, _WaveStrength, _WaveSpeed, _FlowDirection.xy)
                     - float3(0.0, 1.0, 0.0));

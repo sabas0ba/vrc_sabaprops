@@ -18,7 +18,7 @@ Shader "SabaProps/Water/Underwater Surface Lite"
     SubShader
     {
         Tags { "Queue" = "Transparent+10" "RenderType" = "Transparent" "IgnoreProjector" = "True" }
-        Cull Off
+        Cull Front
         ZWrite Off
         Blend SrcAlpha OneMinusSrcAlpha
 
@@ -76,6 +76,7 @@ Shader "SabaProps/Water/Underwater Surface Lite"
 
             fixed4 frag(v2f input) : SV_Target
             {
+                UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(input);
                 float boundaryMask = SabaBoundaryDirectionMask(
                     input.worldNormal,
                     _BoundaryUpDown,

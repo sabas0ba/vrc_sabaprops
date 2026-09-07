@@ -23,6 +23,7 @@ Shader "SabaProps/Water/Underwater Lite"
             #pragma target 3.0
             #pragma vertex vert
             #pragma fragment frag
+            #pragma multi_compile_instancing
             #include "UnityCG.cginc"
 
             UNITY_DECLARE_DEPTH_TEXTURE(_CameraDepthTexture);
@@ -35,6 +36,7 @@ Shader "SabaProps/Water/Underwater Lite"
             struct appdata
             {
                 float4 vertex : POSITION;
+                UNITY_VERTEX_INPUT_INSTANCE_ID
             };
 
             struct v2f
@@ -42,11 +44,15 @@ Shader "SabaProps/Water/Underwater Lite"
                 float4 position : SV_POSITION;
                 float4 screenPosition : TEXCOORD0;
                 float3 worldPosition : TEXCOORD1;
+                UNITY_VERTEX_OUTPUT_STEREO
             };
 
             v2f vert(appdata input)
             {
                 v2f output;
+                UNITY_SETUP_INSTANCE_ID(input);
+                UNITY_INITIALIZE_OUTPUT(v2f, output);
+                UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(output);
                 output.position = UnityObjectToClipPos(input.vertex);
                 output.screenPosition = ComputeScreenPos(output.position);
                 output.worldPosition = mul(unity_ObjectToWorld, input.vertex).xyz;
@@ -55,6 +61,7 @@ Shader "SabaProps/Water/Underwater Lite"
 
             fixed4 frag(v2f input) : SV_Target
             {
+                UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(input);
                 float3 cameraLocal = mul(
                     unity_WorldToObject, float4(_WorldSpaceCameraPos.xyz, 1.0)).xyz;
                 float inside = 0.5001 - max(max(abs(cameraLocal.x), abs(cameraLocal.y)), abs(cameraLocal.z));

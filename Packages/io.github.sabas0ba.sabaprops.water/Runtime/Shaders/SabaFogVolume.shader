@@ -20,7 +20,7 @@ Shader "SabaProps/Water/Fog Volume"
         Tags { "Queue" = "Transparent+20" "RenderType" = "Transparent" "IgnoreProjector" = "True" }
         Cull Front
         ZWrite Off
-        ZTest LEqual
+        ZTest Always
         Blend SrcAlpha OneMinusSrcAlpha
 
         Pass
@@ -30,8 +30,10 @@ Shader "SabaProps/Water/Fog Volume"
             #pragma vertex vert
             #pragma fragment frag
             #pragma shader_feature_local _FOG_HIGH_QUALITY
+            #pragma multi_compile_instancing
             #include "UnityCG.cginc"
 
+            UNITY_DECLARE_DEPTH_TEXTURE(_CameraDepthTexture);
             fixed4 _Color;
             float _Density;
             float _NoiseScale;
@@ -46,19 +48,28 @@ Shader "SabaProps/Water/Fog Volume"
             struct appdata
             {
                 float4 vertex : POSITION;
+                UNITY_VERTEX_INPUT_INSTANCE_ID
             };
 
             struct v2f
             {
                 float4 position : SV_POSITION;
                 float3 localPosition : TEXCOORD0;
+                float4 screenPosition : TEXCOORD1;
+                float eyeDepth : TEXCOORD2;
+                UNITY_VERTEX_OUTPUT_STEREO
             };
 
             v2f vert(appdata input)
             {
                 v2f output;
+                UNITY_SETUP_INSTANCE_ID(input);
+                UNITY_INITIALIZE_OUTPUT(v2f, output);
+                UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(output);
                 output.position = UnityObjectToClipPos(input.vertex);
                 output.localPosition = input.vertex.xyz;
+                output.screenPosition = ComputeScreenPos(output.position);
+                output.eyeDepth = -UnityObjectToViewPos(input.vertex).z;
                 return output;
             }
 
@@ -74,6 +85,7 @@ Shader "SabaProps/Water/Fog Volume"
 
             fixed4 frag(v2f input) : SV_Target
             {
+                UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(input);
                 float3 rayOrigin = mul(unity_WorldToObject, float4(_WorldSpaceCameraPos.xyz, 1.0)).xyz;
                 float3 rayDirection = normalize(input.localPosition - rayOrigin);
                 float3 directionSign = step(0.0, rayDirection) * 2.0 - 1.0;
@@ -87,6 +99,15 @@ Shader "SabaProps/Water/Fog Volume"
                 float enter = max(max(nearer.x, nearer.y), nearer.z);
                 float leave = min(min(farther.x, farther.y), farther.z);
                 enter = max(enter, 0.0);
+
+                float2 screenUv = input.screenPosition.xy / input.screenPosition.w;
+                screenUv = UnityStereoTransformScreenSpaceTex(screenUv);
+                float sceneDepth = LinearEyeDepth(SAMPLE_DEPTH_TEXTURE(
+                    _CameraDepthTexture, screenUv));
+                // Eye depth is linear along this view ray, so it can trim the
+                // box exit point before marching through occluded fog.
+                float depthFraction = saturate(sceneDepth / max(1e-4, input.eyeDepth));
+                leave *= depthFraction;
                 clip(leave - enter);
 
                 float3 localStart = rayOrigin + rayDirection * enter;

@@ -173,15 +173,29 @@ namespace SabaProps.Water.Editors
                 Vector3 p3 = controlPoints[Mathf.Min(controlPoints.Count - 1, span + 2)];
 
                 Vector3 centre = CatmullRom(p0, p1, p2, p3, t);
-                Vector3 tangent = CatmullRomTangent(p0, p1, p2, p3, t);
-                tangent.y = 0f;
-                if (tangent.sqrMagnitude < 1e-6f)
+                Vector3 surfaceTangent = CatmullRomTangent(p0, p1, p2, p3, t);
+                Vector3 horizontalTangent = surfaceTangent;
+                horizontalTangent.y = 0f;
+                if (horizontalTangent.sqrMagnitude < 1e-6f)
                 {
-                    tangent = Vector3.forward;
+                    horizontalTangent = Vector3.forward;
                 }
 
-                tangent.Normalize();
-                Vector3 side = Vector3.Cross(Vector3.up, tangent).normalized;
+                horizontalTangent.Normalize();
+                Vector3 side = Vector3.Cross(Vector3.up, horizontalTangent).normalized;
+                Vector3 surfaceNormal = Vector3.Cross(surfaceTangent, side);
+                if (surfaceNormal.sqrMagnitude < 1e-6f)
+                {
+                    surfaceNormal = Vector3.up;
+                }
+                else
+                {
+                    surfaceNormal.Normalize();
+                    if (surfaceNormal.y < 0f)
+                    {
+                        surfaceNormal = -surfaceNormal;
+                    }
+                }
 
                 if (sample > 0)
                 {
@@ -193,8 +207,8 @@ namespace SabaProps.Water.Editors
                 int right = left + 1;
                 vertices[left] = centre - side * (width * 0.5f);
                 vertices[right] = centre + side * (width * 0.5f);
-                normals[left] = Vector3.up;
-                normals[right] = Vector3.up;
+                normals[left] = surfaceNormal;
+                normals[right] = surfaceNormal;
                 uv[left] = new Vector2(0f, distance / uvMetersPerTile);
                 uv[right] = new Vector2(1f, distance / uvMetersPerTile);
             }

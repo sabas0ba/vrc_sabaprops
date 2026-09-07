@@ -23,7 +23,7 @@ Shader "SabaProps/Water/Underwater Surface Standard"
 
         Pass
         {
-            Cull Off
+            Cull Front
             ZWrite Off
             Blend One Zero
 
@@ -83,6 +83,7 @@ Shader "SabaProps/Water/Underwater Surface Standard"
 
             fixed4 frag(v2f input) : SV_Target
             {
+                UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(input);
                 float boundaryMask = SabaBoundaryDirectionMask(
                     input.worldNormal,
                     _BoundaryUpDown,

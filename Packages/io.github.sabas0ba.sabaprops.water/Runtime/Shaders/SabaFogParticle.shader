@@ -24,6 +24,7 @@ Shader "SabaProps/Water/Fog Particle"
             #pragma vertex vert
             #pragma fragment frag
             #pragma multi_compile_particles
+            #pragma multi_compile_instancing
             #include "UnityCG.cginc"
 
             UNITY_DECLARE_DEPTH_TEXTURE(_CameraDepthTexture);
@@ -38,6 +39,7 @@ Shader "SabaProps/Water/Fog Particle"
                 float4 vertex : POSITION;
                 fixed4 color : COLOR;
                 float2 uv : TEXCOORD0;
+                UNITY_VERTEX_INPUT_INSTANCE_ID
             };
 
             struct v2f
@@ -47,11 +49,15 @@ Shader "SabaProps/Water/Fog Particle"
                 float2 uv : TEXCOORD0;
                 float4 projected : TEXCOORD1;
                 float3 worldPosition : TEXCOORD2;
+                UNITY_VERTEX_OUTPUT_STEREO
             };
 
             v2f vert(appdata input)
             {
                 v2f output;
+                UNITY_SETUP_INSTANCE_ID(input);
+                UNITY_INITIALIZE_OUTPUT(v2f, output);
+                UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(output);
                 output.position = UnityObjectToClipPos(input.vertex);
                 output.projected = ComputeScreenPos(output.position);
                 output.projected.z = -UnityObjectToViewPos(input.vertex).z;
@@ -63,6 +69,7 @@ Shader "SabaProps/Water/Fog Particle"
 
             fixed4 frag(v2f input) : SV_Target
             {
+                UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(input);
                 float2 centred = input.uv * 2.0 - 1.0;
                 float radial = saturate(1.0 - dot(centred, centred));
                 radial = radial * radial * (3.0 - 2.0 * radial);
