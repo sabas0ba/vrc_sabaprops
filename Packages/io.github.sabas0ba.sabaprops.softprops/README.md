@@ -2,6 +2,14 @@
 
 PC VRChat world向けの接触変形shaderと、ふとん、ベッド、ソファー、クッションのmodel／Prefab生成器です。VRChat Worlds SDK 3.10系のWorld Contactsを使用します。
 
+## ドキュメント
+
+- [デモの導入とレビュー](Documentation~/demo-review.md): 自動比較、手動接触、家具への立位、実行画像
+- [独自modelへの適用](Documentation~/authoring.md): Mesh、Collider、接触slotの設定
+- [性能設計](Documentation~/performance.md): 更新頻度と配置cost
+- [更新と配布](Documentation~/upgrading.md): 0.2.0への移行、バージョン方針、リリース手順
+- [変更履歴](CHANGELOG.md)
+
 ## 要件
 
 - Unity 2022.3
@@ -13,7 +21,7 @@ VPM依存として`com.vrchat.worlds 3.10.x`を宣言しています。3.10.4で
 
 ## 導入と生成
 
-レビューには `Tools > SabaProps > Soft Props > Open Demo Scene` を使用してください。同梱済みの家具4種、肌Materialの接触試験台、指／棒／板のPickup、静的な形状比較、照明、床、VRChat Spawnを含むsceneをimportして開きます。事前のPrefab生成や手動配置は不要です。[デモの導入・レビュー手順](Documentation~/demo-review.md)に確認項目と制限を記載しています。
+レビューには `Tools > SabaProps > Soft Props > Open Demo Scene` を使用してください。同梱済みの家具4種、肌Materialの接触試験台、指／棒／板のPickup、3形状×3設定の自動比較台、静的な形状比較、照明、床、VRChat Spawnを含むsceneをimportして開きます。事前のPrefab生成や手動配置は不要です。[デモの導入・レビュー手順](Documentation~/demo-review.md)に確認項目と制限を記載しています。
 
 1. VCC／ALCOMで本packageをworld projectへ追加する
 2. Unityの`Tools > SabaProps > Soft Props > Generate All Prefabs`を実行する
