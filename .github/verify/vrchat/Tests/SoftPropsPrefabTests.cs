@@ -129,7 +129,7 @@ namespace SabaProps.SoftProps.WorldTests
             Assert.IsTrue(string.IsNullOrEmpty(shaderErrors), shaderErrors);
 
             ScriptableObject programAsset = AssetDatabase.LoadAssetAtPath<ScriptableObject>(
-                OutputRoot + "/SoftSurfaceContactController.asset");
+                (string)generator.GetProperty("ProgramAssetPath").GetValue(null));
             Assert.IsNotNull(programAsset, "UdonSharp program asset was not generated");
 
             PropertyInfo compiledVersion = programAsset.GetType().GetProperty("CompiledVersion");

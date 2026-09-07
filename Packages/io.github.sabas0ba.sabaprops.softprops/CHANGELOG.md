@@ -2,6 +2,9 @@
 
 ## [0.1.0] - 2026-09-01
 
+- 照明・床・Spawn・家具・接触試験台・静的形状比較を含むレビュー用sceneをSamples~に同梱
+- Open Demo Sceneメニューと導入済みsampleの参照検証を追加
+
 - World Contactsを使用する最大8点の接触変形controllerを追加
 - PC向けの布地／フォーム変形shaderを追加
 - ふとん、ベッド、ソファー、クッションのMesh／Material／Prefab生成器を追加

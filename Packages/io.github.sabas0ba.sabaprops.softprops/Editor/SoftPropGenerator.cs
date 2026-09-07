@@ -11,7 +11,8 @@ namespace SabaProps.SoftProps.Editors
         public const string MeshFolder = OutputRoot + "/Meshes";
         public const string MaterialFolder = OutputRoot + "/Materials";
         public const string PrefabFolder = OutputRoot + "/Prefabs";
-        public const string ProgramAssetPath = OutputRoot + "/SoftSurfaceContactController.asset";
+        public static string ProgramAssetPath => SoftPropsVrcBridge.FindControllerProgram()
+            ?? OutputRoot + "/SoftSurfaceContactController.asset";
 
         private static readonly string[] ContactTags =
         {
@@ -351,6 +352,8 @@ namespace SabaProps.SoftProps.Editors
             label.transform.localPosition = localPosition;
             label.transform.localRotation = Quaternion.Euler(0f, 180f, 0f);
             var textMesh = label.AddComponent<TextMesh>();
+            textMesh.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            label.GetComponent<MeshRenderer>().sharedMaterial = textMesh.font.material;
             textMesh.text = text;
             textMesh.anchor = TextAnchor.MiddleCenter;
             textMesh.alignment = TextAlignment.Center;

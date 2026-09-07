@@ -30,6 +30,21 @@ namespace SabaProps.SoftProps.Editors
         private const string UdonAssemblyAssetPath =
             "Packages/io.github.sabas0ba.sabaprops.softprops/Runtime/SabaProps.SoftProps.UdonSharp.asset";
 
+        public static string FindControllerProgram()
+        {
+            foreach (string guid in AssetDatabase.FindAssets("t:UdonSharpProgramAsset", new[] { "Assets" }))
+            {
+                string path = AssetDatabase.GUIDToAssetPath(guid);
+                var asset = AssetDatabase.LoadAssetAtPath<ScriptableObject>(path);
+                if (asset == null) continue;
+                var serialized = new SerializedObject(asset);
+                var source = serialized.FindProperty("sourceCsScript");
+                if (source != null && AssetDatabase.GetAssetPath(source.objectReferenceValue) == ControllerScriptPath)
+                    return path;
+            }
+            return null;
+        }
+
         public static bool IsAvailable(out string reason)
         {
             if (FindType(ReceiverTypeName) == null || FindType(SenderTypeName) == null)
@@ -164,6 +179,21 @@ namespace SabaProps.SoftProps.Editors
             UpdateCollisionTags(senderType, sender, new[] { collisionTag });
             ApplyConfigurationChanges(senderType, sender);
             return sender;
+        }
+
+        public static void AddWorldDescriptor(Camera camera)
+        {
+            Type descriptorType = FindType("VRC.SDK3.Components.VRCSceneDescriptor");
+            if (descriptorType == null)
+                throw new InvalidOperationException("VRCSceneDescriptorが見つかりません。");
+            var world = new GameObject("VRCWorld");
+            var spawn = new GameObject("Spawn");
+            spawn.transform.SetParent(world.transform, false);
+            spawn.transform.position = new Vector3(0f, 0.1f, -4f);
+            Component descriptor = world.AddComponent(descriptorType);
+            SetMember(descriptor, "spawns", new[] { spawn.transform });
+            SetMember(descriptor, "RespawnHeightY", -10f);
+            SetMember(descriptor, "ReferenceCamera", camera.gameObject);
         }
 
         public static void AddPickup(GameObject target)

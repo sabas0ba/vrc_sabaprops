@@ -13,6 +13,8 @@ VPM依存として`com.vrchat.worlds 3.10.x`を宣言しています。3.10.4で
 
 ## 導入と生成
 
+レビューには `Tools > SabaProps > Soft Props > Open Demo Scene` を使用してください。同梱済みの家具4種、肌Materialの接触試験台、指／棒／板のPickup、静的な形状比較、照明、床、VRChat Spawnを含むsceneをimportして開きます。事前のPrefab生成や手動配置は不要です。[デモの導入・レビュー手順](Documentation~/demo-review.md)に確認項目と制限を記載しています。
+
 1. VCC／ALCOMで本packageをworld projectへ追加する
 2. Unityの`Tools > SabaProps > Soft Props > Generate All Prefabs`を実行する
 3. `Assets/SabaProps/SoftPropsGenerated/Prefabs`から必要なPrefabをsceneへ置く
