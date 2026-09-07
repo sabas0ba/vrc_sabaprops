@@ -19,15 +19,21 @@ Package Managerを使用しない場合は、`Tools > SabaProps > Water > Create
 
 | Section | 内容 | コピー単位 |
 | --- | --- | --- |
-| `1 Water Surfaces` | 複数Puddle、斜面River、Lake、深度色付きOceanのLite／Standard比較 | 各`[Copy Ready]`root |
+| `1 Water Surfaces` | Reflection Probe付き複数Puddle、曝気・落水付きRiver、Lake、潮位・砕波泡・深度色付きOceanのLite／Standard比較 | 各`[Copy Ready]`root |
 | `2 Rain and Ripples` | World collision、Splash sub-emitter、Ripple sub-emitter、疑似水面波紋 | `Rain Rig [Copy Ready]` |
 | `3 Fog and Clouds` | Lite、濃霧、着色霧、Point Light付きHigh、Particle fog、Cloud Layer | 各`[Copy Ready]`root |
-| `4 Underwater` | 水面、volume、水面裏面屈折、コースティクス、light shaft | 各Underwater Pool root |
-| `5 Wet Surfaces and VRChat` | Dry／Wet／Dropletsの人型proxy、VRCWorld状態 | 各Mannequin root |
+| `4 Underwater` | 水面、volume、上面専用／8方向トンネル境界、コースティクス、light shaft | 各Underwater Pool root |
+| `5 Wet Surfaces and VRChat` | Dry／Wet／質量差と残留軌跡を持つDropletsの人型proxy、VRCWorld状態 | 各Mannequin root |
 
 River展示には`WaterPath`と保存済みMeshの両方が含まれます。control pointを編集した後に`Rebuild Mesh`を実行できます。
-斜面、浅い上流、深い下流、Whitewater Crest、Waterfall Sprayも同じcopy rootに含まれます。
-Puddle展示は3枚の不定形Meshを重ね、stampを複数回使う場合のoverdrawと見え方を確認できます。
+斜面、浅い上流、深い下流、曝気開始点を持つWhitewater Crest、Plunge Pool Froth、Spray／Mistも同じcopy rootに含まれます。
+Puddle展示は3枚の不定形Mesh、box-projected Reflection Probe、反射用landmarkを含み、stampを複数回使う場合の
+overdraw、重なり、雨波紋で歪む反射を確認できます。
+
+UnderwaterのLiteは上面境界だけを描画します。Standardには上面例に加えて
+`Eight-Direction Tunnel Boundary [Copy Ready]`があり、水平8方向を有効にしたMaterial設定を比較できます。
+通常プールのCameraを妨げないよう初期状態はinactiveです。Hierarchyから有効化して確認します。
+`Gallery Ground`はプール床より下へ配置され、水中Cameraの視線を遮りません。
 
 `VRCWorld/Spawn`は常に含まれます。Worlds SDK導入済みprojectでGalleryを生成するか、
 `Tools > SabaProps > Water > Configure VRChat World Descriptor`を実行すると`VRCSceneDescriptor`も追加されます。
@@ -48,5 +54,6 @@ Overview Cameraが`MainCamera`です。水中Cameraを確認する場合はOverv
 - Rainは`Play On Awake`と`Prewarm`が有効で、Play Mode開始時に自動再生します。
 - Rain Collisionの対象を実Worldへコピーした後は、`Collides With`を必要なLayerだけに限定します。
 - Standard waterとStandard underwaterはGrabPassを使用するPC向け設定です。
+- Puddle Reflection ProbeはLite=64、Standard=128、Realtime + On Awakeです。静的WorldではBakedへ変更できます。
 - Wet Surfaceは対応Materialへ明示的に割り当てるShaderであり、Worldから任意アバターへ適用されません。
 - Sample内のMaterialやProfileはSample専用です。共通設定として使用する場合はproject内の管理folderへ移動してください。

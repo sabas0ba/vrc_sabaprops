@@ -372,18 +372,32 @@ namespace SabaProps.Water.Editors
                 case UnderwaterSurfaceLiteMaterialName:
                     material.SetColor("_ShallowColor", new Color(0.19f, 0.64f, 0.76f, 1f));
                     material.SetFloat("_Opacity", 0.58f);
+                    material.SetVector("_BoundaryUpDown", new Vector4(1f, 0f, 0f, 0f));
+                    material.SetVector("_BoundaryCardinal", Vector4.zero);
+                    material.SetVector("_BoundaryDiagonal", Vector4.zero);
+                    material.SetFloat("_BoundaryEdgeFade", 0.09f);
                     break;
                 case UnderwaterSurfaceStandardMaterialName:
                     material.SetColor("_Tint", new Color(0.12f, 0.48f, 0.58f, 1f));
                     material.SetFloat("_DistortionStrength", 0.022f);
+                    material.SetVector("_BoundaryUpDown", new Vector4(1f, 0f, 0f, 0f));
+                    material.SetVector("_BoundaryCardinal", Vector4.zero);
+                    material.SetVector("_BoundaryDiagonal", Vector4.zero);
+                    material.SetFloat("_BoundaryEdgeFade", 0.12f);
                     break;
                 case WhitewaterMaterialName:
                     material.SetColor("_Color", new Color(0.88f, 0.96f, 1f, 1f));
                     material.SetFloat("_Opacity", 0.82f);
+                    material.SetFloat("_AerationStart", 0.28f);
+                    material.SetFloat("_AerationGrowth", 0.3f);
+                    material.SetFloat("_BubbleDetail", 0.8f);
+                    material.SetFloat("_ClearFlowStrength", 0.2f);
                     break;
                 case WetSurfaceMaterialName:
                     material.SetColor("_Color", new Color(0.32f, 0.42f, 0.48f, 1f));
                     material.SetFloat("_Wetness", 0.8f);
+                    material.SetFloat("_TrailPersistence", 0.72f);
+                    material.SetFloat("_TrailSlide", 0.24f);
                     break;
             }
         }
@@ -399,6 +413,8 @@ namespace SabaProps.Water.Editors
             profile.waveSpeed = 0.3f;
             profile.flowDirection = new Vector2(1f, 0.2f);
             profile.vertexWaveHeight = 0f;
+            profile.tideHeight = 0f;
+            profile.tideSpeed = 0.04f;
             profile.edgeFade = 0f;
             profile.rippleStrength = 0f;
             profile.rippleDensity = 1.5f;
@@ -407,7 +423,16 @@ namespace SabaProps.Water.Editors
             profile.foamColor = new Color(0.86f, 0.95f, 1f, 1f);
             profile.foamStrength = 0f;
             profile.crestFoamThreshold = 0.8f;
+            profile.crestFoamWidth = 0.08f;
+            profile.foamTrailStrength = 0.2f;
+            profile.foamDetail = 0.6f;
             profile.shoreFoamWidth = 0f;
+            profile.flowTurbulence = 0f;
+            profile.flowFoamStrength = 0f;
+            profile.reflectionStrength = profile.quality == WaterQuality.Standard ? 0.9f : 0.65f;
+            profile.reflectionDistortion = profile.quality == WaterQuality.Standard ? 0.3f : 0.18f;
+            profile.reflectionBlur = profile.quality == WaterQuality.Standard ? 0.08f : 0.18f;
+            profile.rippleReflectionBlur = profile.quality == WaterQuality.Standard ? 0.55f : 0.35f;
             profile.refractionStrength = 0.018f;
             profile.depthDistance = 3f;
 
@@ -425,6 +450,10 @@ namespace SabaProps.Water.Editors
                     profile.rippleDensity = 1.35f;
                     profile.shallowEdgeWidth = 0.24f;
                     profile.foamStrength = 0.05f;
+                    profile.reflectionStrength = profile.quality == WaterQuality.Standard ? 1.2f : 0.78f;
+                    profile.reflectionDistortion = profile.quality == WaterQuality.Standard ? 0.62f : 0.32f;
+                    profile.reflectionBlur = profile.quality == WaterQuality.Standard ? 0.035f : 0.14f;
+                    profile.rippleReflectionBlur = profile.quality == WaterQuality.Standard ? 0.82f : 0.48f;
                     profile.depthDistance = 0.25f;
                     break;
                 case WaterBodyKind.River:
@@ -436,7 +465,13 @@ namespace SabaProps.Water.Editors
                     profile.rippleStrength = 0.12f;
                     profile.foamStrength = profile.quality == WaterQuality.Standard ? 0.52f : 0.34f;
                     profile.crestFoamThreshold = 0.68f;
+                    profile.crestFoamWidth = 0.11f;
+                    profile.foamTrailStrength = profile.quality == WaterQuality.Standard ? 0.72f : 0.42f;
+                    profile.foamDetail = 0.9f;
                     profile.shoreFoamWidth = 0.12f;
+                    profile.flowTurbulence = profile.quality == WaterQuality.Standard ? 0.9f : 0.58f;
+                    profile.flowFoamStrength = profile.quality == WaterQuality.Standard ? 0.88f : 0.56f;
+                    profile.reflectionBlur = profile.quality == WaterQuality.Standard ? 0.18f : 0.28f;
                     profile.depthDistance = 1.5f;
                     break;
                 case WaterBodyKind.Ocean:
@@ -446,10 +481,17 @@ namespace SabaProps.Water.Editors
                     profile.waveStrength = profile.quality == WaterQuality.Standard ? 0.24f : 0.14f;
                     profile.waveSpeed = 0.42f;
                     profile.vertexWaveHeight = profile.quality == WaterQuality.Standard ? 0.18f : 0.05f;
+                    profile.tideHeight = profile.quality == WaterQuality.Standard ? 0.11f : 0.04f;
+                    profile.tideSpeed = 0.045f;
                     profile.shallowEdgeWidth = 0.3f;
-                    profile.foamStrength = profile.quality == WaterQuality.Standard ? 0.38f : 0.24f;
-                    profile.crestFoamThreshold = 0.7f;
+                    profile.foamStrength = profile.quality == WaterQuality.Standard ? 0.72f : 0.4f;
+                    profile.crestFoamThreshold = 0.68f;
+                    profile.crestFoamWidth = profile.quality == WaterQuality.Standard ? 0.085f : 0.12f;
+                    profile.foamTrailStrength = profile.quality == WaterQuality.Standard ? 0.66f : 0.3f;
+                    profile.foamDetail = profile.quality == WaterQuality.Standard ? 0.92f : 0.62f;
                     profile.shoreFoamWidth = 0.16f;
+                    profile.reflectionStrength = profile.quality == WaterQuality.Standard ? 1.05f : 0.76f;
+                    profile.reflectionBlur = profile.quality == WaterQuality.Standard ? 0.075f : 0.16f;
                     profile.depthDistance = 8f;
                     break;
                 case WaterBodyKind.Lake:
@@ -458,9 +500,15 @@ namespace SabaProps.Water.Editors
                     profile.waveStrength = 0.08f;
                     profile.waveSpeed = 0.22f;
                     profile.vertexWaveHeight = profile.quality == WaterQuality.Standard ? 0.045f : 0.01f;
+                    profile.tideHeight = profile.quality == WaterQuality.Standard ? 0.025f : 0.008f;
+                    profile.tideSpeed = 0.025f;
                     profile.rippleStrength = 0.32f;
                     profile.shallowEdgeWidth = 0.08f;
-                    profile.foamStrength = 0.08f;
+                    profile.foamStrength = profile.quality == WaterQuality.Standard ? 0.22f : 0.1f;
+                    profile.crestFoamThreshold = 0.76f;
+                    profile.crestFoamWidth = 0.09f;
+                    profile.foamTrailStrength = profile.quality == WaterQuality.Standard ? 0.28f : 0.12f;
+                    profile.foamDetail = 0.72f;
                     profile.depthDistance = 4f;
                     break;
             }

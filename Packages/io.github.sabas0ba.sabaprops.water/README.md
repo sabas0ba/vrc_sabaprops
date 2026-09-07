@@ -50,15 +50,21 @@ import後の`WaterFeatureGallery.unity`を開き、Play Modeに入ると雨、�
 
 | Quality | 内容 | 主な制約 |
 | --- | --- | --- |
-| Lite | 非周期の複合波、reflection probe、Fresnel、頂点波、疑似波紋、UV境界による浅瀬近似 | GrabPassなし。実際の水深は取得しない |
-| Standard | Liteにrefraction、scene depthによる水深色、岸泡を追加 | PC向け。GrabPassとcamera depthを使用 |
+| Lite | 非周期の複合波、reflection probe、Fresnel、頂点波、簡易砕波泡／残留泡、疑似波紋、UV境界による浅瀬近似 | GrabPassなし。実際の水深は取得しない |
+| Standard | Liteにrefraction、scene depthによる水深色、細分化した砕波泡／残留泡、岸泡を追加 | PC向け。GrabPassとcamera depthを使用 |
 
 Material parameterを直接編集することもできますが、再利用する設定は
 `Assets/SabaProps/Water/Profiles`の`WaterSurfaceProfile`で管理し、`Apply to Material`を実行します。
 
 `Wave Scale`は方向、周波数、速度が異なる4成分をまとめて拡縮します。単一の格子模様にはなりません。
 `Shallow Edge Width`はLiteで浅瀬を近似し、Standardではscene depthの浅瀬判定を補助します。
-`Foam Strength`、`Crest Foam Threshold`、`Shore Foam Width`で波頭と岸の白泡を調整します。
+`Foam Strength`、`Crest Foam Threshold`、`Crest Foam Width`、`Foam Trail Strength`で砕波直後の白泡と、
+波に運ばれる残留泡を調整します。`Tide Height`と`Tide Speed`は水面全体の低周波な上下動です。
+実際の海岸線simulationではないため、岸の遡上は`Shore Foam Width`と地形側の配置で補います。
+
+Puddleではbox projectionを有効にしたReflection Probeを水面範囲へ置きます。`Reflection Strength`は映り込み、
+`Reflection Distortion`は水面normalと雨波紋による歪み、`Reflection Blur`と`Ripple Reflection Blur`は粗さと雨天時の
+霞を制御します。LiteはProbe cubemapを1回参照する近似、Standardは屈折・深度取得と組み合わせる構成です。
 
 ### 水たまりstamp
 
@@ -75,6 +81,10 @@ Material parameterを直接編集することもできますが、再利用す�
 
 `River Lite`または`River Standard`を追加し、`WaterPath`のScene View handleを移動します。
 各区間はCatmull-Rom補間され、幅とUV距離を保ったstrip meshへbakeされます。
+
+斜面では`Flow Turbulence`と`Flow Foam Strength`を上げます。補助`Whitewater` Materialの`Aeration Inception`は
+透明に近い流れから白濁が始まるUV位置、`Aeration Growth`は下流へ泡が増える距離、`Bubble Detail`は微細気泡、
+`Clear Flow Streaks`は曝気開始前の縦筋を制御します。落下点には短寿命sprayと低速mistを重ねます。
 
 VRChat buildではcustom `MonoBehaviour`が実行されません。`WaterPath`は編集情報だけを保持し、表示に必要な
 `MeshFilter`、`MeshRenderer`、生成Mesh、Materialは別に保存されます。build後の形状変更は行いません。
@@ -133,6 +143,11 @@ chromatic aberration、scene depth連動のfogを追加します。volumeの上�
 水面裏面のLiteは着色とFresnel highlightだけで水上方向を近似します。Standardは専用GrabPassで水上の景色を
 取得し、波normalで屈折させます。通常CameraとMirror Cameraの誤共有を避けるため、他の水面GrabPassは再利用しません。
 
+裏面ShaderはMesh法線から有効な境界方向を選びます。`Boundary Up / Down`はx=上、y=下、
+`Boundary N / E / S / W`はx=+Z、y=+X、z=-Z、w=-X、`Boundary NE / SE / SW / NW`は同じ順の斜め方向です。
+通常のプールは上だけを有効にします。海底トンネル等では必要な側面方向を有効にし、`Distortion Edge Fade`で
+各面のUV端に近い歪みを減衰させます。
+
 camera-inside判定には各cameraの`_WorldSpaceCameraPos`を使うため、通常cameraとmirror cameraは個別に判定されます。
 StandardはGrabPassのためPC向けです。水面を複数作る場合はStandardの使用数を抑え、mirrorを含めた実測で判断します。
 
@@ -141,6 +156,9 @@ StandardはGrabPassのためPC向けです。水面を複数作る場合はStand
 `SabaProps/Water/Wet Surface`は、Albedoの暗化、Smoothness上昇、procedural水滴normal、垂れる水滴速度を
 `Wetness`で制御する標準Surface Shaderです。`Wet Surface Preview`またはGalleryのDry／Wet／Droplets比較で
 Material設定を確認できます。外部textureは不要です。
+
+水滴はcellごとの質量から開始時刻と落下速度を変え、重い滴ほど先に速く動きます。滴本体と軌跡はほぼ同じ幅です。
+`Trail Persistence`は通過後に残る濡れ筋、`Trail Slide`はその筋が遅れて下へ移動する量を制御します。
 
 World側から任意のアバターMaterialを変更することはできません。アバターで使用する場合は、そのアバターの
 Materialへ本Shaderを割り当てるか、既存Shaderへ同等のwetness処理を組み込む必要があります。PoiyomiやlilToon等の

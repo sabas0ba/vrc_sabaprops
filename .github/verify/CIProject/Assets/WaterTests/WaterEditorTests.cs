@@ -152,6 +152,10 @@ namespace SabaProps.Water.CITests
                             : WaterSurfaceProfile.LiteShaderName,
                         profile.material.shader.name);
                     Assert.IsTrue(profile.material.enableInstancing);
+                    Assert.IsTrue(profile.material.HasProperty("_CrestFoamWidth"));
+                    Assert.IsTrue(profile.material.HasProperty("_FoamTrailStrength"));
+                    Assert.IsTrue(profile.material.HasProperty("_FlowTurbulence"));
+                    Assert.IsTrue(profile.material.HasProperty("_ReflectionDistortion"));
                 }
             }
         }
@@ -231,9 +235,30 @@ namespace SabaProps.Water.CITests
                 Assert.Greater(Object.FindObjectsOfType<ParticleSystem>().Length, 6,
                     "gallery must include rain, splash, ripple, fog, cloud and waterfall particles");
                 Assert.IsNotNull(GameObject.Find("Whitewater Crest [Copy Ready]"));
+                Assert.IsNotNull(GameObject.Find("Plunge Pool Froth [Copy Ready]"));
                 Assert.IsNotNull(GameObject.Find("Underwater Surface View"));
+                GameObject standardPool = GameObject.Find("Standard Underwater Pool [Copy Ready]");
+                Assert.IsNotNull(standardPool);
+                Transform tunnelTransform = standardPool.transform.Find(
+                    "Eight-Direction Tunnel Boundary [Copy Ready]");
+                Assert.IsNotNull(tunnelTransform);
+                Assert.IsFalse(tunnelTransform.gameObject.activeSelf,
+                    "tunnel boundary preview must not obstruct the top-only pool camera by default");
                 Assert.IsNotNull(GameObject.Find("DROPLETS Surface Mannequin [Copy Ready]"));
                 Assert.IsNotNull(GameObject.Find("Fog Point Light"));
+                Assert.AreEqual(2, Object.FindObjectsOfType<ReflectionProbe>().Length,
+                    "Lite and Standard puddle exhibits must each include a reflection probe");
+
+                GameObject ground = GameObject.Find("Gallery Ground");
+                Assert.IsNotNull(ground);
+                Assert.Less(ground.GetComponent<Renderer>().bounds.max.y, -6f,
+                    "the gallery ground must not intersect the underwater pools");
+
+                GameObject tunnel = tunnelTransform.gameObject;
+                Material tunnelMaterial = tunnel.GetComponent<Renderer>().sharedMaterial;
+                Assert.AreEqual(Vector4.zero, tunnelMaterial.GetVector("_BoundaryUpDown"));
+                Assert.AreEqual(Vector4.one, tunnelMaterial.GetVector("_BoundaryCardinal"));
+                Assert.AreEqual(Vector4.one, tunnelMaterial.GetVector("_BoundaryDiagonal"));
 
                 foreach (Renderer renderer in Object.FindObjectsOfType<Renderer>())
                 {

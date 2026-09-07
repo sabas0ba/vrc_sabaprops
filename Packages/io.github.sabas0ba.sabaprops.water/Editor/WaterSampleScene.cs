@@ -127,8 +127,27 @@ namespace SabaProps.Water.Editors
         {
             WaterAssetLibrary.EnsureFolder(CapturesFolder);
             SimulateParticles(6f);
-            CaptureCamera(OverviewCameraName, OverviewCapturePath, 1600, 900);
-            CaptureCamera(UnderwaterCameraName, UnderwaterCapturePath, 1600, 900);
+            ReflectionProbe[] probes = UnityEngine.Object.FindObjectsOfType<ReflectionProbe>();
+            foreach (ReflectionProbe probe in probes)
+            {
+                // Unity 2022.3 can crash when a realtime probe render and an
+                // explicit Camera.Render overlap in -nographics batch mode.
+                // The saved scene retains its OnAwake probe configuration.
+                probe.enabled = false;
+            }
+
+            try
+            {
+                CaptureCamera(OverviewCameraName, OverviewCapturePath, 1600, 900);
+                CaptureCamera(UnderwaterCameraName, UnderwaterCapturePath, 1600, 900);
+            }
+            finally
+            {
+                foreach (ReflectionProbe probe in probes)
+                {
+                    probe.enabled = true;
+                }
+            }
             AssetDatabase.Refresh();
         }
 
@@ -261,7 +280,7 @@ namespace SabaProps.Water.Editors
             WaterSurfaceProfile profile = CreateSampleProfile(bodyKind, quality);
             if (bodyKind == WaterBodyKind.Puddle)
             {
-                BuildPuddleCluster(exhibit.transform, quality, profile);
+                BuildPuddleCluster(exhibit.transform, quality, profile, accent);
                 CreateLabel(exhibit.transform, bodyKind + "  " + quality,
                     new Vector3(0f, 0.55f, -4.75f), 0.13f, Color.white);
                 return;
@@ -350,7 +369,8 @@ namespace SabaProps.Water.Editors
         private static void BuildPuddleCluster(
             Transform parent,
             WaterQuality quality,
-            WaterSurfaceProfile profile)
+            WaterSurfaceProfile profile,
+            Material accent)
         {
             float lift = 0.08f;
             float[][] definitions =
@@ -372,13 +392,53 @@ namespace SabaProps.Water.Editors
                         710 + index * 31 + (int)quality,
                         0.22f),
                     "Puddle_" + quality + "_" + (index + 1));
-                CreateMeshDisplay(
+                GameObject puddle = CreateMeshDisplay(
                     "Puddle " + (index + 1) + (index > 0 ? " (Overlapping)" : string.Empty),
                     parent,
                     new Vector3(definition[2], lift + definition[4], definition[3]),
                     mesh,
                     profile.material);
+                puddle.GetComponent<MeshRenderer>().reflectionProbeUsage = ReflectionProbeUsage.BlendProbes;
             }
+
+            CreatePuddleReflectionProbe(parent, quality);
+            CreateBox("Reflection Landmark North", parent, new Vector3(-4.8f, 1.05f, 3.6f),
+                new Vector3(0.35f, 2.1f, 0.35f), accent);
+            CreateBox("Reflection Landmark East", parent, new Vector3(5.3f, 0.72f, 1.8f),
+                new Vector3(0.55f, 1.44f, 0.55f), accent);
+            CreateBox("Reflection Landmark West", parent, new Vector3(-5.4f, 0.46f, -1.9f),
+                new Vector3(0.7f, 0.92f, 0.7f), accent);
+            CreateLabel(parent,
+                "BOX-PROJECTED PROBE  " + (quality == WaterQuality.Standard ? "128" : "64") + "  ON AWAKE",
+                new Vector3(0f, 0.42f, 4.15f), 0.075f, Color.white);
+        }
+
+        private static ReflectionProbe CreatePuddleReflectionProbe(
+            Transform parent,
+            WaterQuality quality)
+        {
+            var probeObject = new GameObject(
+                "Puddle Reflection Probe [Copy Ready]", typeof(ReflectionProbe));
+            probeObject.transform.SetParent(parent, false);
+            probeObject.transform.localPosition = new Vector3(0f, 2.4f, 0f);
+
+            ReflectionProbe probe = probeObject.GetComponent<ReflectionProbe>();
+            probe.mode = ReflectionProbeMode.Realtime;
+            probe.refreshMode = ReflectionProbeRefreshMode.OnAwake;
+            probe.timeSlicingMode = ReflectionProbeTimeSlicingMode.AllFacesAtOnce;
+            probe.resolution = quality == WaterQuality.Standard ? 128 : 64;
+            probe.size = new Vector3(14f, 6f, 10f);
+            probe.center = new Vector3(0f, -1.7f, 0f);
+            probe.boxProjection = true;
+            probe.intensity = quality == WaterQuality.Standard ? 1f : 0.72f;
+            probe.blendDistance = 0.5f;
+            int labelLayer = LayerMask.NameToLayer("Ignore Raycast");
+            if (labelLayer >= 0)
+            {
+                probe.cullingMask &= ~(1 << labelLayer);
+            }
+
+            return probe;
         }
 
         private static void BuildRiverEnvironment(
@@ -425,18 +485,38 @@ namespace SabaProps.Water.Editors
             Mesh foamMesh = SaveMesh(
                 WaterMeshBuilder.BuildRiver(whitewaterPoints, 3.25f, 7, 0.9f),
                 "River_" + quality + "_Whitewater");
+            Material whitewaterMaterial = CreateMaterialVariant(
+                "Whitewater_River_" + quality,
+                WaterAssetLibrary.CreateOrLoadEnvironmentMaterial(
+                    WaterAssetLibrary.WhitewaterMaterialName));
+            whitewaterMaterial.SetFloat("_AerationStart", quality == WaterQuality.Standard ? 0.22f : 0.3f);
+            whitewaterMaterial.SetFloat("_AerationGrowth", quality == WaterQuality.Standard ? 0.36f : 0.28f);
+            whitewaterMaterial.SetFloat("_BubbleDetail", quality == WaterQuality.Standard ? 0.92f : 0.55f);
+            whitewaterMaterial.SetFloat("_ClearFlowStrength", quality == WaterQuality.Standard ? 0.24f : 0.14f);
+            EditorUtility.SetDirty(whitewaterMaterial);
+
             GameObject foam = CreateMeshDisplay(
                 "Whitewater Crest [Copy Ready]",
                 parent,
                 Vector3.up * 0.12f,
                 foamMesh,
-                PersistMaterial(WaterAssetLibrary.CreateOrLoadEnvironmentMaterial(
-                    WaterAssetLibrary.WhitewaterMaterialName)));
+                whitewaterMaterial);
             ConfigureTransparentRenderer(foam.GetComponent<MeshRenderer>());
+
+            Mesh impactFoamMesh = SaveMesh(
+                WaterMeshBuilder.BuildPuddle(1.55f, 0.82f, 4, 40, 931 + (int)quality, 0.18f),
+                "River_" + quality + "_ImpactFoam");
+            GameObject impactFoam = CreateMeshDisplay(
+                "Plunge Pool Froth [Copy Ready]",
+                parent,
+                riverPoints[3] + new Vector3(0.25f, 0.14f, 0.42f),
+                impactFoamMesh,
+                whitewaterMaterial);
+            ConfigureTransparentRenderer(impactFoam.GetComponent<MeshRenderer>());
 
             CreateWaterfallSpray(
                 parent,
-                Vector3.Lerp(riverPoints[3], riverPoints[4], 0.55f) + new Vector3(0f, -0.15f, 0f),
+                Vector3.Lerp(riverPoints[2], riverPoints[3], 0.78f) + new Vector3(0f, -0.05f, 0f),
                 quality == WaterQuality.Standard);
         }
 
@@ -482,6 +562,35 @@ namespace SabaProps.Water.Editors
                 WaterAssetLibrary.SplashMaterialName));
             ConfigureTransparentRenderer(renderer);
             spray.Play(true);
+
+            var mistObject = new GameObject("Plunge Pool Mist", typeof(ParticleSystem));
+            mistObject.transform.SetParent(parent, false);
+            mistObject.transform.localPosition = localPosition + new Vector3(0.2f, -0.2f, 0.35f);
+            ParticleSystem mist = mistObject.GetComponent<ParticleSystem>();
+            ParticleSystem.MainModule mistMain = mist.main;
+            mistMain.loop = true;
+            mistMain.playOnAwake = true;
+            mistMain.prewarm = true;
+            mistMain.simulationSpace = ParticleSystemSimulationSpace.World;
+            mistMain.startLifetime = new ParticleSystem.MinMaxCurve(0.65f, 1.35f);
+            mistMain.startSpeed = new ParticleSystem.MinMaxCurve(0.25f, standard ? 1.15f : 0.75f);
+            mistMain.startSize = new ParticleSystem.MinMaxCurve(0.18f, standard ? 0.62f : 0.42f);
+            mistMain.gravityModifier = -0.035f;
+            mistMain.maxParticles = standard ? 180 : 90;
+
+            ParticleSystem.EmissionModule mistEmission = mist.emission;
+            mistEmission.rateOverTime = standard ? 32f : 16f;
+            ParticleSystem.ShapeModule mistShape = mist.shape;
+            mistShape.shapeType = ParticleSystemShapeType.Hemisphere;
+            mistShape.radius = 1.1f;
+            mistShape.radiusThickness = 0.4f;
+            ApplyParticleFade(mist, 0.14f);
+            ParticleSystemRenderer mistRenderer = mistObject.GetComponent<ParticleSystemRenderer>();
+            mistRenderer.renderMode = ParticleSystemRenderMode.Billboard;
+            mistRenderer.sharedMaterial = PersistMaterial(WaterAssetLibrary.CreateOrLoadEnvironmentMaterial(
+                WaterAssetLibrary.SplashMaterialName));
+            ConfigureTransparentRenderer(mistRenderer);
+            mist.Play(true);
         }
 
         private static void BuildAtmosphereSection(
@@ -644,6 +753,10 @@ namespace SabaProps.Water.Editors
             CreateTrim(pool.transform, accent, new Vector3(20.5f, 0.12f, 20.5f));
 
             BuildSampleUnderwaterRig(pool.transform, standard);
+            if (standard)
+            {
+                BuildTunnelBoundaryPreview(pool.transform);
+            }
 
             for (int index = 0; index < 4; index++)
             {
@@ -668,7 +781,34 @@ namespace SabaProps.Water.Editors
 
             CreateLabel(pool.transform, standard ? "STANDARD" : "LITE",
                 new Vector3(0f, 0.7f, -9.3f), 0.16f, standard ? StandardColour : LiteColour);
+            CreateLabel(pool.transform,
+                standard ? "UP + 8 HORIZONTAL DIRECTION SWITCHES" : "UP BOUNDARY ONLY",
+                new Vector3(0f, 0.48f, -8.45f), 0.07f, Color.white);
             return pool;
+        }
+
+        private static void BuildTunnelBoundaryPreview(Transform parent)
+        {
+            Material source = WaterAssetLibrary.CreateOrLoadEnvironmentMaterial(
+                WaterAssetLibrary.UnderwaterSurfaceStandardMaterialName);
+            Material material = CreateMaterialVariant("UnderwaterSurface_Standard_Tunnel", source);
+            material.SetVector("_BoundaryUpDown", Vector4.zero);
+            material.SetVector("_BoundaryCardinal", Vector4.one);
+            material.SetVector("_BoundaryDiagonal", Vector4.one);
+            material.SetFloat("_BoundaryEdgeFade", 0.15f);
+            material.SetFloat("_DistortionStrength", 0.014f);
+            EditorUtility.SetDirty(material);
+
+            GameObject boundary = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            boundary.name = "Eight-Direction Tunnel Boundary [Copy Ready]";
+            boundary.transform.SetParent(parent, false);
+            boundary.transform.localPosition = new Vector3(4.5f, -2.5f, 3.5f);
+            boundary.transform.localScale = new Vector3(5f, 3.2f, 7f);
+            UnityEngine.Object.DestroyImmediate(boundary.GetComponent<Collider>());
+            MeshRenderer renderer = boundary.GetComponent<MeshRenderer>();
+            renderer.sharedMaterial = material;
+            ConfigureTransparentRenderer(renderer);
+            boundary.SetActive(false);
         }
 
         private static void BuildSampleUnderwaterRig(Transform parent, bool standard)
@@ -744,7 +884,7 @@ namespace SabaProps.Water.Editors
 
         private static void BuildGround(Transform parent, Material material)
         {
-            CreateBox("Gallery Ground", parent, new Vector3(0f, -0.55f, 42f),
+            CreateBox("Gallery Ground", parent, new Vector3(0f, -6.45f, 42f),
                 new Vector3(110f, 0.6f, 180f), material);
         }
 
@@ -795,6 +935,8 @@ namespace SabaProps.Water.Editors
             material.SetFloat("_Wetness", wetness);
             material.SetFloat("_DropletSpeed", dropletSpeed);
             material.SetFloat("_DropletStrength", wetness > 0f ? 0.72f : 0f);
+            material.SetFloat("_TrailPersistence", label == "DROPLETS" ? 0.82f : 0.7f);
+            material.SetFloat("_TrailSlide", label == "DROPLETS" ? 0.3f : 0.2f);
             EditorUtility.SetDirty(material);
 
             GameObject body = GameObject.CreatePrimitive(PrimitiveType.Capsule);

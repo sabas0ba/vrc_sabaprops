@@ -42,6 +42,8 @@ namespace SabaProps.Water
         [Min(0f)] public float waveSpeed = 0.35f;
         public Vector2 flowDirection = new Vector2(1f, 0.2f);
         [Range(0f, 0.5f)] public float vertexWaveHeight;
+        [Range(0f, 0.5f)] public float tideHeight;
+        [Range(0f, 1f)] public float tideSpeed = 0.04f;
 
         [Header("Puddle and rain")]
         [Range(0f, 0.5f)] public float edgeFade;
@@ -54,7 +56,20 @@ namespace SabaProps.Water
         public Color foamColor = new Color(0.86f, 0.95f, 1f, 1f);
         [Range(0f, 1f)] public float foamStrength;
         [Range(0f, 1f)] public float crestFoamThreshold = 0.8f;
+        [Range(0.01f, 0.35f)] public float crestFoamWidth = 0.08f;
+        [Range(0f, 1f)] public float foamTrailStrength = 0.2f;
+        [Range(0f, 1f)] public float foamDetail = 0.6f;
         [Range(0f, 0.5f)] public float shoreFoamWidth;
+
+        [Header("Flow and aeration")]
+        [Range(0f, 1f)] public float flowTurbulence;
+        [Range(0f, 1f)] public float flowFoamStrength;
+
+        [Header("Reflection Probe")]
+        [Range(0f, 1.5f)] public float reflectionStrength = 0.65f;
+        [Range(0f, 1f)] public float reflectionDistortion = 0.18f;
+        [Range(0f, 1f)] public float reflectionBlur = 0.18f;
+        [Range(0f, 1f)] public float rippleReflectionBlur = 0.35f;
 
         [Header("Standard quality")]
         [Range(0f, 0.1f)] public float refractionStrength = 0.018f;
@@ -66,6 +81,8 @@ namespace SabaProps.Water
             waveStrength = Mathf.Clamp01(waveStrength);
             waveSpeed = Mathf.Max(0f, waveSpeed);
             vertexWaveHeight = Mathf.Clamp(vertexWaveHeight, 0f, 0.5f);
+            tideHeight = Mathf.Clamp(tideHeight, 0f, 0.5f);
+            tideSpeed = Mathf.Clamp01(tideSpeed);
             edgeFade = Mathf.Clamp(edgeFade, 0f, 0.5f);
             rippleStrength = Mathf.Clamp01(rippleStrength);
             rippleDensity = Mathf.Max(0.1f, rippleDensity);
@@ -73,7 +90,16 @@ namespace SabaProps.Water
             shallowEdgeWidth = Mathf.Clamp(shallowEdgeWidth, 0f, 0.5f);
             foamStrength = Mathf.Clamp01(foamStrength);
             crestFoamThreshold = Mathf.Clamp01(crestFoamThreshold);
+            crestFoamWidth = Mathf.Clamp(crestFoamWidth, 0.01f, 0.35f);
+            foamTrailStrength = Mathf.Clamp01(foamTrailStrength);
+            foamDetail = Mathf.Clamp01(foamDetail);
             shoreFoamWidth = Mathf.Clamp(shoreFoamWidth, 0f, 0.5f);
+            flowTurbulence = Mathf.Clamp01(flowTurbulence);
+            flowFoamStrength = Mathf.Clamp01(flowFoamStrength);
+            reflectionStrength = Mathf.Clamp(reflectionStrength, 0f, 1.5f);
+            reflectionDistortion = Mathf.Clamp01(reflectionDistortion);
+            reflectionBlur = Mathf.Clamp01(reflectionBlur);
+            rippleReflectionBlur = Mathf.Clamp01(rippleReflectionBlur);
             refractionStrength = Mathf.Clamp(refractionStrength, 0f, 0.1f);
             depthDistance = Mathf.Max(0.01f, depthDistance);
 
@@ -115,6 +141,8 @@ namespace SabaProps.Water
             material.SetFloat("_WaveSpeed", waveSpeed);
             material.SetVector("_FlowDirection", new Vector4(flowDirection.x, flowDirection.y, 0f, 0f));
             material.SetFloat("_VertexWaveHeight", vertexWaveHeight);
+            material.SetFloat("_TideHeight", tideHeight);
+            material.SetFloat("_TideSpeed", tideSpeed);
             material.SetFloat("_EdgeFade", edgeFade);
             material.SetFloat("_RippleStrength", rippleStrength);
             material.SetFloat("_RippleDensity", rippleDensity);
@@ -123,7 +151,16 @@ namespace SabaProps.Water
             material.SetColor("_FoamColor", foamColor);
             material.SetFloat("_FoamStrength", foamStrength);
             material.SetFloat("_CrestFoamThreshold", crestFoamThreshold);
+            material.SetFloat("_CrestFoamWidth", crestFoamWidth);
+            material.SetFloat("_FoamTrailStrength", foamTrailStrength);
+            material.SetFloat("_FoamDetail", foamDetail);
             material.SetFloat("_ShoreFoamWidth", shoreFoamWidth);
+            material.SetFloat("_FlowTurbulence", flowTurbulence);
+            material.SetFloat("_FlowFoamStrength", flowFoamStrength);
+            material.SetFloat("_ReflectionStrength", reflectionStrength);
+            material.SetFloat("_ReflectionDistortion", reflectionDistortion);
+            material.SetFloat("_ReflectionBlur", reflectionBlur);
+            material.SetFloat("_RippleReflectionBlur", rippleReflectionBlur);
             material.SetFloat("_RefractionStrength", refractionStrength);
             material.SetFloat("_DepthDistance", depthDistance);
             material.enableInstancing = true;

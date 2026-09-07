@@ -25,12 +25,16 @@ Material:
     m_TexEnvs: []
     m_Ints: []
     m_Floats:
+    - _BoundaryEdgeFade: 0.12
     - _DistortionStrength: 0.022
     - _TintStrength: 0.2
     - _WaveScale: 1.15
     - _WaveSpeed: 0.32
     - _WaveStrength: 0.25
     m_Colors:
+    - _BoundaryCardinal: {r: 0, g: 0, b: 0, a: 0}
+    - _BoundaryDiagonal: {r: 0, g: 0, b: 0, a: 0}
+    - _BoundaryUpDown: {r: 1, g: 0, b: 0, a: 0}
     - _FlowDirection: {r: 1, g: 0.2, b: 0, a: 0}
     - _HighlightColor: {r: 0.84, g: 0.96, b: 1, a: 1}
     - _Tint: {r: 0.12, g: 0.48, b: 0.58, a: 1}

@@ -11,6 +11,8 @@ Shader "SabaProps/Water/Surface Standard"
         _WaveSpeed ("Wave Speed", Float) = 0.35
         _FlowDirection ("Flow Direction", Vector) = (1, 0.2, 0, 0)
         _VertexWaveHeight ("Vertex Wave Height", Range(0, 0.5)) = 0.04
+        _TideHeight ("Tide Height", Range(0, 0.5)) = 0
+        _TideSpeed ("Tide Speed", Range(0, 1)) = 0.04
         _EdgeFade ("UV Edge Fade", Range(0, 0.5)) = 0
         _RippleStrength ("Rain Ripple Strength", Range(0, 1)) = 0
         _RippleDensity ("Rain Ripple Density", Float) = 1.5
@@ -19,7 +21,16 @@ Shader "SabaProps/Water/Surface Standard"
         _FoamColor ("Foam Color", Color) = (0.86, 0.95, 1, 1)
         _FoamStrength ("Foam Strength", Range(0, 1)) = 0
         _CrestFoamThreshold ("Crest Foam Threshold", Range(0, 1)) = 0.8
+        _CrestFoamWidth ("Crest Foam Width", Range(0.01, 0.35)) = 0.08
+        _FoamTrailStrength ("Residual Foam", Range(0, 1)) = 0.35
+        _FoamDetail ("Foam Breakup", Range(0, 1)) = 0.8
         _ShoreFoamWidth ("Shore Foam Width", Range(0, 0.5)) = 0
+        _FlowTurbulence ("Flow Turbulence", Range(0, 1)) = 0
+        _FlowFoamStrength ("Flow Aeration", Range(0, 1)) = 0
+        _ReflectionStrength ("Reflection Strength", Range(0, 1.5)) = 0.9
+        _ReflectionDistortion ("Reflection Distortion", Range(0, 1)) = 0.3
+        _ReflectionBlur ("Reflection Blur", Range(0, 1)) = 0.08
+        _RippleReflectionBlur ("Rain Reflection Haze", Range(0, 1)) = 0.55
         _RefractionStrength ("Refraction Strength", Range(0, 0.1)) = 0.018
         _DepthDistance ("Depth Colour Distance", Float) = 3
     }
@@ -49,6 +60,8 @@ Shader "SabaProps/Water/Surface Standard"
             #pragma fragment frag
             #pragma multi_compile_fwdbase nolightmap nodirlightmap nodynlightmap novertexlight
             #pragma multi_compile_instancing
+            #pragma multi_compile _ UNITY_SPECCUBE_BOX_PROJECTION
+            #pragma multi_compile _ UNITY_SPECCUBE_BLENDING
 
             #include "UnityCG.cginc"
             #include "Lighting.cginc"
@@ -66,6 +79,8 @@ Shader "SabaProps/Water/Surface Standard"
             float _WaveSpeed;
             float4 _FlowDirection;
             float _VertexWaveHeight;
+            float _TideHeight;
+            float _TideSpeed;
             float _EdgeFade;
             float _RippleStrength;
             float _RippleDensity;
@@ -74,7 +89,16 @@ Shader "SabaProps/Water/Surface Standard"
             fixed4 _FoamColor;
             float _FoamStrength;
             float _CrestFoamThreshold;
+            float _CrestFoamWidth;
+            float _FoamTrailStrength;
+            float _FoamDetail;
             float _ShoreFoamWidth;
+            float _FlowTurbulence;
+            float _FlowFoamStrength;
+            float _ReflectionStrength;
+            float _ReflectionDistortion;
+            float _ReflectionBlur;
+            float _RippleReflectionBlur;
             float _RefractionStrength;
             float _DepthDistance;
 
@@ -108,6 +132,7 @@ Shader "SabaProps/Water/Surface Standard"
                 float3 worldPosition = mul(unity_ObjectToWorld, input.vertex).xyz;
                 worldPosition.y += SabaWaterHeight(
                     worldPosition, _WaveScale, _WaveSpeed, _FlowDirection.xy) * _VertexWaveHeight;
+                worldPosition.y += SabaTideOffset(_TideHeight, _TideSpeed);
 
                 output.position = UnityWorldToClipPos(worldPosition);
                 output.grabPosition = ComputeGrabScreenPos(output.position);
@@ -129,10 +154,25 @@ Shader "SabaProps/Water/Surface Standard"
                     _WaveSpeed,
                     _FlowDirection.xy);
                 float3 normal = normalize(baseNormal + proceduralNormal - float3(0, 1, 0));
+                float3 flowData = SabaFlowTurbulence(
+                    input.uv, input.worldPosition, _WaveScale, _WaveSpeed);
+                normal = normalize(normal + float3(
+                    flowData.y * _FlowTurbulence * 0.11,
+                    0.0,
+                    flowData.z * _FlowTurbulence * 0.075));
                 float3 viewDirection = normalize(_WorldSpaceCameraPos.xyz - input.worldPosition);
 
+                float3 rippleData = SabaRainRippleData(
+                    input.worldPosition.xz, _RippleDensity, _RippleSpeed);
+                float ripple = rippleData.x * _RippleStrength;
+                float3 reflectionNormal = normalize(normal + float3(
+                    rippleData.y,
+                    0.0,
+                    rippleData.z) * (_RippleStrength * _ReflectionDistortion));
+
                 float4 refractedPosition = input.grabPosition;
-                refractedPosition.xy += normal.xz * (_RefractionStrength * refractedPosition.w);
+                refractedPosition.xy += reflectionNormal.xz
+                    * (_RefractionStrength * refractedPosition.w);
                 float3 background = tex2Dproj(_SabaWaterGrab, UNITY_PROJ_COORD(refractedPosition)).rgb;
 
                 float2 screenUv = input.screenPosition.xy / input.screenPosition.w;
@@ -148,26 +188,38 @@ Shader "SabaProps/Water/Surface Standard"
                 float fresnel = pow(1.0 - saturate(dot(normal, viewDirection)), 4.0);
                 float specularPower = lerp(16.0, 256.0, _Smoothness);
                 float specular = pow(saturate(dot(normal, halfDirection)), specularPower) * _Smoothness;
-                float ripple = SabaRainRipple(
-                    input.worldPosition.xz, _RippleDensity, _RippleSpeed) * _RippleStrength;
-
                 float3 water = lerp(_ShallowColor.rgb, _DeepColor.rgb, depthFactor);
-                float3 reflection = SabaReflectionProbe(viewDirection, normal);
+                float reflectionRoughness = saturate(
+                    _ReflectionBlur + ripple * _RippleReflectionBlur);
+                float3 reflection = SabaReflectionProbe(
+                    viewDirection, reflectionNormal, input.worldPosition, reflectionRoughness);
                 float coverage = _Opacity * SabaUvEdgeFade(input.uv, _EdgeFade);
                 water = lerp(background, water, saturate(coverage * (0.3 + depthFactor * 0.7)));
                 water = lerp(
                     water,
                     reflection,
-                    fresnel * (0.35 + _Smoothness * 0.45) * coverage);
+                    saturate(fresnel * (0.35 + _Smoothness * 0.45)
+                        * coverage * _ReflectionStrength));
                 water += _LightColor0.rgb * (specular * 0.75 + ripple * 0.25) * coverage;
 
-                float waveHeight = SabaWaterHeight(
-                    input.worldPosition, _WaveScale, _WaveSpeed, _FlowDirection.xy) * 0.5 + 0.5;
-                float crest = smoothstep(_CrestFoamThreshold, 1.0, waveHeight) * _FoamStrength;
+                float2 breakingFoam = SabaBreakingFoam(
+                    input.worldPosition,
+                    _WaveScale,
+                    _WaveSpeed,
+                    _FlowDirection.xy,
+                    _CrestFoamThreshold,
+                    _CrestFoamWidth,
+                    _FoamTrailStrength,
+                    _FoamDetail);
+                float crest = saturate(breakingFoam.x + breakingFoam.y) * _FoamStrength;
                 float shore = (1.0 - smoothstep(
                     0.0, max(0.001, _ShoreFoamWidth * _DepthDistance), waterDepth))
                     * step(0.0001, _ShoreFoamWidth) * _FoamStrength;
-                float foam = saturate(crest + shore + ripple * _FoamStrength * 0.18) * coverage;
+                float slopeAeration = saturate((1.0 - saturate(baseNormal.y)) * 3.5);
+                float flowFoam = smoothstep(0.42, 0.82, flowData.x)
+                    * slopeAeration * _FlowFoamStrength;
+                float foam = saturate(
+                    crest + shore + flowFoam + ripple * _FoamStrength * 0.18) * coverage;
                 water = lerp(water, _FoamColor.rgb, foam);
                 return fixed4(water, 1.0);
             }

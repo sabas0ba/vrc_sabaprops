@@ -34,6 +34,8 @@ Material:
     - _DropletStrength: 0.72
     - _DrySmoothness: 0.28
     - _Metallic: 0
+    - _TrailPersistence: 0.7
+    - _TrailSlide: 0.2
     - _WetDarkening: 0.32
     - _WetSmoothness: 0.92
     - _Wetness: 0.62

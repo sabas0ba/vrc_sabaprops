@@ -12,6 +12,8 @@ Shader "SabaProps/Water/Wet Surface"
         _DropletScale ("Droplet Scale", Float) = 18
         _DropletStrength ("Droplet Normal Strength", Range(0, 2)) = 0.65
         _DropletSpeed ("Droplet Speed", Range(0, 2)) = 0.28
+        _TrailPersistence ("Trail Persistence", Range(0, 1)) = 0.72
+        _TrailSlide ("Trail Slide", Range(0, 1)) = 0.24
     }
 
     SubShader
@@ -35,6 +37,8 @@ Shader "SabaProps/Water/Wet Surface"
         float _DropletScale;
         float _DropletStrength;
         float _DropletSpeed;
+        float _TrailPersistence;
+        float _TrailSlide;
 
         struct Input
         {
@@ -47,14 +51,32 @@ Shader "SabaProps/Water/Wet Surface"
             float2 cell = floor(scaled);
             float2 local = frac(scaled);
             float2 random = SabaHash22(cell);
-            float fallSpeed = lerp(0.45, 1.35, random.y);
-            float travellingY = frac(random.y - _Time.y * _DropletSpeed * fallSpeed);
-            float2 delta = local - float2(lerp(0.18, 0.82, random.x), travellingY);
-            float bead = 1.0 - smoothstep(0.035, 0.16, length(delta * float2(1.0, 1.35)));
-            float trailWidth = 1.0 - smoothstep(0.015, 0.055, abs(delta.x));
-            float trailLength = smoothstep(-0.7, -0.03, delta.y) * (1.0 - smoothstep(-0.03, 0.08, delta.y));
+            float mass = saturate(random.y * 0.82 + SabaHash21(cell + 17.9) * 0.3);
+            float fallSpeed = lerp(0.38, 1.42, mass);
+            float cycle = frac(random.y + _Time.y * _DropletSpeed * fallSpeed);
+            float startDelay = lerp(0.44, 0.06, mass);
+            float travel = saturate((cycle - startDelay) / max(0.05, 1.0 - startDelay));
+            travel = travel * travel * (3.0 - 2.0 * travel);
+            float travellingY = lerp(0.94, -0.12, travel);
+            float centreX = lerp(0.18, 0.82, random.x);
+            float width = lerp(0.045, 0.078, mass);
+            float2 delta = local - float2(centreX, travellingY);
+            float bead = 1.0 - smoothstep(
+                width * 0.72,
+                width,
+                length(delta * float2(1.0, 1.12)));
+
+            float trailSlide = travel * _TrailSlide * lerp(0.55, 1.0, mass);
+            float trailOrigin = travellingY + width * 0.35 - trailSlide;
+            float behindHead = local.y - trailOrigin;
+            float trailLength = lerp(0.18, 0.62, mass) * saturate(travel * 2.2);
+            float trailVertical = step(0.0, behindHead)
+                * (1.0 - smoothstep(0.0, max(width, trailLength), behindHead));
+            float trailWidth = 1.0 - smoothstep(width * 0.72, width, abs(local.x - centreX));
+            float trailAge = lerp(1.0, 1.0 - travel * 0.62, 1.0 - _TrailPersistence);
+            float trail = trailWidth * trailVertical * trailAge;
             float sparse = step(0.34, SabaHash21(cell + 43.7));
-            return max(bead, trailWidth * trailLength * 0.46) * sparse;
+            return max(bead, trail * lerp(0.38, 0.72, mass)) * sparse;
         }
 
         void surf(Input input, inout SurfaceOutputStandard output)

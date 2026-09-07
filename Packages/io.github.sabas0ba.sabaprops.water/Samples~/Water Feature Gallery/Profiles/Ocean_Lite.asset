@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier:
   bodyKind: 3
   quality: 0
-  material: {fileID: 2100000, guid: e3b2ce5c3eeeca741bc40c627af3d53a, type: 2}
+  material: {fileID: 2100000, guid: 304df28ff0919a341b88c95ae1703e3f, type: 2}
   shallowColor: {r: 0.08, g: 0.36, b: 0.46, a: 1}
   deepColor: {r: 0.005, g: 0.045, b: 0.11, a: 1}
   opacity: 0.66
@@ -24,14 +24,25 @@ MonoBehaviour:
   waveSpeed: 0.42
   flowDirection: {x: 0.9805807, y: 0.19611615}
   vertexWaveHeight: 0.05
+  tideHeight: 0.04
+  tideSpeed: 0.045
   edgeFade: 0
   rippleStrength: 0
   rippleDensity: 1.5
   rippleSpeed: 0.8
   shallowEdgeWidth: 0.3
   foamColor: {r: 0.86, g: 0.95, b: 1, a: 1}
-  foamStrength: 0.24
-  crestFoamThreshold: 0.7
+  foamStrength: 0.4
+  crestFoamThreshold: 0.68
+  crestFoamWidth: 0.12
+  foamTrailStrength: 0.3
+  foamDetail: 0.62
   shoreFoamWidth: 0.16
+  flowTurbulence: 0
+  flowFoamStrength: 0
+  reflectionStrength: 0.76
+  reflectionDistortion: 0.18
+  reflectionBlur: 0.16
+  rippleReflectionBlur: 0.35
   refractionStrength: 0.018
   depthDistance: 8

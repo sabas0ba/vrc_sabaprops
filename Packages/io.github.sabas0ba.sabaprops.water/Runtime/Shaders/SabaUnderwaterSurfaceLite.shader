@@ -9,12 +9,16 @@ Shader "SabaProps/Water/Underwater Surface Lite"
         _WaveStrength ("Wave Strength", Range(0, 1)) = 0.2
         _WaveSpeed ("Wave Speed", Float) = 0.32
         _FlowDirection ("Flow Direction", Vector) = (1, 0.2, 0, 0)
+        _BoundaryUpDown ("Boundary Up / Down", Vector) = (1, 0, 0, 0)
+        _BoundaryCardinal ("Boundary N / E / S / W", Vector) = (0, 0, 0, 0)
+        _BoundaryDiagonal ("Boundary NE / SE / SW / NW", Vector) = (0, 0, 0, 0)
+        _BoundaryEdgeFade ("Boundary Edge Fade", Range(0, 0.5)) = 0.08
     }
 
     SubShader
     {
         Tags { "Queue" = "Transparent+10" "RenderType" = "Transparent" "IgnoreProjector" = "True" }
-        Cull Front
+        Cull Off
         ZWrite Off
         Blend SrcAlpha OneMinusSrcAlpha
 
@@ -35,10 +39,16 @@ Shader "SabaProps/Water/Underwater Surface Lite"
             float _WaveStrength;
             float _WaveSpeed;
             float4 _FlowDirection;
+            float4 _BoundaryUpDown;
+            float4 _BoundaryCardinal;
+            float4 _BoundaryDiagonal;
+            float _BoundaryEdgeFade;
 
             struct appdata
             {
                 float4 vertex : POSITION;
+                float3 normal : NORMAL;
+                float2 uv : TEXCOORD0;
                 UNITY_VERTEX_INPUT_INSTANCE_ID
             };
 
@@ -46,6 +56,8 @@ Shader "SabaProps/Water/Underwater Surface Lite"
             {
                 float4 position : SV_POSITION;
                 float3 worldPosition : TEXCOORD0;
+                float3 worldNormal : TEXCOORD1;
+                float2 uv : TEXCOORD2;
                 UNITY_VERTEX_OUTPUT_STEREO
             };
 
@@ -56,12 +68,20 @@ Shader "SabaProps/Water/Underwater Surface Lite"
                 UNITY_INITIALIZE_OUTPUT(v2f, output);
                 UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(output);
                 output.worldPosition = mul(unity_ObjectToWorld, input.vertex).xyz;
+                output.worldNormal = UnityObjectToWorldNormal(input.normal);
+                output.uv = input.uv;
                 output.position = UnityWorldToClipPos(output.worldPosition);
                 return output;
             }
 
             fixed4 frag(v2f input) : SV_Target
             {
+                float boundaryMask = SabaBoundaryDirectionMask(
+                    input.worldNormal,
+                    _BoundaryUpDown,
+                    _BoundaryCardinal,
+                    _BoundaryDiagonal);
+                clip(boundaryMask - 0.001);
                 float3 normal = SabaWaterNormal(
                     input.worldPosition, _WaveScale, _WaveStrength, _WaveSpeed, _FlowDirection.xy);
                 float3 viewDirection = normalize(_WorldSpaceCameraPos.xyz - input.worldPosition);
@@ -69,9 +89,10 @@ Shader "SabaProps/Water/Underwater Surface Lite"
                 float waveHeight = SabaWaterHeight(
                     input.worldPosition, _WaveScale, _WaveSpeed, _FlowDirection.xy) * 0.5 + 0.5;
                 float highlight = saturate(fresnel * 0.72 + smoothstep(0.72, 1.0, waveHeight) * 0.35);
+                float edgeFade = SabaUvEdgeFade(input.uv, _BoundaryEdgeFade);
                 return fixed4(
                     lerp(_ShallowColor.rgb, _HighlightColor.rgb, highlight),
-                    _Opacity * lerp(0.72, 1.0, fresnel));
+                    _Opacity * lerp(0.72, 1.0, fresnel) * edgeFade);
             }
             ENDCG
         }

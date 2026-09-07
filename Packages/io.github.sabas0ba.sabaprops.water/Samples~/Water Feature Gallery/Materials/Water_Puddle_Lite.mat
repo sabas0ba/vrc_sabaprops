@@ -26,17 +26,28 @@ Material:
     m_Ints: []
     m_Floats:
     - _CrestFoamThreshold: 0.8
+    - _CrestFoamWidth: 0.08
     - _DepthDistance: 0.25
     - _EdgeFade: 0.22
+    - _FlowFoamStrength: 0
+    - _FlowTurbulence: 0
+    - _FoamDetail: 0.6
     - _FoamStrength: 0.05
+    - _FoamTrailStrength: 0.2
     - _Opacity: 0.48
+    - _ReflectionBlur: 0.14
+    - _ReflectionDistortion: 0.32
+    - _ReflectionStrength: 0.78
     - _RefractionStrength: 0.018
     - _RippleDensity: 1.35
+    - _RippleReflectionBlur: 0.48
     - _RippleSpeed: 0.8
     - _RippleStrength: 0.9
     - _ShallowEdgeWidth: 0.24
     - _ShoreFoamWidth: 0
     - _Smoothness: 0.78
+    - _TideHeight: 0
+    - _TideSpeed: 0.04
     - _VertexWaveHeight: 0
     - _WaveScale: 5
     - _WaveSpeed: 0.12

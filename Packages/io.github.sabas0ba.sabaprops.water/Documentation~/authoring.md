@@ -11,6 +11,11 @@
 水たまりの外形はMesh自体でも不規則になります。Materialの`UV Edge Fade`は透明度をさらに落とすため、
 不透明な外周が必要な場合は0へ戻します。
 
+風景を映す場合は水たまりを覆うReflection Probeを置き、Box Projectionを有効にします。静的WorldではBaked、
+動く空や時間帯が必要な場合はRealtime + On Awakeを基準にします。GalleryはLite=64、Standard=128です。
+Every Frame更新は6面renderが継続するため、必要な小範囲に限定してください。`Reflection Distortion`は水面と雨波紋、
+`Ripple Reflection Blur`は雨天時の反射の霞を調整します。
+
 ## 河川
 
 1. Riverを生成します。
@@ -25,6 +30,10 @@ modeling toolで編集します。岸への自動intersectionやterrain carving�
 control pointのYを変えると斜面と落差を持つstripを生成できます。滝の前後は制御点間隔を短くし、
 `Whitewater` Materialの狭い補助stripと`Splash` Particle Systemを重ねます。GalleryのRiver rootは、浅い上流、
 底が見えにくい下流、落差、白泡、飛沫を含む編集例です。
+
+`Whitewater`はUV下流方向へ、曝気開始前の透明な縦筋、曝気開始点、成長する白濁、気泡、側縁filamentを合成します。
+`Aeration Inception`を落差上端、`Aeration Growth`を白濁が成長する区間へ合わせます。落下点には`Plunge Pool Froth`と
+低速mistを置き、落水部の強い循環流と飛沫を近似します。流体simulationではなく、保存済みMesh上のstateless表現です。
 
 ## 雨
 
@@ -57,3 +66,14 @@ Underwater rigのroot位置が水面高です。`Underwater Volume` childの上�
 
 水中から水上を見せる場合は`Underwater Surface View`を水面直下へ置きます。Liteは背景取得なし、Standardは
 通常CameraとMirror Cameraを分離する専用GrabPassで水上景色を取得します。
+
+境界方向はMaterialの3 vectorで選択します。`Boundary Up / Down=(上, 下, 0, 0)`、
+`Boundary N / E / S / W=(+Z, +X, -Z, -X)`、`Boundary NE / SE / SW / NW=(NE, SE, SW, NW)`です。
+単純なプールは上だけ、海底ガラストンネルは必要な側面だけを1にします。境界Meshの法線が方向判定に使われます。
+UV seam付近の過大な屈折は`Distortion Edge Fade`を上げて抑えます。
+
+## 濡れた表面
+
+`Trail Persistence`は滴が通った後の筋の残留時間、`Trail Slide`は残留筋が遅れて下へずれる量です。
+水滴ごとの擬似質量により重い滴から先に移動します。World object用のShaderであり、他者アバターのMaterialを
+World側から変更する機能ではありません。
