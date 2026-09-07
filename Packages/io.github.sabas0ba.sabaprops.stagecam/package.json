@@ -1,0 +1,29 @@
+{
+  "name": "io.github.sabas0ba.sabaprops.stagecam",
+  "displayName": "SabaProps Stage Cam",
+  "version": "0.1.0",
+  "unity": "2022.3",
+  "description": "ワールド側から特定のプレイヤーの部位（顔・首・胸・腰・手・足）を追い、一定距離と固定アングルを保つ Udon カメラリグ。Pickup で掴んで構図を直すとその位置が新しい定常アングルになり、離すと追従に戻ります。周囲を自動で回り込むクレーン風のカメラワークと、身長差を吸収する自動フレーミングを備えます。",
+  "author": {
+    "name": "sabas0ba",
+    "url": "https://github.com/sabas0ba"
+  },
+  "license": "MIT",
+  "licensesUrl": "https://github.com/sabas0ba/vrc_sabaprops/blob/main/LICENSE",
+  "documentationUrl": "https://github.com/sabas0ba/vrc_sabaprops/blob/main/Packages/io.github.sabas0ba.sabaprops.stagecam/README.md",
+  "changelogUrl": "https://github.com/sabas0ba/vrc_sabaprops/blob/main/Packages/io.github.sabas0ba.sabaprops.stagecam/CHANGELOG.md",
+  "vpmDependencies": {
+    "com.vrchat.worlds": "3.10.4"
+  },
+  "keywords": [
+    "vrchat",
+    "world",
+    "udon",
+    "udonsharp",
+    "camera",
+    "tracking",
+    "stage",
+    "live",
+    "cinematography"
+  ]
+}

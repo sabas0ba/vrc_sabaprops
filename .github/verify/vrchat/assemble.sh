@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 #
-# Assembles a Unity project that holds the package and the VRChat Worlds SDK
-# side by side, so the tests take the SDK-present branch of FoliageVrcWorld
-# instead of the "no SDK, skip it" one.
+# Assembles a Unity project that holds the packages and the VRChat Worlds SDK
+# side by side. Two things need it: the tests take the SDK-present branch of
+# FoliageVrcWorld instead of the "no SDK, skip it" one, and UdonSharp actually
+# compiles io.github.sabas0ba.sabaprops.stagecam to Udon.
 #
 # The SDK comes from fetch.sh, which pins it by hash and runs in a container.
 # Only the Unity Editor itself is taken from the host.
@@ -20,6 +21,7 @@ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO="$(cd "$HERE/../../.." && pwd)"
 CIPROJECT="$REPO/.github/verify/CIProject"
 PACKAGE="$REPO/Packages/io.github.sabas0ba.sabaprops.foliage"
+STAGECAM="$REPO/Packages/io.github.sabas0ba.sabaprops.stagecam"
 
 PROJECT="${1:-$REPO/build/WorldProject}"
 VPM="${VPM_DIR:-$REPO/build/vpm}"
@@ -50,7 +52,9 @@ cp "$HERE/manifest.json" "$PROJECT/Packages/manifest.json"
 
 replace "$CIPROJECT/Assets/Tests" "$PROJECT/Assets/Tests"
 
-# PlayMode tests that need the SDK, so they cannot live in the CI project.
+# Tests that need the SDK, so they cannot live in the CI project. One
+# subdirectory per assembly: Unity refuses a folder holding two asmdefs, and
+# fails the whole compile rather than the one folder.
 replace "$HERE/Tests" "$PROJECT/Assets/WorldTests"
 
 # The movement sample is not copied here. FoliageWorldProjectSetup imports it
@@ -64,6 +68,11 @@ replace "$HERE/Setup" "$PROJECT/Assets/WorldSetup"
 # Embedded packages resolve against the working tree and pull their own
 # registry dependencies, so nothing has to be listed in manifest.json.
 replace "$PACKAGE" "$PROJECT/Packages/io.github.sabas0ba.sabaprops.foliage"
+
+# The stage camera package is Udon, so this project is the only place it can be
+# compiled by UdonSharp rather than merely by Roslyn. See Tests/StageCamProgramTests.cs.
+replace "$STAGECAM" "$PROJECT/Packages/io.github.sabas0ba.sabaprops.stagecam"
+
 replace "$VPM/com.vrchat.base" "$PROJECT/Packages/com.vrchat.base"
 replace "$VPM/com.vrchat.worlds" "$PROJECT/Packages/com.vrchat.worlds"
 

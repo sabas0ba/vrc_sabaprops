@@ -79,10 +79,21 @@ namespace UnityEngine
         public static float Cos(float v) => (float)Math.Cos(v);
         public static float Tan(float v) => (float)Math.Tan(v);
         public static float Acos(float v) => (float)Math.Acos(Clamp(v, -1f, 1f));
+        public static float Asin(float v) => (float)Math.Asin(Clamp(v, -1f, 1f));
+        public static float Atan2(float y, float x) => (float)Math.Atan2(y, x);
+        public static float Exp(float v) => (float)Math.Exp(v);
+        public static float Floor(float v) => (float)Math.Floor(v);
         public static float Pow(float v, float p) => (float)Math.Pow(v, p);
 
         public static float Repeat(float t, float length) =>
             Clamp(t - (float)Math.Floor(t / length) * length, 0f, length);
+
+        /// <summary>Shortest signed difference between two angles in degrees, in [-180, 180].</summary>
+        public static float DeltaAngle(float current, float target)
+        {
+            float delta = Repeat(target - current, 360f);
+            return delta > 180f ? delta - 360f : delta;
+        }
 
         public static int FloorToInt(float v) => (int)Math.Floor(v);
         public static int CeilToInt(float v) => (int)Math.Ceiling(v);
