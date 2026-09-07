@@ -29,6 +29,8 @@ namespace SabaProps.Water.Editors
         public const string CausticsShaderName = "SabaProps/Water/Caustics";
         public const string LightShaftShaderName = "SabaProps/Water/Light Shaft";
         public const string WetSurfaceShaderName = "SabaProps/Water/Wet Surface";
+        public const string WetSurfaceTransparentShaderName =
+            "SabaProps/Water/Wet Surface Transparent";
 
         public const string RainMaterialName = "Rain";
         public const string SplashMaterialName = "Splash";
@@ -44,6 +46,7 @@ namespace SabaProps.Water.Editors
         public const string CausticsMaterialName = "Caustics";
         public const string LightShaftMaterialName = "LightShaft";
         public const string WetSurfaceMaterialName = "WetSurface";
+        public const string WetSurfaceTransparentMaterialName = "WetSurface_Transparent";
 
         public static readonly WaterBodyKind[] AllBodyKinds =
         {
@@ -146,6 +149,7 @@ namespace SabaProps.Water.Editors
                 ApplyPreset(profile);
                 AssetDatabase.CreateAsset(profile, profilePath);
             }
+            bool migratedProfile = MigrateProfileDefaults(profile);
 
             Material material = AssetDatabase.LoadAssetAtPath<Material>(materialPath);
             bool createdMaterial = material == null;
@@ -174,13 +178,31 @@ namespace SabaProps.Water.Editors
                 EditorUtility.SetDirty(profile);
             }
 
-            if (createdProfile || createdMaterial || material.shader == null)
+            if (createdProfile || createdMaterial || migratedProfile || material.shader == null)
             {
                 profile.ApplyToMaterial();
                 EditorUtility.SetDirty(material);
             }
 
             return profile;
+        }
+
+        private static bool MigrateProfileDefaults(WaterSurfaceProfile profile)
+        {
+            if (profile == null)
+            {
+                return false;
+            }
+
+            var previousFoamColour = new Color(0.86f, 0.95f, 1f, 1f);
+            if (Vector4.Distance(profile.foamColor, previousFoamColour) > 0.001f)
+            {
+                return false;
+            }
+
+            profile.foamColor = Color.Lerp(profile.shallowColor, previousFoamColour, 0.22f);
+            EditorUtility.SetDirty(profile);
+            return true;
         }
 
         public static Material CreateOrLoadEnvironmentMaterial(string materialName)
@@ -307,6 +329,7 @@ namespace SabaProps.Water.Editors
             yield return CausticsMaterialName;
             yield return LightShaftMaterialName;
             yield return WetSurfaceMaterialName;
+            yield return WetSurfaceTransparentMaterialName;
         }
 
         private static string ShaderForMaterial(string materialName)
@@ -327,6 +350,7 @@ namespace SabaProps.Water.Editors
                 case CausticsMaterialName: return CausticsShaderName;
                 case LightShaftMaterialName: return LightShaftShaderName;
                 case WetSurfaceMaterialName: return WetSurfaceShaderName;
+                case WetSurfaceTransparentMaterialName: return WetSurfaceTransparentShaderName;
                 default: throw new ArgumentOutOfRangeException(nameof(materialName), materialName, null);
             }
         }
@@ -388,11 +412,18 @@ namespace SabaProps.Water.Editors
                     material.SetFloat("_BoundaryEdgeFade", 0.12f);
                     break;
                 case WetSurfaceMaterialName:
+                case WetSurfaceTransparentMaterialName:
                     material.SetColor("_Color", new Color(0.32f, 0.42f, 0.48f, 1f));
                     material.SetFloat("_Wetness", 0.8f);
                     material.SetFloat("_TrailPersistence", 0.72f);
                     material.SetFloat("_TrailSlide", 0.24f);
+                    material.SetFloat("_DropletHeadNormalStrength", 0.34f);
+                    material.SetFloat("_DropletTrailNormalStrength", 0.14f);
                     material.SetColor("_DropletScatterColor", new Color(0.68f, 0.88f, 0.96f, 1f));
+                    if (materialName == WetSurfaceTransparentMaterialName)
+                    {
+                        material.SetFloat("_Opacity", 0.62f);
+                    }
                     break;
             }
         }
@@ -416,12 +447,15 @@ namespace SabaProps.Water.Editors
             profile.rippleDensity = 1.5f;
             profile.rippleSpeed = 0.8f;
             profile.shallowEdgeWidth = 0f;
-            profile.foamColor = new Color(0.86f, 0.95f, 1f, 1f);
+            profile.foamColor = new Color(0.28f, 0.58f, 0.63f, 1f);
             profile.foamStrength = 0f;
             profile.crestFoamThreshold = 0.8f;
             profile.crestFoamWidth = 0.08f;
             profile.foamTrailStrength = 0.2f;
             profile.foamDetail = 0.6f;
+            profile.foamPatternScale = 1f;
+            profile.foamPatternSpeed = 1f;
+            profile.foamPatternWarp = 0.45f;
             profile.shoreFoamWidth = 0f;
             profile.flowTurbulence = 0f;
             profile.flowFoamStrength = 0f;
@@ -508,6 +542,14 @@ namespace SabaProps.Water.Editors
                     profile.depthDistance = 4f;
                     break;
             }
+
+            // Foam is initially disabled. When enabled, start from a lightly
+            // aerated version of this body's surface colour instead of an
+            // unrelated white stripe; users can still tint it independently.
+            profile.foamColor = Color.Lerp(
+                profile.shallowColor,
+                new Color(0.86f, 0.95f, 1f, 1f),
+                0.22f);
 
             profile.Normalize();
         }

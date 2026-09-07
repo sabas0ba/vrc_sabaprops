@@ -18,12 +18,14 @@ namespace SabaProps.Water.Editors
     {
         public const string SampleFolder = WaterAssetLibrary.RootFolder + "/Samples/WaterFeatureGallery";
         public const string ScenePath = SampleFolder + "/WaterFeatureGallery.unity";
+        public const string LightingScenePath = SampleFolder + "/WaterLightingGallery.unity";
         public const string MaterialsFolder = SampleFolder + "/Materials";
         public const string MeshesFolder = SampleFolder + "/Meshes";
         public const string ProfilesFolder = SampleFolder + "/Profiles";
         public const string CapturesFolder = SampleFolder + "/Captures";
         public const string OverviewCapturePath = CapturesFolder + "/WaterFeatureGallery.png";
         public const string UnderwaterCapturePath = CapturesFolder + "/UnderwaterStandard.png";
+        public const string LightingCapturePath = CapturesFolder + "/WaterLightingGallery.png";
 
         public const string SurfaceRootName = "1 Water Surfaces";
         public const string RainRootName = "2 Rain and Ripples";
@@ -32,6 +34,8 @@ namespace SabaProps.Water.Editors
         public const string WetSurfaceRootName = "5 Wet Surfaces and VRChat";
         public const string OverviewCameraName = "Documentation Camera - Overview";
         public const string UnderwaterCameraName = "Documentation Camera - Underwater Standard";
+        public const string LightingCameraName = "Documentation Camera - Lighting";
+        public const string LightingGalleryRootName = "SabaProps Water Lighting Gallery";
 
         private static readonly Color GroundColour = new Color(0.075f, 0.09f, 0.105f, 1f);
         private static readonly Color PlatformColour = new Color(0.19f, 0.22f, 0.24f, 1f);
@@ -61,6 +65,17 @@ namespace SabaProps.Water.Editors
             {
                 view.LookAt(new Vector3(0f, 0f, 27f), Quaternion.Euler(48f, 0f, 0f), 72f);
             }
+        }
+
+        [MenuItem("Tools/SabaProps/Water/Create Lighting Gallery", false, 3)]
+        public static void CreateAndOpenLightingGallery()
+        {
+            if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo())
+            {
+                return;
+            }
+
+            CreateLightingGallery();
         }
 
         /// <summary>
@@ -121,6 +136,65 @@ namespace SabaProps.Water.Editors
             }
 
             CaptureDocumentationImages();
+            CreateLightingGallery();
+            CaptureLightingDocumentationImage();
+        }
+
+        /// <summary>
+        /// Builds a compact dark-room comparison for ambient, point and spot
+        /// lighting. It intentionally has no directional light.
+        /// </summary>
+        public static Scene CreateLightingGallery()
+        {
+            WaterAssetLibrary.CreateOrLoadDefaults();
+            Scene scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
+            EnsureSampleFolders();
+            _materialCopies = new Dictionary<Material, Material>();
+            _meshCopies = new Dictionary<Mesh, Mesh>();
+
+            var gallery = new GameObject(LightingGalleryRootName);
+            ConfigureDarkEnvironment();
+            Material ground = CreateColourMaterial(
+                "Lighting Gallery Ground", new Color(0.012f, 0.016f, 0.022f, 1f), 0f, 0.18f);
+            Material trim = CreateColourMaterial(
+                "Lighting Gallery Trim", new Color(0.08f, 0.1f, 0.13f, 1f), 0.05f, 0.42f);
+
+            CreateBox(
+                "Dark Room Floor",
+                gallery.transform,
+                new Vector3(0f, -0.35f, 1f),
+                new Vector3(31f, 0.6f, 12f),
+                ground);
+            BuildLightingBay(gallery.transform, "DARK AMBIENT", -10f, trim, null, false);
+            BuildLightingBay(gallery.transform, "POINT LIGHT", 0f, trim, LightType.Point, false);
+            BuildLightingBay(gallery.transform, "SPOT LIGHT", 10f, trim, LightType.Spot, true);
+
+            Camera camera = CreateCamera(
+                LightingCameraName,
+                gallery.transform,
+                new Vector3(0f, 10.5f, -18f),
+                new Vector3(0f, 1.25f, 1f),
+                54f,
+                true);
+            camera.backgroundColor = new Color(0.002f, 0.004f, 0.008f, 1f);
+            camera.nearClipPlane = 0.1f;
+            camera.farClipPlane = 80f;
+            WaterVrcWorld.CreateWorld(new Vector3(0f, 0.05f, -4.5f), Quaternion.identity, camera);
+
+            PersistSceneReferences(gallery);
+            AssetDatabase.SaveAssets();
+            EditorSceneManager.SaveScene(scene, LightingScenePath);
+            Selection.activeGameObject = gallery;
+            Debug.Log("[SabaProps Water] Lighting Gallery created at " + LightingScenePath + ".");
+            return scene;
+        }
+
+        public static void CaptureLightingDocumentationImage()
+        {
+            WaterAssetLibrary.EnsureFolder(CapturesFolder);
+            SimulateParticles(4f);
+            CaptureCamera(LightingCameraName, LightingCapturePath, 1600, 900);
+            AssetDatabase.Refresh();
         }
 
         public static void CaptureDocumentationImages()
@@ -503,7 +577,7 @@ namespace SabaProps.Water.Editors
             main.simulationSpace = ParticleSystemSimulationSpace.World;
             main.startLifetime = new ParticleSystem.MinMaxCurve(0.24f, 0.58f);
             main.startSpeed = 0f;
-            main.startSize = new ParticleSystem.MinMaxCurve(0.012f, standard ? 0.052f : 0.038f);
+            main.startSize = new ParticleSystem.MinMaxCurve(0.002f, standard ? 0.01f : 0.007f);
             main.gravityModifier = 0.72f;
             main.maxParticles = standard ? 320 : 150;
 
@@ -560,7 +634,7 @@ namespace SabaProps.Water.Editors
             main.simulationSpace = ParticleSystemSimulationSpace.World;
             main.startLifetime = new ParticleSystem.MinMaxCurve(0.24f, 0.58f);
             main.startSpeed = 0f;
-            main.startSize = new ParticleSystem.MinMaxCurve(0.014f, standard ? 0.058f : 0.042f);
+            main.startSize = new ParticleSystem.MinMaxCurve(0.0025f, standard ? 0.011f : 0.008f);
             main.gravityModifier = 0.9f;
             main.maxParticles = standard ? 360 : 180;
 
@@ -593,7 +667,7 @@ namespace SabaProps.Water.Editors
             mistMain.simulationSpace = ParticleSystemSimulationSpace.World;
             mistMain.startLifetime = new ParticleSystem.MinMaxCurve(0.28f, 0.68f);
             mistMain.startSpeed = 0f;
-            mistMain.startSize = new ParticleSystem.MinMaxCurve(0.012f, standard ? 0.064f : 0.046f);
+            mistMain.startSize = new ParticleSystem.MinMaxCurve(0.002f, standard ? 0.012f : 0.008f);
             mistMain.gravityModifier = 0.82f;
             mistMain.maxParticles = standard ? 300 : 150;
 
@@ -617,11 +691,11 @@ namespace SabaProps.Water.Editors
         private static void ConfigureSprayRenderer(ParticleSystemRenderer renderer)
         {
             renderer.renderMode = ParticleSystemRenderMode.Stretch;
-            renderer.lengthScale = 3.2f;
-            renderer.velocityScale = 0.22f;
+            renderer.lengthScale = 1.2f;
+            renderer.velocityScale = 0.05f;
             renderer.cameraVelocityScale = 0f;
             renderer.minParticleSize = 0f;
-            renderer.maxParticleSize = 0.08f;
+            renderer.maxParticleSize = 0.015f;
             renderer.sharedMaterial = PersistMaterial(WaterAssetLibrary.CreateOrLoadEnvironmentMaterial(
                 WaterAssetLibrary.SplashMaterialName));
             ConfigureTransparentRenderer(renderer);
@@ -926,6 +1000,115 @@ namespace SabaProps.Water.Editors
                 new Vector3(110f, 0.6f, 180f), material);
         }
 
+        private static void BuildLightingBay(
+            Transform gallery,
+            string label,
+            float positionX,
+            Material trim,
+            LightType? lightType,
+            bool transparentWetSurface)
+        {
+            var bay = new GameObject(label + " Example [Copy Ready]");
+            bay.transform.SetParent(gallery, false);
+            bay.transform.localPosition = new Vector3(positionX, 0f, 0f);
+            CreateTrim(bay.transform, trim, new Vector3(8.8f, 0.12f, 10f));
+            CreateLabel(
+                bay.transform,
+                label + (transparentWetSurface ? " / TRANSPARENT WET" : " / OPAQUE WET"),
+                new Vector3(0f, 0.08f, -4.3f),
+                0.105f,
+                Color.white);
+
+            WaterSurfaceProfile profile = CreateSampleProfile(
+                WaterBodyKind.Lake, WaterQuality.Standard);
+            Mesh mesh = SaveMesh(
+                WaterMeshBuilder.BuildGrid(7.4f, 6.4f, 18, 16),
+                "Lighting_Lake_Surface");
+            GameObject water = CreateMeshDisplay(
+                "Lit Water Surface [Copy Ready]",
+                bay.transform,
+                new Vector3(0f, 0.03f, 0.7f),
+                mesh,
+                profile != null ? profile.material : null);
+            water.GetComponent<MeshRenderer>().lightProbeUsage = LightProbeUsage.BlendProbes;
+
+            string wetMaterialName = transparentWetSurface
+                ? WaterAssetLibrary.WetSurfaceTransparentMaterialName
+                : WaterAssetLibrary.WetSurfaceMaterialName;
+            Material wetSource = WaterAssetLibrary.CreateOrLoadEnvironmentMaterial(wetMaterialName);
+            Material wet = CreateMaterialVariant(
+                "Lighting_" + label + (transparentWetSurface ? "_Transparent" : "_Opaque"),
+                wetSource);
+            wet.SetFloat("_Wetness", 1f);
+            wet.SetFloat("_DropletSpeed", 0.38f);
+            wet.SetFloat("_DropletHeadNormalStrength", 0.3f);
+            wet.SetFloat("_DropletTrailNormalStrength", 0.1f);
+            wet.SetFloat("_TrailPersistence", 0.84f);
+            if (transparentWetSurface)
+            {
+                wet.SetFloat("_Opacity", 0.58f);
+            }
+            EditorUtility.SetDirty(wet);
+
+            GameObject wetPreview = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+            wetPreview.name = transparentWetSurface
+                ? "Wet Transparent Preview [Copy Ready]"
+                : "Wet Opaque Preview [Copy Ready]";
+            wetPreview.transform.SetParent(bay.transform, false);
+            wetPreview.transform.localPosition = new Vector3(2.2f, 1.45f, 0.2f);
+            wetPreview.transform.localScale = new Vector3(0.9f, 1.4f, 0.72f);
+            MeshRenderer wetRenderer = wetPreview.GetComponent<MeshRenderer>();
+            wetRenderer.sharedMaterial = wet;
+            wetRenderer.lightProbeUsage = LightProbeUsage.BlendProbes;
+
+            GameObject rainRig = WaterRigFactory.CreateRainRig(bay);
+            rainRig.name = "Lit Rain Rig [Copy Ready]";
+            rainRig.transform.localPosition = Vector3.zero;
+            ParticleSystem rain = rainRig.transform.Find("Rain").GetComponent<ParticleSystem>();
+            rain.transform.localPosition = new Vector3(-1.2f, 6f, 0.4f);
+            ParticleSystem.MainModule rainMain = rain.main;
+            rainMain.startLifetime = new ParticleSystem.MinMaxCurve(0.48f, 0.68f);
+            rainMain.maxParticles = 1400;
+            ParticleSystem.EmissionModule rainEmission = rain.emission;
+            rainEmission.rateOverTime = 230f;
+            ParticleSystem.ShapeModule rainShape = rain.shape;
+            rainShape.scale = new Vector3(6.6f, 0.5f, 6.2f);
+            ParticleSystem.VelocityOverLifetimeModule rainVelocity = rain.velocityOverLifetime;
+            rainVelocity.y = new ParticleSystem.MinMaxCurve(-11.5f, -9.5f);
+            rain.Clear(true);
+            rain.Play(true);
+
+            if (!lightType.HasValue)
+            {
+                return;
+            }
+
+            var lightObject = new GameObject(label + " Source", typeof(Light));
+            lightObject.transform.SetParent(bay.transform, false);
+            Light light = lightObject.GetComponent<Light>();
+            light.type = lightType.Value;
+            light.range = 10f;
+            light.renderMode = LightRenderMode.ForcePixel;
+            light.shadows = LightShadows.None;
+            if (lightType.Value == LightType.Point)
+            {
+                lightObject.transform.localPosition = new Vector3(-1.4f, 3.5f, -0.7f);
+                light.color = new Color(1f, 0.58f, 0.28f, 1f);
+                light.intensity = 5.5f;
+            }
+            else
+            {
+                Vector3 lightPosition = new Vector3(-2.8f, 5.2f, -3.1f);
+                Vector3 target = new Vector3(1.1f, 0.4f, 0.8f);
+                lightObject.transform.localPosition = lightPosition;
+                lightObject.transform.localRotation = Quaternion.LookRotation(
+                    target - lightPosition, Vector3.up);
+                light.color = new Color(0.42f, 0.72f, 1f, 1f);
+                light.intensity = 7f;
+                light.spotAngle = 38f;
+            }
+        }
+
         private static void BuildWetSurfaceSection(
             Transform gallery,
             Material platform,
@@ -940,16 +1123,22 @@ namespace SabaProps.Water.Editors
                 "WET AVATAR-COMPATIBLE SURFACE / VRC WORLD",
                 new Vector3(0f, 0.6f, -9f),
                 0.21f);
-            CreatePlatform(root, new Vector3(32f, 0.5f, 16f), platform);
+            CreatePlatform(root, new Vector3(40f, 0.5f, 16f), platform);
 
-            Material source = WaterAssetLibrary.CreateOrLoadEnvironmentMaterial(
+            Material opaqueSource = WaterAssetLibrary.CreateOrLoadEnvironmentMaterial(
                 WaterAssetLibrary.WetSurfaceMaterialName);
+            Material transparentSource = WaterAssetLibrary.CreateOrLoadEnvironmentMaterial(
+                WaterAssetLibrary.WetSurfaceTransparentMaterialName);
             CreateWetMannequin(
-                root, "DRY", new Vector3(-9f, 0f, 0f), source, 0f, 0f, liteAccent);
+                root, "DRY", new Vector3(-14f, 0f, 0f), opaqueSource, 0f, 0f, liteAccent);
             CreateWetMannequin(
-                root, "WET", Vector3.zero, source, 0.62f, 0.08f, standardAccent);
+                root, "WET", new Vector3(-5f, 0f, 0f), opaqueSource, 0.62f, 0.08f, standardAccent);
             CreateWetMannequin(
-                root, "DROPLETS", new Vector3(9f, 0f, 0f), source, 1f, 0.48f, warmAccent);
+                root, "DROPLETS OPAQUE", new Vector3(5f, 0f, 0f),
+                opaqueSource, 1f, 0.48f, warmAccent);
+            CreateWetMannequin(
+                root, "DROPLETS TRANSPARENT", new Vector3(14f, 0f, 0f),
+                transparentSource, 1f, 0.48f, standardAccent);
 
             string sdkState = WaterVrcWorld.IsSdkPresent
                 ? "VRC WORLD DESCRIPTOR + SPAWN: ACTIVE"
@@ -972,11 +1161,18 @@ namespace SabaProps.Water.Editors
             Material material = CreateMaterialVariant("WetSurface_" + label, source);
             material.SetFloat("_Wetness", wetness);
             material.SetFloat("_DropletSpeed", dropletSpeed);
-            material.SetFloat("_DropletStrength", wetness > 0f ? 0.72f : 0f);
-            material.SetFloat("_TrailPersistence", label == "DROPLETS" ? 0.82f : 0.7f);
-            material.SetFloat("_TrailSlide", label == "DROPLETS" ? 0.3f : 0.2f);
+            bool droplets = label.Contains("DROPLETS");
+            bool transparent = label.Contains("TRANSPARENT");
+            material.SetFloat("_DropletHeadNormalStrength", wetness > 0f ? 0.34f : 0f);
+            material.SetFloat("_DropletTrailNormalStrength", wetness > 0f ? 0.12f : 0f);
+            material.SetFloat("_TrailPersistence", droplets ? 0.82f : 0.7f);
+            material.SetFloat("_TrailSlide", droplets ? 0.3f : 0.2f);
             material.SetColor("_DropletScatterColor", new Color(0.68f, 0.88f, 0.96f, 1f));
-            material.SetFloat("_DropletScatterStrength", label == "DROPLETS" ? 0.72f : 0.52f);
+            material.SetFloat("_DropletScatterStrength", droplets ? 0.72f : 0.52f);
+            if (transparent)
+            {
+                material.SetFloat("_Opacity", 0.58f);
+            }
             EditorUtility.SetDirty(material);
 
             GameObject body = GameObject.CreatePrimitive(PrimitiveType.Capsule);
@@ -984,19 +1180,23 @@ namespace SabaProps.Water.Editors
             body.transform.SetParent(mannequin.transform, false);
             body.transform.localPosition = new Vector3(0f, 1.7f, 0f);
             body.transform.localScale = new Vector3(1.15f, 1.65f, 0.82f);
-            body.GetComponent<MeshRenderer>().sharedMaterial = material;
+            MeshRenderer bodyRenderer = body.GetComponent<MeshRenderer>();
+            bodyRenderer.sharedMaterial = material;
+            bodyRenderer.lightProbeUsage = LightProbeUsage.BlendProbes;
 
             GameObject head = GameObject.CreatePrimitive(PrimitiveType.Sphere);
             head.name = "Avatar Proxy Head";
             head.transform.SetParent(mannequin.transform, false);
             head.transform.localPosition = new Vector3(0f, 4.25f, 0f);
             head.transform.localScale = Vector3.one * 1.2f;
-            head.GetComponent<MeshRenderer>().sharedMaterial = material;
+            MeshRenderer headRenderer = head.GetComponent<MeshRenderer>();
+            headRenderer.sharedMaterial = material;
+            headRenderer.lightProbeUsage = LightProbeUsage.BlendProbes;
 
             CreateTrim(mannequin.transform, accent, new Vector3(6.8f, 0.12f, 7.8f));
             CreateLabel(mannequin.transform, label, new Vector3(0f, 0.7f, -3.35f), 0.14f, Color.white);
 
-            if (label == "DROPLETS")
+            if (droplets)
             {
                 var lightObject = new GameObject("Wet Surface Spot Light", typeof(Light));
                 lightObject.transform.SetParent(mannequin.transform, false);
@@ -1023,6 +1223,18 @@ namespace SabaProps.Water.Editors
             RenderSettings.ambientEquatorColor = new Color(0.18f, 0.24f, 0.29f, 1f);
             RenderSettings.ambientGroundColor = new Color(0.07f, 0.08f, 0.09f, 1f);
             RenderSettings.fog = false;
+        }
+
+        private static void ConfigureDarkEnvironment()
+        {
+            RenderSettings.ambientMode = AmbientMode.Trilight;
+            RenderSettings.ambientSkyColor = new Color(0.034f, 0.044f, 0.062f, 1f);
+            RenderSettings.ambientEquatorColor = new Color(0.016f, 0.022f, 0.032f, 1f);
+            RenderSettings.ambientGroundColor = new Color(0.006f, 0.009f, 0.014f, 1f);
+            RenderSettings.ambientIntensity = 0.65f;
+            RenderSettings.reflectionIntensity = 0.4f;
+            RenderSettings.fog = false;
+            RenderSettings.sun = null;
         }
 
         private static void CreateSun(Transform parent)
@@ -1452,13 +1664,7 @@ namespace SabaProps.Water.Editors
 
         private static void SimulateParticles(float seconds)
         {
-            GameObject gallery = GameObject.Find("SabaProps Water Feature Gallery");
-            if (gallery == null)
-            {
-                return;
-            }
-
-            foreach (ParticleSystem particles in gallery.GetComponentsInChildren<ParticleSystem>(true))
+            foreach (ParticleSystem particles in UnityEngine.Object.FindObjectsOfType<ParticleSystem>())
             {
                 particles.Simulate(seconds, true, true, true);
             }

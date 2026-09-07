@@ -19,12 +19,15 @@ Shader "SabaProps/Water/Surface Standard"
         _RippleDensity ("Rain Ripple Density", Float) = 1.5
         _RippleSpeed ("Rain Ripple Speed", Float) = 0.8
         _ShallowEdgeWidth ("Shallow Edge Width", Range(0, 0.5)) = 0
-        _FoamColor ("Foam Color", Color) = (0.86, 0.95, 1, 1)
+        _FoamColor ("Foam Color", Color) = (0.28, 0.58, 0.63, 1)
         _FoamStrength ("Foam Strength", Range(0, 1)) = 0
         _CrestFoamThreshold ("Crest Foam Threshold", Range(0, 1)) = 0.8
         _CrestFoamWidth ("Crest Foam Width", Range(0.01, 0.35)) = 0.08
         _FoamTrailStrength ("Residual Foam", Range(0, 1)) = 0.35
         _FoamDetail ("Foam Breakup", Range(0, 1)) = 0.8
+        _FoamPatternScale ("Foam Pattern Scale", Float) = 1
+        _FoamPatternSpeed ("Foam Pattern Speed", Range(0, 3)) = 1
+        _FoamPatternWarp ("Foam Pattern Warp", Range(0, 1)) = 0.45
         _ShoreFoamWidth ("Shore Foam Width", Range(0, 0.5)) = 0
         _FlowTurbulence ("Flow Turbulence", Range(0, 1)) = 0
         _FlowFoamStrength ("Flow Aeration", Range(0, 1)) = 0
@@ -95,6 +98,9 @@ Shader "SabaProps/Water/Surface Standard"
             float _CrestFoamWidth;
             float _FoamTrailStrength;
             float _FoamDetail;
+            float _FoamPatternScale;
+            float _FoamPatternSpeed;
+            float _FoamPatternWarp;
             float _ShoreFoamWidth;
             float _FlowTurbulence;
             float _FlowFoamStrength;
@@ -220,7 +226,10 @@ Shader "SabaProps/Water/Surface Standard"
                     _CrestFoamThreshold,
                     _CrestFoamWidth,
                     _FoamTrailStrength,
-                    _FoamDetail);
+                    _FoamDetail,
+                    _FoamPatternScale,
+                    _FoamPatternSpeed,
+                    _FoamPatternWarp);
                 float crest = saturate(breakingFoam.x + breakingFoam.y) * _FoamStrength;
                 float shore = (1.0 - smoothstep(
                     0.0, max(0.001, _ShoreFoamWidth * _DepthDistance), waterDepth))

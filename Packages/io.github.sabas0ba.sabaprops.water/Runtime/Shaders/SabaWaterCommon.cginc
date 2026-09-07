@@ -172,18 +172,24 @@ inline float SabaCrestFoamLite(
     float2 flowDirection,
     float threshold,
     float crestWidth,
-    float detailStrength)
+    float detailStrength,
+    float patternScale,
+    float patternSpeed,
+    float patternWarp)
 {
     float height = SabaWaterHeight(worldPosition, waveScale, waveSpeed, flowDirection) * 0.5 + 0.5;
     float lowerEdge = max(0.0, threshold - max(0.01, crestWidth));
     float crest = smoothstep(lowerEdge, threshold, height)
         * (1.0 - smoothstep(threshold, min(1.0, threshold + max(0.01, crestWidth)), height));
     float2 flow = SabaSafeDirection(flowDirection);
-    float2 position = worldPosition.xz * waveScale;
+    float2 position = worldPosition.xz * waveScale * max(0.1, patternScale);
+    float patternTime = _Time.y * waveSpeed * patternSpeed;
+    float domainWarp = sin(dot(position, flow) * 0.47 - patternTime * 0.31)
+        * patternWarp;
     float detail = 0.5 + 0.5 * sin(
-        dot(position, float2(-flow.y, flow.x)) * 5.17
+        dot(position, float2(-flow.y, flow.x)) * 5.17 + domainWarp * 2.3
         + dot(position, flow) * 1.31
-        - _Time.y * waveSpeed * 2.3);
+        - patternTime * 2.3);
     return crest * lerp(1.0, smoothstep(0.24, 0.78, detail), detailStrength);
 }
 
@@ -195,7 +201,10 @@ inline float2 SabaBreakingFoam(
     float threshold,
     float crestWidth,
     float trailStrength,
-    float detailStrength)
+    float detailStrength,
+    float patternScale,
+    float patternSpeed,
+    float patternWarp)
 {
     float2 flow = SabaSafeDirection(flowDirection);
     float sampleDistance = max(0.08, 0.38 / max(0.1, waveScale));
@@ -210,10 +219,13 @@ inline float2 SabaBreakingFoam(
         * (1.0 - smoothstep(threshold, threshold + crestWidth, height));
     float leadingFace = saturate((behind - ahead) * 4.0 + 0.45);
 
-    float2 advected = worldPosition.xz * waveScale
-        - flow * (_Time.y * waveSpeed * 0.73);
-    float breakup = 0.5 + 0.28 * sin(dot(advected, float2(4.37, -3.11)))
-        + 0.22 * sin(dot(advected, float2(-7.19, 5.83)) + 1.7);
+    float2 advected = worldPosition.xz * waveScale * max(0.1, patternScale)
+        - flow * (_Time.y * waveSpeed * patternSpeed * 0.73);
+    float warpPhase = sin(dot(advected, float2(0.73, 1.19))
+        - _Time.y * waveSpeed * patternSpeed * 0.37) * patternWarp;
+    float breakup = 0.5 + 0.28 * sin(
+        dot(advected, float2(4.37, -3.11)) + warpPhase * 2.7)
+        + 0.22 * sin(dot(advected, float2(-7.19, 5.83)) - warpPhase * 1.9 + 1.7);
     breakup = lerp(1.0, smoothstep(0.18, 0.78, breakup), detailStrength);
     float activeWhitecap = crestBand * leadingFace * lerp(0.55, 1.0, slope) * breakup;
 
@@ -224,7 +236,8 @@ inline float2 SabaBreakingFoam(
     float remnantBand = smoothstep(threshold - crestWidth * 3.2, threshold, remnantHeight)
         * (1.0 - smoothstep(threshold, threshold + crestWidth * 2.2, remnantHeight));
     float remnantBreakup = smoothstep(0.08, 0.7, 0.5 + 0.5 * sin(
-        dot(advected, float2(8.31, 2.73)) - _Time.y * waveSpeed * 0.27));
+        dot(advected, float2(8.31, 2.73)) + warpPhase * 3.1
+        - _Time.y * waveSpeed * patternSpeed * 0.27));
     float remnant = remnantBand * remnantBreakup * trailStrength;
     return float2(activeWhitecap, remnant);
 }

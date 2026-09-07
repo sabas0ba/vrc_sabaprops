@@ -4,6 +4,10 @@
 
 ### Added
 
+- 暗所、Point Light、Spot Lightで水面・雨・Wet Surfaceを比較する`WaterLightingGallery` Scene
+- 水面Foamの模様を調整するscale、speed、warpパラメータ
+- 不透明・半透明のWet Surface Shaderと、滴head・trail別のNormal強度
+
 - 水たまり、川、湖、海向けの軽量・標準水面Shader
 - Scene View上で地面へ追従させる水たまりstamp tool
 - pathから河川Meshを生成するauthoring component
@@ -26,6 +30,9 @@
 - Ocean砕波、River落差上端／着水点向けの小径・速度伸長spray particle
 
 ### Fixed
+
+- Wet Surfaceのtrailが滴headを追い越す形状と、円形だった滴headを重力方向へ膨らむ雨滴形状へ修正
+- Ocean・River・雨衝突の飛沫を点に近い数mm級へ縮小
 
 - Water Feature Gallery配布SampleのScene参照とMaterial、Mesh、Profileのmeta GUID不一致
 - Gallery Groundが水中Cameraの視線を遮る配置と、水面境界端の過大な屈折

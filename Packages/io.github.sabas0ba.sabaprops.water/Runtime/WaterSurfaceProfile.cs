@@ -54,12 +54,15 @@ namespace SabaProps.Water
 
         [Header("Depth and foam")]
         [Range(0f, 0.5f)] public float shallowEdgeWidth;
-        public Color foamColor = new Color(0.86f, 0.95f, 1f, 1f);
+        public Color foamColor = new Color(0.28f, 0.58f, 0.63f, 1f);
         [Range(0f, 1f)] public float foamStrength;
         [Range(0f, 1f)] public float crestFoamThreshold = 0.8f;
         [Range(0.01f, 0.35f)] public float crestFoamWidth = 0.08f;
         [Range(0f, 1f)] public float foamTrailStrength = 0.2f;
         [Range(0f, 1f)] public float foamDetail = 0.6f;
+        [Min(0.1f)] public float foamPatternScale = 1f;
+        [Range(0f, 3f)] public float foamPatternSpeed = 1f;
+        [Range(0f, 1f)] public float foamPatternWarp = 0.45f;
         [Range(0f, 0.5f)] public float shoreFoamWidth;
 
         [Header("Flow and aeration")]
@@ -95,6 +98,9 @@ namespace SabaProps.Water
             crestFoamWidth = Mathf.Clamp(crestFoamWidth, 0.01f, 0.35f);
             foamTrailStrength = Mathf.Clamp01(foamTrailStrength);
             foamDetail = Mathf.Clamp01(foamDetail);
+            foamPatternScale = Mathf.Max(0.1f, foamPatternScale);
+            foamPatternSpeed = Mathf.Clamp(foamPatternSpeed, 0f, 3f);
+            foamPatternWarp = Mathf.Clamp01(foamPatternWarp);
             shoreFoamWidth = Mathf.Clamp(shoreFoamWidth, 0f, 0.5f);
             flowTurbulence = Mathf.Clamp01(flowTurbulence);
             flowFoamStrength = Mathf.Clamp01(flowFoamStrength);
@@ -157,6 +163,9 @@ namespace SabaProps.Water
             material.SetFloat("_CrestFoamWidth", crestFoamWidth);
             material.SetFloat("_FoamTrailStrength", foamTrailStrength);
             material.SetFloat("_FoamDetail", foamDetail);
+            material.SetFloat("_FoamPatternScale", foamPatternScale);
+            material.SetFloat("_FoamPatternSpeed", foamPatternSpeed);
+            material.SetFloat("_FoamPatternWarp", foamPatternWarp);
             material.SetFloat("_ShoreFoamWidth", shoreFoamWidth);
             material.SetFloat("_FlowTurbulence", flowTurbulence);
             material.SetFloat("_FlowFoamStrength", flowFoamStrength);

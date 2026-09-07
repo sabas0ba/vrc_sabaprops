@@ -28,6 +28,7 @@ namespace SabaProps.Water.CITests
             WaterAssetLibrary.CausticsShaderName,
             WaterAssetLibrary.LightShaftShaderName,
             WaterAssetLibrary.WetSurfaceShaderName,
+            WaterAssetLibrary.WetSurfaceTransparentShaderName,
         };
 
         [Test]
@@ -155,11 +156,18 @@ namespace SabaProps.Water.CITests
                     Assert.IsTrue(profile.material.enableInstancing);
                     Assert.IsTrue(profile.material.HasProperty("_CrestFoamWidth"));
                     Assert.IsTrue(profile.material.HasProperty("_FoamTrailStrength"));
+                    Assert.IsTrue(profile.material.HasProperty("_FoamPatternScale"));
+                    Assert.IsTrue(profile.material.HasProperty("_FoamPatternSpeed"));
+                    Assert.IsTrue(profile.material.HasProperty("_FoamPatternWarp"));
                     Assert.IsTrue(profile.material.HasProperty("_FlowTurbulence"));
                     Assert.IsTrue(profile.material.HasProperty("_ReflectionDistortion"));
                     Assert.IsTrue(profile.material.HasProperty("_LightingResponse"));
                     Assert.AreEqual(0f, profile.foamStrength, 0.0001f,
                         "continuous procedural foam bands must be disabled in default profiles");
+                    Assert.Less(
+                        Vector4.Distance(profile.foamColor, profile.shallowColor),
+                        0.4f,
+                        "default foam tint should remain close to its surface colour");
                 }
             }
         }
@@ -180,7 +188,7 @@ namespace SabaProps.Water.CITests
                     .GetComponent<ParticleSystem>();
                 ParticleSystemRenderer splashRenderer = splash.GetComponent<ParticleSystemRenderer>();
                 Assert.AreEqual(ParticleSystemRenderMode.Stretch, splashRenderer.renderMode);
-                Assert.IsTrue(splash.main.startSize.constantMax <= 0.055f);
+                Assert.IsTrue(splash.main.startSize.constantMax <= 0.012f);
                 Assert.AreEqual(LightProbeUsage.BlendProbes, splashRenderer.lightProbeUsage);
 
                 Transform rippleTransform = rig.transform.Find("Rain/Collision Ripple");
@@ -247,9 +255,9 @@ namespace SabaProps.Water.CITests
                     "gallery must include rain, splash, ripple, fog, cloud and waterfall particles");
                 Assert.IsNull(GameObject.Find("Whitewater Crest [Copy Ready]"));
                 Assert.IsNull(GameObject.Find("Plunge Pool Froth [Copy Ready]"));
-                AssertStretchSpray("Breaking Wave Spray [Copy Ready]", 0.07f);
-                AssertStretchSpray("Waterfall Spray [Copy Ready]", 0.07f);
-                AssertStretchSpray("Plunge Pool Spray [Copy Ready]", 0.075f);
+                AssertStretchSpray("Breaking Wave Spray [Copy Ready]", 0.012f);
+                AssertStretchSpray("Waterfall Spray [Copy Ready]", 0.012f);
+                AssertStretchSpray("Plunge Pool Spray [Copy Ready]", 0.012f);
                 Assert.IsNotNull(GameObject.Find("Underwater Surface View"));
                 GameObject standardPool = GameObject.Find("Standard Underwater Pool [Copy Ready]");
                 Assert.IsNotNull(standardPool);
@@ -258,7 +266,8 @@ namespace SabaProps.Water.CITests
                 Assert.IsNotNull(tunnelTransform);
                 Assert.IsFalse(tunnelTransform.gameObject.activeSelf,
                     "tunnel boundary preview must not obstruct the top-only pool camera by default");
-                Assert.IsNotNull(GameObject.Find("DROPLETS Surface Mannequin [Copy Ready]"));
+                Assert.IsNotNull(GameObject.Find("DROPLETS OPAQUE Surface Mannequin [Copy Ready]"));
+                Assert.IsNotNull(GameObject.Find("DROPLETS TRANSPARENT Surface Mannequin [Copy Ready]"));
                 Assert.IsNotNull(GameObject.Find("Wet Surface Spot Light"));
                 Assert.IsTrue(GameObject.FindObjectsOfType<Light>()
                     .Count(light => light.type == LightType.Spot) >= 3);
@@ -316,6 +325,37 @@ namespace SabaProps.Water.CITests
             }
         }
 
+        [Test]
+        public void LightingGallery_CoversDarkPointAndSpotExamples()
+        {
+            Scene scene = WaterSampleScene.CreateLightingGallery();
+            try
+            {
+                Assert.IsTrue(scene.IsValid(), "lighting gallery scene was not created");
+                Assert.IsNotNull(
+                    AssetDatabase.LoadAssetAtPath<SceneAsset>(WaterSampleScene.LightingScenePath));
+                Assert.IsNotNull(GameObject.Find(WaterSampleScene.LightingGalleryRootName));
+                Assert.IsNotNull(GameObject.Find("DARK AMBIENT Example [Copy Ready]"));
+                Assert.IsNotNull(GameObject.Find("POINT LIGHT Example [Copy Ready]"));
+                Assert.IsNotNull(GameObject.Find("SPOT LIGHT Example [Copy Ready]"));
+                Assert.IsNotNull(GameObject.Find("Wet Opaque Preview [Copy Ready]"));
+                Assert.IsNotNull(GameObject.Find("Wet Transparent Preview [Copy Ready]"));
+                Assert.IsNotNull(GameObject.Find(WaterSampleScene.LightingCameraName));
+
+                Light[] lights = Object.FindObjectsOfType<Light>();
+                Assert.AreEqual(0, lights.Count(light => light.type == LightType.Directional));
+                Assert.AreEqual(1, lights.Count(light => light.type == LightType.Point));
+                Assert.AreEqual(1, lights.Count(light => light.type == LightType.Spot));
+                Assert.AreEqual(3, Object.FindObjectsOfType<ParticleSystem>()
+                    .Count(system => system.name == "Rain"));
+            }
+            finally
+            {
+                EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
+                AssetDatabase.DeleteAsset(WaterAssetLibrary.RootFolder);
+            }
+        }
+
         private static void AssertStretchSpray(string objectName, float maximumSize)
         {
             GameObject sprayObject = GameObject.Find(objectName);
@@ -344,6 +384,13 @@ namespace SabaProps.Water.CITests
                 Scene scene = EditorSceneManager.OpenScene(scenePath);
                 Assert.IsTrue(scene.IsValid(), "distributed gallery scene could not be opened");
                 WaterSampleScene.ValidateOpenGallery();
+
+                string lightingScenePath = ImportedSamplePath + "/WaterLightingGallery.unity";
+                Scene lightingScene = EditorSceneManager.OpenScene(lightingScenePath);
+                Assert.IsTrue(lightingScene.IsValid(), "distributed lighting gallery could not be opened");
+                Assert.IsNotNull(GameObject.Find(WaterSampleScene.LightingGalleryRootName));
+                Assert.IsNotNull(GameObject.Find("POINT LIGHT Source"));
+                Assert.IsNotNull(GameObject.Find("SPOT LIGHT Source"));
             }
             finally
             {

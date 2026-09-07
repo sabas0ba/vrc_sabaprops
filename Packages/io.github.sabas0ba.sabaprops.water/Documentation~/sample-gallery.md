@@ -49,6 +49,12 @@ Overview Cameraが`MainCamera`です。水中Cameraを確認する場合はOverv
 
 ![Underwater Standard camera](images/underwater-standard.png)
 
+## Lighting Gallery
+
+`WaterLightingGallery.unity`は、Directional Lightを使用しない暗所比較Sceneです。暗い環境光のみ、Point Light、Spot Lightの3区画で、Standard水面、雨、衝突飛沫、Wet Surfaceの応答を比較できます。Spot Light区画には半透明Wet Surfaceも配置しています。単独で再生成する場合は`Tools > SabaProps > Water > Create Lighting Gallery`を実行します。
+
+![Water Lighting Gallery](images/water-lighting-gallery.png)
+
 ## 利用時の注意
 
 - 雨、霧、雲はPlay Modeで確認します。

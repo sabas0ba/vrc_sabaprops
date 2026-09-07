@@ -1,5 +1,12 @@
 # Water Feature Gallery
 
+サンプルには次の2 Sceneが含まれます。
+
+- `WaterFeatureGallery.unity`: 全機能とコピー可能な構成例
+- `WaterLightingGallery.unity`: 暗い環境光、Point Light、Spot Lightでの水面・雨・Wet Surface比較
+
+Wet Surfaceには不透明版と半透明版があります。`Droplet Head Normal`と`Droplet Trail Normal`は別々に調整できます。水面Foamは`Foam Color`に加え、`Foam Pattern Scale / Speed / Warp`で模様を編集できます。
+
 `WaterFeatureGallery.unity`を開き、Play Modeで雨、波紋、霧、雲を確認します。
 
 - `1 Water Surfaces`: Reflection Probe付きPuddle、小径spray・落水付きRiver、局所砕波sprayを持つOceanのLite／Standard比較

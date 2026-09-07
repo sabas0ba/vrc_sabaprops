@@ -32,12 +32,15 @@ MonoBehaviour:
   rippleDensity: 1.35
   rippleSpeed: 0.8
   shallowEdgeWidth: 0.24
-  foamColor: {r: 0.86, g: 0.95, b: 1, a: 1}
+  foamColor: {r: 0.3764, g: 0.4742, b: 0.5008, a: 1}
   foamStrength: 0
   crestFoamThreshold: 0.8
   crestFoamWidth: 0.08
   foamTrailStrength: 0.2
   foamDetail: 0.6
+  foamPatternScale: 1
+  foamPatternSpeed: 1
+  foamPatternWarp: 0.45
   shoreFoamWidth: 0
   flowTurbulence: 0
   flowFoamStrength: 0

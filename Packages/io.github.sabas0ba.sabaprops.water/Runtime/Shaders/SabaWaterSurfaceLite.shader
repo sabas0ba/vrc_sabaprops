@@ -19,12 +19,15 @@ Shader "SabaProps/Water/Surface Lite"
         _RippleDensity ("Rain Ripple Density", Float) = 1.5
         _RippleSpeed ("Rain Ripple Speed", Float) = 0.8
         _ShallowEdgeWidth ("Shallow Edge Width", Range(0, 0.5)) = 0
-        _FoamColor ("Foam Color", Color) = (0.86, 0.95, 1, 1)
+        _FoamColor ("Foam Color", Color) = (0.28, 0.58, 0.63, 1)
         _FoamStrength ("Foam Strength", Range(0, 1)) = 0
         _CrestFoamThreshold ("Crest Foam Threshold", Range(0, 1)) = 0.8
         _CrestFoamWidth ("Crest Foam Width", Range(0.01, 0.35)) = 0.08
         _FoamTrailStrength ("Residual Foam", Range(0, 1)) = 0.2
         _FoamDetail ("Foam Breakup", Range(0, 1)) = 0.6
+        _FoamPatternScale ("Foam Pattern Scale", Float) = 1
+        _FoamPatternSpeed ("Foam Pattern Speed", Range(0, 3)) = 1
+        _FoamPatternWarp ("Foam Pattern Warp", Range(0, 1)) = 0.45
         _ShoreFoamWidth ("Shore Foam Width", Range(0, 0.5)) = 0
         _FlowTurbulence ("Flow Turbulence", Range(0, 1)) = 0
         _FlowFoamStrength ("Flow Aeration", Range(0, 1)) = 0
@@ -90,6 +93,9 @@ Shader "SabaProps/Water/Surface Lite"
             float _CrestFoamWidth;
             float _FoamTrailStrength;
             float _FoamDetail;
+            float _FoamPatternScale;
+            float _FoamPatternSpeed;
+            float _FoamPatternWarp;
             float _ShoreFoamWidth;
             float _FlowTurbulence;
             float _FlowFoamStrength;
@@ -193,7 +199,10 @@ Shader "SabaProps/Water/Surface Lite"
                     _FlowDirection.xy,
                     _CrestFoamThreshold,
                     _CrestFoamWidth,
-                    _FoamDetail) * _FoamStrength;
+                    _FoamDetail,
+                    _FoamPatternScale,
+                    _FoamPatternSpeed,
+                    _FoamPatternWarp) * _FoamStrength;
                 float2 flow = SabaSafeDirection(_FlowDirection.xy);
                 float remnant = SabaCrestFoamLite(
                     input.worldPosition - float3(flow.x, 0.0, flow.y) * 0.65,
@@ -202,7 +211,10 @@ Shader "SabaProps/Water/Surface Lite"
                     _FlowDirection.xy,
                     max(0.0, _CrestFoamThreshold - 0.08),
                     _CrestFoamWidth * 1.8,
-                    1.0) * _FoamTrailStrength * _FoamStrength;
+                    1.0,
+                    _FoamPatternScale * 0.83,
+                    _FoamPatternSpeed * 0.61,
+                    _FoamPatternWarp) * _FoamTrailStrength * _FoamStrength;
                 float shore = (1.0 - SabaUvEdgeFade(input.uv, _ShoreFoamWidth)) * _FoamStrength;
                 float slopeAeration = saturate((1.0 - saturate(baseNormal.y)) * 3.5);
                 float flowFoam = smoothstep(0.5, 0.86, flowData.x)

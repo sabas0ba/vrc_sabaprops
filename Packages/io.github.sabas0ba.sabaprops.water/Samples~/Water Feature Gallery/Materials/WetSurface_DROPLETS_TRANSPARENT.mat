@@ -7,8 +7,8 @@ Material:
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_Name: WetSurface_DRY
-  m_Shader: {fileID: 4800000, guid: a3bed60feccc4d74bc92b309fa2ea725, type: 3}
+  m_Name: WetSurface_DROPLETS_TRANSPARENT
+  m_Shader: {fileID: 4800000, guid: dc65475ef03148f8bd2542e5a8a4c21f, type: 3}
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
   m_ValidKeywords: []
@@ -29,20 +29,19 @@ Material:
         m_Offset: {x: 0, y: 0}
     m_Ints: []
     m_Floats:
-    - _DropletHeadNormalStrength: 0
+    - _DropletHeadNormalStrength: 0.34
     - _DropletScale: 18
-    - _DropletScatterStrength: 0.52
-    - _DropletSpeed: 0
-    - _DropletStrength: 0.65
-    - _DropletTrailNormalStrength: 0
+    - _DropletScatterStrength: 0.72
+    - _DropletSpeed: 0.48
+    - _DropletTrailNormalStrength: 0.12
     - _DrySmoothness: 0.28
     - _Metallic: 0
-    - _Opacity: 1
-    - _TrailPersistence: 0.7
-    - _TrailSlide: 0.2
+    - _Opacity: 0.58
+    - _TrailPersistence: 0.82
+    - _TrailSlide: 0.3
     - _WetDarkening: 0.32
     - _WetSmoothness: 0.92
-    - _Wetness: 0
+    - _Wetness: 1
     m_Colors:
     - _Color: {r: 0.32, g: 0.42, b: 0.48, a: 1}
     - _DropletScatterColor: {r: 0.68, g: 0.88, b: 0.96, a: 1}

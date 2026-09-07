@@ -29,12 +29,15 @@ Material:
         m_Offset: {x: 0, y: 0}
     m_Ints: []
     m_Floats:
+    - _DropletHeadNormalStrength: 0.34
     - _DropletScale: 18
     - _DropletScatterStrength: 0.52
     - _DropletSpeed: 0.08
-    - _DropletStrength: 0.72
+    - _DropletStrength: 0.65
+    - _DropletTrailNormalStrength: 0.12
     - _DrySmoothness: 0.28
     - _Metallic: 0
+    - _Opacity: 1
     - _TrailPersistence: 0.7
     - _TrailSlide: 0.2
     - _WetDarkening: 0.32

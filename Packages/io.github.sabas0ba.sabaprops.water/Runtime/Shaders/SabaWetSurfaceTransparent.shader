@@ -1,9 +1,10 @@
-Shader "SabaProps/Water/Wet Surface"
+Shader "SabaProps/Water/Wet Surface Transparent"
 {
     Properties
     {
-        _Color ("Base Color", Color) = (0.72, 0.74, 0.76, 1)
+        _Color ("Base Color", Color) = (0.72, 0.74, 0.76, 0.7)
         _MainTex ("Albedo", 2D) = "white" {}
+        _Opacity ("Opacity", Range(0, 1)) = 0.62
         _Metallic ("Metallic", Range(0, 1)) = 0
         _DrySmoothness ("Dry Smoothness", Range(0, 1)) = 0.28
         _WetSmoothness ("Wet Smoothness", Range(0, 1)) = 0.92
@@ -17,21 +18,27 @@ Shader "SabaProps/Water/Wet Surface"
         _TrailSlide ("Trail Slide", Range(0, 1)) = 0.24
         _DropletScatterColor ("Small Droplet Scatter", Color) = (0.68, 0.88, 0.96, 1)
         _DropletScatterStrength ("Small Droplet Scatter Strength", Range(0, 1)) = 0.62
-        [HideInInspector] _DropletStrength ("Legacy Droplet Normal", Range(0, 2)) = 0.65
-        [HideInInspector] _Opacity ("Opacity", Range(0, 1)) = 1
     }
 
     SubShader
     {
-        Tags { "RenderType" = "Opaque" "Queue" = "Geometry" }
+        Tags
+        {
+            "RenderType" = "Transparent"
+            "Queue" = "Transparent"
+            "IgnoreProjector" = "True"
+        }
         LOD 250
+        Cull Back
+        ZWrite Off
+        Blend SrcAlpha OneMinusSrcAlpha
 
         CGPROGRAM
         #pragma target 3.0
-        #pragma surface surf Standard fullforwardshadows addshadow
+        #pragma surface surf Standard alpha:fade fullforwardshadows
         #pragma multi_compile_instancing
         #include "SabaWetCommon.cginc"
         ENDCG
     }
-    Fallback "Standard"
+    Fallback "Transparent/Diffuse"
 }

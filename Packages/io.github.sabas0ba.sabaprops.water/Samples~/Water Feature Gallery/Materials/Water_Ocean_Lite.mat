@@ -32,6 +32,9 @@ Material:
     - _FlowFoamStrength: 0
     - _FlowTurbulence: 0
     - _FoamDetail: 0.62
+    - _FoamPatternScale: 1
+    - _FoamPatternSpeed: 1
+    - _FoamPatternWarp: 0.45
     - _FoamStrength: 0
     - _FoamTrailStrength: 0.3
     - _LightingResponse: 0.82
@@ -56,6 +59,6 @@ Material:
     m_Colors:
     - _DeepColor: {r: 0.005, g: 0.045, b: 0.11, a: 1}
     - _FlowDirection: {r: 0.9805807, g: 0.19611615, b: 0, a: 0}
-    - _FoamColor: {r: 0.86, g: 0.95, b: 1, a: 1}
+    - _FoamColor: {r: 0.2516, g: 0.4898, b: 0.5788, a: 1}
     - _ShallowColor: {r: 0.08, g: 0.36, b: 0.46, a: 1}
   m_BuildTextureStacks: []
