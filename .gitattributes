@@ -8,6 +8,7 @@
 # platform wrote them.
 *.meta text eol=lf
 *.asmdef text eol=lf
+*.asset text eol=lf
 *.shader text eol=lf
 *.cginc text eol=lf
 
