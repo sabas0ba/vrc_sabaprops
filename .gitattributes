@@ -15,3 +15,10 @@
 # against the generator's output in CI. A CRLF checkout would fail that check
 # on Windows even with nothing changed.
 *.svg text eol=lf
+
+# Data files that shell parses field by field: packages.lock inside the fetch
+# container, ProjectVersion.txt through sed on the host. A CRLF checkout leaves
+# a trailing \r on the last field of every line, so the parse fails with an
+# unrelated-looking error ("wget: bad address ''") instead of a readable one.
+*.lock text eol=lf
+ProjectVersion.txt text eol=lf
