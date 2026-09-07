@@ -23,7 +23,7 @@ Package Managerを使用しない場合は、`Tools > SabaProps > Water > Create
 | `2 Rain and Ripples` | World collision、Splash sub-emitter、Ripple sub-emitter、疑似水面波紋 | `Rain Rig [Copy Ready]` |
 | `3 Fog and Clouds` | Lite、濃霧、着色霧、Point Light付きHigh、Particle fog、Cloud Layer | 各`[Copy Ready]`root |
 | `4 Underwater` | 水面、volume、上面専用／8方向トンネル境界、コースティクス、light shaft | 各Underwater Pool root |
-| `5 Wet Surfaces and VRChat` | Dry／Wet／質量差・長い残留軌跡・小滴散乱色を持つDropletsの人型proxy、Spot Light、VRCWorld状態 | 各Mannequin root |
+| `5 Wet Surfaces and VRChat` | Dry／Wet／重力方向の滴head・長い残留軌跡・小滴散乱色を持つDropletsの人型proxy、不透明／半透明Material、Spot Light、VRCWorld状態 | 各Mannequin root |
 
 River展示には`WaterPath`と保存済みMeshの両方が含まれます。control pointを編集した後に`Rebuild Mesh`を実行できます。
 斜面、浅い上流、深い下流、落差上端の`Waterfall Spray`、着水点の`Plunge Pool Spray`も同じcopy rootに含まれます。
@@ -43,6 +43,7 @@ UnderwaterのLiteは上面境界だけを描画します。Standardには上面�
 
 - `Documentation Camera - Overview`: 全Sectionの俯瞰画像
 - `Documentation Camera - Underwater Standard`: Standard水中volume内部
+- `Documentation Camera - Lighting`: `WaterLightingGallery`の暗所／Point／Spot比較
 
 Overview Cameraが`MainCamera`です。水中Cameraを確認する場合はOverviewを無効化し、水中Cameraを有効化します。
 画角を変更せずに撮影すると、更新前後の比較画像を同じ構図で作成できます。
@@ -51,7 +52,7 @@ Overview Cameraが`MainCamera`です。水中Cameraを確認する場合はOverv
 
 ## Lighting Gallery
 
-`WaterLightingGallery.unity`は、Directional Lightを使用しない暗所比較Sceneです。暗い環境光のみ、Point Light、Spot Lightの3区画で、Standard水面、雨、衝突飛沫、Wet Surfaceの応答を比較できます。Spot Light区画には半透明Wet Surfaceも配置しています。単独で再生成する場合は`Tools > SabaProps > Water > Create Lighting Gallery`を実行します。
+`WaterLightingGallery.unity`は、Directional Lightを使用しない暗所比較Sceneです。暗い環境光のみ、Point Light、Spot Lightの3区画で、Standard水面、雨、衝突飛沫、Wet Surfaceの応答を比較できます。暗所とPoint Light区画は不透明Wet Surface、Spot Light区画は半透明Wet Surfaceです。単独で再生成する場合は`Tools > SabaProps > Water > Create Lighting Gallery`を実行します。
 
 ![Water Lighting Gallery](images/water-lighting-gallery.png)
 

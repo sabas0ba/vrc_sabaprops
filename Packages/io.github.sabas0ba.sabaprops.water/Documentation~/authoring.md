@@ -16,6 +16,24 @@
 Every Frame更新は6面renderが継続するため、必要な小範囲に限定してください。`Reflection Distortion`は水面と雨波紋、
 `Ripple Reflection Blur`は雨天時の反射の霞を調整します。
 
+## 水面Foam
+
+procedural foamは既定Profileでは無効です。使用する場合は`Foam Strength`を少量ずつ上げ、次の順で調整します。
+
+| Parameter | 用途 |
+| --- | --- |
+| `Foam Color` | 泡の色。既定値は各水面の`Shallow Color`に近い色です。白泡が必要な場合だけ白へ寄せます |
+| `Crest Foam Threshold` | 波高のうち泡を生成し始める位置 |
+| `Crest Foam Width` | 波頭に沿う泡の幅 |
+| `Residual Foam` | 砕波後に残る泡の量 |
+| `Foam Breakup` | 泡を連続帯から分断する強さ |
+| `Foam Pattern Scale` | 分断模様の空間スケール |
+| `Foam Pattern Speed` | 分断模様が流れる速度。0で停止 |
+| `Foam Pattern Warp` | 模様の規則性を崩すdomain warp量 |
+
+Shader内のfoamは広域水面全体で同じ計算を行います。落差上端、着水点、岸の一部など局所的な白水は、
+`Foam Strength`を水面全体へ上げず、`Splash` Particle Systemを必要な位置だけへ配置してください。
+
 ## 河川
 
 1. Riverを生成します。
@@ -28,8 +46,8 @@ Every Frame更新は6面renderが継続するため、必要な小範囲に限�
 modeling toolで編集します。岸への自動intersectionやterrain carvingは行いません。
 
 control pointのYを変えると斜面と落差を持つstripを生成できます。滝の前後は制御点間隔を短くし、落差上端と
-着水点へ`Splash` Particle Systemを置きます。`Render Mode=Stretch`、`Start Size=0.01–0.07 m`を基準にし、
-速度方向へ細長く伸ばします。連続した補助stripは白帯に見えやすいため、既定Galleryでは使用しません。
+着水点へ`Splash` Particle Systemを置きます。既定Galleryは`Render Mode=Stretch`、`Start Size=0.002–0.012 m`、
+`Length Scale=1.2`を基準にした点に近い飛沫です。連続した補助stripは白帯に見えやすいため使用しません。
 
 ## 雨
 
@@ -72,6 +90,23 @@ UV seam付近の過大な屈折は`Distortion Edge Fade`を上げて抑えます
 
 ## 濡れた表面
 
-`Trail Persistence`は滴が通った後の長い筋の残留時間、`Trail Slide`は残留筋が遅れて下へずれる量です。
-水滴ごとの擬似質量により重い滴から先に移動します。World object用のShaderであり、他者アバターのMaterialを
-World側から変更する機能ではありません。
+通常は不透明な`SabaProps/Water/Wet Surface`を使用します。ガラス、薄布、透明overlay等で元の景色を残す場合だけ
+`SabaProps/Water/Wet Surface Transparent`を選び、`Opacity`を調整します。半透明版はrender sortingとoverdrawの
+影響を受けるため、重なる面や広い画面占有率では不透明版を優先してください。
+
+水滴headはUVの-Y方向を重力方向として、下側が膨らみ、上側がtrailへ細く接続する形状です。MeshのUVが実際の
+重力方向と一致しない場合は、UVを修正するか、重力方向ごとにMaterialを分けます。trailの開始位置は常にhead上端より
+上へ固定されます。`Trail Persistence`は長い濡れ筋の残量、`Trail Slide`は古いtrailを短縮する量です。
+
+`Droplet Head Normal`と`Droplet Trail Normal`は個別に調整できます。まず両方を0にし、headを0.2–0.4、trailを
+0.05–0.2程度まで上げると、過度な凹凸を避けて調整できます。水滴ごとの擬似質量により重い滴から先に移動します。
+World object用のShaderであり、他者アバターのMaterialをWorld側から変更する機能ではありません。
+
+## 照明確認
+
+`WaterLightingGallery.unity`はDirectional Lightを持たず、暗い環境光のみ、Point Light、Spot Lightの3区画で
+Standard水面、雨、衝突飛沫、Wet Surfaceを比較します。暗所区画で必要以上に発光していないことを確認した後、
+Point／Spot区画で光源色、距離減衰、照射範囲への追従を確認してください。
+
+水面、雨、飛沫、波紋はUnity Light Probe SHとForward Base／Forward Add lightへ反応します。VRCLightVolumesを
+直接sampleする場合は、同packageの`LightVolumes.cginc`を参照するproject側adapterが別途必要です。

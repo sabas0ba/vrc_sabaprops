@@ -86,7 +86,7 @@ Puddleではbox projectionを有効にしたReflection Probeを水面範囲へ�
 各区間はCatmull-Rom補間され、幅とUV距離を保ったstrip meshへbakeされます。
 
 斜面では`Flow Turbulence`を上げます。白水は水面全体へ重ねず、落差上端と着水点へ短寿命の小径sprayを置きます。
-Galleryのsprayは速度方向へ伸長するbillboardで、円形板に見えにくい設定です。
+Galleryのsprayは`Start Size=0.002–0.012 m`、`Length Scale=1.2`の速度方向へ伸長するbillboardです。
 
 VRChat buildではcustom `MonoBehaviour`が実行されません。`WaterPath`は編集情報だけを保持し、表示に必要な
 `MeshFilter`、`MeshRenderer`、生成Mesh、Materialは別に保存されます。build後の形状変更は行いません。
@@ -169,7 +169,9 @@ Material設定を確認できます。外部textureは不要です。
 水滴はcellごとの質量から開始時刻と落下速度を変え、重い滴ほど先に速く動きます。長い軌跡を残し、終端では
 滴本体が縮小しながらfadeします。小滴は`Small Droplet Scatter`の淡青白色へ寄りますが、Emissionではなく
 Standard照明を受けるAlbedoなので暗所では暗くなります。`Trail Persistence`は通過後に残る濡れ筋、
-`Trail Slide`はその筋が遅れて下へ移動する量を制御します。
+`Trail Slide`は古い筋を短縮する量を制御します。trailは常に滴headより上から始まるため、headを追い越しません。
+`Droplet Head Normal`と`Droplet Trail Normal`は個別に調整できます。通常は不透明版を使用し、元の景色を透過させる
+必要がある小範囲だけ`SabaProps/Water/Wet Surface Transparent`と`Opacity`を使用します。
 
 World側から任意のアバターMaterialを変更することはできません。アバターで使用する場合は、そのアバターの
 Materialへ本Shaderを割り当てるか、既存Shaderへ同等のwetness処理を組み込む必要があります。PoiyomiやlilToon等の
