@@ -19,7 +19,7 @@ Material:
   m_CustomRenderQueue: -1
   stringTagMap: {}
   disabledShaderPasses: []
-  m_LockedProperties:
+  m_LockedProperties: 
   m_SavedProperties:
     serializedVersion: 3
     m_TexEnvs:
@@ -30,6 +30,7 @@ Material:
     m_Ints: []
     m_Floats:
     - _DropletScale: 18
+    - _DropletScatterStrength: 0.52
     - _DropletSpeed: 0.08
     - _DropletStrength: 0.72
     - _DrySmoothness: 0.28
@@ -41,4 +42,5 @@ Material:
     - _Wetness: 0.62
     m_Colors:
     - _Color: {r: 0.32, g: 0.42, b: 0.48, a: 1}
+    - _DropletScatterColor: {r: 0.68, g: 0.88, b: 0.96, a: 1}
   m_BuildTextureStacks: []

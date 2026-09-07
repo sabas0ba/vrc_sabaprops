@@ -50,17 +50,16 @@ import後の`WaterFeatureGallery.unity`を開き、Play Modeに入ると雨、�
 
 | Quality | 内容 | 主な制約 |
 | --- | --- | --- |
-| Lite | 非周期の複合波、reflection probe、Fresnel、頂点波、簡易砕波泡／残留泡、疑似波紋、UV境界による浅瀬近似 | GrabPassなし。実際の水深は取得しない |
-| Standard | Liteにrefraction、scene depthによる水深色、細分化した砕波泡／残留泡、岸泡を追加 | PC向け。GrabPassとcamera depthを使用 |
+| Lite | 非周期の複合波、reflection probe、Fresnel、頂点波、疑似波紋、UV境界による浅瀬近似 | GrabPassなし。実際の水深は取得しない |
+| Standard | Liteにrefraction、scene depthによる水深色を追加 | PC向け。GrabPassとcamera depthを使用 |
 
 Material parameterを直接編集することもできますが、再利用する設定は
 `Assets/SabaProps/Water/Profiles`の`WaterSurfaceProfile`で管理し、`Apply to Material`を実行します。
 
 `Wave Scale`は方向、周波数、速度が異なる4成分をまとめて拡縮します。単一の格子模様にはなりません。
 `Shallow Edge Width`はLiteで浅瀬を近似し、Standardではscene depthの浅瀬判定を補助します。
-`Foam Strength`、`Crest Foam Threshold`、`Crest Foam Width`、`Foam Trail Strength`で砕波直後の白泡と、
-波に運ばれる残留泡を調整します。`Tide Height`と`Tide Speed`は水面全体の低周波な上下動です。
-実際の海岸線simulationではないため、岸の遡上は`Shore Foam Width`と地形側の配置で補います。
+`Tide Height`と`Tide Speed`は水面全体の低周波な上下動です。連続した白帯に見えやすいprocedural foamは
+既定profileでは無効です。砕波や落水の白水は、必要な場所だけへ小径の`Splash` Particle Systemを配置します。
 
 Puddleではbox projectionを有効にしたReflection Probeを水面範囲へ置きます。`Reflection Strength`は映り込み、
 `Reflection Distortion`は水面normalと雨波紋による歪み、`Reflection Blur`と`Ripple Reflection Blur`は粗さと雨天時の
@@ -82,9 +81,8 @@ Puddleではbox projectionを有効にしたReflection Probeを水面範囲へ�
 `River Lite`または`River Standard`を追加し、`WaterPath`のScene View handleを移動します。
 各区間はCatmull-Rom補間され、幅とUV距離を保ったstrip meshへbakeされます。
 
-斜面では`Flow Turbulence`と`Flow Foam Strength`を上げます。補助`Whitewater` Materialの`Aeration Inception`は
-透明に近い流れから白濁が始まるUV位置、`Aeration Growth`は下流へ泡が増える距離、`Bubble Detail`は微細気泡、
-`Clear Flow Streaks`は曝気開始前の縦筋を制御します。落下点には短寿命sprayと低速mistを重ねます。
+斜面では`Flow Turbulence`を上げます。白水は水面全体へ重ねず、落差上端と着水点へ短寿命の小径sprayを置きます。
+Galleryのsprayは速度方向へ伸長するbillboardで、円形板に見えにくい設定です。
 
 VRChat buildではcustom `MonoBehaviour`が実行されません。`WaterPath`は編集情報だけを保持し、表示に必要な
 `MeshFilter`、`MeshRenderer`、生成Mesh、Materialは別に保存されます。build後の形状変更は行いません。
@@ -105,6 +103,11 @@ VRChat buildではcustom `MonoBehaviour`が実行されません。`WaterPath`�
 水面Materialの`Rain Ripple Strength`はcollisionとは独立した安価な疑似波紋です。水たまり等の指定Materialだけで
 有効にでき、個々の雨滴との位置同期や波動simulationは行いません。回転、密度、周期が異なる3層を合成するため、
 波紋同士は重なり、規則的な1 cell 1波紋の配置にはなりません。
+
+水面、雨滴、飛沫、波紋はUnityの主光源、Forward AddのPoint／Spot Light、ambient／Light Probe SHへ反応します。
+`Lighting Response`を0にすると従来のunlit寄り、1にすると照明追従を最大にできます。VRCLightVolumesのvolumeを
+直接sampleするには同packageの`LightVolumes.cginc`を使う専用adapterが必要です。本packageは外部依存を持たないため
+adapterを同梱せず、VRCLV未導入時にも動作するUnity Light Probe経路を基準にしています。
 
 ## 霧と雲
 
@@ -136,7 +139,7 @@ Fog Volumeは1灯分の局所散乱をMaterialの`Local Light Position / Color /
 - 底面用procedural caustics overlay
 - additive light shaft mesh
 
-Liteはtint、distance fog、causticsをalpha blendします。StandardはGrabPassを使い、screen distortion、
+Liteはtint、distance fog、causticsをalpha blendします。StandardはGrabPassを使い、弱いvolume shimmer、
 chromatic aberration、scene depth連動のfogを追加します。volumeの上面を水面と一致させ、側面と底面が水域を
 完全に覆うようscaleしてください。
 
@@ -147,6 +150,8 @@ chromatic aberration、scene depth連動のfogを追加します。volumeの上�
 `Boundary N / E / S / W`はx=+Z、y=+X、z=-Z、w=-X、`Boundary NE / SE / SW / NW`は同じ順の斜め方向です。
 通常のプールは上だけを有効にします。海底トンネル等では必要な側面方向を有効にし、`Distortion Edge Fade`で
 各面のUV端に近い歪みを減衰させます。
+`Underwater Volume`の`Volume Distortion`は水中空間全体の弱い揺らぎ、`Underwater Surface View`の
+`Boundary Refraction Distortion`は水面・空気境界だけの屈折です。既定値は境界側を主とし、volume側は低くしています。
 
 camera-inside判定には各cameraの`_WorldSpaceCameraPos`を使うため、通常cameraとmirror cameraは個別に判定されます。
 StandardはGrabPassのためPC向けです。水面を複数作る場合はStandardの使用数を抑え、mirrorを含めた実測で判断します。
@@ -157,8 +162,10 @@ StandardはGrabPassのためPC向けです。水面を複数作る場合はStand
 `Wetness`で制御する標準Surface Shaderです。`Wet Surface Preview`またはGalleryのDry／Wet／Droplets比較で
 Material設定を確認できます。外部textureは不要です。
 
-水滴はcellごとの質量から開始時刻と落下速度を変え、重い滴ほど先に速く動きます。滴本体と軌跡はほぼ同じ幅です。
-`Trail Persistence`は通過後に残る濡れ筋、`Trail Slide`はその筋が遅れて下へ移動する量を制御します。
+水滴はcellごとの質量から開始時刻と落下速度を変え、重い滴ほど先に速く動きます。長い軌跡を残し、終端では
+滴本体が縮小しながらfadeします。小滴は`Small Droplet Scatter`の淡青白色へ寄りますが、Emissionではなく
+Standard照明を受けるAlbedoなので暗所では暗くなります。`Trail Persistence`は通過後に残る濡れ筋、
+`Trail Slide`はその筋が遅れて下へ移動する量を制御します。
 
 World側から任意のアバターMaterialを変更することはできません。アバターで使用する場合は、そのアバターの
 Materialへ本Shaderを割り当てるか、既存Shaderへ同等のwetness処理を組み込む必要があります。PoiyomiやlilToon等の

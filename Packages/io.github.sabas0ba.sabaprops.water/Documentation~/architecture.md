@@ -27,8 +27,12 @@ Material更新を行いません。Editor toolは以下へ変換します。
 
 ## 水面品質
 
-Liteはopaque sceneを再sampleしません。透明度、procedural normal、reflection probe、direct light、Fresnelで水面を構成します。
+Liteはopaque sceneを再sampleしません。透明度、procedural normal、reflection probe、direct light、Light Probe SH、Fresnelで水面を構成します。
 Standardはnamed GrabPass `_SabaWaterGrab`と`_CameraDepthTexture`を使用し、refractionと水深色を追加します。
+
+両品質ともForward Baseで主光源とLight Probe SH、Forward AddでPoint／Spot Lightを加算します。透明な雨滴、飛沫、
+波紋はprobe計算をvertexで行い、局所光だけを追加passで評価します。VRCLightVolumes固有のvolume textureは
+外部includeへのcompile-time依存が必要になるためcore packageでは参照しません。
 
 named GrabPassは同一camera内で共有されますが、camera、mirror、描画条件ごとのcopy costは残ります。
 Standardを広い海面へ適用するときは、shaderの算術量よりframe buffer copyとoverdrawを先に確認します。
@@ -46,5 +50,6 @@ Liteは6、Highは20 sampleです。3D textureを使わず、複数のsineから
 camera位置をobject localへ変換し、unit cube内部の場合だけfragmentを残します。VRChat APIやUdonによる
 入水判定を必要としません。volumeが非一様scaleでもinside判定は維持されます。
 
-Standardは画面をGrabPassから再構成するため、volume外側からは描画しません。隣接する複数volumeを重ねると
+Standardは画面をGrabPassから再構成するため、volume外側からは描画しません。volume shaderの弱いshimmerと
+水面境界shaderの屈折は別parameterです。隣接する複数volumeを重ねると
 境界で重複描画が発生するため、水域ごとに重ならないboxへ分割してください。

@@ -6,6 +6,7 @@ Shader "SabaProps/Water/Surface Lite"
         _DeepColor ("Deep Color", Color) = (0.015, 0.11, 0.18, 1)
         _Opacity ("Opacity", Range(0, 1)) = 0.72
         _Smoothness ("Smoothness", Range(0, 1)) = 0.82
+        _LightingResponse ("Lighting Response", Range(0, 1)) = 0.85
         _WaveScale ("Wave Scale", Float) = 1.8
         _WaveStrength ("Normal Strength", Range(0, 1)) = 0.12
         _WaveSpeed ("Wave Speed", Float) = 0.35
@@ -63,12 +64,14 @@ Shader "SabaProps/Water/Surface Lite"
 
             #include "UnityCG.cginc"
             #include "Lighting.cginc"
+            #include "AutoLight.cginc"
             #include "SabaWaterCommon.cginc"
 
             fixed4 _ShallowColor;
             fixed4 _DeepColor;
             float _Opacity;
             float _Smoothness;
+            float _LightingResponse;
             float _WaveScale;
             float _WaveStrength;
             float _WaveSpeed;
@@ -105,29 +108,31 @@ Shader "SabaProps/Water/Surface Lite"
 
             struct v2f
             {
-                float4 position : SV_POSITION;
+                float4 pos : SV_POSITION;
                 float3 worldPosition : TEXCOORD0;
                 float3 worldNormal : TEXCOORD1;
                 float2 uv : TEXCOORD2;
+                LIGHTING_COORDS(3, 4)
                 UNITY_VERTEX_OUTPUT_STEREO
             };
 
-            v2f vert(appdata input)
+            v2f vert(appdata v)
             {
                 v2f output;
-                UNITY_SETUP_INSTANCE_ID(input);
+                UNITY_SETUP_INSTANCE_ID(v);
                 UNITY_INITIALIZE_OUTPUT(v2f, output);
                 UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(output);
 
-                float3 worldPosition = mul(unity_ObjectToWorld, input.vertex).xyz;
+                float3 worldPosition = mul(unity_ObjectToWorld, v.vertex).xyz;
                 worldPosition.y += SabaWaterHeight(
                     worldPosition, _WaveScale, _WaveSpeed, _FlowDirection.xy) * _VertexWaveHeight;
                 worldPosition.y += SabaTideOffset(_TideHeight, _TideSpeed);
 
-                output.position = UnityWorldToClipPos(worldPosition);
+                output.pos = UnityWorldToClipPos(worldPosition);
                 output.worldPosition = worldPosition;
-                output.worldNormal = UnityObjectToWorldNormal(input.normal);
-                output.uv = input.uv;
+                output.worldNormal = UnityObjectToWorldNormal(v.normal);
+                output.uv = v.uv;
+                TRANSFER_VERTEX_TO_FRAGMENT(output);
                 return output;
             }
 
@@ -149,7 +154,7 @@ Shader "SabaProps/Water/Surface Lite"
                     flowData.z * _FlowTurbulence * 0.055));
 
                 float3 viewDirection = normalize(_WorldSpaceCameraPos.xyz - input.worldPosition);
-                float3 lightDirection = normalize(_WorldSpaceLightPos0.xyz);
+                float3 lightDirection = normalize(UnityWorldSpaceLightDir(input.worldPosition));
                 float fresnel = pow(1.0 - saturate(dot(normal, viewDirection)), 4.0);
                 float diffuse = saturate(dot(normal, lightDirection));
                 float3 halfDirection = normalize(viewDirection + lightDirection);
@@ -162,6 +167,10 @@ Shader "SabaProps/Water/Surface Lite"
                 float colourDepth = saturate(
                     (1.0 - shallowEdge) * 0.72 + fresnel * 0.2 + (1.0 - diffuse) * 0.08);
                 float3 water = lerp(_ShallowColor.rgb, _DeepColor.rgb, colourDepth);
+                UNITY_LIGHT_ATTENUATION(attenuation, input, input.worldPosition);
+                float3 surfaceLighting = SabaWaterBaseLighting(
+                    normal, input.worldPosition, attenuation);
+                water = lerp(water, water * surfaceLighting, _LightingResponse);
                 float2 rippleDirection = SabaSafeDirection(float2(
                     SabaHash21(floor(input.worldPosition.xz * _RippleDensity) + 7.3) - 0.5,
                     SabaHash21(floor(input.worldPosition.xz * _RippleDensity) + 19.7) - 0.5));
@@ -175,8 +184,7 @@ Shader "SabaProps/Water/Surface Lite"
                     viewDirection, reflectionNormal, input.worldPosition, reflectionRoughness);
                 water = lerp(water, reflection, saturate(
                     fresnel * (0.25 + _Smoothness * 0.35) * _ReflectionStrength));
-                water += _LightColor0.rgb * (diffuse * 0.08 + specular * 0.65 + ripple * 0.22);
-                water += UNITY_LIGHTMODEL_AMBIENT.rgb * 0.12;
+                water += _LightColor0.rgb * (specular * 0.65 + ripple * 0.12) * attenuation;
 
                 float crest = SabaCrestFoamLite(
                     input.worldPosition,
@@ -201,10 +209,97 @@ Shader "SabaProps/Water/Surface Lite"
                     * slopeAeration * _FlowFoamStrength;
                 float foam = saturate(
                     crest + remnant + shore + flowFoam + ripple * _FoamStrength * 0.18);
-                water = lerp(water, _FoamColor.rgb, foam);
+                float3 litFoam = _FoamColor.rgb
+                    * lerp(float3(1.0, 1.0, 1.0), surfaceLighting, _LightingResponse);
+                water = lerp(water, litFoam, foam);
 
                 float alpha = _Opacity * SabaUvEdgeFade(input.uv, _EdgeFade);
                 return fixed4(water, alpha);
+            }
+            ENDCG
+        }
+
+        Pass
+        {
+            Tags { "LightMode" = "ForwardAdd" }
+            Cull Off
+            ZWrite Off
+            Blend One One
+
+            CGPROGRAM
+            #pragma target 3.0
+            #pragma vertex vertAdd
+            #pragma fragment fragAdd
+            #pragma multi_compile_fwdadd_fullshadows
+            #pragma multi_compile_instancing
+
+            #include "UnityCG.cginc"
+            #include "Lighting.cginc"
+            #include "AutoLight.cginc"
+            #include "SabaWaterCommon.cginc"
+
+            float _Opacity;
+            float _Smoothness;
+            float _LightingResponse;
+            float _WaveScale;
+            float _WaveStrength;
+            float _WaveSpeed;
+            float4 _FlowDirection;
+            float _VertexWaveHeight;
+            float _TideHeight;
+            float _TideSpeed;
+            float _EdgeFade;
+
+            struct appdataAdd
+            {
+                float4 vertex : POSITION;
+                float3 normal : NORMAL;
+                float2 uv : TEXCOORD0;
+                UNITY_VERTEX_INPUT_INSTANCE_ID
+            };
+
+            struct v2fAdd
+            {
+                float4 pos : SV_POSITION;
+                float3 worldPosition : TEXCOORD0;
+                float3 worldNormal : TEXCOORD1;
+                float2 uv : TEXCOORD2;
+                LIGHTING_COORDS(3, 4)
+            };
+
+            v2fAdd vertAdd(appdataAdd v)
+            {
+                v2fAdd output;
+                UNITY_SETUP_INSTANCE_ID(v);
+                float3 worldPosition = mul(unity_ObjectToWorld, v.vertex).xyz;
+                worldPosition.y += SabaWaterHeight(
+                    worldPosition, _WaveScale, _WaveSpeed, _FlowDirection.xy) * _VertexWaveHeight;
+                worldPosition.y += SabaTideOffset(_TideHeight, _TideSpeed);
+                output.pos = UnityWorldToClipPos(worldPosition);
+                output.worldPosition = worldPosition;
+                output.worldNormal = UnityObjectToWorldNormal(v.normal);
+                output.uv = v.uv;
+                TRANSFER_VERTEX_TO_FRAGMENT(output);
+                return output;
+            }
+
+            fixed4 fragAdd(v2fAdd input) : SV_Target
+            {
+                float3 normal = normalize(input.worldNormal + SabaWaterNormal(
+                    input.worldPosition, _WaveScale, _WaveStrength, _WaveSpeed, _FlowDirection.xy)
+                    - float3(0.0, 1.0, 0.0));
+                float3 lightDirection = normalize(UnityWorldSpaceLightDir(input.worldPosition));
+                float3 viewDirection = normalize(_WorldSpaceCameraPos.xyz - input.worldPosition);
+                float diffuse = saturate(dot(normal, lightDirection));
+                float3 halfDirection = normalize(viewDirection + lightDirection);
+                float specular = pow(
+                    saturate(dot(normal, halfDirection)), lerp(12.0, 192.0, _Smoothness))
+                    * _Smoothness;
+                UNITY_LIGHT_ATTENUATION(attenuation, input, input.worldPosition);
+                float coverage = _Opacity * SabaUvEdgeFade(input.uv, _EdgeFade);
+                float3 contribution = _LightColor0.rgb * attenuation
+                    * (diffuse * 0.12 + specular * 0.7) * coverage * _LightingResponse;
+                return fixed4(contribution, 0.0);
             }
             ENDCG
         }

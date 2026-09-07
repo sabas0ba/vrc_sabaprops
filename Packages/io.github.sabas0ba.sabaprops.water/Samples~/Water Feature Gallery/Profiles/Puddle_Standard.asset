@@ -11,14 +11,15 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: befd95ac67c94fc3ae63d453113b2cdf, type: 3}
   m_Name: Puddle_Standard
-  m_EditorClassIdentifier:
+  m_EditorClassIdentifier: 
   bodyKind: 0
   quality: 1
-  material: {fileID: 2100000, guid: f186831ba0a02414e8eefa8628b9579a, type: 2}
+  material: {fileID: 2100000, guid: 22e0e97906e63724d9e3012885ffaa35, type: 2}
   shallowColor: {r: 0.24, g: 0.34, b: 0.36, a: 1}
   deepColor: {r: 0.08, g: 0.12, b: 0.13, a: 1}
   opacity: 0.58
   smoothness: 0.9
+  lightingResponse: 0.92
   waveScale: 5
   waveStrength: 0.025
   waveSpeed: 0.12
@@ -32,7 +33,7 @@ MonoBehaviour:
   rippleSpeed: 0.8
   shallowEdgeWidth: 0.24
   foamColor: {r: 0.86, g: 0.95, b: 1, a: 1}
-  foamStrength: 0.05
+  foamStrength: 0
   crestFoamThreshold: 0.8
   crestFoamWidth: 0.08
   foamTrailStrength: 0.2

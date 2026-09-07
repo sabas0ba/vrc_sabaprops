@@ -19,7 +19,7 @@ Material:
   m_CustomRenderQueue: -1
   stringTagMap: {}
   disabledShaderPasses: []
-  m_LockedProperties:
+  m_LockedProperties: 
   m_SavedProperties:
     serializedVersion: 3
     m_TexEnvs: []
@@ -32,8 +32,9 @@ Material:
     - _FlowFoamStrength: 0
     - _FlowTurbulence: 0
     - _FoamDetail: 0.6
-    - _FoamStrength: 0.05
+    - _FoamStrength: 0
     - _FoamTrailStrength: 0.2
+    - _LightingResponse: 0.82
     - _Opacity: 0.48
     - _ReflectionBlur: 0.14
     - _ReflectionDistortion: 0.32

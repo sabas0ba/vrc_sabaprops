@@ -35,6 +35,7 @@ namespace SabaProps.Water
         public Color deepColor = new Color(0.015f, 0.11f, 0.18f, 1f);
         [Range(0f, 1f)] public float opacity = 0.72f;
         [Range(0f, 1f)] public float smoothness = 0.82f;
+        [Range(0f, 1f)] public float lightingResponse = 0.85f;
 
         [Header("Motion")]
         [Min(0.01f)] public float waveScale = 1.8f;
@@ -78,6 +79,7 @@ namespace SabaProps.Water
         public void Normalize()
         {
             waveScale = Mathf.Max(0.01f, waveScale);
+            lightingResponse = Mathf.Clamp01(lightingResponse);
             waveStrength = Mathf.Clamp01(waveStrength);
             waveSpeed = Mathf.Max(0f, waveSpeed);
             vertexWaveHeight = Mathf.Clamp(vertexWaveHeight, 0f, 0.5f);
@@ -136,6 +138,7 @@ namespace SabaProps.Water
             material.SetColor("_DeepColor", deepColor);
             material.SetFloat("_Opacity", opacity);
             material.SetFloat("_Smoothness", smoothness);
+            material.SetFloat("_LightingResponse", lightingResponse);
             material.SetFloat("_WaveScale", waveScale);
             material.SetFloat("_WaveStrength", waveStrength);
             material.SetFloat("_WaveSpeed", waveSpeed);

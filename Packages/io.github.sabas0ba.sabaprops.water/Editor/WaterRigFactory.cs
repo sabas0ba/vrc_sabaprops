@@ -347,7 +347,7 @@ namespace SabaProps.Water.Editors
             main.simulationSpace = ParticleSystemSimulationSpace.World;
             main.startLifetime = new ParticleSystem.MinMaxCurve(0.16f, 0.34f);
             main.startSpeed = new ParticleSystem.MinMaxCurve(1.1f, 2.8f);
-            main.startSize = new ParticleSystem.MinMaxCurve(0.025f, 0.07f);
+            main.startSize = new ParticleSystem.MinMaxCurve(0.012f, 0.052f);
             main.gravityModifier = 1.2f;
             main.maxParticles = 1600;
 
@@ -363,7 +363,11 @@ namespace SabaProps.Water.Editors
 
             ApplyFadeOut(splash, 0.05f);
             ParticleSystemRenderer renderer = splash.GetComponent<ParticleSystemRenderer>();
-            renderer.renderMode = ParticleSystemRenderMode.Billboard;
+            renderer.renderMode = ParticleSystemRenderMode.Stretch;
+            renderer.lengthScale = 2.8f;
+            renderer.velocityScale = 0.2f;
+            renderer.cameraVelocityScale = 0f;
+            renderer.maxParticleSize = 0.08f;
             renderer.sharedMaterial = WaterAssetLibrary.CreateOrLoadEnvironmentMaterial(
                 WaterAssetLibrary.SplashMaterialName);
             ConfigureTransparentRenderer(renderer);
@@ -443,7 +447,7 @@ namespace SabaProps.Water.Editors
         {
             renderer.shadowCastingMode = ShadowCastingMode.Off;
             renderer.receiveShadows = false;
-            renderer.lightProbeUsage = LightProbeUsage.Off;
+            renderer.lightProbeUsage = LightProbeUsage.BlendProbes;
             renderer.reflectionProbeUsage = ReflectionProbeUsage.Off;
         }
 

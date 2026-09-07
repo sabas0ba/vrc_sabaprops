@@ -4,7 +4,7 @@ Shader "SabaProps/Water/Underwater Standard"
     {
         _Tint ("Water Tint", Color) = (0.015, 0.2, 0.3, 1)
         _Density ("Distance Density", Range(0, 1)) = 0.07
-        _DistortionStrength ("Distortion Strength", Range(0, 0.05)) = 0.009
+        _VolumeDistortionStrength ("Volume Distortion", Range(0, 0.02)) = 0.0015
         _ChromaticAberration ("Chromatic Aberration", Range(0, 0.02)) = 0.0015
         _CausticsStrength ("Caustics Strength", Range(0, 1)) = 0.2
         _CausticsScale ("Caustics Scale", Float) = 1.5
@@ -32,7 +32,7 @@ Shader "SabaProps/Water/Underwater Standard"
             UNITY_DECLARE_DEPTH_TEXTURE(_CameraDepthTexture);
             fixed4 _Tint;
             float _Density;
-            float _DistortionStrength;
+            float _VolumeDistortionStrength;
             float _ChromaticAberration;
             float _CausticsStrength;
             float _CausticsScale;
@@ -71,7 +71,9 @@ Shader "SabaProps/Water/Underwater Standard"
                 screenUv = UnityStereoTransformScreenSpaceTex(screenUv);
                 float waveA = sin(screenUv.y * 47.0 + _Time.y * 1.4);
                 float waveB = sin(screenUv.x * 31.0 - _Time.y * 0.9);
-                float2 distortion = float2(waveA, waveB) * _DistortionStrength;
+                // This is deliberately only a weak volume shimmer. Strong
+                // refraction belongs to the separate water/air boundary shader.
+                float2 distortion = float2(waveA, waveB) * _VolumeDistortionStrength;
 
                 float4 projected = input.grabPosition;
                 projected.xy += distortion * projected.w;

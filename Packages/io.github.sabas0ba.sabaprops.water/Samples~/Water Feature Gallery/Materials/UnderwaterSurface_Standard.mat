@@ -19,14 +19,14 @@ Material:
   m_CustomRenderQueue: -1
   stringTagMap: {}
   disabledShaderPasses: []
-  m_LockedProperties:
+  m_LockedProperties: 
   m_SavedProperties:
     serializedVersion: 3
     m_TexEnvs: []
     m_Ints: []
     m_Floats:
     - _BoundaryEdgeFade: 0.12
-    - _DistortionStrength: 0.022
+    - _DistortionStrength: 0.016
     - _TintStrength: 0.2
     - _WaveScale: 1.15
     - _WaveSpeed: 0.32

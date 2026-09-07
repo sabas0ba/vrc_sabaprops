@@ -11,14 +11,15 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: befd95ac67c94fc3ae63d453113b2cdf, type: 3}
   m_Name: Ocean_Standard
-  m_EditorClassIdentifier:
+  m_EditorClassIdentifier: 
   bodyKind: 3
   quality: 1
-  material: {fileID: 2100000, guid: b49eb54676224a74da9e84c1c0ab9180, type: 2}
+  material: {fileID: 2100000, guid: 485f8c5fe11c96747987e243ffd067cb, type: 2}
   shallowColor: {r: 0.08, g: 0.36, b: 0.46, a: 1}
   deepColor: {r: 0.005, g: 0.045, b: 0.11, a: 1}
   opacity: 0.78
   smoothness: 0.9
+  lightingResponse: 0.92
   waveScale: 0.72
   waveStrength: 0.24
   waveSpeed: 0.42
@@ -32,7 +33,7 @@ MonoBehaviour:
   rippleSpeed: 0.8
   shallowEdgeWidth: 0.3
   foamColor: {r: 0.86, g: 0.95, b: 1, a: 1}
-  foamStrength: 0.72
+  foamStrength: 0
   crestFoamThreshold: 0.68
   crestFoamWidth: 0.085
   foamTrailStrength: 0.66

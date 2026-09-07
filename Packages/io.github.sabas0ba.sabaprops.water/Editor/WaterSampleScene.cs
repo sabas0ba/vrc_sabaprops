@@ -312,11 +312,18 @@ namespace SabaProps.Water.Editors
                 profile.ApplyToMaterial();
                 CreateBox("Shallow Sand Shelf", exhibit.transform, new Vector3(-4.2f, 2.18f, 0.5f),
                     new Vector3(4.8f, 0.25f, 7.2f), accent);
+                CreateOceanBreakerSpray(exhibit.transform, quality == WaterQuality.Standard);
             }
 
             GameObject surface = CreateMeshDisplay(
                 "Water Surface", exhibit.transform, Vector3.up * surfaceHeight,
                 mesh, profile != null ? profile.material : null);
+
+            if (quality == WaterQuality.Standard
+                && (bodyKind == WaterBodyKind.River || bodyKind == WaterBodyKind.Ocean))
+            {
+                CreateSurfaceSpotLight(exhibit.transform, surfaceHeight);
+            }
 
             if (bodyKind == WaterBodyKind.River)
             {
@@ -475,49 +482,65 @@ namespace SabaProps.Water.Editors
                 new Vector3(1.8f, 1.5f, 8.3f),
                 platform);
 
-            var whitewaterPoints = new List<Vector3>
-            {
-                riverPoints[1] + Vector3.up * 0.10f,
-                riverPoints[2] + Vector3.up * 0.13f,
-                riverPoints[3] + Vector3.up * 0.13f,
-                riverPoints[4] + Vector3.up * 0.10f,
-            };
-            Mesh foamMesh = SaveMesh(
-                WaterMeshBuilder.BuildRiver(whitewaterPoints, 3.25f, 7, 0.9f),
-                "River_" + quality + "_Whitewater");
-            Material whitewaterMaterial = CreateMaterialVariant(
-                "Whitewater_River_" + quality,
-                WaterAssetLibrary.CreateOrLoadEnvironmentMaterial(
-                    WaterAssetLibrary.WhitewaterMaterialName));
-            whitewaterMaterial.SetFloat("_AerationStart", quality == WaterQuality.Standard ? 0.22f : 0.3f);
-            whitewaterMaterial.SetFloat("_AerationGrowth", quality == WaterQuality.Standard ? 0.36f : 0.28f);
-            whitewaterMaterial.SetFloat("_BubbleDetail", quality == WaterQuality.Standard ? 0.92f : 0.55f);
-            whitewaterMaterial.SetFloat("_ClearFlowStrength", quality == WaterQuality.Standard ? 0.24f : 0.14f);
-            EditorUtility.SetDirty(whitewaterMaterial);
-
-            GameObject foam = CreateMeshDisplay(
-                "Whitewater Crest [Copy Ready]",
-                parent,
-                Vector3.up * 0.12f,
-                foamMesh,
-                whitewaterMaterial);
-            ConfigureTransparentRenderer(foam.GetComponent<MeshRenderer>());
-
-            Mesh impactFoamMesh = SaveMesh(
-                WaterMeshBuilder.BuildPuddle(1.55f, 0.82f, 4, 40, 931 + (int)quality, 0.18f),
-                "River_" + quality + "_ImpactFoam");
-            GameObject impactFoam = CreateMeshDisplay(
-                "Plunge Pool Froth [Copy Ready]",
-                parent,
-                riverPoints[3] + new Vector3(0.25f, 0.14f, 0.42f),
-                impactFoamMesh,
-                whitewaterMaterial);
-            ConfigureTransparentRenderer(impactFoam.GetComponent<MeshRenderer>());
-
             CreateWaterfallSpray(
                 parent,
                 Vector3.Lerp(riverPoints[2], riverPoints[3], 0.78f) + new Vector3(0f, -0.05f, 0f),
                 quality == WaterQuality.Standard);
+        }
+
+        private static void CreateOceanBreakerSpray(Transform parent, bool standard)
+        {
+            var sprayObject = new GameObject(
+                "Breaking Wave Spray [Copy Ready]", typeof(ParticleSystem));
+            sprayObject.transform.SetParent(parent, false);
+            sprayObject.transform.localPosition = new Vector3(-1.75f, 2.72f, 0.35f);
+            ParticleSystem spray = sprayObject.GetComponent<ParticleSystem>();
+
+            ParticleSystem.MainModule main = spray.main;
+            main.loop = true;
+            main.playOnAwake = true;
+            main.prewarm = true;
+            main.simulationSpace = ParticleSystemSimulationSpace.World;
+            main.startLifetime = new ParticleSystem.MinMaxCurve(0.24f, 0.58f);
+            main.startSpeed = 0f;
+            main.startSize = new ParticleSystem.MinMaxCurve(0.012f, standard ? 0.052f : 0.038f);
+            main.gravityModifier = 0.72f;
+            main.maxParticles = standard ? 320 : 150;
+
+            ParticleSystem.EmissionModule emission = spray.emission;
+            emission.rateOverTime = standard ? 72f : 34f;
+            ParticleSystem.ShapeModule shape = spray.shape;
+            shape.shapeType = ParticleSystemShapeType.Box;
+            shape.scale = new Vector3(0.22f, 0.05f, 6.4f);
+
+            ParticleSystem.VelocityOverLifetimeModule velocity = spray.velocityOverLifetime;
+            velocity.enabled = true;
+            velocity.space = ParticleSystemSimulationSpace.World;
+            velocity.x = new ParticleSystem.MinMaxCurve(0.35f, 1.2f);
+            velocity.y = new ParticleSystem.MinMaxCurve(0.28f, 1.25f);
+            velocity.z = new ParticleSystem.MinMaxCurve(-0.24f, 0.24f);
+
+            ApplyParticleFade(spray, 0.08f);
+            ConfigureSprayRenderer(sprayObject.GetComponent<ParticleSystemRenderer>());
+            spray.Play(true);
+        }
+
+        private static void CreateSurfaceSpotLight(Transform parent, float surfaceHeight)
+        {
+            var lightObject = new GameObject("Water Surface Spot Light", typeof(Light));
+            lightObject.transform.SetParent(parent, false);
+            Vector3 position = new Vector3(3.8f, 6.2f, -2.8f);
+            Vector3 target = new Vector3(0.8f, surfaceHeight, 0.6f);
+            lightObject.transform.localPosition = position;
+            lightObject.transform.localRotation = Quaternion.LookRotation(target - position, Vector3.up);
+            Light light = lightObject.GetComponent<Light>();
+            light.type = LightType.Spot;
+            light.color = new Color(0.58f, 0.82f, 1f, 1f);
+            light.intensity = 3.2f;
+            light.range = 10f;
+            light.spotAngle = 48f;
+            light.renderMode = LightRenderMode.ForcePixel;
+            light.shadows = LightShadows.None;
         }
 
         private static void CreateWaterfallSpray(
@@ -535,35 +558,31 @@ namespace SabaProps.Water.Editors
             main.playOnAwake = true;
             main.prewarm = true;
             main.simulationSpace = ParticleSystemSimulationSpace.World;
-            main.startLifetime = new ParticleSystem.MinMaxCurve(0.32f, 0.72f);
+            main.startLifetime = new ParticleSystem.MinMaxCurve(0.24f, 0.58f);
             main.startSpeed = 0f;
-            main.startSize = new ParticleSystem.MinMaxCurve(0.05f, standard ? 0.18f : 0.13f);
-            main.gravityModifier = 0.75f;
-            main.maxParticles = standard ? 520 : 260;
+            main.startSize = new ParticleSystem.MinMaxCurve(0.014f, standard ? 0.058f : 0.042f);
+            main.gravityModifier = 0.9f;
+            main.maxParticles = standard ? 360 : 180;
 
             ParticleSystem.EmissionModule emission = spray.emission;
-            emission.rateOverTime = standard ? 95f : 48f;
+            emission.rateOverTime = standard ? 82f : 40f;
 
             ParticleSystem.ShapeModule shape = spray.shape;
             shape.shapeType = ParticleSystemShapeType.Box;
-            shape.scale = new Vector3(2.8f, 0.08f, 0.7f);
+            shape.scale = new Vector3(2.15f, 0.045f, 0.42f);
 
             ParticleSystem.VelocityOverLifetimeModule velocity = spray.velocityOverLifetime;
             velocity.enabled = true;
             velocity.space = ParticleSystemSimulationSpace.World;
-            velocity.x = new ParticleSystem.MinMaxCurve(-0.7f, 0.7f);
-            velocity.y = new ParticleSystem.MinMaxCurve(0.8f, 2.2f);
-            velocity.z = new ParticleSystem.MinMaxCurve(-0.6f, 0.8f);
+            velocity.x = new ParticleSystem.MinMaxCurve(-0.42f, 0.42f);
+            velocity.y = new ParticleSystem.MinMaxCurve(0.65f, 1.9f);
+            velocity.z = new ParticleSystem.MinMaxCurve(-0.32f, 0.52f);
 
             ApplyParticleFade(spray, 0.08f);
-            ParticleSystemRenderer renderer = sprayObject.GetComponent<ParticleSystemRenderer>();
-            renderer.renderMode = ParticleSystemRenderMode.Billboard;
-            renderer.sharedMaterial = PersistMaterial(WaterAssetLibrary.CreateOrLoadEnvironmentMaterial(
-                WaterAssetLibrary.SplashMaterialName));
-            ConfigureTransparentRenderer(renderer);
+            ConfigureSprayRenderer(sprayObject.GetComponent<ParticleSystemRenderer>());
             spray.Play(true);
 
-            var mistObject = new GameObject("Plunge Pool Mist", typeof(ParticleSystem));
+            var mistObject = new GameObject("Plunge Pool Spray [Copy Ready]", typeof(ParticleSystem));
             mistObject.transform.SetParent(parent, false);
             mistObject.transform.localPosition = localPosition + new Vector3(0.2f, -0.2f, 0.35f);
             ParticleSystem mist = mistObject.GetComponent<ParticleSystem>();
@@ -572,25 +591,40 @@ namespace SabaProps.Water.Editors
             mistMain.playOnAwake = true;
             mistMain.prewarm = true;
             mistMain.simulationSpace = ParticleSystemSimulationSpace.World;
-            mistMain.startLifetime = new ParticleSystem.MinMaxCurve(0.65f, 1.35f);
-            mistMain.startSpeed = new ParticleSystem.MinMaxCurve(0.25f, standard ? 1.15f : 0.75f);
-            mistMain.startSize = new ParticleSystem.MinMaxCurve(0.18f, standard ? 0.62f : 0.42f);
-            mistMain.gravityModifier = -0.035f;
-            mistMain.maxParticles = standard ? 180 : 90;
+            mistMain.startLifetime = new ParticleSystem.MinMaxCurve(0.28f, 0.68f);
+            mistMain.startSpeed = 0f;
+            mistMain.startSize = new ParticleSystem.MinMaxCurve(0.012f, standard ? 0.064f : 0.046f);
+            mistMain.gravityModifier = 0.82f;
+            mistMain.maxParticles = standard ? 300 : 150;
 
             ParticleSystem.EmissionModule mistEmission = mist.emission;
-            mistEmission.rateOverTime = standard ? 32f : 16f;
+            mistEmission.rateOverTime = standard ? 74f : 36f;
             ParticleSystem.ShapeModule mistShape = mist.shape;
             mistShape.shapeType = ParticleSystemShapeType.Hemisphere;
-            mistShape.radius = 1.1f;
-            mistShape.radiusThickness = 0.4f;
-            ApplyParticleFade(mist, 0.14f);
-            ParticleSystemRenderer mistRenderer = mistObject.GetComponent<ParticleSystemRenderer>();
-            mistRenderer.renderMode = ParticleSystemRenderMode.Billboard;
-            mistRenderer.sharedMaterial = PersistMaterial(WaterAssetLibrary.CreateOrLoadEnvironmentMaterial(
-                WaterAssetLibrary.SplashMaterialName));
-            ConfigureTransparentRenderer(mistRenderer);
+            mistShape.radius = 0.72f;
+            mistShape.radiusThickness = 0.78f;
+            ParticleSystem.VelocityOverLifetimeModule mistVelocity = mist.velocityOverLifetime;
+            mistVelocity.enabled = true;
+            mistVelocity.space = ParticleSystemSimulationSpace.World;
+            mistVelocity.x = new ParticleSystem.MinMaxCurve(-0.75f, 0.75f);
+            mistVelocity.y = new ParticleSystem.MinMaxCurve(0.7f, 2.4f);
+            mistVelocity.z = new ParticleSystem.MinMaxCurve(-0.68f, 0.68f);
+            ApplyParticleFade(mist, 0.08f);
+            ConfigureSprayRenderer(mistObject.GetComponent<ParticleSystemRenderer>());
             mist.Play(true);
+        }
+
+        private static void ConfigureSprayRenderer(ParticleSystemRenderer renderer)
+        {
+            renderer.renderMode = ParticleSystemRenderMode.Stretch;
+            renderer.lengthScale = 3.2f;
+            renderer.velocityScale = 0.22f;
+            renderer.cameraVelocityScale = 0f;
+            renderer.minParticleSize = 0f;
+            renderer.maxParticleSize = 0.08f;
+            renderer.sharedMaterial = PersistMaterial(WaterAssetLibrary.CreateOrLoadEnvironmentMaterial(
+                WaterAssetLibrary.SplashMaterialName));
+            ConfigureTransparentRenderer(renderer);
         }
 
         private static void BuildAtmosphereSection(
@@ -829,6 +863,10 @@ namespace SabaProps.Water.Editors
                     ? WaterAssetLibrary.UnderwaterStandardMaterialName
                     : WaterAssetLibrary.UnderwaterLiteMaterialName));
             volumeRenderer.sharedMaterial.SetFloat("_CausticsStrength", 0.025f);
+            if (standard)
+            {
+                volumeRenderer.sharedMaterial.SetFloat("_VolumeDistortionStrength", 0.0015f);
+            }
             EditorUtility.SetDirty(volumeRenderer.sharedMaterial);
             ConfigureTransparentRenderer(volumeRenderer);
 
@@ -937,6 +975,8 @@ namespace SabaProps.Water.Editors
             material.SetFloat("_DropletStrength", wetness > 0f ? 0.72f : 0f);
             material.SetFloat("_TrailPersistence", label == "DROPLETS" ? 0.82f : 0.7f);
             material.SetFloat("_TrailSlide", label == "DROPLETS" ? 0.3f : 0.2f);
+            material.SetColor("_DropletScatterColor", new Color(0.68f, 0.88f, 0.96f, 1f));
+            material.SetFloat("_DropletScatterStrength", label == "DROPLETS" ? 0.72f : 0.52f);
             EditorUtility.SetDirty(material);
 
             GameObject body = GameObject.CreatePrimitive(PrimitiveType.Capsule);
@@ -955,6 +995,25 @@ namespace SabaProps.Water.Editors
 
             CreateTrim(mannequin.transform, accent, new Vector3(6.8f, 0.12f, 7.8f));
             CreateLabel(mannequin.transform, label, new Vector3(0f, 0.7f, -3.35f), 0.14f, Color.white);
+
+            if (label == "DROPLETS")
+            {
+                var lightObject = new GameObject("Wet Surface Spot Light", typeof(Light));
+                lightObject.transform.SetParent(mannequin.transform, false);
+                Vector3 lightPosition = new Vector3(2.5f, 5.8f, -3f);
+                Vector3 lightTarget = new Vector3(0f, 2.5f, 0f);
+                lightObject.transform.localPosition = lightPosition;
+                lightObject.transform.localRotation = Quaternion.LookRotation(
+                    lightTarget - lightPosition, Vector3.up);
+                Light light = lightObject.GetComponent<Light>();
+                light.type = LightType.Spot;
+                light.color = new Color(0.6f, 0.84f, 1f, 1f);
+                light.intensity = 3.5f;
+                light.range = 9f;
+                light.spotAngle = 42f;
+                light.renderMode = LightRenderMode.ForcePixel;
+                light.shadows = LightShadows.None;
+            }
         }
 
         private static void ConfigureEnvironment()
@@ -1093,7 +1152,7 @@ namespace SabaProps.Water.Editors
         {
             renderer.shadowCastingMode = ShadowCastingMode.Off;
             renderer.receiveShadows = false;
-            renderer.lightProbeUsage = LightProbeUsage.Off;
+            renderer.lightProbeUsage = LightProbeUsage.BlendProbes;
             renderer.reflectionProbeUsage = ReflectionProbeUsage.Off;
         }
 
@@ -1196,6 +1255,9 @@ namespace SabaProps.Water.Editors
             EditorUtility.CopySerialized(source, target);
             target.name = bodyKind + "_" + quality;
             target.material = PersistMaterial(source.material);
+            target.lightingResponse = quality == WaterQuality.Standard ? 0.92f : 0.82f;
+            target.foamStrength = 0f;
+            target.flowFoamStrength = 0f;
             target.ApplyToMaterial();
             EditorUtility.SetDirty(target);
             return target;

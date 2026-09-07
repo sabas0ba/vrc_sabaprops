@@ -1,9 +1,11 @@
 using System.Collections.Generic;
+using System.Linq;
 using NUnit.Framework;
 using SabaProps.Water.Editors;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
+using UnityEngine.Rendering;
 using UnityEngine.SceneManagement;
 
 namespace SabaProps.Water.CITests
@@ -25,7 +27,6 @@ namespace SabaProps.Water.CITests
             WaterAssetLibrary.UnderwaterSurfaceStandardShaderName,
             WaterAssetLibrary.CausticsShaderName,
             WaterAssetLibrary.LightShaftShaderName,
-            WaterAssetLibrary.WhitewaterShaderName,
             WaterAssetLibrary.WetSurfaceShaderName,
         };
 
@@ -156,6 +157,9 @@ namespace SabaProps.Water.CITests
                     Assert.IsTrue(profile.material.HasProperty("_FoamTrailStrength"));
                     Assert.IsTrue(profile.material.HasProperty("_FlowTurbulence"));
                     Assert.IsTrue(profile.material.HasProperty("_ReflectionDistortion"));
+                    Assert.IsTrue(profile.material.HasProperty("_LightingResponse"));
+                    Assert.AreEqual(0f, profile.foamStrength, 0.0001f,
+                        "continuous procedural foam bands must be disabled in default profiles");
                 }
             }
         }
@@ -171,6 +175,13 @@ namespace SabaProps.Water.CITests
                 Assert.AreEqual(2, rain.subEmitters.subEmittersCount);
                 Assert.IsTrue(rain.main.playOnAwake);
                 Assert.IsTrue(rain.main.prewarm);
+
+                ParticleSystem splash = rig.transform.Find("Rain/Collision Splash")
+                    .GetComponent<ParticleSystem>();
+                ParticleSystemRenderer splashRenderer = splash.GetComponent<ParticleSystemRenderer>();
+                Assert.AreEqual(ParticleSystemRenderMode.Stretch, splashRenderer.renderMode);
+                Assert.IsTrue(splash.main.startSize.constantMax <= 0.055f);
+                Assert.AreEqual(LightProbeUsage.BlendProbes, splashRenderer.lightProbeUsage);
 
                 Transform rippleTransform = rig.transform.Find("Rain/Collision Ripple");
                 Assert.IsNotNull(rippleTransform);
@@ -234,8 +245,11 @@ namespace SabaProps.Water.CITests
                     "gallery must include editable Lite and Standard rivers");
                 Assert.Greater(Object.FindObjectsOfType<ParticleSystem>().Length, 6,
                     "gallery must include rain, splash, ripple, fog, cloud and waterfall particles");
-                Assert.IsNotNull(GameObject.Find("Whitewater Crest [Copy Ready]"));
-                Assert.IsNotNull(GameObject.Find("Plunge Pool Froth [Copy Ready]"));
+                Assert.IsNull(GameObject.Find("Whitewater Crest [Copy Ready]"));
+                Assert.IsNull(GameObject.Find("Plunge Pool Froth [Copy Ready]"));
+                AssertStretchSpray("Breaking Wave Spray [Copy Ready]", 0.07f);
+                AssertStretchSpray("Waterfall Spray [Copy Ready]", 0.07f);
+                AssertStretchSpray("Plunge Pool Spray [Copy Ready]", 0.075f);
                 Assert.IsNotNull(GameObject.Find("Underwater Surface View"));
                 GameObject standardPool = GameObject.Find("Standard Underwater Pool [Copy Ready]");
                 Assert.IsNotNull(standardPool);
@@ -245,6 +259,9 @@ namespace SabaProps.Water.CITests
                 Assert.IsFalse(tunnelTransform.gameObject.activeSelf,
                     "tunnel boundary preview must not obstruct the top-only pool camera by default");
                 Assert.IsNotNull(GameObject.Find("DROPLETS Surface Mannequin [Copy Ready]"));
+                Assert.IsNotNull(GameObject.Find("Wet Surface Spot Light"));
+                Assert.IsTrue(GameObject.FindObjectsOfType<Light>()
+                    .Count(light => light.type == LightType.Spot) >= 3);
                 Assert.IsNotNull(GameObject.Find("Fog Point Light"));
                 Assert.AreEqual(2, Object.FindObjectsOfType<ReflectionProbe>().Length,
                     "Lite and Standard puddle exhibits must each include a reflection probe");
@@ -259,6 +276,12 @@ namespace SabaProps.Water.CITests
                 Assert.AreEqual(Vector4.zero, tunnelMaterial.GetVector("_BoundaryUpDown"));
                 Assert.AreEqual(Vector4.one, tunnelMaterial.GetVector("_BoundaryCardinal"));
                 Assert.AreEqual(Vector4.one, tunnelMaterial.GetVector("_BoundaryDiagonal"));
+
+                Material underwaterVolume = standardPool.transform.Find(
+                    "Underwater Standard [Copy Ready]/Underwater Volume")
+                    .GetComponent<Renderer>().sharedMaterial;
+                Assert.IsTrue(underwaterVolume.HasProperty("_VolumeDistortionStrength"));
+                Assert.IsTrue(underwaterVolume.GetFloat("_VolumeDistortionStrength") <= 0.002f);
 
                 foreach (Renderer renderer in Object.FindObjectsOfType<Renderer>())
                 {
@@ -291,6 +314,20 @@ namespace SabaProps.Water.CITests
                 EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
                 AssetDatabase.DeleteAsset(WaterAssetLibrary.RootFolder);
             }
+        }
+
+        private static void AssertStretchSpray(string objectName, float maximumSize)
+        {
+            GameObject sprayObject = GameObject.Find(objectName);
+            Assert.IsNotNull(sprayObject, objectName);
+            ParticleSystem particles = sprayObject.GetComponent<ParticleSystem>();
+            ParticleSystemRenderer renderer = sprayObject.GetComponent<ParticleSystemRenderer>();
+            Assert.IsNotNull(particles);
+            Assert.IsNotNull(renderer);
+            Assert.AreEqual(ParticleSystemRenderMode.Stretch, renderer.renderMode);
+            Assert.IsTrue(particles.main.startSize.constantMax <= maximumSize);
+            Assert.IsTrue(particles.main.playOnAwake);
+            Assert.AreEqual(LightProbeUsage.BlendProbes, renderer.lightProbeUsage);
         }
 
         [Test]

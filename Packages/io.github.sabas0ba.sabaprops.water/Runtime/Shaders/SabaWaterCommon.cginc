@@ -2,6 +2,7 @@
 #define SABA_WATER_COMMON_INCLUDED
 
 #include "UnityCG.cginc"
+#include "Lighting.cginc"
 #include "UnityStandardUtils.cginc"
 
 inline float SabaWaterHeight(
@@ -27,6 +28,23 @@ inline float2 SabaSafeDirection(float2 direction)
 {
     float lengthSquared = dot(direction, direction);
     return lengthSquared > 1e-5 ? direction * rsqrt(lengthSquared) : float2(1.0, 0.0);
+}
+
+inline float3 SabaWaterProbeLighting(float3 worldNormal)
+{
+    // Unity supplies per-renderer Light Probe SH coefficients here. When a
+    // renderer has no probe, the same function falls back to ambient SH.
+    return max(0.0, ShadeSH9(float4(normalize(worldNormal), 1.0)));
+}
+
+inline float3 SabaWaterBaseLighting(
+    float3 worldNormal,
+    float3 worldPosition,
+    float attenuation)
+{
+    float3 lightDirection = normalize(UnityWorldSpaceLightDir(worldPosition));
+    float diffuse = saturate(dot(normalize(worldNormal), lightDirection));
+    return SabaWaterProbeLighting(worldNormal) + _LightColor0.rgb * diffuse * attenuation;
 }
 
 inline float SabaTideOffset(float tideHeight, float tideSpeed)

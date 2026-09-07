@@ -19,14 +19,15 @@ Package Managerを使用しない場合は、`Tools > SabaProps > Water > Create
 
 | Section | 内容 | コピー単位 |
 | --- | --- | --- |
-| `1 Water Surfaces` | Reflection Probe付き複数Puddle、曝気・落水付きRiver、Lake、潮位・砕波泡・深度色付きOceanのLite／Standard比較 | 各`[Copy Ready]`root |
+| `1 Water Surfaces` | Reflection Probe付き複数Puddle、小径飛沫・落水付きRiver、Lake、潮位・局所砕波spray・深度色付きOceanのLite／Standard比較 | 各`[Copy Ready]`root |
 | `2 Rain and Ripples` | World collision、Splash sub-emitter、Ripple sub-emitter、疑似水面波紋 | `Rain Rig [Copy Ready]` |
 | `3 Fog and Clouds` | Lite、濃霧、着色霧、Point Light付きHigh、Particle fog、Cloud Layer | 各`[Copy Ready]`root |
 | `4 Underwater` | 水面、volume、上面専用／8方向トンネル境界、コースティクス、light shaft | 各Underwater Pool root |
-| `5 Wet Surfaces and VRChat` | Dry／Wet／質量差と残留軌跡を持つDropletsの人型proxy、VRCWorld状態 | 各Mannequin root |
+| `5 Wet Surfaces and VRChat` | Dry／Wet／質量差・長い残留軌跡・小滴散乱色を持つDropletsの人型proxy、Spot Light、VRCWorld状態 | 各Mannequin root |
 
 River展示には`WaterPath`と保存済みMeshの両方が含まれます。control pointを編集した後に`Rebuild Mesh`を実行できます。
-斜面、浅い上流、深い下流、曝気開始点を持つWhitewater Crest、Plunge Pool Froth、Spray／Mistも同じcopy rootに含まれます。
+斜面、浅い上流、深い下流、落差上端の`Waterfall Spray`、着水点の`Plunge Pool Spray`も同じcopy rootに含まれます。
+Ocean展示は浅瀬境界に`Breaking Wave Spray`を持ちます。いずれも小径の伸長billboardで、連続する白泡Meshは使いません。
 Puddle展示は3枚の不定形Mesh、box-projected Reflection Probe、反射用landmarkを含み、stampを複数回使う場合の
 overdraw、重なり、雨波紋で歪む反射を確認できます。
 

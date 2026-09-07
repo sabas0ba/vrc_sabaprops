@@ -11,14 +11,15 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: befd95ac67c94fc3ae63d453113b2cdf, type: 3}
   m_Name: Ocean_Lite
-  m_EditorClassIdentifier:
+  m_EditorClassIdentifier: 
   bodyKind: 3
   quality: 0
-  material: {fileID: 2100000, guid: 304df28ff0919a341b88c95ae1703e3f, type: 2}
+  material: {fileID: 2100000, guid: d1f53e2cf5bd2ee44a3729a35a819709, type: 2}
   shallowColor: {r: 0.08, g: 0.36, b: 0.46, a: 1}
   deepColor: {r: 0.005, g: 0.045, b: 0.11, a: 1}
   opacity: 0.66
   smoothness: 0.78
+  lightingResponse: 0.82
   waveScale: 0.72
   waveStrength: 0.14
   waveSpeed: 0.42
@@ -32,7 +33,7 @@ MonoBehaviour:
   rippleSpeed: 0.8
   shallowEdgeWidth: 0.3
   foamColor: {r: 0.86, g: 0.95, b: 1, a: 1}
-  foamStrength: 0.4
+  foamStrength: 0
   crestFoamThreshold: 0.68
   crestFoamWidth: 0.12
   foamTrailStrength: 0.3

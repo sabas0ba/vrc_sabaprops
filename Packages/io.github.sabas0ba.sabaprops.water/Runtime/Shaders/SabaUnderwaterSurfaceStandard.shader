@@ -4,7 +4,7 @@ Shader "SabaProps/Water/Underwater Surface Standard"
     {
         _Tint ("Refraction Tint", Color) = (0.12, 0.48, 0.58, 1)
         _HighlightColor ("Surface Highlight", Color) = (0.84, 0.96, 1, 1)
-        _DistortionStrength ("Refraction Distortion", Range(0, 0.08)) = 0.022
+        _DistortionStrength ("Boundary Refraction Distortion", Range(0, 0.08)) = 0.016
         _WaveScale ("Wave Scale", Float) = 1.15
         _WaveStrength ("Wave Strength", Range(0, 1)) = 0.25
         _WaveSpeed ("Wave Speed", Float) = 0.32

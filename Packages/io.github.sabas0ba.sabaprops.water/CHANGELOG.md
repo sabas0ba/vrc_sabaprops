@@ -11,19 +11,23 @@
 - 局所霧、広域霧、雲layerのgeneratorとvolume Shader
 - 水中の色収差、歪み、コースティクス、light shaft用Shaderとvolume generator
 - 全Featureを比較してcopyできるWater Feature GalleryサンプルSceneと再生成menu
-- 非周期の複合波、深度色、波頭／岸泡、重なり可能な3層疑似波紋
-- 斜面、浅深差、Whitewater、Waterfall Sprayを含むRiverサンプル
+- 非周期の複合波、深度色、重なり可能な3層疑似波紋
+- 斜面、浅深差、小径のWaterfall／Plunge Pool Sprayを含むRiverサンプル
 - 濃度、色、静的Point Light散乱を比較するFogサンプル
 - 水中から水上を見るためのLite／Standard水面裏面Shader
 - procedural水滴とwetnessを持つWet Surface Shaderおよび人型proxyサンプル
 - Worlds SDKを任意検出するVRCWorld、Spawn、VRCSceneDescriptor設定menu
-- 潮位変動、砕波直後のwhitecap、下流へ運ばれる残留泡を持つOcean／Lake表現
-- 曝気開始点、縦渦、気泡、落下点のfroth／mistを持つRiver／Waterfall表現
+- 潮位変動、局所的なBreaking Wave Sprayを持つOcean／Lake表現
+- 速度方向へ伸長する落差上端／着水点のRiver／Waterfall飛沫
 - Box Projection、歪み、雨天時blurを調整できるPuddle Reflection Probe表現
 - 上下と水平8方向を個別に選択できる水中境界Shaderとトンネル例
 - 擬似質量、等幅の滴／軌跡、残留と遅延移動を持つWet Surface水滴
+- 主光源、Light Probe SH、Point／Spot Lightへ反応する水面・雨滴・飛沫・波紋
+- Ocean砕波、River落差上端／着水点向けの小径・速度伸長spray particle
 
 ### Fixed
 
 - Water Feature Gallery配布SampleのScene参照とMaterial、Mesh、Profileのmeta GUID不一致
 - Gallery Groundが水中Cameraの視線を遮る配置と、水面境界端の過大な屈折
+- 連続した白帯に見える既定foam mesh、過大な円形spray、過剰な水中volume歪み
+- Wet Surface水滴が途中で消える終端表現と、小滴が暗色化する散乱色

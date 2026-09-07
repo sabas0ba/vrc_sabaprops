@@ -27,13 +27,9 @@ Every Frame更新は6面renderが継続するため、必要な小範囲に限�
 幅が急変する河川は現時点の一定幅pathでは表現しません。区間ごとに複数pathへ分けるか、生成Meshを通常の
 modeling toolで編集します。岸への自動intersectionやterrain carvingは行いません。
 
-control pointのYを変えると斜面と落差を持つstripを生成できます。滝の前後は制御点間隔を短くし、
-`Whitewater` Materialの狭い補助stripと`Splash` Particle Systemを重ねます。GalleryのRiver rootは、浅い上流、
-底が見えにくい下流、落差、白泡、飛沫を含む編集例です。
-
-`Whitewater`はUV下流方向へ、曝気開始前の透明な縦筋、曝気開始点、成長する白濁、気泡、側縁filamentを合成します。
-`Aeration Inception`を落差上端、`Aeration Growth`を白濁が成長する区間へ合わせます。落下点には`Plunge Pool Froth`と
-低速mistを置き、落水部の強い循環流と飛沫を近似します。流体simulationではなく、保存済みMesh上のstateless表現です。
+control pointのYを変えると斜面と落差を持つstripを生成できます。滝の前後は制御点間隔を短くし、落差上端と
+着水点へ`Splash` Particle Systemを置きます。`Render Mode=Stretch`、`Start Size=0.01–0.07 m`を基準にし、
+速度方向へ細長く伸ばします。連続した補助stripは白帯に見えやすいため、既定Galleryでは使用しません。
 
 ## 雨
 
@@ -71,9 +67,11 @@ Underwater rigのroot位置が水面高です。`Underwater Volume` childの上�
 `Boundary N / E / S / W=(+Z, +X, -Z, -X)`、`Boundary NE / SE / SW / NW=(NE, SE, SW, NW)`です。
 単純なプールは上だけ、海底ガラストンネルは必要な側面だけを1にします。境界Meshの法線が方向判定に使われます。
 UV seam付近の過大な屈折は`Distortion Edge Fade`を上げて抑えます。
+水中空間全体の揺らぎはvolume Materialの`Volume Distortion`、水面・空気境界は裏面Materialの
+`Boundary Refraction Distortion`で別々に調整します。通常はvolume側を0–0.002程度に抑えます。
 
 ## 濡れた表面
 
-`Trail Persistence`は滴が通った後の筋の残留時間、`Trail Slide`は残留筋が遅れて下へずれる量です。
+`Trail Persistence`は滴が通った後の長い筋の残留時間、`Trail Slide`は残留筋が遅れて下へずれる量です。
 水滴ごとの擬似質量により重い滴から先に移動します。World object用のShaderであり、他者アバターのMaterialを
 World側から変更する機能ではありません。
