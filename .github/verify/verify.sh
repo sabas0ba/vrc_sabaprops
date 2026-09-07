@@ -231,8 +231,12 @@ mkdir -p "$OFFLINE_OUT"
 # `dotnet --list-runtimes` prints "<name> <version> [<path>]"; the last
 # Microsoft.NETCore.App entry is the newest installed shared framework, and its
 # assemblies are what this executable both compiles against and runs on.
+#
+# Matched with sed rather than split on whitespace: the bracketed path contains
+# a space on a default Windows install (C:\Program Files\dotnet\shared\...)
+# and a field split silently produced "C:\Program/10.0.10" there.
 RUNTIME_DIR="$(dotnet --list-runtimes \
-    | awk '/^Microsoft.NETCore.App /{ gsub(/[][]/, "", $3); dir=$3 "/" $2 } END { print dir }')"
+    | sed -n 's/^Microsoft\.NETCore\.App \([^ ]*\) \[\(.*\)\]$/\2\/\1/p' | tail -1)"
 [ -d "$RUNTIME_DIR" ] || fail "could not locate a Microsoft.NETCore.App shared framework"
 
 RUNTIME_ARGS=()

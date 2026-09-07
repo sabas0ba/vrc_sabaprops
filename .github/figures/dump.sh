@@ -34,7 +34,7 @@ CSC_DLL="$(find "$SDK_ROOT" -name csc.dll -path '*bincore*' 2>/dev/null | head -
 # replaces UnityEngine entirely, so this targets the installed runtime rather
 # than the net35 Unity references.
 RUNTIME_DIR="$(dotnet --list-runtimes \
-    | awk '/^Microsoft.NETCore.App /{ gsub(/[][]/, "", $3); dir=$3 "/" $2 } END { print dir }')"
+    | sed -n 's/^Microsoft\.NETCore\.App \([^ ]*\) \[\(.*\)\]$/\2\/\1/p' | tail -1)"
 [ -d "$RUNTIME_DIR" ] || fail "could not locate a Microsoft.NETCore.App shared framework"
 
 RUNTIME_ARGS=()
