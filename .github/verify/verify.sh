@@ -246,6 +246,39 @@ csc "${COMMON[@]}" "${NETSTANDARD_ARGS[@]}" "${UNITY_ARGS[@]}" \
 echo "ok: ${#STAGECAM_SOURCES[@]} file(s)"
 
 # ---------------------------------------------------------------------------
+log "Compiling UdonSharp editor stub"
+# ---------------------------------------------------------------------------
+csc "${COMMON[@]}" "${NETSTANDARD_ARGS[@]}" "${UNITY_ARGS[@]}" \
+    -r:"$OUT/UdonSharp.Runtime.dll" \
+    -out:"$OUT/UdonSharp.Editor.dll" "$HERE/UdonSharpEditorStub.cs"
+echo "ok"
+
+# ---------------------------------------------------------------------------
+log "Compiling stage camera Editor (real VRCSDK3 references + stubs)"
+# ---------------------------------------------------------------------------
+# The sample scene builder. VRCSceneDescriptor and VRCPickup come from the real
+# VRCSDK3.dll, so a rename there fails here. UnityEditor and the UdonSharp
+# editor half are the hand-written stubs.
+mapfile -t STAGECAM_EDITOR_SOURCES < <(find "$STAGECAM/Editor" -name '*.cs' | sort)
+[ "${#STAGECAM_EDITOR_SOURCES[@]}" -gt 0 ] || fail "no Editor sources found under $STAGECAM"
+
+SDK3_PLUGINS="$VPM/com.vrchat.worlds/Runtime/VRCSDK/Plugins"
+[ -f "$SDK3_PLUGINS/VRCSDK3.dll" ] || fail "VRCSDK3.dll missing from the fetched SDK"
+
+# A second UnityEditor stub build: the one above is compiled against the .NET
+# Framework references the foliage package uses, and mixing those with the
+# netstandard facades this package needs duplicates System.Object.
+csc "${COMMON[@]}" "${NETSTANDARD_ARGS[@]}" "${UNITY_ARGS[@]}" \
+    -out:"$OUT/UnityEditor.NetStandard.dll" "$HERE/UnityEditorStub.cs"
+
+csc "${COMMON[@]}" "${NETSTANDARD_ARGS[@]}" "${UNITY_ARGS[@]}" \
+    -r:"$SDK_PLUGINS/VRCSDKBase.dll" -r:"$SDK3_PLUGINS/VRCSDK3.dll" \
+    -r:"$OUT/UdonSharp.Runtime.dll" -r:"$OUT/UdonSharp.Editor.dll" \
+    -r:"$OUT/UnityEditor.NetStandard.dll" -r:"$OUT/SabaProps.StageCam.Runtime.dll" \
+    -out:"$OUT/SabaProps.StageCam.Editor.dll" "${STAGECAM_EDITOR_SOURCES[@]}"
+echo "ok: ${#STAGECAM_EDITOR_SOURCES[@]} file(s)"
+
+# ---------------------------------------------------------------------------
 log "Type-checking shader HLSL"
 # ---------------------------------------------------------------------------
 SHADER_DIR="$PACKAGE/Runtime/Shaders"

@@ -3,6 +3,8 @@
     "rootNamespace": "SabaProps.StageCam.WorldTests",
     "references": [
         "SabaProps.StageCam.Runtime",
+        "SabaProps.StageCam.Editor",
+        "VRC.SDK3",
         "UdonSharp.Runtime",
         "UdonSharp.Editor",
         "VRC.Udon",

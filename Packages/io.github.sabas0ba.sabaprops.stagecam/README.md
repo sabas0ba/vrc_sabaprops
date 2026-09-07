@@ -20,6 +20,27 @@ VCC でこのパッケージを追加すると、依存する VRChat Worlds SDK 
 
 ## 使い方
 
+### デモシーン
+
+`Tools > SabaProps > Stage Cam > Create Sample Scene` で、ステージ・2 枚のスクリーン・
+2 台のカメラ・VRChat の Spawn を生成します。保存先は
+`Assets/SabaProps/StageCam/Samples/StageCamDemo.unity` です。
+RenderTexture とマテリアルも同じフォルダに生成します。
+
+- `Face Cam`: 顔を追従し、身長に合わせて距離を調整します。
+- `Crane Cam`: 胸を追従し、20 秒周期で回り込みます。Pickup で基準の構図を補正できます。
+
+どちらも起動時にローカルプレイヤーを対象にします。画面の向きとシーン構成は Editor で
+確認できますが、追従と Pickup 補正の動作確認には VRChat の Build & Test を使用してください。
+ClientSim は `PostLateUpdate` を呼ばないため、Play だけでは追従しません。
+
+生成し直すと同名のシーンを上書きします。編集を残す場合は別名で保存してください。
+
+### 手動で配置
+
+`GameObject > SabaProps > Stage Camera Rig` で、カメラと Collider 付きのリグを配置できます。
+個別に構成する場合は以下の手順を使用します。
+
 1. 空の GameObject に `SabaProps/Stage Cam Rig` を追加します
 2. その子に `Camera` を置き、`Target Texture` に RenderTexture を割り当てます
 3. RenderTexture を貼ったマテリアルで、ワールドにスクリーンを置きます
@@ -28,7 +49,7 @@ VCC でこのパッケージを追加すると、依存する VRChat Worlds SDK 
 リグに触れると、触れた人が被写体になります。`_TargetLocalPlayer` / `_TargetNearestPlayer` /
 `_ClearTarget` を他の Udon から呼んでも指定できます。
 
-Pickup で構図を直したい場合は、リグ本体に `VRC_Pickup` と `Rigidbody` を追加してください。
+Pickup で構図を直したい場合は、リグ本体に SDK3 の `VRCPickup` と `Rigidbody` を追加してください。
 掴んでいる間はスクリプトが Transform を手放し、離した位置と向きがそのまま新しい定常アングルになります。
 
 ---
