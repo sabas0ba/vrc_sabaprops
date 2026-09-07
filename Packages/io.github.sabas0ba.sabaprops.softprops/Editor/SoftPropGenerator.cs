@@ -11,8 +11,7 @@ namespace SabaProps.SoftProps.Editors
         public const string MeshFolder = OutputRoot + "/Meshes";
         public const string MaterialFolder = OutputRoot + "/Materials";
         public const string PrefabFolder = OutputRoot + "/Prefabs";
-        public static string ProgramAssetPath => SoftPropsVrcBridge.FindControllerProgram()
-            ?? OutputRoot + "/SoftSurfaceContactController.asset";
+        public static string ProgramAssetPath => SoftPropsVrcBridge.EnsureSharedControllerProgram();
 
         private static readonly string[] ContactTags =
         {

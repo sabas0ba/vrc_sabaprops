@@ -4,6 +4,9 @@
 
 デモ・接地検出の機能追加と接触応答の変更を含むminor更新です。既存sceneは自動移行しません。[更新手順](Documentation~/upgrading.md)を参照してください。
 
+- 共有Udon programをデモ外へ配置し、デモ削除時に生成家具の参照が失われる問題を修正。旧配置からはGUIDを維持して移動
+- Senderへのslot再割り当て時に古いplayer所有情報を解除し、再接触によるSenderの上書きを防止
+
 - 登録Colliderの底面侵入量から荷重を求め、接触前の先行変形と過大な凹みを抑制
 - 実Colliderを上下させる3形状×3presetの自動比較台と距離・圧縮率の表示を追加
 - player capsuleの衝突、およびローカルプレイヤーの接地状態と支持ColliderのRaycast照合から立位荷重を検出する経路を追加

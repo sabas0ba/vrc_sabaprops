@@ -11,6 +11,37 @@ namespace SabaProps.SoftProps.Editors
     /// </summary>
     internal static class SoftPropsVrcBridge
     {
+        public const string SharedRoot = "Assets/SabaProps/SoftPropsShared";
+        public const string SharedProgramPath = SharedRoot + "/SoftSurfaceContactController.asset";
+
+        public static string EnsureSharedControllerProgram()
+        {
+            if (!AssetDatabase.IsValidFolder("Assets/SabaProps")) AssetDatabase.CreateFolder("Assets", "SabaProps");
+            if (!AssetDatabase.IsValidFolder(SharedRoot)) AssetDatabase.CreateFolder("Assets/SabaProps", "SoftPropsShared");
+            string existing = FindControllerProgram();
+            if (existing != null)
+            {
+                var asset = AssetDatabase.LoadAssetAtPath<ScriptableObject>(existing);
+                var serialized = new SerializedObject(asset);
+                var compiled = serialized.FindProperty("serializedUdonProgramAsset");
+                string compiledPath = compiled == null ? "" : AssetDatabase.GetAssetPath(compiled.objectReferenceValue);
+                // MoveAssetでGUIDを維持し、既存scene/Prefabの参照も保護する。
+                if (!string.IsNullOrEmpty(compiledPath)
+                    && !compiledPath.StartsWith("Assets/SerializedUdonPrograms/", StringComparison.Ordinal)
+                    && !compiledPath.StartsWith(SharedRoot + "/", StringComparison.Ordinal))
+                    MoveProgramAsset(compiledPath, SharedRoot + "/CompiledSoftSurfaceContactController.asset");
+                if (existing != SharedProgramPath) MoveProgramAsset(existing, SharedProgramPath);
+            }
+            EnsureProgramAsset(SharedProgramPath);
+            return SharedProgramPath;
+        }
+
+        private static void MoveProgramAsset(string source, string destination)
+        {
+            string error = AssetDatabase.MoveAsset(source, destination);
+            if (!string.IsNullOrEmpty(error)) throw new InvalidOperationException(error);
+        }
+
         private const string ReceiverTypeName =
             "VRC.SDK3.Dynamics.Contact.Components.VRCContactReceiver";
         private const string SenderTypeName =

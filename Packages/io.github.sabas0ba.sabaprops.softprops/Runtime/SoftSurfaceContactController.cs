@@ -156,7 +156,7 @@ namespace SabaProps.SoftProps
                 return;
             }
 
-            _senders[slot] = sender;
+            AssignSender(slot, sender);
             _senderOffsets[slot] = Quaternion.Inverse(sender.rotation)
                 * (contactInfo.contactPoint - sender.position);
             _positions[slot] = ToSurfaceLocal(contactInfo.contactPoint);
@@ -396,6 +396,13 @@ namespace SabaProps.SoftProps
             return -1;
         }
 
+        private void AssignSender(int slot, ContactSenderProxy sender)
+        {
+            _senders[slot] = sender;
+            _players[slot] = null;
+            _playerSeen[slot] = 0f;
+        }
+
         private int FindAvailableSlot()
         {
             int quietest = -1;
@@ -431,7 +438,7 @@ namespace SabaProps.SoftProps
         {
             int slot = -1;
             for (int i = probeColliders.Length; i < SlotCount; i++)
-                if (_players[i] == player) slot = i;
+                if (_players[i] == player && (_senders[i] == null || !_senders[i].isValid)) slot = i;
             if (slot < 0) slot = FindAvailableSlot();
             if (slot < 0) return;
             _players[slot] = player;

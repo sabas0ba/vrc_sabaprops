@@ -28,6 +28,8 @@ package更新だけでは、利用者が生成・配置したPrefabの設定を�
 
 UdonSharp programの重複を避けるため、`Samples~`の手動コピーは行わず専用メニューを使用します。GUIDは導入時に再割当てし、既存controller programがある場合は共有します。
 
+共有controller programは`Assets/SabaProps/SoftPropsShared/SoftSurfaceContactController.asset`に配置します。旧版でデモ内または生成folder内に作られたprogramは、デモの導入・表示またはPrefab生成時にGUIDを維持して移動します。デモ内にある関連compiled programも移動対象です。デモの削除前に一度上記操作を実行してください。`SoftPropsShared`および`Assets/SerializedUdonPrograms`は家具が使用するため、デモの削除対象に含めないでください。
+
 ## バージョン方針
 
 Soft Propsの版は自身の`package.json`で管理し、Foliageとは独立して更新します。0.xは開発段階です。機能追加や接触応答・設定の変更はminor、機能・設定を変えない修正はpatchを更新し、移行上の注意をCHANGELOGへ記載します。0.x間の無条件の互換性は保証しません。

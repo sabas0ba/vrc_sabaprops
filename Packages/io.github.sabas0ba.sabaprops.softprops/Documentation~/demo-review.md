@@ -8,6 +8,8 @@ PC用のVCC World projectへpackageを追加後、`Tools > SabaProps > Soft Prop
 
 UdonSharpのprogram重複を避けるため、sampleの導入には上記メニューを使用します。既に家具を生成したprojectでは、そのcontroller programを共有します。`Samples~`の手動コピーによる重複導入は避けてください。
 
+共有programはデモ外の`Assets/SabaProps/SoftPropsShared`に配置します。旧配置がある場合はメニュー実行時にGUIDを維持して移動します。これにより、デモを先に導入してから家具を生成した場合も、デモの削除・再導入で家具のUdon参照は失われません。
+
 ## シーンの内容
 
 ![Unityで描画したデモ全景](demo-overview.png)

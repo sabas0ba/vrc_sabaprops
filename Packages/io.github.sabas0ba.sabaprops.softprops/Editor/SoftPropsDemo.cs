@@ -31,6 +31,9 @@ namespace SabaProps.SoftProps.Editors
 
         public static void ImportSample()
         {
+            // 既存demoを開く場合も、旧版のdemo-owned programを共有先へ移す。
+            string sharedProgram = SoftPropsVrcBridge.EnsureSharedControllerProgram();
+            SoftPropsVrcBridge.CompileControllerProgram(sharedProgram);
             // 再実行で利用者が編集したサンプルを上書きしない。
             if (File.Exists(ImportRoot + "/" + SceneName)) return;
             if (Directory.Exists(ImportRoot))
@@ -78,6 +81,7 @@ namespace SabaProps.SoftProps.Editors
             {
                 if (!path.StartsWith("Assets/", StringComparison.Ordinal) || Directory.Exists(path)) continue;
                 if (!path.StartsWith(SoftPropGenerator.OutputRoot + "/", StringComparison.Ordinal)
+                    && !path.StartsWith(SoftPropsVrcBridge.SharedRoot + "/", StringComparison.Ordinal)
                     && !path.StartsWith("Assets/SerializedUdonPrograms/", StringComparison.Ordinal))
                     throw new IOException("Unexpected sample dependency: " + path);
                 files.Add(path);
@@ -103,6 +107,8 @@ namespace SabaProps.SoftProps.Editors
 
         private static string SampleDestination(string path)
         {
+            if (path == SoftPropsVrcBridge.SharedProgramPath)
+                return SampleRoot + "/SoftSurfaceContactController.asset";
             return path.StartsWith(SoftPropGenerator.OutputRoot + "/", StringComparison.Ordinal)
                 ? SampleRoot + path.Substring(SoftPropGenerator.OutputRoot.Length)
                 : SampleRoot + "/Programs/SoftSurfaceContactController.asset";
