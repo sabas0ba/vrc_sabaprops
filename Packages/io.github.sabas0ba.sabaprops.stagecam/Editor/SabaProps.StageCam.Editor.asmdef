@@ -1,0 +1,23 @@
+{
+    "name": "SabaProps.StageCam.Editor",
+    "rootNamespace": "SabaProps.StageCam.Editors",
+    "references": [
+        "SabaProps.StageCam.Runtime",
+        "VRC.SDKBase",
+        "VRC.SDK3",
+        "VRC.Udon",
+        "UdonSharp.Runtime",
+        "UdonSharp.Editor"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

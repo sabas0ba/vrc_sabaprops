@@ -2,7 +2,7 @@
 
 VRChat 向けのアセットを **VCC (VRChat Creator Companion) / VPM** で配布するためのリポジトリです。
 
-複数パッケージの集合体として育てていく前提の構成になっています。第一弾として、GPU インスタンシング前提の軽量な草木配置パッケージ **SabaProps Foliage** を収録しています。
+複数パッケージの集合体として育てていく前提の構成になっています。現在は、GPU インスタンシング前提の軽量な草木配置パッケージ **SabaProps Foliage** と、ワールド側から演者を追うカメラリグ **SabaProps Stage Cam** を収録しています。
 
 ---
 
@@ -26,6 +26,7 @@ https://sabas0ba.github.io/vrc_sabaprops/index.json
 | Package ID | 名前 | 概要 |
 | --- | --- | --- |
 | `io.github.sabas0ba.sabaprops.foliage` | SabaProps Foliage | GPU インスタンシング対応の草木スキャッタリングツール。グラスシード／ひまわりをプロシージャル生成し、大量配置しても軽量。 |
+| `io.github.sabas0ba.sabaprops.stagecam` | SabaProps Stage Cam | 特定のプレイヤーの部位を追い、一定距離と固定アングルを保つ Udon カメラリグ。Pickup で構図を直せて、自動で回り込むカメラワークを持ちます。 |
 
 各パッケージの詳細は `Packages/<package-id>/README.md` を参照してください。
 
@@ -40,10 +41,14 @@ VRChat Worlds SDK が入っているプロジェクトでは `VRCSceneDescriptor
 ```
 .
 ├── Packages/                       # 配布する VPM パッケージ群（1 フォルダ = 1 パッケージ）
-│   └── io.github.sabas0ba.sabaprops.foliage/
-│       ├── package.json            # VPM マニフェスト
-│       ├── Runtime/                # シーンに残る最小限のコンポーネントとシェーダー
-│       ├── Editor/                 # 生成・配置ツール（ビルドには含まれない）
+│   ├── io.github.sabas0ba.sabaprops.foliage/
+│   │   ├── package.json            # VPM マニフェスト
+│   │   ├── Runtime/                # シーンに残る最小限のコンポーネントとシェーダー
+│   │   ├── Editor/                 # 生成・配置ツール（ビルドには含まれない）
+│   │   └── Documentation~/
+│   └── io.github.sabas0ba.sabaprops.stagecam/
+│       ├── package.json            # VRChat Worlds SDK に依存する唯一のパッケージ
+│       ├── Runtime/                # UdonSharp のカメラリグと、単独で検査できる幾何ソルバ
 │       └── Documentation~/
 ├── Website/                        # GitHub Pages で公開するリスティングサイト
 ├── source.json                     # VPM リスティングのメタ情報
@@ -62,8 +67,12 @@ VRChat Worlds SDK が入っているプロジェクトでは `VRCSceneDescriptor
 ### 1. Unity プロジェクトで編集する
 
 このリポジトリ自体は Unity プロジェクトではありません。開発時は VCC で作った Unity プロジェクトの
-`Packages/` 配下にこのリポジトリの `Packages/io.github.sabas0ba.sabaprops.foliage` をシンボリックリンク（または
-クローンごと配置）してください。
+`Packages/` 配下に、このリポジトリの `Packages/<package-id>` をシンボリックリンク（または
+クローンごと配置）してください。編集するパッケージの分だけ張ります。
+
+`io.github.sabas0ba.sabaprops.stagecam` は Udon を使うため、リンク先のプロジェクトには
+VRChat Worlds SDK が入っている必要があります。`io.github.sabas0ba.sabaprops.foliage` の方は
+SDK が無くても動きます。
 
 ```bash
 # 例: macOS / Linux
@@ -84,17 +93,18 @@ Unity が生成した `.meta` ファイルは **必ずコミット**してくだ
 
 1. `Packages/<pkg>/package.json` の `version` を上げる
 2. `Packages/<pkg>/CHANGELOG.md` を更新する
-3. コミットして `v<version>` のタグを打つ
+3. コミットして `<package-id>/v<version>` のタグを打つ
 
 ```bash
-git tag v0.1.0
-git push origin v0.1.0
+git tag io.github.sabas0ba.sabaprops.foliage/v0.4.0
+git push origin io.github.sabas0ba.sabaprops.foliage/v0.4.0
 ```
 
 `build-release.yml` が zip を作って Release を発行し、続けて `build-listing.yml` が
 `index.json` を再生成して GitHub Pages に反映します。
 
-> 複数パッケージになったら、タグは `io.github.sabas0ba.sabaprops.foliage/v0.2.0` の形式でも受け付けます。
+> パッケージ ID を含まない `v0.1.0` の形式は、パッケージが 1 つしか無かった頃の名残です。
+> 2 つ以上ある現在はどれを指すか決まらないため、`build-release.yml` がエラーで止まります。
 
 ### 3. 手動でリスティングだけ作り直す
 
@@ -181,6 +191,8 @@ Markdown 変換は `build_listing.py` と同じ方針で自前実装です。CI 
 | Editor アセンブリ | コンパイル。UnityEngine の API 使用は実物に対して検証されます |
 | シェーダー | `shader_feature` の全 4 組み合わせで HLSL として型チェック |
 | **メッシュ生成** | **実際に実行**して形状を検査（下記） |
+| Stage Cam の Runtime | **実物の VRChat SDK アセンブリ**（`packages.lock` が固定した `VRCSDKBase.dll`）に対してコンパイル |
+| **Stage Cam の追従計算** | **実際に実行**して幾何の性質を検査（下記） |
 | **ドキュメントの図** | 生成器を実行し直し、committed の図と一致するかを検査 |
 | ドキュメント | サイトの生成、未変換の記法・壊れたリンク・存在しない画像の検出 |
 | マニフェスト | `package.json` の必須項目、フォルダ名との一致、CHANGELOG のバージョン記載、`source.json` への登録、`.meta` の欠落 |
@@ -204,11 +216,40 @@ Markdown 変換は `build_listing.py` と同じ方針で自前実装です。CI 
 過去に実際にあった不具合（花びらが花芯から分離する、風の位相が部位ごとに割れる）を注入すると、
 この層だけで検出できることを確認済みです。
 
+#### 追従計算の実行検査
+
+`StageCamSolver.cs` は `StageCamRig` の部分クラスですが、基底型も VRChat の `using` も
+持たないため**単独でコンパイルできます**。これを同じシムの上に載せて、カメラの追従計算
+そのものを Unity 無しで走らせます。検査側も同じクラスの部分クラスとして書いてあるので、
+ソルバのメソッドを `private` のまま検査できます。
+
+| 検査 | 内容 |
+| --- | --- |
+| 平滑化 | フレームを分割しても追従の速さが変わらないこと、退化入力で行き過ぎないこと |
+| 角度の補間 | 360 度の折り返しを最短方向へ跨ぐこと |
+| デッドゾーン | 閾値内で静止すること、閾値を跨いだ瞬間に飛ばないこと |
+| ボーンのフォールバック | 欠損ボーンから次の候補へ落ち、最後まで落ちても破綻しないこと |
+| 軌道 | 方位・仰角によらず指定した距離を保つこと |
+| 注視 | 被写体を画面中央に置くこと、地平線が傾かないこと |
+| Pickup 補正 | world 姿勢と軌道パラメータの往復で元の姿勢が復元されること |
+| 自動フレーミング | 身長に距離が比例すること、距離と画面占有率が互いの逆関数であること |
+| 自動カメラワーク | 値域・周期性・対称性、および折り返しと周期の境目で速度がゼロに落ちること |
+| 退化入力 | 距離ゼロ、真上・真下からのアングル、視線が上方向と平行な場合に NaN が出ないこと |
+
+こちらも故障注入で確認済みです。平滑化を線形に、注視の合成順を入れ替えて roll を混ぜ、
+デッドゾーンを素通しにする 3 つの変更を入れると、それぞれ対応する検査だけが落ちます。
+
 ### 検証できないこと
 
 - **UnityEditor の API シグネチャ。** `UnityEditor.dll` は再配布できないため、
   `.github/verify/UnityEditorStub.cs` が手書きのスタブとして代役を務めています。
   スタブと実装が同じ勘違いをしていれば、このチェックは通ってしまいます。
+- **UdonSharp の API シグネチャと、UdonSharp が C# に課す制約。** `UdonSharpBehaviour` は
+  Worlds パッケージ内のソースで、`VRC.Udon` と OdinSerializer とコンパイラライブラリを
+  引き連れています。この層で組み直すものではないため、`.github/verify/UdonSharpStub.cs` が
+  代役です。`VRCPlayerApi` / `Networking` / `Utilities` / `VRC_Pickup` は実物の
+  `VRCSDKBase.dll` に対して検証されるので、スタブが担うのは基底クラスだけです。
+  **UdonSharp が実際に Udon アセンブリへ変換できるかは、この層では一切分かりません。**
 - **サーフェスシェーダーの生成結果。** `#pragma surface` の設定を Unity が受け付けるか、
   生成されたバリアントがコンパイルできるかは検証していません。チェックしているのは
   シェーダー自身のコード（`vert` / `surf` / ライティング関数と `SabaFoliageCore.cginc`）だけです。
@@ -263,9 +304,13 @@ Unity のバージョンは `.github/verify/CIProject/ProjectSettings/ProjectVer
 
 ## 検証 (VRChat Worlds SDK)
 
-サンプルシーンの `VRCSceneDescriptor` 配置はリフレクションで SDK を参照しているため、
-SDK が無い環境ではコンパイルエラーにならず、検証されないまま通ります。
-この分岐を実際に実行するための手順が `.github/verify/vrchat/` にあります。
+SDK が実際に入っていないと検証できないものが 2 つあります。サンプルシーンの
+`VRCSceneDescriptor` 配置はリフレクションで SDK を参照しているため、SDK が無い環境では
+コンパイルエラーにならず検証されないまま通ります。そして
+`io.github.sabas0ba.sabaprops.stagecam` は **UdonSharp が受け付けるかどうかが、
+C# としてコンパイルが通ることと無関係**です。
+
+この 2 つを実際に実行するための手順が `.github/verify/vrchat/` にあります。
 
 ```sh
 ./.github/verify/vrchat/run-tests.sh

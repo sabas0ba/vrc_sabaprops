@@ -1,0 +1,29 @@
+{
+    "name": "SabaProps.StageCam.WorldTests",
+    "rootNamespace": "SabaProps.StageCam.WorldTests",
+    "references": [
+        "SabaProps.StageCam.Runtime",
+        "SabaProps.StageCam.Editor",
+        "VRC.SDK3",
+        "UdonSharp.Runtime",
+        "UdonSharp.Editor",
+        "VRC.Udon",
+        "VRC.Udon.Editor",
+        "VRC.SDKBase",
+        "UnityEngine.TestRunner",
+        "UnityEditor.TestRunner"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": false,
+    "defineConstraints": [
+        "UNITY_INCLUDE_TESTS"
+    ],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

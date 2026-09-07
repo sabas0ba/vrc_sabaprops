@@ -1,11 +1,19 @@
 # VRChat ワールド検証プロジェクト
 
-`Create Sample Scene` は、VRChat Worlds SDK が入っているプロジェクトでのみ
-`VRCSceneDescriptor` と Spawn を配置します。この分岐はリフレクションで
-SDK を参照しているため、SDK が無い環境ではコンパイルエラーにならず、
-何も検証されないまま通ってしまいます。
+SDK が実際に入っていないと検証できないものが 2 つあります。
 
-ここにあるのは、その分岐を実際に実行するためのプロジェクト組み立て手順です。
+**Foliage のサンプルシーン。** `Create Sample Scene` は、VRChat Worlds SDK が
+入っているプロジェクトでのみ `VRCSceneDescriptor` と Spawn を配置します。この分岐は
+リフレクションで SDK を参照しているため、SDK が無い環境ではコンパイルエラーに
+ならず、何も検証されないまま通ってしまいます。
+
+**Stage Cam の UdonSharp コンパイル。** `io.github.sabas0ba.sabaprops.stagecam` は
+Udon です。オフライン層は Roslyn で C# としてコンパイルするだけなので、UdonSharp が
+その C# を受け付けるかも、パッケージが UdonSharp の要求するアセットを同梱しているかも
+分かりません。実際、この層を通したことで 2 つの同梱漏れが見つかっています
+（`UdonSharpAssemblyDefinition` と `UdonSharpProgramAsset`）。
+
+ここにあるのは、その両方を実際に実行するためのプロジェクト組み立て手順です。
 
 ## 方針
 
@@ -50,7 +58,7 @@ Unity は Unity Hub の既定の場所から `ProjectVersion.txt` に一致す�
 初回は SDK が要求する UPM パッケージ（burst、collections、cinemachine 等）を
 Unity がレジストリから取得するため、数分かかります。
 
-テストは `SabaProps.Foliage.CITests` に絞って実行します。
+テストはこのリポジトリのアセンブリに絞って実行します。
 SDK 自身のテストアセンブリも同じプロジェクトに存在しますが、
 本パッケージとは無関係な理由で 2 件失敗する（ランダム生成の JSON ファズケースと、
 docs.microsoft.com の URL 到達性を検証するもの）ため、終了コードを意味のあるものにするためです。
@@ -61,9 +69,12 @@ docs.microsoft.com の URL 到達性を検証するもの）ため、終了コ�
 | --- | --- | --- |
 | `SabaProps.Foliage.CITests` | EditMode | シーンが正しく作られているか。SDK の有無で期待値が切り替わります |
 | `SabaProps.Foliage.WorldTests` | PlayMode | ClientSim でワールドとして実行し、プレイヤーが Spawn するか |
+| `SabaProps.StageCam.WorldTests` | EditMode | UdonSharp が `StageCamRig` を Udon プログラムへコンパイルし、想定のイベントとフィールドが出ているか |
 
-`WorldTests` は SDK を参照するため CI プロジェクト側には置けません。`Tests/` にあり、
-`assemble.sh` がワールドプロジェクトへコピーします。
+SDK を参照するテストは CI プロジェクト側には置けません。`Tests/` にあり、
+`assemble.sh` がワールドプロジェクトへコピーします。**アセンブリごとにサブフォルダを
+分けてあります。** Unity は 1 つのフォルダに asmdef が 2 つあると、そのフォルダだけでなく
+プロジェクト全体のコンパイルを失敗させます。
 
 ClientSim は VRChat クライアントのエディタ内ランタイムです。`VRCSceneDescriptor` を読んで
 ローカルプレイヤーを生成するため、descriptor の設定が間違っていればプレイヤーは出ません。
@@ -74,6 +85,14 @@ SDK 側の起動順の問題でこちらから直せないため、ワールド�
 `LogAssert.ignoreFailingMessages` で許容しています。
 
 ## これで検証できること
+
+`StageCamRig` が UdonSharp を通ること。オフライン層の Roslyn コンパイルは
+UdonSharp の制約（ジェネリクス・インターフェース・ユーザー定義 struct・
+同期できない型）を何も見ないため、ここが唯一の判定です。あわせて、
+`_postLateUpdate` などのイベントと Inspector のフィールドが Udon 側に出ていること、
+そしてパッケージが同梱する `UdonSharpAssemblyDefinition` と `UdonSharpProgramAsset` が
+**clean なプロジェクトで足りていること**を確認します。後者は利用者が VCC で
+導入した状態そのものです。
 
 `FoliageVrcWorld` が SDK を見つけ、`VRCWorld` ルートと Spawn を作り、
 `VRCSceneDescriptor` を実際に AddComponent できること。
@@ -87,6 +106,17 @@ SDK の有無を見て期待値を切り替えるため、同じテストが両�
 
 実機の VRChat へアップロードした結果。ビルド＆アップロードには VRChat アカウントでの
 ログインが必要で、自動化の対象外です。
+
+**Stage Cam が実際に追従すること。** ClientSim は `PostLateUpdate` を発火しません
+（SDK 3.10.4 の ClientSim ランタイムにこのイベントを送る経路がありません）。
+また ClientSim が生成するのはローカルプレイヤーだけなので、リモートプレイヤーの
+ボーン補間も再現できません。追従計算そのものはオフライン層が実行して検査しており、
+ここで確かめられるのはイベントがエクスポートされていることまでです。
+
+なお `--clean` の直後の 1 回目のセッションでは、`FoliageDemoWorldTests` が
+ClientSim の起動時 `NullReferenceException` で落ちることがあります。2 回目以降は通ります。
+初回インポートで API Updater がアセンブリを差し替える間に起動順が崩れるためで、
+このリポジトリのコードとは関係ありません。
 
 ## SDK のバージョンを上げるには
 

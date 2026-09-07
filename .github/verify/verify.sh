@@ -1,16 +1,23 @@
 #!/usr/bin/env bash
 #
-# Verify the package without a Unity installation.
+# Verify the packages without a Unity installation.
 #
 # What this proves:
-#   * the Runtime assembly compiles against REAL UnityEngine reference
+#   * the foliage Runtime assembly compiles against REAL UnityEngine reference
 #     assemblies (Unity's own UnityEngine.Modules NuGet package)
-#   * the Editor assembly compiles, with its UnityEngine usage checked against
-#     those same real assemblies
+#   * the foliage Editor assembly compiles, with its UnityEngine usage checked
+#     against those same real assemblies
 #   * the shader's HLSL type-checks in all four shader_feature combinations
 #   * mesh generation RUNS, and the geometry it produces holds up: topology,
 #     finiteness, determinism, the UV3/COLOR channels the shader reads, and the
 #     wind-joint rules that stop a plant coming apart. See offline/.
+#   * the stage camera Runtime compiles against the REAL VRChat SDK assemblies
+#     that vrchat/packages.lock pins, so VRCPlayerApi, Networking, Utilities and
+#     VRC_Pickup are checked against what the SDK actually ships
+#   * the stage camera solver RUNS: distance invariance, roll-free aiming, the
+#     pickup round trip, frame rate independence of the smoothing, the deadzone
+#     contract, bone fallback, framing, and the continuity of the automatic
+#     camera move. See offline/OfflineStageCamTests.cs.
 #   * the documentation figures still match what the generators produce, and
 #     the site renders, with no raw Markdown left in the text, no broken
 #     internal links and no missing images
@@ -18,6 +25,11 @@
 # What this does NOT prove:
 #   * UnityEditor API signatures. UnityEditor.dll is not redistributable, so
 #     `UnityEditorStub.cs` stands in for it and is written by hand.
+#   * UdonSharp API signatures, and every rule UdonSharp imposes on the C# it
+#     will accept. UdonSharpBehaviour is source inside the Worlds package and
+#     pulls in a graph this tier has no business rebuilding, so
+#     `UdonSharpStub.cs` stands in for it. Whether UdonSharp compiles the
+#     behaviour to Udon at all is only ever settled in vrchat/.
 #   * that Unity's surface shader generator accepts the #pragma configuration,
 #     or that the generated variants compile. Only the shader's own code is
 #     checked here.
@@ -30,19 +42,23 @@
 #
 # Requirements: dotnet SDK 8+, glslangValidator, curl, unzip, and podman or
 # docker. Python is not required on the host: every script that needs it runs
-# in the pinned container that .github/scripts/run.sh starts.
+# in the pinned container that .github/scripts/run.sh starts. The container is
+# also what downloads the pinned VRChat SDK the stage camera compiles against.
 set -euo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO="$(cd "$HERE/../.." && pwd)"
 PACKAGE="${1:-$REPO/Packages/io.github.sabas0ba.sabaprops.foliage}"
+STAGECAM="$REPO/Packages/io.github.sabas0ba.sabaprops.stagecam"
 
 WORK="${VERIFY_WORK_DIR:-$REPO/.verify}"
 REFS="$WORK/refs"
 OUT="$WORK/out"
+VPM="$WORK/vpm"
 
 UNITY_REFS_VERSION="2021.3.33"
 NETFX_REFS_VERSION="1.0.3"
+NETSTANDARD_REFS_VERSION="2.1.0"
 
 mkdir -p "$REFS" "$OUT"
 
@@ -74,6 +90,12 @@ fetch_nupkg() {
 fetch_nupkg unityengine.modules "$UNITY_REFS_VERSION" "$REFS/unity"
 fetch_nupkg microsoft.netframework.referenceassemblies.net472 "$NETFX_REFS_VERSION" "$REFS/netfx"
 
+# The VRChat SDK assemblies target netstandard 2.1, so the stage camera package
+# cannot be compiled against the .NET Framework references the foliage package
+# uses. The whole facade set is needed, not just netstandard.dll: VRCSDKBase
+# reaches types through mscorlib and the other facades in the same pack.
+fetch_nupkg netstandard.library.ref "$NETSTANDARD_REFS_VERSION" "$REFS/netstandard21"
+
 # UnityEngine.Modules stores its entries with mode 000, and unzip faithfully
 # reproduces that. Root does not care, an ordinary CI user cannot read a single
 # DLL. Applied outside fetch_nupkg so a restored cache is fixed up too.
@@ -81,9 +103,11 @@ chmod -R u+rwX "$REFS"
 
 UNITY_DIR="$REFS/unity/lib/net35"
 NETFX_DIR="$REFS/netfx/build/.NETFramework/v4.7.2"
+NETSTANDARD_DIR="$REFS/netstandard21/ref/netstandard2.1"
 
 [ -f "$UNITY_DIR/UnityEngine.CoreModule.dll" ] || fail "UnityEngine reference assemblies missing"
 [ -f "$NETFX_DIR/mscorlib.dll" ] || fail ".NET Framework reference assemblies missing"
+[ -f "$NETSTANDARD_DIR/netstandard.dll" ] || fail "netstandard 2.1 reference assemblies missing"
 
 # `dotnet --list-sdks` prints "<version> [<sdk root>]"; that root is the only
 # reliable way to find Roslyn across distro packages and setup-dotnet installs.
@@ -178,6 +202,83 @@ else
 fi
 
 # ---------------------------------------------------------------------------
+log "Fetching the pinned VRChat SDK"
+# ---------------------------------------------------------------------------
+# io.github.sabas0ba.sabaprops.stagecam is Udon, so unlike the foliage package
+# it cannot be compiled without the SDK. The download is the same pinned,
+# hash-checked, containerised one the world tests use; see vrchat/fetch.sh.
+if [ -d "$VPM/com.vrchat.base" ] && [ -d "$VPM/com.vrchat.worlds" ]; then
+    echo "cached: com.vrchat.base, com.vrchat.worlds"
+else
+    "$HERE/vrchat/fetch.sh" "$VPM"
+fi
+
+SDK_PLUGINS="$VPM/com.vrchat.base/Runtime/VRCSDK/Plugins"
+[ -f "$SDK_PLUGINS/VRCSDKBase.dll" ] || fail "VRCSDKBase.dll missing from the fetched SDK"
+
+# The SDK targets netstandard 2.1, so this compile swaps the .NET Framework
+# references above for the netstandard facade set. The Unity references stay
+# the same.
+NETSTANDARD_ARGS=()
+for dll in "$NETSTANDARD_DIR"/*.dll; do NETSTANDARD_ARGS+=(-r:"$dll"); done
+
+# ---------------------------------------------------------------------------
+log "Compiling UdonSharp stub"
+# ---------------------------------------------------------------------------
+# The stub's event signatures name VRCPlayerApi, so it is built against the
+# real SDK too: a rename there fails here rather than in Unity.
+csc "${COMMON[@]}" "${NETSTANDARD_ARGS[@]}" "${UNITY_ARGS[@]}" \
+    -r:"$SDK_PLUGINS/VRCSDKBase.dll" \
+    -out:"$OUT/UdonSharp.Runtime.dll" "$HERE/UdonSharpStub.cs"
+echo "ok"
+
+# ---------------------------------------------------------------------------
+log "Compiling stage camera Runtime (real VRChat SDK references + stub)"
+# ---------------------------------------------------------------------------
+# VRCPlayerApi, Networking, Utilities and VRC_Pickup are checked against the
+# shipping VRCSDKBase.dll. Only UdonSharpBehaviour comes from the stub.
+mapfile -t STAGECAM_SOURCES < <(find "$STAGECAM/Runtime" -name '*.cs' | sort)
+[ "${#STAGECAM_SOURCES[@]}" -gt 0 ] || fail "no Runtime sources found under $STAGECAM"
+
+csc "${COMMON[@]}" "${NETSTANDARD_ARGS[@]}" "${UNITY_ARGS[@]}" \
+    -r:"$SDK_PLUGINS/VRCSDKBase.dll" -r:"$OUT/UdonSharp.Runtime.dll" \
+    -out:"$OUT/SabaProps.StageCam.Runtime.dll" "${STAGECAM_SOURCES[@]}"
+echo "ok: ${#STAGECAM_SOURCES[@]} file(s)"
+
+# ---------------------------------------------------------------------------
+log "Compiling UdonSharp editor stub"
+# ---------------------------------------------------------------------------
+csc "${COMMON[@]}" "${NETSTANDARD_ARGS[@]}" "${UNITY_ARGS[@]}" \
+    -r:"$OUT/UdonSharp.Runtime.dll" \
+    -out:"$OUT/UdonSharp.Editor.dll" "$HERE/UdonSharpEditorStub.cs"
+echo "ok"
+
+# ---------------------------------------------------------------------------
+log "Compiling stage camera Editor (real VRCSDK3 references + stubs)"
+# ---------------------------------------------------------------------------
+# The sample scene builder. VRCSceneDescriptor and VRCPickup come from the real
+# VRCSDK3.dll, so a rename there fails here. UnityEditor and the UdonSharp
+# editor half are the hand-written stubs.
+mapfile -t STAGECAM_EDITOR_SOURCES < <(find "$STAGECAM/Editor" -name '*.cs' | sort)
+[ "${#STAGECAM_EDITOR_SOURCES[@]}" -gt 0 ] || fail "no Editor sources found under $STAGECAM"
+
+SDK3_PLUGINS="$VPM/com.vrchat.worlds/Runtime/VRCSDK/Plugins"
+[ -f "$SDK3_PLUGINS/VRCSDK3.dll" ] || fail "VRCSDK3.dll missing from the fetched SDK"
+
+# A second UnityEditor stub build: the one above is compiled against the .NET
+# Framework references the foliage package uses, and mixing those with the
+# netstandard facades this package needs duplicates System.Object.
+csc "${COMMON[@]}" "${NETSTANDARD_ARGS[@]}" "${UNITY_ARGS[@]}" \
+    -out:"$OUT/UnityEditor.NetStandard.dll" "$HERE/UnityEditorStub.cs"
+
+csc "${COMMON[@]}" "${NETSTANDARD_ARGS[@]}" "${UNITY_ARGS[@]}" \
+    -r:"$SDK_PLUGINS/VRCSDKBase.dll" -r:"$SDK3_PLUGINS/VRCSDK3.dll" \
+    -r:"$OUT/UdonSharp.Runtime.dll" -r:"$OUT/UdonSharp.Editor.dll" \
+    -r:"$OUT/UnityEditor.NetStandard.dll" -r:"$OUT/SabaProps.StageCam.Runtime.dll" \
+    -out:"$OUT/SabaProps.StageCam.Editor.dll" "${STAGECAM_EDITOR_SOURCES[@]}"
+echo "ok: ${#STAGECAM_EDITOR_SOURCES[@]} file(s)"
+
+# ---------------------------------------------------------------------------
 log "Type-checking shader HLSL"
 # ---------------------------------------------------------------------------
 SHADER_DIR="$PACKAGE/Runtime/Shaders"
@@ -231,8 +332,12 @@ mkdir -p "$OFFLINE_OUT"
 # `dotnet --list-runtimes` prints "<name> <version> [<path>]"; the last
 # Microsoft.NETCore.App entry is the newest installed shared framework, and its
 # assemblies are what this executable both compiles against and runs on.
+#
+# Matched with sed rather than split on whitespace: the bracketed path contains
+# a space on a default Windows install (C:\Program Files\dotnet\shared\...)
+# and a field split silently produced "C:\Program/10.0.10" there.
 RUNTIME_DIR="$(dotnet --list-runtimes \
-    | awk '/^Microsoft.NETCore.App /{ gsub(/[][]/, "", $3); dir=$3 "/" $2 } END { print dir }')"
+    | sed -n 's/^Microsoft\.NETCore\.App \([^ ]*\) \[\(.*\)\]$/\2\/\1/p' | tail -1)"
 [ -d "$RUNTIME_DIR" ] || fail "could not locate a Microsoft.NETCore.App shared framework"
 
 RUNTIME_ARGS=()
@@ -265,6 +370,28 @@ JSON
 dotnet "$OFFLINE_OUT/OfflineMeshTests.dll" || fail "offline mesh checks failed"
 
 # ---------------------------------------------------------------------------
+log "Running the stage camera solver (no Unity)"
+# ---------------------------------------------------------------------------
+# StageCamSolver.cs is a partial of StageCamRig that declares no base type and
+# no VRChat references, so it compiles on its own against the shim. The checks
+# are another partial of the same class, which is how they reach its private
+# members without widening them in the shipped package.
+csc_exe() {
+    dotnet "$CSC_DLL" -nologo -langversion:9.0 -target:exe -nostdlib+ -noconfig \
+        "${RUNTIME_ARGS[@]}" "$@"
+}
+
+csc_exe -out:"$OFFLINE_OUT/OfflineStageCamTests.dll" \
+    "$OFFLINE/UnityEngineShim.cs" \
+    "$OFFLINE/OfflineStageCamTests.cs" \
+    "$STAGECAM/Runtime/StageCamSolver.cs"
+
+cp "$OFFLINE_OUT/OfflineMeshTests.runtimeconfig.json" \
+   "$OFFLINE_OUT/OfflineStageCamTests.runtimeconfig.json"
+
+dotnet "$OFFLINE_OUT/OfflineStageCamTests.dll" || fail "offline stage camera checks failed"
+
+# ---------------------------------------------------------------------------
 log "Checking the documentation figures"
 # ---------------------------------------------------------------------------
 # The figures in the documentation are drawn from the output of the generators
@@ -294,5 +421,6 @@ rm -rf "$OUT/site/docs"
 log "Validating manifests"
 # ---------------------------------------------------------------------------
 "$PYTHON" .github/scripts/check_package.py "$REPO" "$PACKAGE"
+"$PYTHON" .github/scripts/check_package.py "$REPO" "$STAGECAM"
 
 log "All checks passed"
