@@ -1,9 +1,5 @@
 # SabaProps Water
 
-`WaterLightingGallery.unity`ではDirectional Lightを除いた暗所、Point Light、Spot Lightの比較ができます。`Tools > SabaProps > Water > Create Lighting Gallery`から個別生成も可能です。
-
-水面Foamの既定色は各Profileの浅瀬色に近い値で、`Foam Pattern Scale / Speed / Warp`を編集できます。Wet Surfaceは不透明・半透明Shaderを備え、滴headとtrailのNormal強度を個別に調整できます。
-
 VRChat World向けの水面、雨、霧、雲、水中エフェクトをEditor上で作成するpackageです。
 配置計算とrig構築はEditorで完結し、表示とanimationは標準Unity componentおよびShaderが担当します。
 
@@ -26,6 +22,12 @@ import後の`WaterFeatureGallery.unity`を開き、Play Modeに入ると雨、�
 `Tools > SabaProps > Water > Create Feature Gallery`
 
 詳細な構成と撮影用Cameraは[Water Feature Gallery](Documentation~/sample-gallery.md)を参照してください。
+
+同じSampleには、暗所・Point Light・Spot Lightを比較する`WaterLightingGallery.unity`と、通常Standard Materialへ水滴を投影する`WaterDropletProjectorGallery.unity`も含まれます。
+それぞれ`Tools > SabaProps > Water > Create Lighting Gallery`、`Create Droplet Projector Gallery`から個別生成できます。
+
+Wet Surfaceは対象Materialを変更する方式、Droplet Projectorは受け側の準備なしで水滴の明暗を重ねる方式です。
+Projector非対応Shaderは対象外です。設定と制限は[配置と調整](Documentation~/authoring.md)を参照してください。
 
 個別に作り始める場合は、最初に以下を実行します。
 

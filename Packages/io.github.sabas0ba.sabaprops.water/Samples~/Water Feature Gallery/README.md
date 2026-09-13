@@ -4,9 +4,12 @@
 
 - `WaterFeatureGallery.unity`: 全機能とコピー可能な構成例
 - `WaterDropletProjectorGallery.unity`: 通常Materialへの水滴投影。左側2体が範囲内、右側1体が範囲外です。ProjectorのEnabledで比較できます。
+- `WaterLightingGallery.unity`: 暗い環境光、Point Light、Spot Lightでの水面・雨・Wet Surface比較
 
 ![Projectorによる水滴投影](Projector/ProjectorOn.png)
-- `WaterLightingGallery.unity`: 暗い環境光、Point Light、Spot Lightでの水面・雨・Wet Surface比較
+
+Projectorは非対応Shaderへの投影、濡れ状態の保持、直接光の追加パスには対応しません。
+VRChat実機の両眼・鏡・個別アバターShaderでの表示と負荷は別途確認してください。
 
 Wet Surfaceには不透明版と半透明版があります。`Droplet Head Normal`と`Droplet Trail Normal`は別々に調整できます。水面Foamは`Foam Color`に加え、`Foam Pattern Scale / Speed / Warp`で模様を編集できます。
 

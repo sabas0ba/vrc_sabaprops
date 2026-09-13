@@ -56,6 +56,19 @@ Overview Cameraが`MainCamera`です。水中Cameraを確認する場合はOverv
 
 ![Water Lighting Gallery](images/water-lighting-gallery.png)
 
+## Droplet Projector Gallery
+
+同じSample内の`WaterDropletProjectorGallery.unity`を開きます。個別生成する場合は
+`Tools > SabaProps > Water > Create Droplet Projector Gallery`を実行します。
+
+3体のReceiverは同一の通常Standard Materialを共有します。左側2体は投影範囲内、右側1体は範囲外です。
+`Droplet Projector [Copy Ready]`のProjectorコンポーネントを無効化し、Materialを変更せずに水滴が消えることを比較できます。
+Play Modeでは滴と軌跡の移動を確認します。自作WorldへはProjector rootをコピーし、投影範囲と除外Layerを調整してください。
+
+Wet Surfaceと異なりNormal・Smoothnessは変更しません。非対応Shaderへの投影、範囲外での濡れ状態保持、
+専用のPoint／Spot Light追加パスには対応しません。設定と制限は[配置と調整](authoring.md)を参照してください。
+Unity上のStandard Materialで表示確認済みですが、VRChat実機の両眼・鏡・個別アバターShaderは未検証です。
+
 ## 利用時の注意
 
 - 雨、霧、雲はPlay Modeで確認します。

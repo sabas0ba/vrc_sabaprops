@@ -15,6 +15,14 @@ Material更新を行いません。Editor toolは以下へ変換します。
 
 `WaterSurfaceProfile`と`WaterPath`はauthoring用です。表示に必要な値とMeshはMaterial／MeshFilter側にも保存されます。
 
+## Droplet Projector
+
+Unity Built-inの標準Projectorと投影Materialを生成します。受け側Materialの差し替えや実行時C#は不要です。
+Wet Surfaceと滴・軌跡の計算を共有しますが、投影版は明暗のalpha合成のみで、受け側のNormal・Smoothnessを変更しません。
+環境光・SHへ応答し、直接光の追加パスや影は実装しません。`IgnoreProjector=True`等の非対応Shaderは対象外です。
+投影空間に固定された模様のため、移動する身体への追従や濡れ状態の保持は行いません。
+複数面や壁越しにも投影され得るため、範囲・Layerを制限し、受け側の再描画負荷を確認してください。
+
 ## 波紋
 
 波紋には2つの独立した方式があります。
