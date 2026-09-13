@@ -69,6 +69,7 @@ namespace SabaProps.Foliage.WorldSetup
             // script: the tests need it compiled, and compilation happens
             // between editor sessions, not within one.
             FoliageMenu.ImportDemoMovement();
+            SabaProps.Llama.LlamaWorldBuilder.ImportRuntime();
 
             AssetDatabase.SaveAssets();
 

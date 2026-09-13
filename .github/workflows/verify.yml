@@ -38,8 +38,20 @@ jobs:
           path: .verify/refs
           key: unity-refs-2021.3.33-netfx-1.0.3
 
+      - name: Verify Llama core and fragment shader
+        run: bash .github/verify/llama/verify.sh
+
+      - name: Verify pinned GGUF models on CPU
+        run: |
+          bash .github/verify/llama/fetch-model.sh stories260K
+          bash .github/verify/llama/fetch-model.sh stories15M-q4_0
+          dotnet .verify/llama/CoreTests.dll .verify/llama/models/stories260K.gguf .verify/llama/models/stories15M-q4_0.gguf
+
       - name: Verify package
         run: ./.github/verify/verify.sh
+
+      - name: Validate Llama package
+        run: .github/scripts/run.sh .github/scripts/check_package.py . Packages/io.github.sabas0ba.sabaprops.llama
 
       # A figure mismatch deliberately fails verify.sh after rendering the
       # expected SVG files. Preserve those files so a contributor without the

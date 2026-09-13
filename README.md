@@ -26,6 +26,7 @@ https://sabas0ba.github.io/vrc_sabaprops/index.json
 | Package ID | 名前 | 概要 |
 | --- | --- | --- |
 | `io.github.sabas0ba.sabaprops.foliage` | SabaProps Foliage | GPU インスタンシング対応の草木スキャッタリングツール。グラスシード／ひまわりをプロシージャル生成し、大量配置しても軽量。 |
+| `io.github.sabas0ba.sabaprops.llama` | [SabaProps Llama](Packages/io.github.sabas0ba.sabaprops.llama/README.md) | 小型Llama系モデルの重みtexture変換とワールド内GPU推論。実験段階、学習済み重みは別途必要。 |
 
 各パッケージの詳細は `Packages/<package-id>/README.md` を参照してください。
 
