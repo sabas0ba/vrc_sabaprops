@@ -303,7 +303,84 @@ namespace SabaProps.Trees.Editors
             CreateLabel("White birch grove", new Vector3(-2.1f, 0.06f, -2.4f), 0.06f);
             CreateLabel("Ginkgo avenue", new Vector3(4.1f, 0.06f, -7.2f), 0.06f);
 
+            SeparateSeasonalCrowns(scene);
+
             EditorSceneManager.SaveScene(scene, SeasonalScenePath);
+        }
+
+        private static void SeparateSeasonalCrowns(Scene scene)
+        {
+            // Keep same-preset groves dense, but never let another species or
+            // season extend into a comparison row. Include all LOD bounds,
+            // since distant foliage cards are larger than the LOD0 leaves.
+            var byMesh = new Dictionary<Mesh, List<Transform>>();
+            foreach (GameObject root in scene.GetRootGameObjects())
+            foreach (LODGroup tree in root.GetComponentsInChildren<LODGroup>())
+            {
+                Mesh mesh = tree.GetComponentInChildren<MeshFilter>().sharedMesh;
+                if (!byMesh.TryGetValue(mesh, out List<Transform> group))
+                {
+                    group = new List<Transform>();
+                    byMesh.Add(mesh, group);
+                }
+                group.Add(tree.transform);
+            }
+            var groups = new List<List<Transform>>(byMesh.Values);
+            groups.Sort((a, b) => a[0].position.x.CompareTo(b[0].position.x));
+            var bounds = new List<Bounds>();
+            float totalWidth = 0f;
+            const float clearance = 1f;
+            foreach (var group in groups)
+            {
+                Bounds extent = group[0].GetComponentInChildren<Renderer>().bounds;
+                foreach (Transform tree in group)
+                foreach (Renderer renderer in tree.GetComponentsInChildren<Renderer>())
+                    extent.Encapsulate(renderer.bounds);
+                bounds.Add(extent);
+                totalWidth += extent.size.x;
+            }
+            totalWidth += clearance * (groups.Count - 1);
+            float cursor = -totalWidth * 0.5f;
+            for (int i = 0; i < groups.Count; i++)
+            {
+                float offset = cursor - bounds[i].min.x;
+                foreach (Transform tree in groups[i])
+                    tree.position += Vector3.right * offset;
+                cursor += bounds[i].size.x + clearance;
+            }
+            // Preserve the five comparison groups' order: spring/summer
+            // sakura, birch, and summer/autumn ginkgo.
+            if (groups.Count == 5)
+            {
+                MoveSeasonalMarker("Sakura Avenue Path", groups[0], groups[1]);
+                MoveSeasonalMarker("Ginkgo Avenue Path", groups[3], groups[4]);
+                MoveSeasonalMarker("Sakura avenue Label", groups[0], groups[1]);
+                MoveSeasonalMarker("White birch grove Label", groups[2], groups[2]);
+                MoveSeasonalMarker("Ginkgo avenue Label", groups[3], groups[4]);
+            }
+            GameObject ground = GameObject.Find("Tree Demo Ground");
+            Vector3 scale = ground.transform.localScale;
+            scale.x = Mathf.Max(scale.x, (totalWidth + 6f) / 10f);
+            ground.transform.localScale = scale;
+            Camera camera = Camera.main;
+            if (camera != null)
+            {
+                camera.transform.position = new Vector3(
+                    0f, 13f, -Mathf.Max(27f, totalWidth * 1.3f));
+                camera.transform.rotation = Quaternion.LookRotation(
+                    new Vector3(0f, 3.1f, 1.6f) - camera.transform.position,
+                    Vector3.up);
+                camera.farClipPlane = Mathf.Max(120f, totalWidth * 2f);
+            }
+        }
+
+        private static void MoveSeasonalMarker(
+            string name, List<Transform> left, List<Transform> right)
+        {
+            GameObject marker = GameObject.Find(name);
+            Vector3 position = marker.transform.position;
+            position.x = (left[0].position.x + right[0].position.x) * 0.5f;
+            marker.transform.position = position;
         }
 
         private static void CreateSeasonalAvenue(

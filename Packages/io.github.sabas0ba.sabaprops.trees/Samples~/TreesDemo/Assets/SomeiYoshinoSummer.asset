@@ -40,6 +40,9 @@ MonoBehaviour:
     crownDensity: 1.25
     crownEnvelopeStrength: 1
     crownWidthScale: 1.08
+    crownVolumeScale: 0.665
+    crownRadialScale: 1.5
+    primaryBranchDeparture: 0.25
   appearance:
     barkRootColor: {r: 0.18, g: 0.16, b: 0.15, a: 1}
     barkTipColor: {r: 0.31, g: 0.25, b: 0.22, a: 1}

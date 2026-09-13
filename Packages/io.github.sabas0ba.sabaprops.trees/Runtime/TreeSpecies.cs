@@ -96,10 +96,16 @@ namespace SabaProps.Trees
         [Range(0f, 0.5f)] public float branchLengthVariance = 0.14f;
         [Tooltip("Scales the number of primary crown branches without changing recursive depth.")]
         [Range(0.5f, 1.5f)] public float crownDensity = 1f;
-        [Tooltip("Constrains generated branch points to the selected crown shape. 0 keeps free growth; 1 keeps the crown inside the envelope with the trunk apex as its highest point.")]
+        [Tooltip("Shortens branch growth toward the selected crown silhouette while preserving branch directions. Upper branches can grow above the trunk endpoint. 0 keeps free growth; 1 applies the full envelope.")]
         [Range(0f, 1f)] public float crownEnvelopeStrength = 0.85f;
-        [Tooltip("Scales the horizontal radius of the crown envelope without changing tree height.")]
+        [Tooltip("Scales the reference radius used to limit branch growth. A wider envelope allows longer lateral branches; the final size also depends on Crown Volume Scale.")]
         [Range(0.5f, 1.5f)] public float crownWidthScale = 1f;
+        [Tooltip("Target mesh bounding-box volume relative to matching free growth. Uniform scaling preserves crown proportions and branch angles. This is a size reference, not a measure of foliage density.")]
+        [Range(0.5f, 2f)] public float crownVolumeScale = 1f;
+        [Tooltip("Scales horizontal branch-centreline reach about each primary attachment, without widening the trunk, branch tubes or leaves. Applied after the size reference; 1.5 gives a broader crown.")]
+        [Range(0.5f, 2f)] public float crownRadialScale = 1f;
+        [Tooltip("Blends primary branch emergence from the trunk tangent toward Branch Angle. 0 follows the trunk initially; larger values give a more outward departure.")]
+        [Range(0f, 0.6f)] public float primaryBranchDeparture = 0f;
     }
 
     [Serializable]
@@ -313,6 +319,11 @@ namespace SabaProps.Trees
                 : TreeArchetype.Broadleaf;
             ApplyArchetypePreset(baseArchetype);
             botanicalPreset = value;
+            if (value != TreeBotanicalPreset.Custom)
+            {
+                structure.crownRadialScale = 1.5f;
+                structure.primaryBranchDeparture = 0.25f;
+            }
 
             switch (value)
             {
@@ -329,7 +340,7 @@ namespace SabaProps.Trees
                     structure.trunkBranchStart = 0.36f;
                     structure.crookedness = 0.055f;
                     structure.maxBranches = 620;
-                    structure.crownShape = TreeCrownShape.Vase;
+                    structure.crownShape = TreeCrownShape.Rounded;
                     structure.branchArrangement = TreeBranchArrangement.Spiral;
                     structure.apicalDominance = 0.38f;
                     structure.branchDroop = 0f;
@@ -338,6 +349,7 @@ namespace SabaProps.Trees
                     structure.crownDensity = 1.2f;
                     structure.crownEnvelopeStrength = 1f;
                     structure.crownWidthScale = 1.08f;
+                    structure.crownVolumeScale = 0.893f;
                     appearance.barkRootColor = new Color(0.19f, 0.17f, 0.14f, 1f);
                     appearance.barkTipColor = new Color(0.37f, 0.29f, 0.20f, 1f);
                     appearance.leafShape = TreeLeafShape.Broad;
@@ -372,6 +384,7 @@ namespace SabaProps.Trees
                     structure.crownDensity = 1.08f;
                     structure.crownEnvelopeStrength = 1f;
                     structure.crownWidthScale = 1.04f;
+                    structure.crownVolumeScale = 1.484f;
                     appearance.barkRootColor = new Color(0.16f, 0.13f, 0.105f, 1f);
                     appearance.barkTipColor = new Color(0.25f, 0.20f, 0.14f, 1f);
                     appearance.leafShape = TreeLeafShape.Palmate;
@@ -408,6 +421,7 @@ namespace SabaProps.Trees
                     structure.crownDensity = 1.15f;
                     structure.crownEnvelopeStrength = 0.98f;
                     structure.crownWidthScale = 0.92f;
+                    structure.crownVolumeScale = 0.938f;
                     appearance.barkRootColor = new Color(0.19f, 0.085f, 0.045f, 1f);
                     appearance.barkTipColor = new Color(0.35f, 0.16f, 0.075f, 1f);
                     appearance.leafShape = TreeLeafShape.Needle;
@@ -442,6 +456,7 @@ namespace SabaProps.Trees
                     structure.crownDensity = 1.2f;
                     structure.crownEnvelopeStrength = 1f;
                     structure.crownWidthScale = 0.92f;
+                    structure.crownVolumeScale = 1.047f;
                     appearance.barkRootColor = new Color(0.48f, 0.47f, 0.43f, 1f);
                     appearance.barkTipColor = new Color(0.25f, 0.18f, 0.12f, 1f);
                     appearance.leafShape = TreeLeafShape.Broad;
@@ -478,6 +493,7 @@ namespace SabaProps.Trees
                     structure.crownDensity = 1.15f;
                     structure.crownEnvelopeStrength = 0.12f;
                     structure.crownWidthScale = 1.12f;
+                    structure.crownVolumeScale = 1.056f;
                     appearance.barkRootColor = new Color(0.20f, 0.17f, 0.14f, 1f);
                     appearance.barkTipColor = new Color(0.43f, 0.245f, 0.14f, 1f);
                     appearance.leafShape = TreeLeafShape.Needle;
@@ -514,6 +530,7 @@ namespace SabaProps.Trees
                     structure.crownDensity = 1.2f;
                     structure.crownEnvelopeStrength = 0.98f;
                     structure.crownWidthScale = 0.90f;
+                    structure.crownVolumeScale = 0.977f;
                     appearance.barkRootColor = new Color(0.24f, 0.12f, 0.075f, 1f);
                     appearance.barkTipColor = new Color(0.38f, 0.20f, 0.11f, 1f);
                     appearance.leafShape = TreeLeafShape.Scale;
@@ -592,6 +609,7 @@ namespace SabaProps.Trees
             structure.crownDensity = 1.25f;
             structure.crownEnvelopeStrength = 1f;
             structure.crownWidthScale = 1.08f;
+            structure.crownVolumeScale = 0.665f;
             appearance.barkRootColor = new Color(0.18f, 0.16f, 0.15f, 1f);
             appearance.barkTipColor = new Color(0.31f, 0.25f, 0.22f, 1f);
             appearance.foliageDepth = 2;
@@ -621,6 +639,7 @@ namespace SabaProps.Trees
             structure.crownDensity = 1.3f;
             structure.crownEnvelopeStrength = 1f;
             structure.crownWidthScale = 0.94f;
+            structure.crownVolumeScale = 0.572f;
             appearance.barkRootColor = new Color(0.27f, 0.25f, 0.20f, 1f);
             appearance.barkTipColor = new Color(0.40f, 0.37f, 0.28f, 1f);
             appearance.leafShape = TreeLeafShape.Fan;
@@ -664,6 +683,12 @@ namespace SabaProps.Trees
                 structure.crownEnvelopeStrength);
             structure.crownWidthScale = Mathf.Clamp(
                 structure.crownWidthScale, 0.5f, 1.5f);
+            structure.crownVolumeScale = Mathf.Clamp(
+                structure.crownVolumeScale, 0.5f, 2f);
+            structure.crownRadialScale = Mathf.Clamp(
+                structure.crownRadialScale, 0.5f, 2f);
+            structure.primaryBranchDeparture = Mathf.Clamp(
+                structure.primaryBranchDeparture, 0f, 0.6f);
             appearance.leavesPerTip = Mathf.Clamp(appearance.leavesPerTip, 1, 24);
             appearance.leafLength = Mathf.Max(0.01f, appearance.leafLength);
             appearance.leafWidth = Mathf.Max(0.005f, appearance.leafWidth);

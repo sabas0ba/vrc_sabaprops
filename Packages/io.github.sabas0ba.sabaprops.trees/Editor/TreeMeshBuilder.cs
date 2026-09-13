@@ -13,6 +13,8 @@ namespace SabaProps.Trees.Editors
     /// </summary>
     public static class TreeMeshBuilder
     {
+        private const float MeshBoundsPadding = 0.45f;
+
         private sealed class BuildSettings
         {
             public int LodLevel;
@@ -24,6 +26,7 @@ namespace SabaProps.Trees.Editors
             public int MeshSegmentsPerBranch;
             public float LeafFraction;
             public float LeafScale;
+            public float RadialScale;
         }
 
         private sealed class BuildContext
@@ -34,6 +37,7 @@ namespace SabaProps.Trees.Editors
             public FoliageRandom Random;
             public int BranchesBuilt;
             public BranchPath Trunk;
+            public float CrownEnvelopeStrength;
         }
 
         private sealed class BranchPath
@@ -41,6 +45,8 @@ namespace SabaProps.Trees.Editors
             public Vector3[] Points;
             public Vector3[] Directions;
             public int LeafSeed;
+            public float GrowthScale = 1f;
+            public bool IsTrunk;
 
             public Vector3 PointAt(float ratio)
             {
@@ -98,18 +104,121 @@ namespace SabaProps.Trees.Editors
                 // This keeps the crown silhouette continuous without restoring
                 // the full vertex count.
                 LeafScale = lodLevel == 0 ? 1f : lodLevel == 1 ? 1.50f : 2.25f,
+                RadialScale = structure.crownRadialScale,
             };
 
-            var context = new BuildContext
+            BuildContext context = CreateBuildContext(
+                species,
+                settings,
+                structure.crownEnvelopeStrength);
+            BuildTree(context);
+
+            if (structure.crownEnvelopeStrength > 0f)
+            {
+                // All LODs must use the same size correction. Larger low-LOD
+                // leaves change mesh bounds but must not move branch pivots.
+                BuildSettings referenceSettings = settings;
+                BuildContext referenceShape = context;
+                if (lodLevel > 0 || settings.RadialScale != 1f)
+                {
+                    referenceSettings = new BuildSettings
+                    {
+                        LodLevel = 0,
+                        MaxDepth = structure.maxDepth,
+                        VisibleBranchDepth = structure.maxDepth,
+                        BranchCount = structure.branchCount,
+                        RadialSegments = structure.radialSegments,
+                        SegmentsPerBranch = structure.segmentsPerBranch,
+                        MeshSegmentsPerBranch = structure.segmentsPerBranch,
+                        LeafFraction = 1f,
+                        LeafScale = 1f,
+                        RadialScale = 1f,
+                    };
+                    referenceShape = CreateBuildContext(species, referenceSettings,
+                        structure.crownEnvelopeStrength);
+                    BuildTree(referenceShape);
+                }
+                BuildContext freeGrowth = CreateBuildContext(species, referenceSettings, 0f);
+                BuildTree(freeGrowth);
+                PreserveBoundsVolume(
+                    context.Buffer,
+                    referenceShape.Buffer,
+                    freeGrowth.Buffer,
+                    structure.crownVolumeScale);
+            }
+
+            return context.Buffer.ToMesh(
+                $"{species.name}_LOD{lodLevel}",
+                MeshBoundsPadding);
+        }
+
+        private static BuildContext CreateBuildContext(
+            TreeSpecies species,
+            BuildSettings settings,
+            float crownEnvelopeStrength)
+        {
+            return new BuildContext
             {
                 Species = species,
                 Buffer = new TreeMeshBuffer(),
                 Settings = settings,
                 Random = new FoliageRandom(species.meshSeed),
+                CrownEnvelopeStrength = crownEnvelopeStrength,
             };
+        }
 
-            BuildTree(context);
-            return context.Buffer.ToMesh($"{species.name}_LOD{lodLevel}", 0.45f);
+        private static void PreserveBoundsVolume(
+            TreeMeshBuffer shaped,
+            TreeMeshBuffer referenceShape,
+            TreeMeshBuffer freeGrowth,
+            float volumeScale)
+        {
+            Bounds shapedBounds = CalculateBounds(referenceShape.Positions);
+            Bounds baselineBounds = CalculateBounds(freeGrowth.Positions);
+            float padding = MeshBoundsPadding * 2f;
+            Vector3 baselineSize = baselineBounds.size + Vector3.one * padding;
+            float targetVolume = baselineSize.x * baselineSize.y * baselineSize.z
+                * volumeScale;
+            // A horizontal-only correction flattened the crown and widened
+            // the trunk. Uniform scaling preserves branch angles and aspect.
+            float lower = 0f;
+            float upper = Mathf.Max(1f, Mathf.Pow(targetVolume /
+                Mathf.Max(1e-6f, shapedBounds.size.x * shapedBounds.size.y
+                    * shapedBounds.size.z), 1f / 3f));
+            for (int iteration = 0; iteration < 24; iteration++)
+            {
+                float candidate = (lower + upper) * 0.5f;
+                Vector3 size = shapedBounds.size * candidate + Vector3.one * padding;
+                if (size.x * size.y * size.z < targetVolume) lower = candidate;
+                else upper = candidate;
+            }
+            float scale = (lower + upper) * 0.5f;
+
+            for (int i = 0; i < shaped.Positions.Count; i++)
+            {
+                shaped.Positions[i] *= scale;
+
+                Vector4 wind = shaped.Uv3[i];
+                wind.x *= scale;
+                wind.y *= scale;
+                wind.z *= scale;
+                shaped.Uv3[i] = wind;
+            }
+        }
+
+        private static Bounds CalculateBounds(IReadOnlyList<Vector3> positions)
+        {
+            if (positions.Count == 0)
+            {
+                return new Bounds(Vector3.zero, Vector3.zero);
+            }
+
+            var bounds = new Bounds(positions[0], Vector3.zero);
+            for (int i = 1; i < positions.Count; i++)
+            {
+                bounds.Encapsulate(positions[i]);
+            }
+            return bounds;
         }
 
         private static void BuildTree(BuildContext context)
@@ -172,7 +281,8 @@ namespace SabaProps.Trees.Editors
                     Mathf.Lerp(0.78f, 0.35f, attach);
 
                 BuildRecursiveBranch(
-                    context, start, trunk.DirectionAt(attach), direction,
+                    context, start, Vector3.Slerp(trunk.DirectionAt(attach), direction,
+                        structure.primaryBranchDeparture).normalized, direction,
                     length, radius, 1,
                     start, 0f, 1f / context.Settings.MaxDepth);
             }
@@ -210,7 +320,7 @@ namespace SabaProps.Trees.Editors
                 bendStart, bendEnd, depth, false,
                 depth <= context.Settings.VisibleBranchDepth);
 
-            if (depth >= context.Settings.MaxDepth)
+            if (depth >= context.Settings.MaxDepth || path.GrowthScale < 0.2f)
             {
                 AddLeaves(context, path, windRoot, bendEnd);
                 return;
@@ -297,7 +407,7 @@ namespace SabaProps.Trees.Editors
                     path.PointAt(attach),
                     attachDirection,
                     childDirection,
-                    length * structure.lengthDecay
+                    length * path.GrowthScale * structure.lengthDecay
                         * (continuation ? 0.98f : 0.76f)
                         * Mathf.Lerp(
                             0.94f,
@@ -409,15 +519,6 @@ namespace SabaProps.Trees.Editors
                         structure.branchDroop);
                 }
                 Vector3 nextPoint = points[i] + direction * step;
-                if (!trunk)
-                {
-                    nextPoint = ConstrainToCrownEnvelope(context, nextPoint);
-                    Vector3 constrainedDirection = nextPoint - points[i];
-                    if (constrainedDirection.sqrMagnitude > 1e-8f)
-                    {
-                        direction = constrainedDirection.normalized;
-                    }
-                }
                 directions[i] = direction;
                 points[i + 1] = nextPoint;
             }
@@ -428,7 +529,12 @@ namespace SabaProps.Trees.Editors
                 Points = points,
                 Directions = directions,
                 LeafSeed = MixSeed(context.Species.meshSeed, branchIndex),
+                IsTrunk = trunk,
             };
+            if (!trunk)
+            {
+                ConstrainBranchGrowth(context, path);
+            }
             if (!emitGeometry)
             {
                 return path;
@@ -437,19 +543,20 @@ namespace SabaProps.Trees.Editors
             int meshSegments = trunk
                 ? segments
                 : Mathf.Min(segments, context.Settings.MeshSegmentsPerBranch);
-            Vector3[] meshPoints = points;
-            Vector3[] meshDirections = directions;
+            BranchPath renderPath = RenderBranchPath(context, path, windRoot);
+            Vector3[] meshPoints = renderPath.Points;
+            Vector3[] meshDirections = renderPath.Directions;
             if (meshSegments != segments)
             {
                 meshPoints = new Vector3[meshSegments + 1];
                 meshDirections = new Vector3[meshSegments];
                 for (int ring = 0; ring <= meshSegments; ring++)
                 {
-                    meshPoints[ring] = path.PointAt(ring / (float)meshSegments);
+                    meshPoints[ring] = renderPath.PointAt(ring / (float)meshSegments);
                 }
                 for (int segment = 0; segment < meshSegments; segment++)
                 {
-                    meshDirections[segment] = path.DirectionAt(
+                    meshDirections[segment] = renderPath.DirectionAt(
                         (segment + 0.5f) / meshSegments);
                 }
             }
@@ -513,24 +620,17 @@ namespace SabaProps.Trees.Editors
                     ringRadius += radius * baseFlare * 0.24f;
                 }
                 float bend = trunk ? 0f : Mathf.Lerp(bendStart, bendEnd, ratio);
-                float age = trunk
-                    ? ratio * 0.35f
-                    : Mathf.Clamp01(0.42f + branchOrder * 0.13f + ratio * 0.16f);
-                Color color = Color.Lerp(
-                    context.Species.appearance.barkRootColor,
-                    context.Species.appearance.barkTipColor,
-                    age);
-                color.a = elementSeed;
 
                 for (int sideIndex = 0; sideIndex < sides; sideIndex++)
                 {
                     float turn = sideIndex / (float)sides;
                     float angle = turn * Mathf.PI * 2f;
                     Vector3 normal = right * Mathf.Cos(angle) + up * Mathf.Sin(angle);
+                    Vector3 position = meshPoints[ring] + normal * ringRadius;
                     rings[ring, sideIndex] = context.Buffer.AddVertex(
-                        meshPoints[ring] + normal * ringRadius,
+                        position,
                         normal,
-                        color,
+                        BarkColorAt(context, position, elementSeed),
                         new Vector2(turn, bend),
                         windRoot,
                         stiffness);
@@ -569,10 +669,7 @@ namespace SabaProps.Trees.Editors
             float seed, bool bottom)
         {
             Vector3 normal = bottom ? -directions[0] : directions[directions.Length - 1];
-            Color color = bottom
-                ? context.Species.appearance.barkRootColor
-                : context.Species.appearance.barkTipColor;
-            color.a = seed;
+            Color color = BarkColorAt(context, points[ring], seed);
             int center = context.Buffer.AddVertex(
                 points[ring], normal, color, new Vector2(0.5f, bend), windRoot, stiffness);
 
@@ -590,6 +687,52 @@ namespace SabaProps.Trees.Editors
             }
         }
 
+        private static Color BarkColorAt(BuildContext context, Vector3 position, float seed)
+        {
+            // Trunk, branches and caps share one spatial colour field.
+            // Restarting the gradient by branch order produced a different
+            // bark colour at each junction, especially on white birch.
+            float height = Mathf.Clamp01(position.y
+                / Mathf.Max(0.05f, context.Species.structure.trunkLength) * 0.35f);
+            Color color = Color.Lerp(context.Species.appearance.barkRootColor,
+                context.Species.appearance.barkTipColor, height);
+            color.a = seed;
+            return color;
+        }
+
+        private static BranchPath RenderBranchPath(
+            BuildContext context, BranchPath path, Vector3 primaryAttachment)
+        {
+            float scale = context.Settings.RadialScale;
+            if (path.IsTrunk || scale == 1f) return path;
+            var rendered = new BranchPath
+            {
+                Points = new Vector3[path.Points.Length],
+                Directions = new Vector3[path.Directions.Length],
+                LeafSeed = path.LeafSeed,
+                GrowthScale = path.GrowthScale,
+            };
+            // All descendants share this attachment and affine transform,
+            // including leaf sites. Junctions therefore remain connected.
+            // Tube radii and leaf geometry are generated afterwards at their
+            // authored sizes, rather than stretched with the centreline.
+            for (int i = 0; i < path.Points.Length; i++)
+            {
+                Vector3 offset = path.Points[i] - primaryAttachment;
+                offset.x *= scale;
+                offset.z *= scale;
+                rendered.Points[i] = primaryAttachment + offset;
+            }
+            for (int i = 0; i < path.Directions.Length; i++)
+            {
+                Vector3 direction = path.Directions[i];
+                direction.x *= scale;
+                direction.z *= scale;
+                rendered.Directions[i] = direction.normalized;
+            }
+            return rendered;
+        }
+
         private static void AddLeaves(
             BuildContext context,
             BranchPath path,
@@ -602,6 +745,7 @@ namespace SabaProps.Trees.Editors
             {
                 return;
             }
+            path = RenderBranchPath(context, path, windRoot);
 
             int candidateCount = Mathf.Max(
                 1,
@@ -633,7 +777,7 @@ namespace SabaProps.Trees.Editors
                 float firstLeaf = appearance.leafArrangement ==
                     TreeLeafArrangement.FasciclePairs ? 0.72f
                     : appearance.leafArrangement == TreeLeafArrangement.Clustered
-                        ? 0.80f
+                        ? 0.28f
                         : 0.42f;
                 float along = nodeCount == 1
                     ? 0.9f
@@ -1011,8 +1155,6 @@ namespace SabaProps.Trees.Editors
             Vector3 up = Vector3.Cross(direction, right).normalized;
             var startRing = new int[3];
             var endRing = new int[3];
-            Color color = context.Species.appearance.barkTipColor;
-            color.a = seed;
 
             for (int side = 0; side < 3; side++)
             {
@@ -1021,7 +1163,7 @@ namespace SabaProps.Trees.Editors
                 startRing[side] = context.Buffer.AddVertex(
                     start + normal * radius,
                     normal,
-                    color,
+                    BarkColorAt(context, start + normal * radius, seed),
                     new Vector2(side / 3f, bend),
                     windRoot,
                     EffectiveWindResponse(
@@ -1030,7 +1172,7 @@ namespace SabaProps.Trees.Editors
                 endRing[side] = context.Buffer.AddVertex(
                     end + normal * radius * 0.62f,
                     normal,
-                    color,
+                    BarkColorAt(context, end + normal * radius * 0.62f, seed),
                     new Vector2(side / 3f, Mathf.Lerp(bend, 1f, 0.35f)),
                     windRoot,
                     EffectiveWindResponse(
@@ -1215,6 +1357,22 @@ namespace SabaProps.Trees.Editors
                 0.45f,
                 0.97f);
 
+            // Retain the terminal continuation and the existing branch budget,
+            // but distribute broadleaf laterals through the supporting axis.
+            // Their descendants carry foliage inside the crown rather than
+            // adding leaves directly to a thick primary branch.
+            TreeLeafShape shape = context.Species.appearance.leafShape;
+            if (depth <= 2 && shape != TreeLeafShape.Needle
+                && shape != TreeLeafShape.Scale)
+            {
+                float interiorAttach = Mathf.Lerp(0.22f, 0.82f,
+                    Mathf.InverseLerp(0.45f, 0.97f, attach));
+                // Nearly vertical leaders retain their original hierarchy;
+                // moving their laterals inward can narrow the whole crown.
+                attach = Mathf.Lerp(attach, interiorAttach,
+                    Mathf.InverseLerp(10f, 35f, structure.branchAngle));
+            }
+
             if (structure.branchArrangement == TreeBranchArrangement.Opposite)
             {
                 turn = depth * 83f + index * 180f;
@@ -1258,76 +1416,102 @@ namespace SabaProps.Trees.Editors
             }
         }
 
-        private static Vector3 ConstrainToCrownEnvelope(
+        private static void ConstrainBranchGrowth(BuildContext context, BranchPath path)
+        {
+            if (context.CrownEnvelopeStrength <= 0f || context.Trunk == null) return;
+
+            // Shorten the entire path about its attachment, preserving every
+            // tangent. Projecting individual points onto the envelope made
+            // outward-growing branches turn downward along its surface.
+            Vector3 start = path.Points[0];
+            float allowed = 1f;
+            for (int i = 1; i < path.Points.Length; i++)
+            {
+                Vector3 offset = path.Points[i] - start;
+                if (start.y + offset.y * allowed <= CrownMaximumHeight(
+                    context, start + offset * allowed)) continue;
+                float lower = 0f;
+                float upper = allowed;
+                for (int iteration = 0; iteration < 16; iteration++)
+                {
+                    float candidate = (lower + upper) * 0.5f;
+                    Vector3 point = start + offset * candidate;
+                    if (point.y <= CrownMaximumHeight(context, point)) lower = candidate;
+                    else upper = candidate;
+                }
+                allowed = lower;
+            }
+            path.GrowthScale = Mathf.Lerp(1f, Mathf.Max(0.015f, allowed),
+                context.CrownEnvelopeStrength);
+            for (int i = 1; i < path.Points.Length; i++)
+                path.Points[i] = start + (path.Points[i] - start) * path.GrowthScale;
+        }
+
+        private static float CrownMaximumHeight(
             BuildContext context,
             Vector3 point)
         {
             TreeStructureParams structure = context.Species.structure;
-            float strength = structure.crownEnvelopeStrength;
-            if (strength <= 0f || context.Trunk == null)
-            {
-                return point;
-            }
-
             Vector3 apex = context.Trunk.PointAt(1f);
             Vector3 crownBase = context.Trunk.PointAt(
                 structure.trunkBranchStart);
-            float crownHeight = Mathf.Max(0.05f, apex.y - crownBase.y);
-            if (point.y <= crownBase.y)
-            {
-                return point;
-            }
+            // The trunk endpoint is a branching point, not a pruning plane.
+            // Reserve vertical space for the upper primary branches.
+            float crownHeight = Mathf.Max(0.05f, apex.y - crownBase.y)
+                + structure.trunkLength * 0.35f;
 
-            float height = Mathf.Clamp01(
-                (point.y - crownBase.y) / crownHeight);
             float trunkRatio = Mathf.Clamp01(point.y / Mathf.Max(0.05f, apex.y));
             Vector3 centre = context.Trunk.PointAt(trunkRatio);
             Vector3 radial = point - centre;
             radial.y = 0f;
 
-            float maximumRadius = structure.trunkLength
+            float referenceRadius = structure.trunkLength
                 * structure.lengthDecay
                 * structure.crownWidthScale
                 * Mathf.Lerp(1.08f, 0.90f, structure.apicalDominance);
-            float allowedRadius = maximumRadius
-                * CrownEnvelopeProfile(structure.crownShape, height);
+            float radialRatio = radial.magnitude
+                / Mathf.Max(0.05f, referenceRadius);
+            float crownTopMargin = structure.trunkRadius * 0.15f + 0.01f;
+            float maximumHeight = crownBase.y
+                + Mathf.Max(0.05f, crownHeight - crownTopMargin)
+                * CrownEnvelopeHeightProfile(
+                    structure.crownShape,
+                    radialRatio);
 
-            Vector3 target = point;
-            target.y = Mathf.Min(target.y, apex.y);
-            float radialLength = radial.magnitude;
-            if (radialLength > allowedRadius)
-            {
-                Vector3 limitedRadial = radialLength > 1e-6f
-                    ? radial * (allowedRadius / radialLength)
-                    : Vector3.zero;
-                target.x = centre.x + limitedRadial.x;
-                target.z = centre.z + limitedRadial.z;
-            }
+            // A smooth, seeded variation avoids a shared pruning surface.
+            // Evaluate in canonical space without consuming the growth RNG,
+            // so neighbouring branches and every LOD share the same envelope.
+            float phase = (context.Species.meshSeed & 65535) * 0.0137f;
+            float inverseRadius = 1f / Mathf.Max(0.05f, referenceRadius);
+            float unevenness = Mathf.Sin(radial.x * inverseRadius * 4.1f + phase)
+                * Mathf.Cos(radial.z * inverseRadius * 3.7f - phase * 0.73f);
+            maximumHeight += crownHeight * 0.07f * unevenness
+                * (1f - Mathf.Clamp01(radialRatio) * 0.5f);
 
-            return Vector3.Lerp(point, target, strength);
+            return maximumHeight;
         }
 
-        private static float CrownEnvelopeProfile(
+        private static float CrownEnvelopeHeightProfile(
             TreeCrownShape shape,
-            float height)
+            float radialRatio)
         {
-            height = Mathf.Clamp01(height);
-            float rounded = Mathf.Sqrt(
-                Mathf.Max(0f, 4f * height * (1f - height)));
+            radialRatio = Mathf.Clamp01(radialRatio);
+            float roundedTop = Mathf.Sqrt(
+                Mathf.Max(0f, 1f - radialRatio * radialRatio));
             switch (shape)
             {
                 case TreeCrownShape.Vase:
-                    return rounded * Mathf.Lerp(0.68f, 1.10f, height);
+                    return 0.86f + roundedTop * 0.14f;
                 case TreeCrownShape.Layered:
-                    return rounded
-                        * (0.93f + Mathf.Sin(height * Mathf.PI * 4f) * 0.07f);
+                    return 0.54f + roundedTop * 0.46f
+                        + Mathf.Sin(radialRatio * Mathf.PI * 4f) * 0.035f;
                 case TreeCrownShape.Pyramidal:
-                    return 1f - height;
+                    return Mathf.Lerp(1f, 0.18f, radialRatio);
                 case TreeCrownShape.OpenIrregular:
-                    return Mathf.Lerp(0.82f, 0.28f, height);
+                    return 0.76f + roundedTop * 0.24f;
                 case TreeCrownShape.Rounded:
                 default:
-                    return rounded;
+                    return 0.30f + roundedTop * 0.70f;
             }
         }
 

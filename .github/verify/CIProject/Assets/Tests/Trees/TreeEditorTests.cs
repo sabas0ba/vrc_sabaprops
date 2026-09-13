@@ -82,6 +82,22 @@ namespace SabaProps.Trees.CITests
                     AssetDatabase.AssetPathToGUID(TreeBundledDemo.LoadScenePath),
                     "bundled scene regeneration must preserve its GUID");
 
+                EditorSceneManager.OpenScene(TreeBundledDemo.SeasonalScenePath);
+                LODGroup[] seasonalTrees = Object.FindObjectsOfType<LODGroup>();
+                Assert.AreEqual(37, seasonalTrees.Length);
+                for (int i = 0; i < seasonalTrees.Length; i++)
+                for (int j = i + 1; j < seasonalTrees.Length; j++)
+                {
+                    MeshFilter first = seasonalTrees[i].GetComponentInChildren<MeshFilter>();
+                    MeshFilter second = seasonalTrees[j].GetComponentInChildren<MeshFilter>();
+                    if (first.sharedMesh == second.sharedMesh) continue;
+                    foreach (Renderer a in seasonalTrees[i].GetComponentsInChildren<Renderer>())
+                    foreach (Renderer b in seasonalTrees[j].GetComponentsInChildren<Renderer>())
+                        Assert.IsFalse(a.bounds.Intersects(b.bounds),
+                            "Different species/seasons must not overlap in the comparison scene: "
+                            + seasonalTrees[i].name + " / " + seasonalTrees[j].name);
+                }
+
                 FoliageBundledDemo.GenerateForDistribution();
                 Assert.IsNotNull(AssetDatabase.LoadAssetAtPath<SceneAsset>(
                     FoliageBundledDemo.ScenePath));
@@ -303,6 +319,7 @@ namespace SabaProps.Trees.CITests
         [Test]
         public void BotanicalPresetsEncodeObservedBranchAndLeafArrangements()
         {
+            TreeSpecies zelkova = CreateSpecies(TreeBotanicalPreset.JapaneseZelkova);
             TreeSpecies maple = CreateSpecies(TreeBotanicalPreset.JapaneseMaple);
             TreeSpecies cedar = CreateSpecies(TreeBotanicalPreset.JapaneseCedar);
             TreeSpecies birch = CreateSpecies(TreeBotanicalPreset.JapaneseWhiteBirch);
@@ -314,6 +331,10 @@ namespace SabaProps.Trees.CITests
             TreeSpecies ginkgoAutumn = CreateSpecies(TreeBotanicalPreset.GinkgoAutumn);
             try
             {
+                Assert.AreEqual(TreeCrownShape.Rounded,
+                    zelkova.structure.crownShape,
+                    "managed Zelkova should use the volume-preserving rounded crown");
+                Assert.AreEqual(1f, zelkova.structure.crownEnvelopeStrength);
                 Assert.AreEqual(TreeBranchArrangement.Opposite,
                     maple.structure.branchArrangement);
                 Assert.AreEqual(TreeLeafArrangement.Opposite,
@@ -363,6 +384,7 @@ namespace SabaProps.Trees.CITests
             }
             finally
             {
+                Object.DestroyImmediate(zelkova);
                 Object.DestroyImmediate(maple);
                 Object.DestroyImmediate(cedar);
                 Object.DestroyImmediate(birch);
@@ -456,9 +478,9 @@ namespace SabaProps.Trees.CITests
                         constrainedMaximumY + 0.2f,
                         "the envelope should visibly trim upward branch growth");
                     Assert.LessOrEqual(
-                        constrainedMaximumY,
-                        species.structure.trunkLength + 0.03f,
-                        "the trunk apex should remain the highest structural point");
+                        constrainedMaximumY / constrained.bounds.size.x,
+                        freeMaximumY / freeGrowth.bounds.size.x,
+                        "shaping should reduce the excessive vertical aspect ratio");
                 }
                 finally
                 {
@@ -468,6 +490,255 @@ namespace SabaProps.Trees.CITests
             }
             finally
             {
+                Object.DestroyImmediate(species);
+            }
+        }
+
+        [TestCase(TreeBotanicalPreset.JapaneseZelkova)]
+        [TestCase(TreeBotanicalPreset.JapaneseMaple)]
+        [TestCase(TreeBotanicalPreset.JapaneseCedar)]
+        [TestCase(TreeBotanicalPreset.JapaneseWhiteBirch)]
+        [TestCase(TreeBotanicalPreset.JapaneseRedPine)]
+        [TestCase(TreeBotanicalPreset.HinokiCypress)]
+        [TestCase(TreeBotanicalPreset.SomeiYoshinoSpring)]
+        [TestCase(TreeBotanicalPreset.SomeiYoshinoSummer)]
+        [TestCase(TreeBotanicalPreset.GinkgoSummer)]
+        [TestCase(TreeBotanicalPreset.GinkgoAutumn)]
+        public void CrownEnvelopePreservesReferenceBoundsVolume(
+            TreeBotanicalPreset preset)
+        {
+            TreeSpecies species = CreateSpecies(preset);
+            // The size reference precedes the explicitly requested widening.
+            species.structure.crownRadialScale = 1f;
+            species.structure.primaryBranchDeparture = 0f;
+            try
+            {
+                float configuredStrength =
+                    species.structure.crownEnvelopeStrength;
+                float configuredVolumeScale =
+                    species.structure.crownVolumeScale;
+                species.structure.crownEnvelopeStrength = 0f;
+                Mesh freeGrowth = TreeMeshBuilder.Build(species, 0);
+                species.structure.crownEnvelopeStrength = configuredStrength;
+                Mesh shaped = TreeMeshBuilder.Build(species, 0);
+                try
+                {
+                    float baselineVolume = BoundsVolume(freeGrowth);
+                    float shapedVolume = BoundsVolume(shaped);
+                    float ratio = shapedVolume / baselineVolume;
+                    Assert.GreaterOrEqual(
+                        ratio,
+                        configuredVolumeScale * 0.98f,
+                        preset + " did not reach its configured bounds volume");
+                    Assert.LessOrEqual(
+                        ratio,
+                        configuredVolumeScale * 1.02f,
+                        preset + " exceeded its configured bounds volume");
+
+                    float referenceRatio = shapedVolume
+                        / PreEnvelopeBoundsVolume(preset);
+                    Assert.GreaterOrEqual(
+                        referenceRatio,
+                        0.80f,
+                        preset + " lost more than 20% of pre-envelope volume");
+                    Assert.LessOrEqual(
+                        referenceRatio,
+                        1.20f,
+                        preset + " gained more than 20% over pre-envelope volume");
+                }
+                finally
+                {
+                    Object.DestroyImmediate(freeGrowth);
+                    Object.DestroyImmediate(shaped);
+                }
+            }
+            finally
+            {
+                Object.DestroyImmediate(species);
+            }
+        }
+
+        [TestCase(TreeBotanicalPreset.JapaneseWhiteBirch, 0)]
+        [TestCase(TreeBotanicalPreset.JapaneseWhiteBirch, 1)]
+        [TestCase(TreeBotanicalPreset.JapaneseWhiteBirch, 2)]
+        [TestCase(TreeBotanicalPreset.JapaneseMaple, 0)]
+        [TestCase(TreeBotanicalPreset.JapaneseMaple, 1)]
+        [TestCase(TreeBotanicalPreset.JapaneseMaple, 2)]
+        public void BarkColourIsContinuousAcrossBranchesAndCaps(TreeBotanicalPreset preset, int lod)
+        {
+            TreeSpecies species = CreateSpecies(preset);
+            species.appearance.leafShape = TreeLeafShape.None;
+            species.structure.crownEnvelopeStrength = 0f;
+            Mesh mesh = null;
+            try
+            {
+                mesh = TreeMeshBuilder.Build(species, lod);
+                Vector3[] vertices = mesh.vertices;
+                Color[] colors = mesh.colors;
+                for (int i = 0; i < vertices.Length; i++)
+                {
+                    Color expected = Color.Lerp(species.appearance.barkRootColor,
+                        species.appearance.barkTipColor,
+                        Mathf.Clamp01(vertices[i].y / species.structure.trunkLength * 0.35f));
+                    Assert.AreEqual(expected.r, colors[i].r, 1e-5f, "bark red at " + i);
+                    Assert.AreEqual(expected.g, colors[i].g, 1e-5f, "bark green at " + i);
+                    Assert.AreEqual(expected.b, colors[i].b, 1e-5f, "bark blue at " + i);
+                }
+            }
+            finally
+            {
+                if (mesh != null) Object.DestroyImmediate(mesh);
+                Object.DestroyImmediate(species);
+            }
+        }
+
+        [TestCase(TreeBotanicalPreset.SomeiYoshinoSummer, 0)]
+        [TestCase(TreeBotanicalPreset.SomeiYoshinoSummer, 1)]
+        [TestCase(TreeBotanicalPreset.GinkgoSummer, 0)]
+        [TestCase(TreeBotanicalPreset.GinkgoSummer, 1)]
+        [TestCase(TreeBotanicalPreset.JapaneseMaple, 0)]
+        [TestCase(TreeBotanicalPreset.JapaneseWhiteBirch, 0)]
+        public void CrownShapingKeepsBranchesAscendingAndVerticallyDistributed(
+            TreeBotanicalPreset preset, int seedOffset)
+        {
+            TreeSpecies species = CreateSpecies(preset);
+            species.meshSeed += seedOffset;
+            species.structure.branchDroop = 0f;
+            species.appearance.leafShape = TreeLeafShape.None;
+            Mesh mesh = null;
+            try
+            {
+                mesh = TreeMeshBuilder.Build(species, 0);
+                // Bark vertices are emitted in axial rings, with one random
+                // alpha per branch (also used by its caps). Average each ring
+                // to measure the generated centreline independently of taper.
+                var branches = new List<List<Vector3>>();
+                Vector3[] vertices = mesh.vertices;
+                Color[] colors = mesh.colors;
+                for (int i = 0; i < vertices.Length; i++)
+                {
+                    if (i == 0 || colors[i].a != colors[i - 1].a)
+                        branches.Add(new List<Vector3>());
+                    branches[branches.Count - 1].Add(vertices[i]);
+                }
+                float lowestTip = float.MaxValue;
+                float highestTip = float.MinValue;
+                float widest = 0f;
+                for (int branch = 1; branch < branches.Count; branch++)
+                {
+                    int sides = species.structure.radialSegments;
+                    int segments = species.structure.segmentsPerBranch;
+                    Assert.GreaterOrEqual(branches[branch].Count, sides * (segments + 1));
+                    Vector3 previous = Vector3.zero;
+                    for (int ring = 0; ring <= segments; ring++)
+                    {
+                        Vector3 centre = Vector3.zero;
+                        for (int side = 0; side < sides; side++)
+                            centre += branches[branch][ring * sides + side];
+                        centre /= sides;
+                        if (ring > 0)
+                            Assert.GreaterOrEqual(centre.y, previous.y - 1e-4f,
+                                preset + " has a downward structural segment");
+                        previous = centre;
+                    }
+                    lowestTip = Mathf.Min(lowestTip, previous.y);
+                    highestTip = Mathf.Max(highestTip, previous.y);
+                    widest = Mathf.Max(widest,
+                        new Vector2(previous.x, previous.z).magnitude * 2f);
+                }
+                Assert.Greater(highestTip - lowestTip,
+                    widest / species.structure.crownRadialScale * 0.30f,
+                    preset + " concentrates branch tips in a flat canopy");
+            }
+            finally
+            {
+                if (mesh != null) Object.DestroyImmediate(mesh);
+                Object.DestroyImmediate(species);
+            }
+        }
+
+        [TestCase(TreeBotanicalPreset.SomeiYoshinoSummer)]
+        [TestCase(TreeBotanicalPreset.GinkgoAutumn)]
+        public void CrownSizeCorrectionKeepsTrunkCentrelineIdenticalAcrossLods(
+            TreeBotanicalPreset preset)
+        {
+            TreeSpecies species = CreateSpecies(preset);
+            var reference = new List<Vector3>();
+            try
+            {
+                for (int lod = 0; lod < 3; lod++)
+                {
+                    Mesh mesh = TreeMeshBuilder.Build(species, lod);
+                    try
+                    {
+                        Vector3[] vertices = mesh.vertices;
+                        int sides = Mathf.Max(6, species.structure.radialSegments - lod * 2);
+                        int segments = Mathf.Max(8, species.structure.segmentsPerBranch);
+                        for (int ring = 0; ring <= segments; ring++)
+                        {
+                            Vector3 centre = Vector3.zero;
+                            for (int side = 0; side < sides; side++)
+                                centre += vertices[ring * sides + side];
+                            centre /= sides;
+                            if (lod == 0) reference.Add(centre);
+                            else Assert.Less(Vector3.Distance(reference[ring], centre), 1e-4f,
+                                preset + " trunk moves during LOD transition");
+                        }
+                    }
+                    finally { Object.DestroyImmediate(mesh); }
+                }
+            }
+            finally { Object.DestroyImmediate(species); }
+        }
+
+        [TestCase(TreeBotanicalPreset.SomeiYoshinoSummer)]
+        [TestCase(TreeBotanicalPreset.GinkgoAutumn)]
+        [TestCase(TreeBotanicalPreset.JapaneseMaple)]
+        [TestCase(TreeBotanicalPreset.JapaneseWhiteBirch)]
+        public void RadialSpreadWidensBranchesWithoutResizingTheTrunk(
+            TreeBotanicalPreset preset)
+        {
+            TreeSpecies species = CreateSpecies(preset);
+            species.appearance.leafShape = TreeLeafShape.None;
+            Mesh narrow = null;
+            Mesh wide = null;
+            try
+            {
+                species.structure.crownRadialScale = 1f;
+                narrow = TreeMeshBuilder.Build(species, 0);
+                species.structure.crownRadialScale = 1.5f;
+                wide = TreeMeshBuilder.Build(species, 0);
+                Vector3[] original = narrow.vertices;
+                Vector3[] expanded = wide.vertices;
+                Assert.AreEqual(original.Length, expanded.Length,
+                    "radial spread must not add branches or leaves");
+                int trunkVertices = (Mathf.Max(8, species.structure.segmentsPerBranch) + 1)
+                    * Mathf.Max(6, species.structure.radialSegments) + 2;
+                for (int i = 0; i < trunkVertices; i++)
+                    Assert.Less(Vector3.Distance(original[i], expanded[i]), 1e-5f,
+                        "trunk geometry changed with radial spread");
+                float narrowRadius = 0f;
+                float wideRadius = 0f;
+                float narrowTop = 0f;
+                float wideTop = 0f;
+                for (int i = trunkVertices; i < original.Length; i++)
+                {
+                    narrowRadius = Mathf.Max(narrowRadius,
+                        new Vector2(original[i].x, original[i].z).magnitude);
+                    wideRadius = Mathf.Max(wideRadius,
+                        new Vector2(expanded[i].x, expanded[i].z).magnitude);
+                    narrowTop = Mathf.Max(narrowTop, original[i].y);
+                    wideTop = Mathf.Max(wideTop, expanded[i].y);
+                }
+                Assert.Greater(wideRadius / narrowRadius, 1.40f);
+                Assert.Less(wideRadius / narrowRadius, 1.60f);
+                Assert.Less(Mathf.Abs(wideTop - narrowTop), 0.05f,
+                    "radial spread should preserve crown height");
+            }
+            finally
+            {
+                if (narrow != null) Object.DestroyImmediate(narrow);
+                if (wide != null) Object.DestroyImmediate(wide);
                 Object.DestroyImmediate(species);
             }
         }
@@ -487,6 +758,7 @@ namespace SabaProps.Trees.CITests
                 species.structure.crownDensity = 4f;
                 species.structure.crownEnvelopeStrength = -1f;
                 species.structure.crownWidthScale = 4f;
+                species.structure.crownVolumeScale = 4f;
                 species.appearance.leafLength = 0f;
                 species.appearance.foliageDepth = 99;
                 species.appearance.windResponse = 4f;
@@ -514,6 +786,8 @@ namespace SabaProps.Trees.CITests
                     species.structure.crownEnvelopeStrength, 1e-6f);
                 Assert.AreEqual(1.5f,
                     species.structure.crownWidthScale, 1e-6f);
+                Assert.AreEqual(2f,
+                    species.structure.crownVolumeScale, 1e-6f);
                 Assert.AreEqual(0.01f, species.appearance.leafLength, 1e-6f);
                 Assert.AreEqual(4, species.appearance.foliageDepth);
                 Assert.AreEqual(2f, species.appearance.windResponse, 1e-6f);
@@ -762,6 +1036,34 @@ namespace SabaProps.Trees.CITests
                         planarSquared, minimumSquared - 1e-4f,
                         $"instances {i} and {j} violate minimum spacing");
                 }
+            }
+        }
+
+        private static float BoundsVolume(Mesh mesh)
+        {
+            Vector3 size = mesh.bounds.size;
+            return size.x * size.y * size.z;
+        }
+
+        private static float PreEnvelopeBoundsVolume(
+            TreeBotanicalPreset preset)
+        {
+            switch (preset)
+            {
+                case TreeBotanicalPreset.JapaneseZelkova: return 881.52f;
+                case TreeBotanicalPreset.JapaneseMaple: return 877.20f;
+                case TreeBotanicalPreset.JapaneseCedar: return 951.70f;
+                case TreeBotanicalPreset.JapaneseWhiteBirch: return 667.82f;
+                case TreeBotanicalPreset.JapaneseRedPine: return 1840.53f;
+                case TreeBotanicalPreset.HinokiCypress: return 647.14f;
+                case TreeBotanicalPreset.SomeiYoshinoSpring: return 1151.03f;
+                case TreeBotanicalPreset.SomeiYoshinoSummer: return 1177.24f;
+                case TreeBotanicalPreset.GinkgoSummer:
+                case TreeBotanicalPreset.GinkgoAutumn:
+                    return 468.27f;
+                default:
+                    throw new System.ArgumentOutOfRangeException(
+                        nameof(preset), preset, null);
             }
         }
 

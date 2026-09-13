@@ -427,6 +427,12 @@ namespace NUnit.Framework
     [AttributeUsage(AttributeTargets.Method)]
     public sealed class TestAttribute : Attribute { }
 
+    [AttributeUsage(AttributeTargets.Method, AllowMultiple = true)]
+    public sealed class TestCaseAttribute : Attribute
+    {
+        public TestCaseAttribute(params object[] arguments) { }
+    }
+
     [AttributeUsage(AttributeTargets.Method)]
     public sealed class SetUpAttribute : Attribute { }
 
@@ -447,6 +453,7 @@ namespace NUnit.Framework
         public static void IsNull(object value, string message) { }
         public static void IsNotNull(object value) { }
         public static void IsNotNull(object value, string message) { }
+        public static void IsNotEmpty(string value) { }
 
         public static void IsTrue(bool condition) { }
         public static void IsTrue(bool condition, string message) { }

@@ -6,6 +6,8 @@ All notable changes to this package are documented in this file.
 
 ### Added
 
+- Added an illustrated tree-authoring guide covering crown controls, branch and leaf distribution, shared assets, bark colour, wind and LOD review, with four Unity-rendered screenshots.
+
 - Added `Crown Envelope Strength` and `Crown Width Scale` generation parameters for rounded street-tree crowns and deliberately open growth habits.
 - Added a link to the shared placement and editing UI guide for single-tree and Tree Field workflows.
 - Generated Tree Fields can rebuild automatically after debounced Inspector and Undo/Redo changes; first generation remains explicit.
@@ -22,6 +24,17 @@ All notable changes to this package are documented in this file.
 
 ### Changed
 
+- Unified bark colour interpolation across trunks, branches, caps and leaf stems; branch order no longer causes abrupt colour changes at junctions.
+
+- Separated species and seasonal rows in the seasonal comparison scene using all-LOD renderer bounds, preventing adjacent crowns from appearing to grow branches of another species or colour.
+
+- Added smooth, seed-dependent variation to the crown height envelope to avoid uniformly aligned branch tips; the envelope remains shared across LODs.
+
+- Redistributed broadleaf lateral junctions toward the middle of their supporting branches and spread clustered foliage along fine branches, without increasing the configured branch or leaf counts.
+
+- Botanical presets now use `Crown Radial Scale = 1.5` and `Primary Branch Departure = 0.25` for wider crowns and more outward primary branches. Radial spread preserves trunk geometry, branch radii and leaf sizes; the volume reference is evaluated before spreading so it does not cancel the requested width.
+
+- Crown shaping shortens complete branch paths without reversing their growth direction and leaves space above the trunk for upper branches. `Crown Volume Scale` applies uniform scaling to the pre-spread size reference; it measures bounding-box volume, not foliage occupancy. Separate regression checks cover ascending branches, vertical tip distribution, and stable trunk geometry across LODs.
 - Trunks now use a transported ring frame and a slower monotonic lower-bole taper; seasonal Sakura and Ginkgo use larger, denser branch structures with foliage restricted to terminal branch orders.
 - Tree LODs now share the same branch centre lines and deterministic leaf candidates; lower LODs omit fine branch tubes and use uniformly selected, larger leaf cards instead of rebuilding a different tree topology.
 - Low-LOD trunks retain enough radial and axial divisions for a stable flared-base silhouette, and distant culling starts at a smaller screen height.
