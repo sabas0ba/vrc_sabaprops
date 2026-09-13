@@ -80,6 +80,13 @@ namespace SabaProps.Foliage.Editors
                     }
                     return BuildDandelionBuffer(species.dandelion, species.meshSeed, dormant);
 
+                case FoliageSpeciesKind.Vine:
+                    if (species.vine == null)
+                    {
+                        species.vine = new VineParams();
+                    }
+                    return BuildVineBuffer(species.vine, species.meshSeed);
+
                 case FoliageSpeciesKind.GrassClump:
                 default:
                     return BuildGrassClumpBuffer(species.grass, species.meshSeed);
@@ -1848,6 +1855,200 @@ namespace SabaProps.Foliage.Editors
             }
 
             buffer.SeasonWeight = 1f;
+        }
+
+        // ------------------------------------------------------------------
+        // Vine
+        // ------------------------------------------------------------------
+
+        public static Mesh BuildVine(VineParams p, int seed)
+        {
+            return BuildVineBuffer(p ?? new VineParams(), seed).ToMesh();
+        }
+
+        /// <summary>
+        /// Hanging strands rooted at local Y=0. Existing fields can place the
+        /// root on a narrow collider along a wall top; the generated geometry
+        /// then grows downward without a vine-specific placement mode.
+        /// </summary>
+        private static BuiltMesh BuildVineBuffer(VineParams p, int seed)
+        {
+            var rng = new FoliageRandom(seed);
+            var buffer = new FoliageMeshBuffer();
+
+            int strandCount = Mathf.Max(1, p.strandCount);
+            int segments = Mathf.Max(2, p.segments);
+            int leafCount = Mathf.Max(0, p.leavesPerStrand);
+            float longest = 0f;
+
+            for (int strand = 0; strand < strandCount; strand++)
+            {
+                float rootAngle = rng.Range(0f, Mathf.PI * 2f);
+                float rootDistance = Mathf.Sqrt(rng.Value01()) * p.rootSpread;
+                var root = new Vector3(
+                    Mathf.Cos(rootAngle) * rootDistance,
+                    0f,
+                    Mathf.Sin(rootAngle) * rootDistance);
+
+                float length = Mathf.Max(
+                    0.05f,
+                    p.length * rng.Range(
+                        1f - p.lengthVariance, 1f + p.lengthVariance));
+                longest = Mathf.Max(longest, length);
+
+                float flowAngle = rng.Range(0f, Mathf.PI * 2f);
+                var flow = new Vector3(
+                    Mathf.Cos(flowAngle), 0f, Mathf.Sin(flowAngle));
+                var across = new Vector3(-flow.z, 0f, flow.x);
+                float wavePhase = rng.Range(0f, Mathf.PI * 2f);
+                float elementSeed = rng.Value01();
+                var rootData = new Vector4(
+                    root.x, root.y, root.z, p.stiffness);
+
+                Vector3 Centre(float t)
+                {
+                    float drift = p.lateralSway * (0.35f * t + 0.65f * t * t);
+                    float wave = p.lateralSway * 0.22f
+                        * Mathf.Sin(t * Mathf.PI * 2f + wavePhase) * t;
+                    return root
+                        + Vector3.down * (length * t)
+                        + flow * drift
+                        + across * wave;
+                }
+
+                AddVineStem(
+                    buffer, p, segments, Centre, flow, across,
+                    rootData, elementSeed);
+
+                for (int leaf = 0; leaf < leafCount; leaf++)
+                {
+                    float t = (leaf + 1f) / (leafCount + 1f);
+                    float sideAngle = flowAngle
+                        + (leaf % 2 == 0 ? 1f : -1f)
+                        * (Mathf.PI * 0.48f + rng.Range(-0.18f, 0.18f));
+                    var outward = new Vector3(
+                        Mathf.Cos(sideAngle), 0f, Mathf.Sin(sideAngle));
+
+                    float size = rng.Range(
+                        1f - p.leafSizeVariance,
+                        1f + p.leafSizeVariance);
+                    AddVineLeaf(
+                        buffer, p, Centre(t), outward,
+                        Mathf.Max(0.005f, p.leafLength * size),
+                        Mathf.Max(0.003f, p.leafWidth * size),
+                        t, length, rootData, elementSeed);
+                }
+            }
+
+            return new BuiltMesh
+            {
+                Buffer = buffer,
+                Name = "SabaFoliage_Vine",
+                BoundsPadding = longest * 0.25f + p.lateralSway,
+            };
+        }
+
+        private static void AddVineStem(
+            FoliageMeshBuffer buffer, VineParams p, int segments,
+            System.Func<float, Vector3> centre,
+            Vector3 sideA, Vector3 sideB,
+            Vector4 rootData, float elementSeed)
+        {
+            var sides = new[] { sideA, sideB };
+            foreach (Vector3 side in sides)
+            {
+                int previousLeft = -1;
+                int previousRight = -1;
+
+                for (int segment = 0; segment <= segments; segment++)
+                {
+                    float t = segment / (float)segments;
+                    Vector3 position = centre(t);
+                    Vector3 tangent = (
+                        centre(Mathf.Min(1f, t + 0.02f))
+                        - centre(Mathf.Max(0f, t - 0.02f))).normalized;
+                    Vector3 normal = Vector3.Cross(side, tangent).normalized;
+                    if (normal.sqrMagnitude < 1e-6f)
+                    {
+                        normal = Vector3.up;
+                    }
+
+                    float halfWidth = p.stemWidth * 0.5f
+                        * Mathf.Lerp(1f, 0.55f, t);
+                    Color color = Color.Lerp(
+                        p.stemRootColor, p.stemTipColor, t);
+                    color.a = elementSeed;
+
+                    int left = buffer.AddVertex(
+                        position - side * halfWidth, normal, color,
+                        new Vector2(0f, t), rootData);
+                    int right = buffer.AddVertex(
+                        position + side * halfWidth, normal, color,
+                        new Vector2(1f, t), rootData);
+
+                    if (segment > 0)
+                    {
+                        buffer.AddQuad(
+                            previousLeft, previousRight, right, left);
+                    }
+                    previousLeft = left;
+                    previousRight = right;
+                }
+            }
+        }
+
+        private static void AddVineLeaf(
+            FoliageMeshBuffer buffer, VineParams p,
+            Vector3 attach, Vector3 outward,
+            float length, float width, float attachMask, float strandLength,
+            Vector4 rootData, float elementSeed)
+        {
+            Vector3 direction = (
+                outward * (1f - p.leafDroop * 0.35f)
+                + Vector3.down * p.leafDroop).normalized;
+            Vector3 side = Vector3.Cross(Vector3.down, outward).normalized;
+            if (side.sqrMagnitude < 1e-6f)
+            {
+                side = Vector3.right;
+            }
+            Vector3 normal = Vector3.Cross(side, direction).normalized;
+            if (normal.sqrMagnitude < 1e-6f)
+            {
+                normal = outward;
+            }
+
+            Vector3 shoulder = attach + direction * (length * 0.55f);
+            Vector3 tip = attach + direction * length;
+            float halfWidth = width * 0.5f;
+            float bendSpan = length / Mathf.Max(0.05f, strandLength);
+
+            Color rootColor = p.leafBaseColor;
+            Color tipColor = p.leafTipColor;
+            rootColor.a = elementSeed;
+            tipColor.a = elementSeed;
+
+            int baseLeft = buffer.AddVertex(
+                attach - side * (halfWidth * 0.18f), normal, rootColor,
+                new Vector2(0f, attachMask), rootData);
+            int baseRight = buffer.AddVertex(
+                attach + side * (halfWidth * 0.18f), normal, rootColor,
+                new Vector2(1f, attachMask), rootData);
+            int shoulderLeft = buffer.AddVertex(
+                shoulder - side * halfWidth, normal, rootColor,
+                new Vector2(0f, Mathf.Clamp01(attachMask + bendSpan * 0.55f)),
+                rootData);
+            int shoulderRight = buffer.AddVertex(
+                shoulder + side * halfWidth, normal, rootColor,
+                new Vector2(1f, Mathf.Clamp01(attachMask + bendSpan * 0.55f)),
+                rootData);
+            int tipIndex = buffer.AddVertex(
+                tip, normal, tipColor,
+                new Vector2(0.5f, Mathf.Clamp01(attachMask + bendSpan)),
+                rootData);
+
+            buffer.AddQuad(
+                baseLeft, baseRight, shoulderRight, shoulderLeft);
+            buffer.AddTriangle(shoulderLeft, shoulderRight, tipIndex);
         }
 
         // ------------------------------------------------------------------

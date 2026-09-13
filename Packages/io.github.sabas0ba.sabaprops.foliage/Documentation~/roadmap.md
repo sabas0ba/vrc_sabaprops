@@ -13,9 +13,9 @@ Unity 無しのオフラインテストで押さえられる大きさに保つ�
 |---|---|---|
 | 0.2.0 | 季節（色・姿・枯れ方）、サンプルシーンの季節別再編 | 完了 |
 | 0.3.0 | 種の拡充（小花・雑草・穀物・たんぽぽ） | 完了 |
-| 0.4.0 | Foliage Palette（配合とパラメータを決めて Scene へ置く常設 UI） | 未着手 |
-| 0.5.0 | 樹木パッケージの分離と再帰枝ジェネレータ | 未着手 |
-| 0.6.0 | ツタ（サーフェスに沿わせる配置モード） | 未着手 |
+| 0.4.0 | Foliage Palette（配合とパラメータを決めて Scene へ置く常設 UI） | 実装済み（未リリース） |
+| 0.5.0 | 樹木パッケージの分離と再帰枝ジェネレータ | 実装済み（未リリース） |
+| 0.6.0 | ツタ（サーフェスに沿わせる配置モード）と根茎パッチ | 実装済み（未リリース） |
 
 季節を種より先に置いているのは手戻りを避けるためです。季節の色変換は
 `FoliageMeshBuilder.Build()` の出口で全種に一律に掛かるので、先に入れておけば
@@ -90,6 +90,12 @@ Undo の対象外です。ここは仕組み上どうにもなりません。作
 Undo の経路にそのまま乗りますが、塗る方は塗った結果の保持・消しゴム・再生成を
 新しく設計する必要があり、同じ増分に入れると両方が中途半端になります。
 
+第 1 段階は `Window > SabaProps > Foliage Palette` として実装しました。作業用コピーは
+`HideAndDontSave` の一時 `FoliageSpecies` として保持し、配置するたびに
+`Assets/SabaProps/Foliage/Species/Palette/` へスナップショットを保存します。これにより、
+配置済みフィールドが次の試行に引きずられません。既存 Species の直接編集は
+`SerializedObject`、Scene への配置は既存の `FoliageFieldBuilder` を使います。
+
 ## 0.5.0 樹木
 
 樹木は別パッケージ `io.github.sabas0ba.sabaprops.trees` に分離し、
@@ -106,16 +112,72 @@ Undo の経路にそのまま乗りますが、塗る方は塗った結果の保
 広葉樹・針葉樹・枯れ木・砂漠の枯れ枝は、1 つの再帰的な枝分かれジェネレータの
 パラメータ違い（葉の有無、葉形、色、枝の歪み）として実装します。
 
+第 1 段階として `io.github.sabas0ba.sabaprops.trees` を分離し、4 preset、決定的な
+再帰枝メッシュ、3 段階 LOD、樹木用 Material と Scene 用 LODGroup を実装しました。
+一次枝以下は同じ UV3 pivot と連続した bend 値を使い、風で接続点が開かない構造に
+しています。複数個体の配置は Trees 側へ複製せず、Foliage のスキャッタラーを
+汎用化する次段階で共有します。
+
+第 2 段階では Foliage のエリア走査、Density Mask、地面レイキャスト、高度制限、
+除外判定を `FoliageSurfaceScatterer` として分離しました。既存 Foliage Field の
+決定的な Seed 列は互換テストで固定しています。Trees 側は共有 API の callback として
+種の Weight、傾斜、最小間隔、スケール、姿勢だけを定義します。
+
+`TreeField` は配置結果を通常の `LODGroup` と `MeshRenderer` に焼き込みます。3 段階の
+LOD Mesh は Species ごとに一度だけ生成して全個体で共有し、AssetDatabase の書き込みが
+個体数に比例しない構造にしています。これで 0.5.0 の予定範囲は完了です。
+
 ## 0.6.0 ツタ
 
 これは種の追加ではなく配置系の新機能です。現在の `FoliageField` は
 「エリア内に散らす」モデルですが、ツタは「サーフェスに沿って這う」モデルで、
 地面へのレイキャストとは相性が良くありません。
 
-2 段階に分けます。
+2 段階に分けて実装しました。
 
 1. 垂れ下がるツタを 1 個体のメッシュとして生成し、既存の配置のまま壁の上端に沿って並べる
 2. Surface Crawl 配置モード。対象メッシュの表面を辿りながら分岐して伸ばす
+
+第 1 段階は `Vine` Species として実装しました。根をローカル Y=0 に固定し、茎と葉を
+−Y 方向へ生成するため、壁上端の細い Foliage Field と上面 Collider だけで配置できます。
+決定的な Seed、季節色、風、GPU Instanced／Merged Chunks の両出力は既存経路を通ります。
+第 2 段階では、投影と形態生成の間に `SurfaceGrowthGraph` を置きました。各 Node は
+ローカル座標の位置・法線・親 Node・根からの距離・分岐深度を持ちます。経路生成は次の
+2 モードですが、後段のメッシュ生成は同じ Graph を受け取ります。
+
+| モード | 用途 |
+|---|---|
+| `ProjectedSpline` | ローカル空間のガイド点列を Catmull–Rom 補間し、その流れへ経路を引き寄せながら Collider へ投影します。建物全体の流れを指定する場合に使います |
+| `SurfaceCrawl` | 表面の接平面上を決定的な乱数で歩きます。小規模な自生や根茎の広がりに使います |
+
+どちらも `Path Count`、`Coverage`、`Branches Per Metre`、`Max Branch Depth`、
+`Step Length`、`Node Budget` を共有します。`Root Spread` は根元を面内へ散らし、
+`Guide Attraction` はガイドを固定線ではなく流れとして使い、`Path Length Variance` は
+同じ終点へ揃うことを避けます。これにより「壁の一部へ数本」から「家を覆う
+密度」まで同じモデルで制御でき、形態側の葉数を増やして経路不足を隠す必要がありません。
+
+投影先は単一 Collider に限定せず、主対象と追加対象の集合から step ごとに最も近い hit を
+選びます。これにより床から壁、床から斜面を経て壁へ連続する経路を同じ Graph で表現します。
+Collider 間の隙間は `Projection Distance` 以下である必要があります。根 Node には最初の
+Edge と逆方向へ短いテーパー付き collar を加え、始端の切断面を見せません。
+
+`SurfaceVine` は茎幅、1 m あたりの葉数、葉サイズ範囲、幅比、葉形、葉序、節間隔と角度の
+ばらつき、若葉・成葉・秋色・枯葉の 4 色と混合率を持ちます。葉身は内側と外側のリングへ
+分け、葉縁、主脈、葉柄に別の頂点色を持たせます。Preset は次の形態を出発点にしています。
+
+- オオイタビ（[Ficus pumila](https://plants.ces.ncsu.edu/plants/ficus-pumila/)）: 付着根で壁に張り付き、幼葉が小さい心形で密に付くため、`Cordate` と高い葉密度
+- セイヨウキヅタ（[Hedera helix](https://plants.ces.ncsu.edu/plants/hedera-helix/common-name/english-ivy/)）: 幼葉が 3〜5 裂するため、`Lobed` と濃緑の常緑パレット
+- ナツヅタ（[Parthenocissus tricuspidata](https://plants.ces.ncsu.edu/plants/parthenocissus-tricuspidata/common-name/grape-ivy/)）: 夏は光沢のある濃緑で、秋に緑から赤紫へ変わります。通常 preset は緑の葉身を主体とし、紫褐色は葉縁・主脈・葉柄・若い茎と少数の秋葉へ限定
+
+`RhizomePatch` は Graph の Edge を地下茎として扱い、Node 間隔に応じて地上茎・葉・花を
+配置します。既定は地下茎で急速に広がり、心形葉と白い 4 枚の苞を持つ
+[ドクダミ（Houttuynia cordata）](https://plants.ces.ncsu.edu/plants/houttuynia-cordata/)です。
+地下の Edge は既定で描画しませんが、構造確認時だけ `Render Rhizomes` で表示できます。
+
+表面に付く茎は高い stiffness で固定し、葉は付着点ごとの UV3 pivot を持たせます。
+壁面全体を 1 本の根から揺らさないため、既存の垂下 Vine とは風の単位を分けています。
+生成は Editor 時に完了し、Scene には通常の MeshFilter / MeshRenderer と永続 Mesh asset
+だけが残ります。
 
 ## 想定規模について
 

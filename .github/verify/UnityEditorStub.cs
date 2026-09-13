@@ -179,6 +179,19 @@ namespace UnityEditor
         public static bool DisplayDialog(string title, string message, string ok) => false;
     }
 
+    public struct GlobalObjectId
+    {
+        public static GlobalObjectId GetGlobalObjectIdSlow(UnityEngine.Object obj) => default;
+        public override string ToString() => string.Empty;
+    }
+
+    public class AssetImporter : UnityEngine.Object
+    {
+        public string userData { get; set; }
+        public static AssetImporter GetAtPath(string path) => null;
+        public void SaveAndReimport() { }
+    }
+
     public static class AssetDatabase
     {
         public static bool IsValidFolder(string path) => false;
@@ -245,6 +258,7 @@ namespace UnityEditor
 
     public static class HandleUtility
     {
+        public static int nearestControl => 0;
         public static float GetHandleSize(Vector3 position) => 1f;
         public static void AddDefaultControl(int controlId) { }
         public static Ray GUIPointToWorldRay(Vector2 position) => default;
@@ -286,10 +300,11 @@ namespace UnityEditor
     {
         public static event Action<SceneView> duringSceneGui;
         public static SceneView lastActiveSceneView => null;
+        public Camera camera { get; } = null;
         public Vector3 pivot { get; set; }
+        public static void RepaintAll() { }
         public void Repaint() { }
         public void LookAt(Vector3 point, Quaternion direction, float newSize) { }
-        public static void RepaintAll() { }
     }
 
     public class SceneAsset : UnityEngine.Object { }
@@ -298,6 +313,7 @@ namespace UnityEditor
     {
         public static void BeginChangeCheck() { }
         public static bool EndChangeCheck() => false;
+        public static void DrawRect(Rect rect, Color color) { }
 
         public class IndentLevelScope : IDisposable
         {
@@ -311,6 +327,28 @@ namespace UnityEditor
             public DisabledScope(bool disabled) { }
             public void Dispose() { }
         }
+    }
+
+    public static class EditorApplication
+    {
+        public static event Action update;
+        public static double timeSinceStartup => 0d;
+        public static bool isPlayingOrWillChangePlaymode => false;
+    }
+
+    public class PreviewRenderUtility
+    {
+        public PreviewRenderUtility(bool renderFullScene = false) { }
+
+        public Camera camera { get; } = null;
+        public Light[] lights { get; } = new Light[2];
+        public Color ambientColor { get; set; }
+
+        public void BeginPreview(Rect rect, GUIStyle background) { }
+        public void DrawMesh(Mesh mesh, Matrix4x4 matrix, Material material, int subMeshIndex) { }
+        public void Render(bool allowScriptableRenderPipeline = false, bool updatefov = true) { }
+        public void EndAndDrawPreview(Rect rect) { }
+        public void Cleanup() { }
     }
 
     public static class EditorGUILayout
@@ -337,6 +375,7 @@ namespace UnityEditor
         public static UnityEngine.Object ObjectField(UnityEngine.Object obj, Type objType, bool allowSceneObjects, params GUILayoutOption[] options) => obj;
         public static UnityEngine.Object ObjectField(string label, UnityEngine.Object obj, Type objType, bool allowSceneObjects, params GUILayoutOption[] options) => obj;
 
+        public static bool Toggle(bool value, params GUILayoutOption[] options) => value;
         public static bool Toggle(string label, bool value, params GUILayoutOption[] options) => value;
         public static bool ToggleLeft(string label, bool value, params GUILayoutOption[] options) => value;
 
@@ -350,8 +389,10 @@ namespace UnityEditor
         public static int IntSlider(string label, int value, int leftValue, int rightValue, params GUILayoutOption[] options) => value;
 
         public static Vector2 Vector2Field(string label, Vector2 value, params GUILayoutOption[] options) => value;
+        public static Vector3 Vector3Field(string label, Vector3 value, params GUILayoutOption[] options) => value;
 
         public static Enum EnumPopup(string label, Enum selected, params GUILayoutOption[] options) => selected;
+        public static int Popup(string label, int selectedIndex, string[] displayedOptions, params GUILayoutOption[] options) => selectedIndex;
 
         public static Vector2 BeginScrollView(Vector2 position, params GUILayoutOption[] options) => position;
         public static void EndScrollView() { }
@@ -370,6 +411,14 @@ namespace UnityEditor
             public void Dispose() { }
         }
     }
+
+    public static class EditorPrefs
+    {
+        public static bool HasKey(string key) => false;
+        public static int GetInt(string key, int defaultValue = 0) => defaultValue;
+        public static void SetInt(string key, int value) { }
+        public static void DeleteKey(string key) { }
+    }
 }
 
 namespace UnityEditor.SceneManagement
@@ -378,11 +427,15 @@ namespace UnityEditor.SceneManagement
 
     public enum NewSceneMode { Single = 0, Additive = 1 }
 
+    public enum OpenSceneMode { Single = 0, Additive = 1, AdditiveWithoutLoading = 2 }
+
     public static class EditorSceneManager
     {
         public static bool MarkSceneDirty(Scene scene) => false;
         public static Scene NewScene(NewSceneSetup setup, NewSceneMode mode) => default;
-        public static Scene OpenScene(string scenePath) => default;
+        public static Scene OpenScene(
+            string scenePath,
+            OpenSceneMode mode = OpenSceneMode.Single) => default;
         public static bool SaveScene(Scene scene, string dstScenePath) => false;
         public static bool SaveCurrentModifiedScenesIfUserWantsTo() => false;
     }
@@ -409,6 +462,12 @@ namespace NUnit.Framework
     [AttributeUsage(AttributeTargets.Method)]
     public sealed class TestAttribute : Attribute { }
 
+    [AttributeUsage(AttributeTargets.Method, AllowMultiple = true)]
+    public sealed class TestCaseAttribute : Attribute
+    {
+        public TestCaseAttribute(params object[] arguments) { }
+    }
+
     [AttributeUsage(AttributeTargets.Method)]
     public sealed class SetUpAttribute : Attribute { }
 
@@ -429,6 +488,7 @@ namespace NUnit.Framework
         public static void IsNull(object value, string message) { }
         public static void IsNotNull(object value) { }
         public static void IsNotNull(object value, string message) { }
+        public static void IsNotEmpty(string value) { }
 
         public static void IsTrue(bool condition) { }
         public static void IsTrue(bool condition, string message) { }
@@ -450,8 +510,23 @@ namespace NUnit.Framework
 
         public static void Greater(double arg1, double arg2) { }
         public static void Greater(double arg1, double arg2, string message) { }
+        public static void GreaterOrEqual(double arg1, double arg2) { }
+        public static void GreaterOrEqual(double arg1, double arg2, string message) { }
         public static void Less(double arg1, double arg2) { }
         public static void Less(double arg1, double arg2, string message) { }
+        public static void LessOrEqual(double arg1, double arg2) { }
+        public static void LessOrEqual(double arg1, double arg2, string message) { }
+    }
+
+    public static class CollectionAssert
+    {
+        public static void AreEqual(
+            System.Collections.IEnumerable expected,
+            System.Collections.IEnumerable actual) { }
+        public static void AreEqual(
+            System.Collections.IEnumerable expected,
+            System.Collections.IEnumerable actual,
+            string message) { }
     }
 }
 

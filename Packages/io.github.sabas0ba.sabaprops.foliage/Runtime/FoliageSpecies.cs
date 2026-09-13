@@ -46,6 +46,13 @@ namespace SabaProps.Foliage
         /// the head comes and goes.
         /// </summary>
         Dandelion = 7,
+
+        /// <summary>
+        /// Strands hanging from a ledge. The anchor stays at local Y=0 and
+        /// growth proceeds toward negative Y so an ordinary field can place it
+        /// on a wall top.
+        /// </summary>
+        Vine = 8,
     }
 
     /// <summary>Parameters for <see cref="FoliageSpeciesKind.GrassClump"/>.</summary>
@@ -439,6 +446,43 @@ namespace SabaProps.Foliage
         [Range(0f, 1f)] public float stalkStiffness = 0.9f;
     }
 
+    /// <summary>Parameters for <see cref="FoliageSpeciesKind.Vine"/>.</summary>
+    [Serializable]
+    public class VineParams
+    {
+        [Header("Strands")]
+        [Range(1, 8)] public int strandCount = 3;
+        [Range(2, 16)] public int segments = 8;
+
+        [Min(0.05f)] public float length = 1.6f;
+        [Range(0f, 0.8f)] public float lengthVariance = 0.25f;
+
+        [Tooltip("根元を散らす半径 (m)。")]
+        [Min(0f)] public float rootSpread = 0.08f;
+
+        [Tooltip("先端までに横へ流れる距離 (m)。")]
+        [Range(0f, 1.5f)] public float lateralSway = 0.28f;
+
+        [Min(0.001f)] public float stemWidth = 0.012f;
+        public Color stemRootColor = new Color(0.106f, 0.188f, 0.071f, 1f);
+        public Color stemTipColor = new Color(0.208f, 0.349f, 0.118f, 1f);
+
+        [Header("Leaves")]
+        [Range(0, 16)] public int leavesPerStrand = 7;
+        [Min(0.005f)] public float leafLength = 0.13f;
+        [Min(0.003f)] public float leafWidth = 0.085f;
+        [Range(0f, 0.8f)] public float leafSizeVariance = 0.22f;
+
+        [Tooltip("葉が茎から下へ垂れる割合。")]
+        [Range(0f, 1f)] public float leafDroop = 0.28f;
+
+        public Color leafBaseColor = new Color(0.149f, 0.314f, 0.098f, 1f);
+        public Color leafTipColor = new Color(0.329f, 0.506f, 0.165f, 1f);
+
+        [Header("Wind")]
+        [Range(0f, 1f)] public float stiffness = 0.72f;
+    }
+
     /// <summary>
     /// A reusable foliage preset: how the mesh is generated and how instances of
     /// it are placed. One species maps to exactly one mesh, and therefore to one
@@ -508,6 +552,7 @@ namespace SabaProps.Foliage
         public WeedParams weed = new WeedParams();
         public GrainParams grain = new GrainParams();
         public DandelionParams dandelion = new DandelionParams();
+        public VineParams vine = new VineParams();
 
         [Header("Generated (read only)")]
         [Tooltip("ビルド時に自動生成・上書きされるメッシュアセット。")]
