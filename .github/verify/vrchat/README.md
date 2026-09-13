@@ -65,6 +65,18 @@ docs.microsoft.com の URL 到達性を検証するもの）ため、終了コ�
 
 Soft Propsの実行テストは指・棒・板の100 mmおよび0.5 mmの空隙、20 mmの侵入、離脱後の復元、自動上下運動、ローカルプレイヤーのFutonへの接地を検証します。VRChat実clientの手・胴体・リモートプレイヤーの接触を保証するテストではありません。
 
+Soft Propsの関連テストは次の5件です。`Tests/`内のテストを同じSDK付きprojectで実行します。
+
+| テスト | 確認する内容 |
+| --- | --- |
+| `Generator_CreatesInteractivePropsAndContactProbeTest` | 家具・probeの生成とUdon programのcompile |
+| `BundledDemo_ImportsWithoutGeneratorAndHasReviewStations` | デモのimport、参照、13 controller、3 Pickup、3 AUTO台 |
+| `Colliders_RequirePenetration_AutomationMoves_PlayerLoadsFuton` | ClientSim上の接触前非圧縮、押下、復元、自動運動、ローカル立位荷重 |
+| `DemoProgramMigration_PreservesGuids_AndFurnitureSurvivesDemoRemoval` | 旧programのGUID維持、デモ削除後の家具参照維持、再import時のprogram重複防止 |
+| `AssignSender_ClearsPreviousPlayerOwnership` | Senderへのslot割り当て時に旧playerとtimestampを解除する単体検証 |
+
+最後のテストではSDKオブジェクトを所有者識別用の参照として使用するだけで、SDKの接触イベントやlive Senderの挙動は模擬しません。`SoftPropsLifetimeTests`は検証project内のデモを移動・削除・再importするため、利用者が編集中のworldではなく独立した検証projectで実行してください。
+
 `WorldTests` は SDK を参照するため CI プロジェクト側には置けません。`Tests/` にあり、
 `assemble.sh` がワールドプロジェクトへコピーします。
 

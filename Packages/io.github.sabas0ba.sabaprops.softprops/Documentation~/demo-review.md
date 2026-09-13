@@ -27,7 +27,7 @@ UdonSharpのprogram重複を避けるため、sampleの導入には上記メニ�
 
 ![同一荷重で指・棒・板の接触形状を比較](demo-footprints.png)
 
-1. **肌Material**: 手前右の3試験面で、光沢、肌色、微細grainを確認します。照明方向を変えた際の見た目も確認してください。
+1. **肌Material**: 中央右の3試験面で、光沢、肌色、微細grainを確認します。照明方向を変えた際の見た目も確認してください。
 2. **接触形状**: 静的比較では、指が局所的な凹み、棒が細長い凹み、板が平坦な底を持つ広い凹みになることを確認します。これは固定shader入力による参照表示で、接触イベントの動作証明ではありません。
 3. **自動接触**: Playで最前列を確認します。指・棒・板が接近→押下→保持→離脱を繰り返します。Gapが正のときは空隙、負のときは未変形面への侵入です。初回の接近時にGapが0になる前から新たな凹みが発生しないことを確認します。離脱後の残留変形は復元時定数に従います。
 4. **手動接触**: VRChat SDKのBuild & Testで起動し、中央左のPickupを持って試験面へ近づけます。登録済みCollider底面の侵入から荷重を求め、凹みの深さを侵入量以下に制限します。
@@ -55,6 +55,24 @@ Unity Play Mode / ClientSimだけでは、VRChat実clientのWorld Contactsと同
 - 質量や圧力の測定に基づくsimulationではありません。標準avatar Senderの寸法を取得できないため部位別近似です。
 - 寝転び・着座専用のStationやanimationは含みません。
 - 静的参照3面は常に変形しています。実接触の開始距離は左のLIVE CONTACT TESTで確認してください。
+
+## 動作しない場合の確認
+
+| 症状 | 確認項目 |
+| --- | --- |
+| 自動比較台が見当たらない | 開いているsceneが`SoftPropsDemoMotion/SoftPropsDemo.unity`か確認する。旧版sceneは自動で置き換えない |
+| AUTOの物体が動かない | Play状態、Consoleのcompile／Udon error、対象面の`Automatic Probe`と`Probe Colliders`を確認する |
+| 物体を置いても凹まない | 固定支持Colliderに載っただけでは侵入量が0の場合がある。AUTOで確認するか、登録probeを未変形面へ押し込む |
+| ClientSimで乗っても凹まない | `Player Standing Load`、支持Colliderとcontrollerが同じGameObjectにあること、面の高さ・範囲を確認する。立位補助はローカルプレイヤーが対象 |
+| Player collision eventsが0のまま | この表示は衝突イベント数のみ。接地状態＋Raycastの補助経路では増えないため、0だけでは不具合と判断しない |
+| 手・胴体で触れても凹まない | VRChat実clientでavatar SenderとContact permissionを確認する。ClientSimの立位テストは手・胴体のContact動作を保証しない |
+| デモ整理後にUdon参照がMissingになる | [更新手順](upgrading.md)を確認する。旧配置の共有programを移行する前に削除した場合は、削除したassetsをバックアップから復元する |
+
+## 検証記録
+
+2026-09-07、Unity 2022.3.22f1 / Worlds SDK 3.10.4で、関連テスト5件が既存生成物あり・生成物なしの両条件で通過しました。対象はPrefab生成、デモ参照、ClientSim接触動作、program移行とデモ削除後の参照維持、slot再利用時のplayer所有情報解除です。
+
+slot所有情報のテストは更新処理を直接検証する単体テストで、VRChat実clientの接触イベントを模擬するものではありません。実clientでのVR操作・複数人・任意avatarの手動確認は別途必要です。
 
 ## 配布シーンの再生成（開発者向け）
 
