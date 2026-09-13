@@ -40,8 +40,9 @@ GGUF、safetensors、量子化checkpoint、Llama 3等の異なるtokenizer、RoP
 - `maxNewTokens`は1〜64、既定32です。Context末尾に到達した場合も停止します。長い入力はエラーにし、履歴を黙って切り捨てません。
 - 入力は256 UTF-16 code units以内です。初期tokenizeとBPEの探索もフレーム分割します。日本語の会話品質は使用する学習済みモデルによります。
 - `maxWorkingMiB`は中間bufferとKVキャッシュの上限で、既定128 MiBです。重みtextureのVRAMとCPU側コピーは含みません。Editor変換時には元配列・padding配列・textureのコピーも一時的に必要です。
-- 生成結果の1 pixelのみを非同期readbackします。GPU readback待機中に停止した場合は、callbackを破棄してから再実行を受け付けます。
+- 生成結果の1 pixelのみを非同期readbackします。requestの完了をUpdateで確認し、古いcallbackを新しい生成と取り違えない構成です。readback待機中の停止・disableでは結果を破棄し、再開後にrequestを回収してから再実行を受け付けます。
 - 各runnerは独立したMaterialとRenderTextureを確保します。複数runnerの同時利用はGPU負荷とメモリ使用量を増やします。
+- SDK 3.10.4ではSystemInfo・Shader.isSupported・MaterialコンストラクターをUdonから利用できません。Materialは非表示Rendererのインスタンス化経路を使用し、GPU側の失敗はRenderTexture確保・readback・出力の有効性で検出します。
 - 推論のためにフレーム数が必要です。6 layersでは138 passes/tokenとなり、既定1 pass/frame、90 FPSを仮定してもスケジューリングだけで約1.53秒/tokenです。prefillとreadback待機は別に加算されます。これは実測の速度ではありません。
 
 Quest対応や実用的な日本語NPCとしての品質は、現段階の保証範囲に含みません。
@@ -85,6 +86,7 @@ Nixを利用しない場合は.NET SDK 8以降とglslangValidatorを用意し、
 - MHA/GQA、共有/非共有classifier、複数tokenとRoPE、Context末尾、resetを比較。
 - 同一モデルの複数GPU sessionを交互に動かし、状態が混ざらないことを比較。
 - 保存したRFloat texture・Materialの設定と、保存後のGPU推論を比較。
+- 4096要素をまたぐ重みtextureと、256語彙をまたぐlogit・argmaxを比較。
 
 ### VRChat SDK / 実機確認
 
@@ -96,6 +98,8 @@ Nixを利用しない場合は.NET SDK 8以降とglslangValidatorを用意し、
 2. Build & Testで入力欄、Interact、停止・再実行、disable/enableを確認すること。
 3. 実際の学習済みcheckpointでCPUとの一致を確認し、FPS・tokens/s・VRAM・日本語品質を記録すること。
 4. VRChat upload後も同じ動作になること。
+
+World検証経路の`LlamaUdonTests`はclient向けUdonコンパイルを強制し、実行programが生成されたことを検査します。コンパイル成功だけでは、実機のGPU実行・入力操作まで確認したことにはなりません。
 
 ## 参照した仕様
 

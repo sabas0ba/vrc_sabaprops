@@ -80,6 +80,44 @@ namespace SabaProps.Llama.CITests
         }
 
         [Test]
+        public void MultiRowWeightsAndVocabularyMatchReference()
+        {
+            RequireGpu();
+            var config = new LlamaConfig { dimension = 8, hiddenDimension = 12, layers = 2, heads = 2,
+                kvHeads = 1, vocabulary = 520, sequenceLength = 4, sharedClassifier = false };
+            var layout = new LlamaLayout(config);
+            var weights = new float[layout.count];
+            for (int i = 0; i < weights.Length; i++) weights[i] = (float)Math.Sin(i * 0.37) * 0.2f;
+            var tokenizer = new LlamaTokenizer { pieces = new string[520], scores = new float[520] };
+            for (int i = 0; i < 520; i++) tokenizer.pieces[i] = "token" + i;
+            tokenizer.pieces[1] = "<s>"; tokenizer.pieces[2] = "</s>"; tokenizer.pieces[3] = " ";
+            tokenizer.Prepare();
+            var checkpoint = new LlamaCheckpoint(config, weights);
+            var model = LlamaProgramBuilder.Build(checkpoint, tokenizer, 4);
+            try
+            {
+                using (var gpu = new LlamaGpuSession(model))
+                {
+                    var cpu = new LlamaReference(checkpoint);
+                    foreach (int token in new[] { 1, 519, 256 })
+                    {
+                        gpu.Forward(token);
+                        float[] expected = cpu.Forward(token);
+                        Color[] actual = Read(gpu.Logits);
+                        int best = 0;
+                        for (int i = 0; i < expected.Length; i++)
+                        {
+                            Assert.That(actual[i].r, Is.EqualTo(expected[i]).Within(2e-4));
+                            if (expected[i] > expected[best]) best = i;
+                        }
+                        Assert.That(Read(gpu.Result)[0].g, Is.EqualTo(best));
+                    }
+                }
+            }
+            finally { DestroyModel(model); }
+        }
+
+        [Test]
         public void TextureAndMaterialSettingsSurviveAssetImport()
         {
             RequireGpu();

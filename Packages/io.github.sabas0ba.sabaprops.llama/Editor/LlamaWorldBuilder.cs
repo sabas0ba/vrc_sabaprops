@@ -68,6 +68,12 @@ namespace SabaProps.Llama
                 var runner = (Component)add.Invoke(null, new object[] { root, runnerType });
                 void Set(string field, object value) { runnerType.GetField(field).SetValue(runner, value); }
                 Set("weights", model.weights); Set("templates", model.materials);
+                var materialObject = new GameObject("Llama Material Instances", typeof(MeshRenderer));
+                materialObject.transform.SetParent(root.transform, false);
+                var materialSource = materialObject.GetComponent<MeshRenderer>();
+                materialSource.enabled = false;
+                materialSource.sharedMaterials = model.materials;
+                Set("materialSource", materialSource);
                 Set("inputA", model.inputA); Set("inputB", model.inputB); Set("targets", model.targets);
                 Set("widths", model.widths); Set("heights", model.heights);
                 Set("context", model.context); Set("vocabulary", model.config.vocabulary); Set("resultTarget", model.resultTarget);
@@ -116,7 +122,12 @@ namespace SabaProps.Llama
                 input.characterLimit = 256; input.lineType = InputField.LineType.MultiLineNewline; input.text = prompt;
                 Set("input", input); Set("output", result);
                 EditorUtility.SetDirty(runner);
-                // UdonSharp serializes the proxy into its backing behaviour at scene/build time.
+                Type utility = FindType("UdonSharpEditor.UdonSharpEditorUtility");
+                Type proxyType = FindType("UdonSharp.UdonSharpBehaviour");
+                MethodInfo copy = utility?.GetMethod("CopyProxyToUdon", BindingFlags.Public | BindingFlags.Static,
+                    null, new[] { proxyType }, null);
+                if (copy == null) throw new InvalidOperationException("UdonSharpのproxy転記APIが見つかりません。");
+                copy.Invoke(null, new object[] { runner });
                 Undo.RegisterCreatedObjectUndo(root, "Create SabaLlama runner");
                 Selection.activeGameObject = root;
                 return root;
