@@ -49,6 +49,7 @@ cp "$CIPROJECT/ProjectSettings/ProjectVersion.txt" "$PROJECT/ProjectSettings/"
 cp "$HERE/manifest.json" "$PROJECT/Packages/manifest.json"
 
 replace "$CIPROJECT/Assets/Tests" "$PROJECT/Assets/Tests"
+replace "$CIPROJECT/Assets/LlamaTests" "$PROJECT/Assets/LlamaTests"
 
 # PlayMode tests that need the SDK, so they cannot live in the CI project.
 replace "$HERE/Tests" "$PROJECT/Assets/WorldTests"
@@ -64,6 +65,7 @@ replace "$HERE/Setup" "$PROJECT/Assets/WorldSetup"
 # Embedded packages resolve against the working tree and pull their own
 # registry dependencies, so nothing has to be listed in manifest.json.
 replace "$PACKAGE" "$PROJECT/Packages/io.github.sabas0ba.sabaprops.foliage"
+replace "$REPO/Packages/io.github.sabas0ba.sabaprops.llama" "$PROJECT/Packages/io.github.sabas0ba.sabaprops.llama"
 replace "$VPM/com.vrchat.base" "$PROJECT/Packages/com.vrchat.base"
 replace "$VPM/com.vrchat.worlds" "$PROJECT/Packages/com.vrchat.worlds"
 

@@ -1,0 +1,14 @@
+{
+  "name": "io.github.sabas0ba.sabaprops.llama",
+  "displayName": "SabaProps Llama",
+  "version": "0.1.0",
+  "unity": "2022.3",
+  "description": "小型Llama系FP32重みをtextureに変換し、フラグメントシェーダーとUdonSharpでローカル推論する実験パッケージ。学習済み重みは含みません。",
+  "author": {"name": "sabas0ba", "url": "https://github.com/sabas0ba"},
+  "license": "MIT",
+  "documentationUrl": "https://github.com/sabas0ba/vrc_sabaprops/blob/main/Packages/io.github.sabas0ba.sabaprops.llama/README.md",
+  "changelogUrl": "https://github.com/sabas0ba/vrc_sabaprops/blob/main/Packages/io.github.sabas0ba.sabaprops.llama/CHANGELOG.md",
+  "vpmDependencies": {},
+  "dependencies": {"com.unity.ugui": "1.0.0"},
+  "keywords": ["vrchat", "world", "llama", "inference", "shader"]
+}
