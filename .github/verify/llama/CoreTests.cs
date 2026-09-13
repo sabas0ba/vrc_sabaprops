@@ -17,8 +17,10 @@ internal static class CoreTests
         Check(rejected, message);
     }
 
-    public static void Main()
+    public static void Main(string[] args)
     {
+        GgufTests.Run();
+        foreach (string path in args) GgufTests.RealModel(path);
         foreach (bool shared in new[] { true, false })
         foreach (int kvHeads in new[] { 1, 2 })
         {

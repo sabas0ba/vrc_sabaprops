@@ -18,11 +18,16 @@ namespace SabaProps.Llama
 
         private void OnGUI()
         {
-            EditorGUILayout.HelpBox("PCワールド向け実験実装。FP32 llama2.c v0 checkpointとtokenizer.binに対応します。GGUFは未対応です。", MessageType.Info);
-            if (GUILayout.Button("checkpointを選択")) checkpointPath = EditorUtility.OpenFilePanel("FP32 v0 checkpoint", "", "bin");
+            EditorGUILayout.HelpBox("PCワールド向け実験実装。Llama GGUF（F32/F16/Q4_0/Q8_0）またはllama2.c FP32 v0に対応。量子化重みもFP32へ展開します。", MessageType.Info);
+            if (GUILayout.Button("checkpointを選択")) checkpointPath = EditorUtility.OpenFilePanelWithFilters("Llama checkpoint", "", new[] { "Model", "gguf,bin" });
             EditorGUILayout.LabelField(Path.GetFileName(checkpointPath));
+            bool gguf = string.Equals(Path.GetExtension(checkpointPath), ".gguf", StringComparison.OrdinalIgnoreCase);
+            if (!gguf)
+            {
             if (GUILayout.Button("tokenizerを選択")) tokenizerPath = EditorUtility.OpenFilePanel("tokenizer.bin", "", "bin");
             EditorGUILayout.LabelField(Path.GetFileName(tokenizerPath));
+            }
+            else EditorGUILayout.LabelField("Tokenizer", "GGUF内蔵語彙を使用");
             context = EditorGUILayout.IntField("Context（最大256）", context);
             provenance = EditorGUILayout.TextField("重みの出典・ライセンス", provenance);
             EditorGUILayout.HelpBox("変換した重みはワールドの配布物に含まれます。出典と再配布条件を記録してください。外部ファイルの取得は行いません。", MessageType.Info);
@@ -31,9 +36,13 @@ namespace SabaProps.Llama
                 try
                 {
                     if (string.IsNullOrWhiteSpace(provenance)) throw new InvalidOperationException("出典・ライセンスを入力してください。");
-                    var checkpoint = LlamaCheckpoint.Read(checkpointPath);
-                    var tokenizer = LlamaTokenizer.Read(tokenizerPath, checkpoint.config.vocabulary);
+                    var imported = gguf ? LlamaGguf.Read(checkpointPath) : null;
+                    var checkpoint = gguf ? imported.checkpoint : LlamaCheckpoint.Read(checkpointPath);
+                    var tokenizer = gguf ? imported.tokenizer : LlamaTokenizer.Read(tokenizerPath, checkpoint.config.vocabulary);
                     selected = LlamaProgramBuilder.Build(checkpoint, tokenizer, context);
+                    selected.sourceFormat = gguf ? "gguf-llama" : "llama2.c-fp32-v0";
+                    if (gguf) selected.tokenizerSha256 = checkpoint.sha256;
+                    else
                     using (var sha = SHA256.Create())
                     using (var file = File.OpenRead(tokenizerPath))
                         selected.tokenizerSha256 = BitConverter.ToString(sha.ComputeHash(file)).Replace("-", "").ToLowerInvariant();
@@ -60,6 +69,12 @@ namespace SabaProps.Llama
             {
                 EditorGUILayout.LabelField("Passes / token", selected.materials.Length.ToString());
                 EditorGUILayout.LabelField("作業VRAM（重みを除く）", (selected.WorkingBytes / 1048576.0).ToString("F2") + " MiB");
+                EditorGUILayout.LabelField("重みtexture", ((long)selected.weights.width * selected.weights.height * 4 / 1048576.0).ToString("F2") + " MiB（FP32）");
+                if (GUILayout.Button("選択モデルのCPU/GPU照合（最大4 tokens）"))
+                {
+                    try { message = LlamaModelValidation.Compare(selected); Debug.Log(message); }
+                    catch (Exception error) { message = error.Message; Debug.LogException(error); }
+                }
             }
             if (GUILayout.Button("VRChat runtimeをimport"))
             {
@@ -88,7 +103,7 @@ namespace SabaProps.Llama
                 File.WriteAllText(folder + "/Provenance.json", JsonUtility.ToJson(new Provenance
                 {
                     checkpointSha256 = model.checkpointSha256, tokenizerSha256 = model.tokenizerSha256,
-                    sourceAndLicense = model.sourceAndLicense, context = model.context
+                    sourceAndLicense = model.sourceAndLicense, context = model.context, format = model.sourceFormat
                 }, true) + "\n");
                 AssetDatabase.SaveAssets();
                 AssetDatabase.Refresh();

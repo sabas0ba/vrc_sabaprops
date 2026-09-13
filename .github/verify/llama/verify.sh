@@ -24,7 +24,7 @@ REFERENCES=()
 for dll in "$RUNTIME"/*.dll; do REFERENCES+=(-r:"$dll"); done
 dotnet "$CSC" -nologo -noconfig -nostdlib+ -langversion:9.0 -target:exe \
     "${REFERENCES[@]}" -out:"$WORK/CoreTests.dll" \
-    "$PACKAGE/Editor/Core/"*.cs "$HERE/CoreTests.cs"
+    "$PACKAGE/Editor/Core/"*.cs "$HERE/CoreTests.cs" "$HERE/GgufTests.cs"
 cat > "$WORK/CoreTests.runtimeconfig.json" <<'JSON'
 {
   "runtimeOptions": {
@@ -34,7 +34,7 @@ cat > "$WORK/CoreTests.runtimeconfig.json" <<'JSON'
   }
 }
 JSON
-dotnet "$WORK/CoreTests.dll"
+dotnet "$WORK/CoreTests.dll" "$@"
 glslangValidator -D -e main -S frag --target-env vulkan1.0 \
     -I"$PACKAGE/Shaders" -o "$WORK/inference.spv" "$HERE/shader_harness.hlsl"
 echo "Llama fragment HLSL: type-check passed (not a GPU numerical test)."

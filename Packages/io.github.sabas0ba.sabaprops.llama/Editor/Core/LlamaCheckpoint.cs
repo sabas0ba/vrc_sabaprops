@@ -104,7 +104,7 @@ namespace SabaProps.Llama
                 c.sequenceLength = reader.ReadInt32();
                 var layout = new LlamaLayout(c);
                 if (stream.Length != 28L + 4L * layout.count)
-                    throw new InvalidDataException("ファイル長がFP32 v0形式と一致しません。GGUF・量子化形式は未対応です。");
+                    throw new InvalidDataException("ファイル長がFP32 v0形式と一致しません。GGUFは拡張子.ggufで別のreaderから読み込んでください。");
                 var weights = new float[layout.count];
                 for (int i = 0; i < weights.Length; i++) weights[i] = reader.ReadSingle();
                 stream.Position = 0;

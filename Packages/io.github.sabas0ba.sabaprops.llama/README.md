@@ -10,21 +10,21 @@ VRChatのPCワールドで、小型Llama系モデルをfragment shaderにより�
 | --- | --- |
 | Unity | リポジトリ検証環境は2022.3.22f1 |
 | VRChat | 既存検証環境のWorlds SDK 3.10.4を使用。hashはリポジトリの`.github/verify/vrchat/packages.lock`に固定 |
-| 重み | llama2.cのlegacy FP32 v0 checkpoint。little-endian、7個のint32ヘッダー、FP32配列 |
-| tokenizer | 対応するtokenizer.bin。BOS=1、EOS=2、scoreによるBPEとbyte fallback |
+| 重み | GGUF v2/v3 little-endianのLlama（F32/F16/Q4_0/Q8_0混在可）、またはllama2.c legacy FP32 v0 |
+| tokenizer | GGUF内蔵のLlama SentencePiece、またはtokenizer.bin。BOS=1、EOS=2、scoreによるBPEとbyte fallback |
 | モデル演算 | RMSNorm（epsilon=1e-5）、隣接ペアRoPE（theta=10000）、MHA/GQA、因果Attention、SwiGLU |
 | 出力 | Greedy argmax。温度・top-p・音声認識・音声合成は未対応 |
 | Context | 変換時に1〜256、元モデルの上限以内。既定128 |
 | モデル上限 | dimension 1024、hidden 4096、16 layers、32768語彙、重み256 MiB |
 | 実行 | PC向け。各プレイヤーのローカル処理で、結果のネットワーク同期は行わない |
 
-GGUF、safetensors、量子化checkpoint、Llama 3等の異なるtokenizer、RoPE scaling、chat templateは未対応です。ファイルの拡張子だけを変更しても読み込めません。モデルとtokenizerは対応した組み合わせが必要です。形式・語彙数の検査だけでは学習時の組み合わせまで保証できません。
+GGUFはコンテナー形式であり、すべてのモデルへの対応を意味しません。Q4_K_M等のK/IQ量子化、BF16、big-endian、分割GGUF、MoE、bias付きモデル、safetensors、Llama 3等の異なるtokenizer、RoPE scaling、chat templateは未対応です。ファイルの拡張子だけを変更しても読み込めません。モデルとtokenizerは対応した組み合わせが必要です。形式・語彙数の検査だけでは学習時の組み合わせまで保証できません。
 
 ## 導入と操作
 
 1. VRChat Worlds SDKを導入済みのUnityプロジェクトに本パッケージを追加します。VPM配布前はリポジトリ内の`Packages/io.github.sabas0ba.sabaprops.llama`を、プロジェクトの`Packages`へコピーします。
 2. `Tools > SabaProps > Llama > Import Model`を開きます。
-3. 利用者が用意したcheckpointとtokenizerを指定し、Contextと重みの出典・ライセンスを入力します。ダウンロード機能はありません。
+3. GGUFを指定します（内蔵tokenizerを使うので別ファイルは不要）。legacy `.bin`の場合のみ対応するtokenizer.binも指定します。Contextと重みの出典・ライセンスを入力します。Editor内のダウンロード機能はありません。
 4. 「検査してtextureへ変換」を実行します。出力は`Assets/SabaPropsLlama/ImportedModel...`です。既存の出力を上書きせず、新しいフォルダーを作成します。
 5. 「VRChat runtimeをimport」を実行し、Unity・UdonSharpのコンパイルが終わるまで待ちます。これは初回のみ必要です。既存runtimeを編集している場合は自動上書きしません。
 6. 変換済みモデルを選択し、「選択モデルのWorld Runnerを作成」を実行します。既存のワールドシーンにCubeとテキスト入力・出力Canvasを追加します。ワールドのEventSystem、VRCSceneDescriptor、Spawnは既存設定を使用します。
@@ -33,6 +33,59 @@ GGUF、safetensors、量子化checkpoint、Llama 3等の異なるtokenizer、RoP
 `Generate`と`StopGeneration`はUdon custom eventとしても呼び出せます。入力欄を接続しない場合はrunnerの`prompt`を使用します。テキストは入力の続きを生成するcompletion形式です。チャットモデル用の役割タグなどは自動挿入しません。
 
 まず導入だけ確認する場合は「検証用モデルを作成（未学習）」を使用できます。入力例は`ab`です。小さい語彙と決定的な重みを持つ数値検証用モデルなので、自然な文章や会話は生成しません。
+
+## 学習済みGGUFで試す
+
+初回は **stories260K.gguf** を使用してください。約1.19 MB、dimension 64・5 layers・512語彙で、導入・英語completionの確認に向いた小さいモデルです。日本語チャット用モデルではありません。次に **stories15M-q4_0.gguf**（約19.1 MB、dimension 288・6 layers・32000語彙）で量子化入力と負荷を確認できます。
+
+配布元は [ggml-orgのtinyllamas](https://huggingface.co/ggml-org/models-moved/tree/499bc8821c6b12b4e53c5bffcb21ec206f212d81/tinyllamas)。元モデルは [karpathy/tinyllamas](https://huggingface.co/karpathy/tinyllamas)（モデルカードの表記はMIT）です。ダウンロード時に元モデルのライセンスと配布元も確認し、ワールドに含める重みの出典を記録してください。本リポジトリには重みを再配布しません。
+
+### 取得（Windows PowerShell）
+
+Unityプロジェクトの外の作業フォルダーで実行します。既存ファイルがある場合は上書きせず停止します。
+
+```powershell
+$ErrorActionPreference = 'Stop'
+$revision = '499bc8821c6b12b4e53c5bffcb21ec206f212d81'
+$file = 'stories260K.gguf'
+$expected = '270cba1bd5109f42d03350f60406024560464db173c0e387d91f0426d3bd256d'
+if (Test-Path $file) { throw "Already exists: $file" }
+Invoke-WebRequest "https://huggingface.co/ggml-org/models-moved/resolve/$revision/tinyllamas/$file" -OutFile $file
+if ((Get-FileHash $file -Algorithm SHA256).Hash.ToLowerInvariant() -ne $expected) {
+    Remove-Item $file
+    throw 'SHA-256 mismatch; import aborted'
+}
+```
+
+Stories15Mを使う場合は、同じrevisionで `$file = 'stories15M-q4_0.gguf'`、`$expected = '66967fbece6dbe97886593fdbb73589584927e29119ec31f08090732d1861739'` に変更します。ファイル名に `-be` のあるものはbig-endianで未対応です。
+
+### 取得（bash / リポジトリroot）
+
+```bash
+bash .github/verify/llama/fetch-model.sh stories260K
+# 必要に応じて追加
+bash .github/verify/llama/fetch-model.sh stories15M-q4_0
+```
+
+保存先は `.verify/llama/models/` です。取得scriptは固定revisionのファイルをSHA-256検査し、モデルに含まれるコードを実行しません。取得は明示実行時のみです。
+
+### Unityでの確認
+
+1. Import Modelで取得したGGUFを選択し、Contextをまず64にします。出典欄の例は `karpathy/tinyllamas (MIT); GGUF ggml-org/models-moved@499bc8821c6b12b4e53c5bffcb21ec206f212d81 / tinyllamas/stories260K.gguf` です。
+2. textureへ変換し、表示される重み容量と作業VRAMを確認します。**Q4_0/Q8_0もEditorでFP32へ展開するため、ダウンロード容量とVRAM容量は一致しません。** Stories15Mは重みだけで約93 MiB級です。CPUコピー・中間bufferは別に必要です。
+3. 「選択モデルのCPU/GPU照合」を実行します。最大4 tokensについて全logit・greedy argmaxを比較し、成功または最初の不一致を表示します。許容誤差は `2e-3 + 2e-4 * abs(CPU logit)`。短い同期検査なのでEditorが一時的に応答しなくなる場合があります。
+4. runtimeをimportしてWorld Runnerを作成します。入力を `Once upon a time`、maxNewTokensを8、passesPerFrameを1にして、Build & TestでInteractします。入力の続きが少しずつ出れば生成経路を確認できます。出力文の品質や速度は合格条件に含めません。
+5. 停止・再実行・disable/enableと、GPU別のFPS・tokens/s・VRAMを記録します。大きいモデルやpassesPerFrameの増加はこの確認後に試します。
+
+GGUFファイル全体のSHA-256をcheckpoint/tokenizer双方の来歴として保存します。CPU/GPU照合は変換済み重みの演算検査であり、元のllama.cppとのtokenizer・logit一致を保証するものではありません。
+
+### Unityなしの実ファイル検査
+
+```bash
+nix develop --command bash .github/verify/llama/verify.sh .verify/llama/models/stories260K.gguf
+```
+
+SHA-256、prompt token ID、greedyで8 tokensのCPU生成を出力します。CIでも固定したStories260KとStories15M Q4_0を取得して同じ検査を実行します。GPU・Udon・VRChatでの動作確認とは区別します。
 
 ## 実行時の制限
 
@@ -54,7 +107,7 @@ Quest対応や実用的な日本語NPCとしての品質は、現段階の保証
 | `Weights.asset` | 幅4096のRFloat texture。Linear、Point、Clamp、mipmapなし。元のfloat indexを行優先で配置 |
 | `LlamaPassNNN.mat` | 演算種類・重みoffset・寸法を保存したMaterial |
 | `Model.asset` | Editor用のモデル情報、tokenizer、演算スケジュール |
-| `Provenance.json` | 入力2ファイルのSHA-256、Context、パッケージ版、出典・ライセンス |
+| `Provenance.json` | 入力形式、入力ファイルのSHA-256、Context、パッケージ版、出典・ライセンス |
 
 重みoffsetは整数です。Unityのlegacy `Material.SetInt`のfloat経由の保存で大きなoffsetが丸められないよう、16bit単位の2値へ分割して保存します。
 
@@ -74,7 +127,7 @@ nix develop --command bash .github/verify/llama/verify.sh
 
 Nixを利用しない場合は.NET SDK 8以降とglslangValidatorを用意し、同じscriptを実行できます。既存のVerify CIにも追加しています。NuGet restoreや追加ライブラリは不要です。
 
-この検査はFP32形式のroundtrip、不正ファイルの拒否、参照推論の解析解・履歴依存・reset、tokenizer、およびfragment HLSLの型検査を行います。Unity API・Udon公開API・GPU上の数値一致は、この検査の対象外です。
+この検査はGGUF v2/v3のtensor配置・内蔵tokenizer・F16/Q4_0/Q8_0復号、FP32形式のroundtrip、不正ファイルの拒否、参照推論の解析解・履歴依存・reset、tokenizer、およびfragment HLSLの型検査を行います。Unity API・Udon公開API・GPU上の数値一致は、この検査の対象外です。
 
 ### Unity / GPU比較
 
@@ -105,6 +158,7 @@ World検証経路の`LlamaUdonTests`はclient向けUdonコンパイルを強制�
 
 - [VRChat VRCGraphics](https://creators.vrchat.com/worlds/udon/vrc-graphics/)
 - [VRChat AsyncGPUReadback](https://creators.vrchat.com/worlds/udon/vrc-graphics/asyncgpureadback/)
+- [GGUF仕様](https://github.com/ggml-org/ggml/blob/master/docs/gguf.md)
 - [llama2.c checkpoint・tokenizer形式](https://github.com/karpathy/llama2.c)
 
 外部の推論ライブラリや学習済み重みは本パッケージへ取り込んでいません。

@@ -12,6 +12,7 @@ namespace SabaProps.Llama
         public int[] inputA, inputB, targets, widths, heights;
         public int logitsTarget, resultTarget, context;
         public string checkpointSha256, tokenizerSha256, sourceAndLicense;
+        public string sourceFormat = "llama2.c-fp32-v0";
 
         public long WorkingBytes
         {
