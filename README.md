@@ -2,7 +2,7 @@
 
 VRChat 向けのアセットを **VCC (VRChat Creator Companion) / VPM** で配布するためのリポジトリです。
 
-複数パッケージの集合体として、GPU インスタンシング前提の草木配置パッケージ **SabaProps Foliage** と、PC VRChat向けの接触変形家具パッケージ **SabaProps Soft Props** を収録しています。
+複数パッケージの集合体として、草木配置の **SabaProps Foliage**、樹木生成の **SabaProps Trees**、PC VRChat向け接触変形家具の **SabaProps Soft Props** を収録しています。
 
 ---
 
@@ -25,7 +25,8 @@ https://sabas0ba.github.io/vrc_sabaprops/index.json
 
 | Package ID | 名前 | 概要 |
 | --- | --- | --- |
-| `io.github.sabas0ba.sabaprops.foliage` | SabaProps Foliage | GPU インスタンシング対応の草木スキャッタリングツール。グラスシード／ひまわりをプロシージャル生成し、大量配置しても軽量。 |
+| `io.github.sabas0ba.sabaprops.foliage` | SabaProps Foliage | GPU インスタンシング対応の草木スキャッタリングツール。草花 8 種と壁上から垂らすツタをプロシージャル生成。 |
+| `io.github.sabas0ba.sabaprops.trees` | SabaProps Trees | 再帰枝ジェネレータから樹木と 3 段階 LOD を生成。共有サーフェス散布 API を使う Tree Field に対応。 |
 | `io.github.sabas0ba.sabaprops.softprops` | SabaProps Soft Props | World Contactsでユーザーの接触を検知し、ふとん、ベッド、ソファー、クッションを最大8点で変形するPC向けprop集。 |
 
 各パッケージの詳細は `Packages/<package-id>/README.md` を参照してください。
@@ -46,6 +47,14 @@ Soft Propsは `Tools > SabaProps > Soft Props > Generate All Prefabs` で4種の
 .
 ├── Packages/                       # 配布する VPM パッケージ群（1 フォルダ = 1 パッケージ）
 │   ├── io.github.sabas0ba.sabaprops.foliage/
+│   │   ├── package.json            # VPM マニフェスト
+│   │   ├── Runtime/                # シーンに残る最小限のコンポーネントとシェーダー
+│   │   ├── Editor/                 # 生成・配置ツール（ビルドには含まれない）
+│   │   └── Documentation~/
+│   ├── io.github.sabas0ba.sabaprops.trees/
+│   │   ├── package.json
+│   │   ├── Runtime/                # TreeSpecies とパラメータ
+│   │   └── Editor/                 # 再帰枝、LOD Mesh、LODGroup 生成
 │   └── io.github.sabas0ba.sabaprops.softprops/
 │       ├── package.json            # VPM マニフェスト
 │       ├── Runtime/                # Udon controllerと変形shader
@@ -288,4 +297,4 @@ SDK の取得はコンテナ内で行い、ローカルの VCC / ALCOM のキャ
 
 ## ライセンス
 
-MIT License. 詳細は [LICENSE](LICENSE) を参照してください。
+Apache License 2.0. 詳細は [LICENSE](LICENSE) を参照してください。

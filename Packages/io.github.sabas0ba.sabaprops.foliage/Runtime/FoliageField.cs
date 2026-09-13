@@ -65,6 +65,8 @@ namespace SabaProps.Foliage
     /// This component intentionally has no runtime logic. VRChat worlds and
     /// avatars cannot execute C#, so everything is baked at edit time and what
     /// ships is plain MeshRenderers driven by an instancing-aware shader.
+    /// The authoring component is automatically omitted from builds; users do
+    /// not need to remove it before building or uploading a world.
     /// </para>
     /// </summary>
     [AddComponentMenu("SabaProps/Foliage Field")]
@@ -146,6 +148,8 @@ namespace SabaProps.Foliage
         [Tooltip("チャンクの一辺 (m)。カリング粒度とドローコール数のトレードオフ。")]
         [Min(1f)] public float chunkSize = 12f;
 
+        [HideInInspector] public bool autoRebuild = true;
+
         [Header("State (read only)")]
         [SerializeField] private string buildId;
 
@@ -205,9 +209,7 @@ namespace SabaProps.Foliage
         {
             get
             {
-                return shape == FoliageAreaShape.Circle
-                    ? new Vector2(radius, radius)
-                    : new Vector2(Mathf.Abs(size.x) * 0.5f, Mathf.Abs(size.y) * 0.5f);
+                return FoliageAreaUtility.LocalExtents(shape, size, radius);
             }
         }
 
@@ -216,22 +218,14 @@ namespace SabaProps.Foliage
         {
             get
             {
-                return shape == FoliageAreaShape.Circle
-                    ? Mathf.PI * radius * radius
-                    : Mathf.Abs(size.x) * Mathf.Abs(size.y);
+                return FoliageAreaUtility.AreaSquareMeters(shape, size, radius);
             }
         }
 
         /// <summary>True when the local point lies inside the configured shape.</summary>
         public bool ContainsLocalPoint(float x, float z)
         {
-            if (shape == FoliageAreaShape.Circle)
-            {
-                return (x * x + z * z) <= radius * radius;
-            }
-
-            Vector2 extents = LocalExtents;
-            return Mathf.Abs(x) <= extents.x && Mathf.Abs(z) <= extents.y;
+            return FoliageAreaUtility.ContainsLocalPoint(shape, size, radius, x, z);
         }
 
         /// <summary>
@@ -240,14 +234,12 @@ namespace SabaProps.Foliage
         /// </summary>
         public Vector2 LocalPointToMaskUv(float x, float z)
         {
-            Vector2 extents = LocalExtents;
-            return new Vector2(
-                Mathf.InverseLerp(-extents.x, extents.x, x),
-                Mathf.InverseLerp(-extents.y, extents.y, z));
+            return FoliageAreaUtility.LocalPointToMaskUv(shape, size, radius, x, z);
         }
 
         private void OnValidate()
         {
+            ExcludeAuthoringComponentFromBuild();
             size.x = Mathf.Max(0.1f, size.x);
             size.y = Mathf.Max(0.1f, size.y);
 
@@ -255,6 +247,16 @@ namespace SabaProps.Foliage
             {
                 altitudeLimits = new Vector2(altitudeLimits.y, altitudeLimits.x);
             }
+        }
+
+        private void Reset()
+        {
+            ExcludeAuthoringComponentFromBuild();
+        }
+
+        private void ExcludeAuthoringComponentFromBuild()
+        {
+            hideFlags |= HideFlags.DontSaveInBuild;
         }
 
         private void OnDrawGizmosSelected()

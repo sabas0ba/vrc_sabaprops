@@ -127,7 +127,7 @@ namespace SabaProps.Foliage.Editors
         /// VRChat applies them through VRCPlayerApi at runtime, so a world that
         /// wants them needs Udon. The behaviour therefore ships in Samples~ and
         /// is imported on request — see
-        /// <c>Tools > SabaProps > Foliage > Import VRChat Demo Movement</c>.
+        /// <c>Tools > SabaProps > Debug > Foliage > Import VRChat Demo Movement</c>.
         /// Absent, this does nothing and the demo walks at VRChat's defaults.
         /// </para>
         /// </summary>

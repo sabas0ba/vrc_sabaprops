@@ -67,8 +67,8 @@ echo "ok: $(wc -c < "$WORK/figures.json") bytes"
 # ---------------------------------------------------------------------------
 log "Rendering figures"
 # ---------------------------------------------------------------------------
-# All Python in this repository runs in a pinned container; see run.sh.
-PYTHON="$REPO/.github/scripts/run.sh"
+# Keep the same override as verify.sh for a pinned development container.
+PYTHON="${VERIFY_PYTHON:-$REPO/.github/scripts/run.sh}"
 
 if [ "$MODE" = "--check" ]; then
     OUT="$WORK/svg"
