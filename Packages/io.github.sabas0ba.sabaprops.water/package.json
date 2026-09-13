@@ -1,0 +1,33 @@
+{
+  "name": "io.github.sabas0ba.sabaprops.water",
+  "displayName": "SabaProps Water",
+  "version": "0.1.0",
+  "unity": "2022.3",
+  "description": "VRChat World向けの水面、水たまり、河川、雨、霧、雲、水中エフェクトを作成するShaderとbake型Editorツールです。動的な波動シミュレーションや必須のruntime scriptを使用しません。",
+  "author": {
+    "name": "sabas0ba",
+    "url": "https://github.com/sabas0ba"
+  },
+  "license": "MIT",
+  "licensesUrl": "https://github.com/sabas0ba/vrc_sabaprops/blob/main/LICENSE",
+  "documentationUrl": "https://github.com/sabas0ba/vrc_sabaprops/blob/main/Packages/io.github.sabas0ba.sabaprops.water/README.md",
+  "changelogUrl": "https://github.com/sabas0ba/vrc_sabaprops/blob/main/Packages/io.github.sabas0ba.sabaprops.water/CHANGELOG.md",
+  "vpmDependencies": {},
+  "samples": [
+    {
+      "displayName": "Water Feature Gallery",
+      "description": "水面、雨、波紋、霧、雲、水中表現を比較し、各rigをコピーして利用できるサンプルSceneです。",
+      "path": "Samples~/Water Feature Gallery"
+    }
+  ],
+  "keywords": [
+    "vrchat",
+    "world",
+    "water",
+    "rain",
+    "puddle",
+    "river",
+    "fog",
+    "underwater"
+  ]
+}

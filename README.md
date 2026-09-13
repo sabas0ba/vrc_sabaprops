@@ -2,7 +2,7 @@
 
 VRChat 向けのアセットを **VCC (VRChat Creator Companion) / VPM** で配布するためのリポジトリです。
 
-複数パッケージの集合体として、草木配置の **SabaProps Foliage**、樹木生成の **SabaProps Trees**、PC VRChat向け接触変形家具の **SabaProps Soft Props** を収録しています。
+草木配置の **SabaProps Foliage**、樹木生成の **SabaProps Trees**、水面・雨・霧・水中表現の **SabaProps Water**、PC VRChat向け接触変形家具の **SabaProps Soft Props** を収録しています。
 
 ---
 
@@ -25,6 +25,7 @@ https://sabas0ba.github.io/vrc_sabaprops/index.json
 
 | Package ID | 名前 | 概要 |
 | --- | --- | --- |
+| `io.github.sabas0ba.sabaprops.water` | SabaProps Water | 水たまり・川・湖・海、衝突splash付きの雨、霧・雲、水中effectをbakeするShader／Editor tool。 |
 | `io.github.sabas0ba.sabaprops.foliage` | SabaProps Foliage | GPU インスタンシング対応の草木スキャッタリングツール。草花 8 種と壁上から垂らすツタをプロシージャル生成。 |
 | `io.github.sabas0ba.sabaprops.trees` | SabaProps Trees | 再帰枝ジェネレータから樹木と 3 段階 LOD を生成。共有サーフェス散布 API を使う Tree Field に対応。 |
 | `io.github.sabas0ba.sabaprops.softprops` | SabaProps Soft Props | World Contactsでユーザーの接触を検知し、ふとん、ベッド、ソファー、クッションを最大8点で変形するPC向けprop集。 |
@@ -34,6 +35,9 @@ https://sabas0ba.github.io/vrc_sabaprops/index.json
 導入後に動作を確認する最短手順は `Tools > SabaProps > Foliage > Create Sample Scene` です。
 地面・ライト・カメラと 2 種類の出力モードのフィールドを含むデモシーンが、ビルド済みの状態で生成されます。
 VRChat Worlds SDK が入っているプロジェクトでは `VRCSceneDescriptor` と Spawn も配置され、そのままアップロードできます。
+
+Water packageは`Tools > SabaProps > Water > Create Default Assets`でMaterialとprofileを作成し、
+Hierarchyの`SabaProps > Water`／`SabaProps > Weather`から各propを配置できます。
 
 Soft Propsは `Tools > SabaProps > Soft Props > Generate All Prefabs` で4種の家具Prefabと、指／棒／板の接触比較Prefabを生成します。
 
@@ -55,6 +59,7 @@ Soft Propsは `Tools > SabaProps > Soft Props > Generate All Prefabs` で4種の
 │   │   ├── package.json
 │   │   ├── Runtime/                # TreeSpecies とパラメータ
 │   │   └── Editor/                 # 再帰枝、LOD Mesh、LODGroup 生成
+│   ├── io.github.sabas0ba.sabaprops.water/
 │   └── io.github.sabas0ba.sabaprops.softprops/
 │       ├── package.json            # VPM マニフェスト
 │       ├── Runtime/                # Udon controllerと変形shader

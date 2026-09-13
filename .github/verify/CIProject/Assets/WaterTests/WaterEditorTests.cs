@@ -1,0 +1,685 @@
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using NUnit.Framework;
+using SabaProps.Water.Editors;
+using UnityEditor;
+using UnityEditor.SceneManagement;
+using UnityEngine;
+using UnityEngine.Rendering;
+using UnityEngine.SceneManagement;
+
+namespace SabaProps.Water.CITests
+{
+    public class WaterShaderTests
+    {
+        private static readonly string[] ShaderNames =
+        {
+            WaterSurfaceProfile.LiteShaderName,
+            WaterSurfaceProfile.StandardShaderName,
+            WaterAssetLibrary.RainShaderName,
+            WaterAssetLibrary.SplashShaderName,
+            WaterAssetLibrary.RippleShaderName,
+            WaterAssetLibrary.FogParticleShaderName,
+            WaterAssetLibrary.FogVolumeShaderName,
+            WaterAssetLibrary.UnderwaterLiteShaderName,
+            WaterAssetLibrary.UnderwaterStandardShaderName,
+            WaterAssetLibrary.UnderwaterSurfaceLiteShaderName,
+            WaterAssetLibrary.UnderwaterSurfaceStandardShaderName,
+            WaterAssetLibrary.CausticsShaderName,
+            WaterAssetLibrary.LightShaftShaderName,
+            WaterAssetLibrary.WetSurfaceShaderName,
+            WaterAssetLibrary.DropletProjectorShaderName,
+            WaterAssetLibrary.WetSurfaceTransparentShaderName,
+        };
+
+        [Test]
+        public void EveryShader_IsFoundAndCompiles()
+        {
+            foreach (string shaderName in ShaderNames)
+            {
+                Shader shader = Shader.Find(shaderName);
+                Assert.IsNotNull(shader, $"shader '{shaderName}' was not found");
+
+                if (!ShaderUtil.ShaderHasError(shader))
+                {
+                    Assert.IsTrue(shader.isSupported, $"shader '{shaderName}' is unsupported");
+                    continue;
+                }
+
+                var details = new List<string>();
+                foreach (ShaderMessage message in ShaderUtil.GetShaderMessages(shader))
+                {
+                    details.Add($"{message.file}({message.line}): {message.message} {message.messageDetails}");
+                }
+
+                Assert.Fail($"shader '{shaderName}' failed to compile:\n" + string.Join("\n", details));
+            }
+        }
+
+        [Test]
+        public void StereoDependentShaders_RestoreTheEyeIndexInFragments()
+        {
+            string[] stereoDependentShaders =
+            {
+                WaterSurfaceProfile.LiteShaderName,
+                WaterSurfaceProfile.StandardShaderName,
+                WaterAssetLibrary.RainShaderName,
+                WaterAssetLibrary.SplashShaderName,
+                WaterAssetLibrary.RippleShaderName,
+                WaterAssetLibrary.CausticsShaderName,
+                WaterAssetLibrary.LightShaftShaderName,
+                WaterAssetLibrary.FogParticleShaderName,
+                WaterAssetLibrary.FogVolumeShaderName,
+                WaterAssetLibrary.UnderwaterLiteShaderName,
+                WaterAssetLibrary.UnderwaterStandardShaderName,
+                WaterAssetLibrary.UnderwaterSurfaceLiteShaderName,
+                WaterAssetLibrary.UnderwaterSurfaceStandardShaderName,
+            };
+
+            foreach (string shaderName in stereoDependentShaders)
+            {
+                AssertSourceContains(
+                    shaderName,
+                    "UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX");
+            }
+        }
+
+        [Test]
+        public void VolumeShaders_UseDepthAndInwardFacingBoundaryPasses()
+        {
+            string fogSource = ReadShaderSource(WaterAssetLibrary.FogVolumeShaderName);
+            Assert.IsTrue(fogSource.Contains("ZTest Always"));
+            Assert.IsTrue(fogSource.Contains("_CameraDepthTexture"));
+            Assert.IsTrue(fogSource.Contains("depthFraction"));
+
+            AssertSourceContains(WaterAssetLibrary.UnderwaterSurfaceLiteShaderName, "Cull Front");
+            AssertSourceContains(WaterAssetLibrary.UnderwaterSurfaceStandardShaderName, "Cull Front");
+        }
+
+        [Test]
+        public void SoftParticleDepth_UsesStereoTransformedUv()
+        {
+            string source = ReadShaderSource(WaterAssetLibrary.FogParticleShaderName);
+            Assert.IsTrue(source.Contains("float2 depthUV = UnityStereoTransformScreenSpaceTex("));
+            Assert.IsTrue(source.Contains("_CameraDepthTexture, depthUV"));
+        }
+
+        private static void AssertSourceContains(string shaderName, string expected)
+        {
+            Assert.IsTrue(
+                ReadShaderSource(shaderName).Contains(expected),
+                shaderName + " must contain " + expected);
+        }
+
+        private static string ReadShaderSource(string shaderName)
+        {
+            Shader shader = Shader.Find(shaderName);
+            Assert.IsNotNull(shader, shaderName);
+            string assetPath = AssetDatabase.GetAssetPath(shader);
+            return File.ReadAllText(assetPath);
+        }
+    }
+
+    public class WaterMeshTests
+    {
+        [Test]
+        public void Puddle_IsFiniteAndHasExpectedTopology()
+        {
+            Mesh mesh = WaterMeshBuilder.BuildPuddle(2f, 1.4f, 4, 24, 42);
+            try
+            {
+                Assert.IsNotNull(mesh);
+                Assert.AreEqual(1 + 4 * 24, mesh.vertexCount);
+                Assert.AreEqual(24 + 3 * 24 * 2, mesh.triangles.Length / 3);
+                Assert.AreEqual(mesh.vertexCount, mesh.uv.Length);
+                Assert.AreEqual(mesh.vertexCount, mesh.normals.Length);
+                AssertFinite(mesh);
+
+                foreach (Vector3 normal in mesh.normals)
+                {
+                    Assert.Greater(normal.y, 0.99f, "puddle normal faces down");
+                }
+            }
+            finally
+            {
+                Object.DestroyImmediate(mesh);
+            }
+        }
+
+        [Test]
+        public void River_IsDeterministicAndUvAdvancesDownstream()
+        {
+            var points = new List<Vector3>
+            {
+                new Vector3(0f, 0f, -4f),
+                Vector3.zero,
+                new Vector3(1f, 0.2f, 4f),
+                new Vector3(0f, 0f, 8f),
+            };
+
+            Mesh first = WaterMeshBuilder.BuildRiver(points, 2f, 5, 2f);
+            Mesh second = WaterMeshBuilder.BuildRiver(points, 2f, 5, 2f);
+            try
+            {
+                Assert.AreEqual(first.vertexCount, second.vertexCount);
+                Assert.AreEqual(first.triangles.Length, second.triangles.Length);
+                AssertFinite(first);
+                Assert.IsTrue(
+                    first.normals.Any(normal => normal.y < 0.999f),
+                    "sloped river samples must not retain flat upward normals");
+
+                for (int index = 0; index < first.vertexCount; index++)
+                {
+                    Assert.AreEqual(first.vertices[index], second.vertices[index]);
+                    Assert.AreEqual(first.uv[index], second.uv[index]);
+                    Assert.AreEqual(first.normals[index], second.normals[index]);
+                    Assert.AreEqual(1f, first.normals[index].magnitude, 1e-4f);
+                    if (index >= 2)
+                    {
+                        Assert.Greater(first.uv[index].y + 1e-5f, first.uv[index - 2].y);
+                    }
+                }
+            }
+            finally
+            {
+                Object.DestroyImmediate(first);
+                Object.DestroyImmediate(second);
+            }
+        }
+
+        private static void AssertFinite(Mesh mesh)
+        {
+            foreach (Vector3 vertex in mesh.vertices)
+            {
+                Assert.IsFalse(
+                    float.IsNaN(vertex.x) || float.IsNaN(vertex.y) || float.IsNaN(vertex.z) ||
+                    float.IsInfinity(vertex.x) || float.IsInfinity(vertex.y) || float.IsInfinity(vertex.z),
+                    "mesh contains a non-finite vertex");
+            }
+        }
+    }
+
+    public class WaterAssetAndRigTests
+    {
+        [Test]
+        public void DropletProjector_UsesPortableComponentsAndLeavesReceiverMaterialUnchanged()
+        {
+            WaterProjectorSampleScene.Create();
+            try
+            {
+                Projector projector = Object.FindObjectOfType<Projector>();
+                Assert.IsNotNull(projector);
+                Assert.IsTrue(projector.orthographic);
+                Assert.Greater(projector.farClipPlane, projector.nearClipPlane);
+                Assert.AreEqual(WaterAssetLibrary.DropletProjectorShaderName, projector.material.shader.name);
+                Assert.IsTrue(AssetDatabase.GetAssetPath(projector.material)
+                    .StartsWith(WaterSampleScene.SampleFolder + "/"));
+                foreach (Renderer receiver in Object.FindObjectsOfType<Renderer>())
+                {
+                    Assert.AreEqual("Standard", receiver.sharedMaterial.shader.name);
+                }
+                Assert.AreEqual(0, projector.GetComponents<MonoBehaviour>().Length);
+            }
+            finally
+            {
+                EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
+            }
+        }
+
+        [Test]
+        public void DuplicatedRiver_RebuildIsIndependentAndUndoRestoresReferences()
+        {
+            var original = new GameObject("Original River");
+            GameObject duplicate = null;
+            try
+            {
+                WaterPath first = original.AddComponent<WaterPath>();
+                Mesh originalMesh = WaterPathEditor.Rebuild(first);
+                Vector3[] originalVertices = originalMesh.vertices;
+                duplicate = Object.Instantiate(original);
+                duplicate.SetActive(false);
+                WaterPath second = duplicate.GetComponent<WaterPath>();
+                second.width *= 2f;
+                Undo.FlushUndoRecordObjects();
+                Undo.IncrementCurrentGroup();
+                Mesh rebuilt = WaterPathEditor.Rebuild(second);
+                Undo.FlushUndoRecordObjects();
+                Assert.AreNotEqual(originalMesh, rebuilt);
+                Assert.IsTrue(originalVertices.SequenceEqual(originalMesh.vertices));
+                Assert.AreEqual(rebuilt, second.GetComponent<MeshFilter>().sharedMesh);
+                Assert.Greater(rebuilt.bounds.size.x, originalMesh.bounds.size.x);
+                Undo.PerformUndo();
+                Assert.AreEqual(originalMesh, second.generatedMesh);
+                Assert.AreEqual(originalMesh, second.GetComponent<MeshFilter>().sharedMesh);
+            }
+            finally
+            {
+                Object.DestroyImmediate(duplicate);
+                Object.DestroyImmediate(original);
+            }
+        }
+
+        [Test]
+        public void RiverRebuild_UndoRestoresExistingMeshGeometry()
+        {
+            var river = new GameObject("Undo River");
+            try
+            {
+                WaterPath path = river.AddComponent<WaterPath>();
+                Mesh mesh = WaterPathEditor.Rebuild(path);
+                Vector3[] vertices = mesh.vertices;
+                path.width *= 2f;
+                Undo.FlushUndoRecordObjects();
+                Undo.IncrementCurrentGroup();
+                Assert.AreEqual(mesh, WaterPathEditor.Rebuild(path));
+                Undo.FlushUndoRecordObjects();
+                Assert.IsFalse(vertices.SequenceEqual(mesh.vertices));
+                Undo.PerformUndo();
+                Assert.IsTrue(vertices.SequenceEqual(mesh.vertices));
+            }
+            finally
+            {
+                Object.DestroyImmediate(river);
+            }
+        }
+
+        [Test]
+        public void RiverRebuild_PreservesMeshReferencedByUnloadedScene()
+        {
+            string firstScenePath = AssetDatabase.GenerateUniqueAssetPath("Assets/WaterRiverOwnerTest.unity");
+            string secondScenePath = AssetDatabase.GenerateUniqueAssetPath("Assets/WaterRiverCopyTest.unity");
+            string originalMeshPath = null;
+            string rebuiltMeshPath = null;
+            try
+            {
+                Scene firstScene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
+                WaterPath original = new GameObject("Saved River").AddComponent<WaterPath>();
+                Mesh mesh = WaterPathEditor.Rebuild(original);
+                originalMeshPath = AssetDatabase.GetAssetPath(mesh);
+                Vector3[] originalVertices = mesh.vertices;
+                Assert.IsTrue(EditorSceneManager.SaveScene(firstScene, firstScenePath));
+
+                // Save As retains the mesh reference while unloading the original scene.
+                Assert.IsTrue(EditorSceneManager.SaveScene(firstScene, secondScenePath));
+                EditorSceneManager.OpenScene(secondScenePath);
+                WaterPath copy = Object.FindObjectOfType<WaterPath>();
+                copy.width *= 2f;
+                Mesh rebuilt = WaterPathEditor.Rebuild(copy);
+                rebuiltMeshPath = AssetDatabase.GetAssetPath(rebuilt);
+                Assert.AreNotEqual(originalMeshPath, rebuiltMeshPath);
+                Assert.IsTrue(originalVertices.SequenceEqual(
+                    AssetDatabase.LoadAssetAtPath<Mesh>(originalMeshPath).vertices));
+                Assert.IsTrue(EditorSceneManager.SaveScene(copy.gameObject.scene, secondScenePath));
+                EditorSceneManager.OpenScene(firstScenePath);
+                Assert.AreEqual(originalMeshPath,
+                    AssetDatabase.GetAssetPath(Object.FindObjectOfType<WaterPath>().generatedMesh));
+                Assert.IsTrue(originalVertices.SequenceEqual(
+                    Object.FindObjectOfType<WaterPath>().generatedMesh.vertices));
+            }
+            finally
+            {
+                EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
+                AssetDatabase.DeleteAsset(firstScenePath);
+                AssetDatabase.DeleteAsset(secondScenePath);
+                if (originalMeshPath != null) AssetDatabase.DeleteAsset(originalMeshPath);
+                if (rebuiltMeshPath != null) AssetDatabase.DeleteAsset(rebuiltMeshPath);
+            }
+        }
+
+        [Test]
+        public void RigCreation_UndoRemovesUniqueMeshAssets()
+        {
+            WaterAssetLibrary.CreateOrLoadDefaults();
+            for (int kind = 0; kind < 5; kind++)
+            {
+                Undo.FlushUndoRecordObjects();
+                Undo.IncrementCurrentGroup();
+                GameObject rig = kind == 4
+                    ? WaterRigFactory.CreateUnderwaterRig(false)
+                    : WaterRigFactory.CreateSurface((WaterBodyKind)kind, WaterQuality.Lite);
+                string[] meshPaths = rig.GetComponentsInChildren<MeshFilter>()
+                    .Select(filter => AssetDatabase.GetAssetPath(filter.sharedMesh))
+                    .Where(path => path.StartsWith(WaterAssetLibrary.GeneratedSurfacesFolder + "/")
+                        || path.StartsWith(WaterAssetLibrary.GeneratedPuddlesFolder + "/"))
+                    .Distinct().ToArray();
+                Assert.Greater(meshPaths.Length, 0);
+                string[] meshGuids = meshPaths.Select(AssetDatabase.AssetPathToGUID).ToArray();
+                Undo.FlushUndoRecordObjects();
+                Undo.PerformUndo();
+                Assert.IsTrue(rig == null, "Undo must remove the rig");
+                // Flush Unity's deferred asset deletion before checking the filesystem.
+                AssetDatabase.SaveAssets();
+                foreach (string meshPath in meshPaths)
+                {
+                    Assert.IsNull(AssetDatabase.LoadAssetAtPath<Mesh>(meshPath), meshPath);
+                    Assert.IsFalse(File.Exists(meshPath), "Undo must remove the asset file: " + meshPath);
+                }
+                AssetDatabase.Refresh();
+                Undo.PerformRedo();
+                AssetDatabase.SaveAssets();
+                Assert.IsTrue(rig != null, "Redo must restore the rig");
+                foreach (string meshPath in meshPaths)
+                {
+                    Assert.IsNotNull(AssetDatabase.LoadAssetAtPath<Mesh>(meshPath), meshPath);
+                    Assert.IsTrue(File.Exists(meshPath), "Redo must restore the asset file: " + meshPath);
+                }
+                Assert.IsTrue(meshGuids.SequenceEqual(meshPaths.Select(AssetDatabase.AssetPathToGUID)),
+                    "Redo must preserve mesh GUIDs");
+                foreach (MeshFilter filter in rig.GetComponentsInChildren<MeshFilter>())
+                {
+                    Assert.IsNotNull(filter.sharedMesh, "Redo must restore renderer mesh references");
+                }
+                Undo.PerformUndo();
+                AssetDatabase.SaveAssets();
+                foreach (string meshPath in meshPaths)
+                {
+                    Assert.IsFalse(File.Exists(meshPath));
+                    Assert.AreEqual(meshPath, AssetDatabase.GenerateUniqueAssetPath(meshPath),
+                        "Undo must release the asset name for the next creation");
+                }
+            }
+        }
+
+        [Test]
+        public void RiverRebuild_PreservesMeshReferencedByPrefab()
+        {
+            string prefabPath = AssetDatabase.GenerateUniqueAssetPath("Assets/WaterRiverOwnerTest.prefab");
+            GameObject original = new GameObject("Prefab River");
+            GameObject copy = null;
+            try
+            {
+                WaterPath originalPath = original.AddComponent<WaterPath>();
+                Mesh mesh = WaterPathEditor.Rebuild(originalPath);
+                Vector3[] vertices = mesh.vertices;
+                PrefabUtility.SaveAsPrefabAsset(original, prefabPath);
+                Object.DestroyImmediate(original);
+                copy = new GameObject("Independent River");
+                WaterPath copyPath = copy.AddComponent<WaterPath>();
+                copyPath.generatedMesh = mesh;
+                copyPath.GetComponent<MeshFilter>().sharedMesh = mesh;
+                copyPath.width *= 2f;
+                Assert.AreNotEqual(mesh, WaterPathEditor.Rebuild(copyPath));
+                Assert.IsTrue(vertices.SequenceEqual(mesh.vertices));
+            }
+            finally
+            {
+                Object.DestroyImmediate(original);
+                Object.DestroyImmediate(copy);
+                AssetDatabase.DeleteAsset(prefabPath);
+            }
+        }
+
+        [TearDown]
+        public void TearDown()
+        {
+            AssetDatabase.DeleteAsset(WaterAssetLibrary.RootFolder);
+        }
+
+        [Test]
+        public void DefaultProfiles_CreateTheExpectedMaterials()
+        {
+            foreach (WaterBodyKind bodyKind in WaterAssetLibrary.AllBodyKinds)
+            {
+                foreach (WaterQuality quality in WaterAssetLibrary.AllQualities)
+                {
+                    WaterSurfaceProfile profile = WaterAssetLibrary.CreateOrLoadProfile(bodyKind, quality);
+                    Assert.IsNotNull(profile, bodyKind + " " + quality);
+                    Assert.IsNotNull(profile.material, bodyKind + " " + quality + " material");
+                    Assert.AreEqual(
+                        quality == WaterQuality.Standard
+                            ? WaterSurfaceProfile.StandardShaderName
+                            : WaterSurfaceProfile.LiteShaderName,
+                        profile.material.shader.name);
+                    Assert.IsTrue(profile.material.enableInstancing);
+                    Assert.IsTrue(profile.material.HasProperty("_CrestFoamWidth"));
+                    Assert.IsTrue(profile.material.HasProperty("_FoamTrailStrength"));
+                    Assert.IsTrue(profile.material.HasProperty("_FoamPatternScale"));
+                    Assert.IsTrue(profile.material.HasProperty("_FoamPatternSpeed"));
+                    Assert.IsTrue(profile.material.HasProperty("_FoamPatternWarp"));
+                    Assert.IsTrue(profile.material.HasProperty("_FlowTurbulence"));
+                    Assert.IsTrue(profile.material.HasProperty("_ReflectionDistortion"));
+                    Assert.IsTrue(profile.material.HasProperty("_LightingResponse"));
+                    Assert.AreEqual(0f, profile.foamStrength, 0.0001f,
+                        "continuous procedural foam bands must be disabled in default profiles");
+                    Assert.Less(
+                        Vector4.Distance(profile.foamColor, profile.shallowColor),
+                        0.4f,
+                        "default foam tint should remain close to its surface colour");
+                }
+            }
+        }
+
+        [Test]
+        public void RainRig_UsesCollisionSubEmittersAndAHorizontalRippleMesh()
+        {
+            GameObject rig = WaterRigFactory.CreateRainRig();
+            try
+            {
+                ParticleSystem rain = rig.transform.Find("Rain").GetComponent<ParticleSystem>();
+                Assert.IsTrue(rain.collision.enabled);
+                Assert.AreEqual(2, rain.subEmitters.subEmittersCount);
+                Assert.IsTrue(rain.main.playOnAwake);
+                Assert.IsTrue(rain.main.prewarm);
+
+                ParticleSystem splash = rig.transform.Find("Rain/Collision Splash")
+                    .GetComponent<ParticleSystem>();
+                ParticleSystemRenderer splashRenderer = splash.GetComponent<ParticleSystemRenderer>();
+                Assert.AreEqual(ParticleSystemRenderMode.Stretch, splashRenderer.renderMode);
+                Assert.IsTrue(splash.main.startSize.constantMax <= 0.012f);
+                Assert.AreEqual(LightProbeUsage.BlendProbes, splashRenderer.lightProbeUsage);
+
+                Transform rippleTransform = rig.transform.Find("Rain/Collision Ripple");
+                Assert.IsNotNull(rippleTransform);
+                var rippleRenderer = rippleTransform.GetComponent<ParticleSystemRenderer>();
+                Assert.AreEqual(ParticleSystemRenderMode.Mesh, rippleRenderer.renderMode);
+                Assert.IsNotNull(rippleRenderer.mesh);
+                Assert.Less(rippleRenderer.mesh.bounds.size.y, 0.001f);
+            }
+            finally
+            {
+                Object.DestroyImmediate(rig);
+            }
+        }
+
+        [Test]
+        public void FogQuality_IsAnExplicitMaterialVariant()
+        {
+            Material lite = WaterAssetLibrary.CreateOrLoadEnvironmentMaterial(
+                WaterAssetLibrary.FogVolumeLiteMaterialName);
+            Material high = WaterAssetLibrary.CreateOrLoadEnvironmentMaterial(
+                WaterAssetLibrary.FogVolumeHighMaterialName);
+
+            Assert.IsFalse(lite.IsKeywordEnabled("_FOG_HIGH_QUALITY"));
+            Assert.IsTrue(high.IsKeywordEnabled("_FOG_HIGH_QUALITY"));
+        }
+    }
+
+    /// <summary>
+    /// The gallery is both the first-run sample and the source for documentation
+    /// captures, so its hierarchy and portable asset references are CI contracts.
+    /// </summary>
+    public class WaterSampleSceneTests
+    {
+        private const string PackageSamplePath =
+            "Packages/io.github.sabas0ba.sabaprops.water/Samples~/Water Feature Gallery";
+        private const string ImportedSamplePath = "Assets/ImportedWaterFeatureGalleryTest";
+
+        [Test]
+        public void FeatureGallery_CoversEveryFeatureAndIsSelfContained()
+        {
+            Scene scene = WaterSampleScene.Create();
+            try
+            {
+                Assert.IsTrue(scene.IsValid(), "feature gallery scene was not created");
+                Assert.IsNotNull(
+                    AssetDatabase.LoadAssetAtPath<SceneAsset>(WaterSampleScene.ScenePath),
+                    "feature gallery scene was not saved");
+
+                Assert.IsNotNull(GameObject.Find(WaterSampleScene.SurfaceRootName));
+                Assert.IsNotNull(GameObject.Find(WaterSampleScene.RainRootName));
+                Assert.IsNotNull(GameObject.Find(WaterSampleScene.AtmosphereRootName));
+                Assert.IsNotNull(GameObject.Find(WaterSampleScene.UnderwaterRootName));
+                Assert.IsNotNull(GameObject.Find(WaterSampleScene.WetSurfaceRootName));
+                Assert.IsNotNull(GameObject.Find(WaterVrcWorld.WorldObjectName));
+                Assert.IsNotNull(GameObject.Find(WaterVrcWorld.SpawnObjectName));
+                Assert.IsNotNull(GameObject.Find(WaterSampleScene.OverviewCameraName));
+                Assert.IsNotNull(GameObject.Find(WaterSampleScene.UnderwaterCameraName));
+                WaterSampleScene.ValidateOpenGallery();
+
+                Assert.AreEqual(2, Object.FindObjectsOfType<WaterPath>().Length,
+                    "gallery must include editable Lite and Standard rivers");
+                Assert.Greater(Object.FindObjectsOfType<ParticleSystem>().Length, 6,
+                    "gallery must include rain, splash, ripple, fog, cloud and waterfall particles");
+                Assert.IsNull(GameObject.Find("Whitewater Crest [Copy Ready]"));
+                Assert.IsNull(GameObject.Find("Plunge Pool Froth [Copy Ready]"));
+                AssertStretchSpray("Breaking Wave Spray [Copy Ready]", 0.012f);
+                AssertStretchSpray("Waterfall Spray [Copy Ready]", 0.012f);
+                AssertStretchSpray("Plunge Pool Spray [Copy Ready]", 0.012f);
+                Assert.IsNotNull(GameObject.Find("Underwater Surface View"));
+                GameObject standardPool = GameObject.Find("Standard Underwater Pool [Copy Ready]");
+                Assert.IsNotNull(standardPool);
+                Transform tunnelTransform = standardPool.transform.Find(
+                    "Eight-Direction Tunnel Boundary [Copy Ready]");
+                Assert.IsNotNull(tunnelTransform);
+                Assert.IsFalse(tunnelTransform.gameObject.activeSelf,
+                    "tunnel boundary preview must not obstruct the top-only pool camera by default");
+                Assert.IsNotNull(GameObject.Find("DROPLETS OPAQUE Surface Mannequin [Copy Ready]"));
+                Assert.IsNotNull(GameObject.Find("DROPLETS TRANSPARENT Surface Mannequin [Copy Ready]"));
+                Assert.IsNotNull(GameObject.Find("Wet Surface Spot Light"));
+                Assert.IsTrue(GameObject.FindObjectsOfType<Light>()
+                    .Count(light => light.type == LightType.Spot) >= 3);
+                Assert.IsNotNull(GameObject.Find("Fog Point Light"));
+                Assert.AreEqual(2, Object.FindObjectsOfType<ReflectionProbe>().Length,
+                    "Lite and Standard puddle exhibits must each include a reflection probe");
+
+                GameObject ground = GameObject.Find("Gallery Ground");
+                Assert.IsNotNull(ground);
+                Assert.Less(ground.GetComponent<Renderer>().bounds.max.y, -6f,
+                    "the gallery ground must not intersect the underwater pools");
+
+                GameObject tunnel = tunnelTransform.gameObject;
+                Material tunnelMaterial = tunnel.GetComponent<Renderer>().sharedMaterial;
+                Assert.AreEqual(Vector4.zero, tunnelMaterial.GetVector("_BoundaryUpDown"));
+                Assert.AreEqual(Vector4.one, tunnelMaterial.GetVector("_BoundaryCardinal"));
+                Assert.AreEqual(Vector4.one, tunnelMaterial.GetVector("_BoundaryDiagonal"));
+
+                Material underwaterVolume = standardPool.transform.Find(
+                    "Underwater Standard [Copy Ready]/Underwater Volume")
+                    .GetComponent<Renderer>().sharedMaterial;
+                Assert.IsTrue(underwaterVolume.HasProperty("_VolumeDistortionStrength"));
+                Assert.IsTrue(underwaterVolume.GetFloat("_VolumeDistortionStrength") <= 0.002f);
+
+                foreach (Renderer renderer in Object.FindObjectsOfType<Renderer>())
+                {
+                    foreach (Material material in renderer.sharedMaterials)
+                    {
+                        Assert.IsNotNull(material, renderer.name + " has a missing material");
+
+                        string path = AssetDatabase.GetAssetPath(material);
+                        Assert.IsTrue(
+                            path.StartsWith(WaterSampleScene.SampleFolder + "/"),
+                            renderer.name + " references a material outside the sample: " + path);
+                    }
+                }
+
+                foreach (MeshFilter filter in Object.FindObjectsOfType<MeshFilter>())
+                {
+                    string path = AssetDatabase.GetAssetPath(filter.sharedMesh);
+                    if (!path.StartsWith("Assets/"))
+                    {
+                        continue;
+                    }
+
+                    Assert.IsTrue(
+                        path.StartsWith(WaterSampleScene.SampleFolder + "/"),
+                        filter.name + " references a mesh outside the sample: " + path);
+                }
+            }
+            finally
+            {
+                EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
+                AssetDatabase.DeleteAsset(WaterAssetLibrary.RootFolder);
+            }
+        }
+
+        [Test]
+        public void LightingGallery_CoversDarkPointAndSpotExamples()
+        {
+            Scene scene = WaterSampleScene.CreateLightingGallery();
+            try
+            {
+                Assert.IsTrue(scene.IsValid(), "lighting gallery scene was not created");
+                Assert.IsNotNull(
+                    AssetDatabase.LoadAssetAtPath<SceneAsset>(WaterSampleScene.LightingScenePath));
+                Assert.IsNotNull(GameObject.Find(WaterSampleScene.LightingGalleryRootName));
+                Assert.IsNotNull(GameObject.Find("DARK AMBIENT Example [Copy Ready]"));
+                Assert.IsNotNull(GameObject.Find("POINT LIGHT Example [Copy Ready]"));
+                Assert.IsNotNull(GameObject.Find("SPOT LIGHT Example [Copy Ready]"));
+                Assert.IsNotNull(GameObject.Find("Wet Opaque Preview [Copy Ready]"));
+                Assert.IsNotNull(GameObject.Find("Wet Transparent Preview [Copy Ready]"));
+                Assert.IsNotNull(GameObject.Find(WaterSampleScene.LightingCameraName));
+
+                Light[] lights = Object.FindObjectsOfType<Light>();
+                Assert.AreEqual(0, lights.Count(light => light.type == LightType.Directional));
+                Assert.AreEqual(1, lights.Count(light => light.type == LightType.Point));
+                Assert.AreEqual(1, lights.Count(light => light.type == LightType.Spot));
+                Assert.AreEqual(3, Object.FindObjectsOfType<ParticleSystem>()
+                    .Count(system => system.name == "Rain"));
+            }
+            finally
+            {
+                EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
+                AssetDatabase.DeleteAsset(WaterAssetLibrary.RootFolder);
+            }
+        }
+
+        private static void AssertStretchSpray(string objectName, float maximumSize)
+        {
+            GameObject sprayObject = GameObject.Find(objectName);
+            Assert.IsNotNull(sprayObject, objectName);
+            ParticleSystem particles = sprayObject.GetComponent<ParticleSystem>();
+            ParticleSystemRenderer renderer = sprayObject.GetComponent<ParticleSystemRenderer>();
+            Assert.IsNotNull(particles);
+            Assert.IsNotNull(renderer);
+            Assert.AreEqual(ParticleSystemRenderMode.Stretch, renderer.renderMode);
+            Assert.IsTrue(particles.main.startSize.constantMax <= maximumSize);
+            Assert.IsTrue(particles.main.playOnAwake);
+            Assert.AreEqual(LightProbeUsage.BlendProbes, renderer.lightProbeUsage);
+        }
+
+        [Test]
+        public void DistributedGallery_ImportsWithAllReferences()
+        {
+            EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
+            AssetDatabase.DeleteAsset(ImportedSamplePath);
+            FileUtil.CopyFileOrDirectory(PackageSamplePath, ImportedSamplePath);
+            AssetDatabase.Refresh();
+
+            try
+            {
+                string scenePath = ImportedSamplePath + "/WaterFeatureGallery.unity";
+                Scene scene = EditorSceneManager.OpenScene(scenePath);
+                Assert.IsTrue(scene.IsValid(), "distributed gallery scene could not be opened");
+                WaterSampleScene.ValidateOpenGallery();
+
+                string lightingScenePath = ImportedSamplePath + "/WaterLightingGallery.unity";
+                Scene lightingScene = EditorSceneManager.OpenScene(lightingScenePath);
+                Assert.IsTrue(lightingScene.IsValid(), "distributed lighting gallery could not be opened");
+                Assert.IsNotNull(GameObject.Find(WaterSampleScene.LightingGalleryRootName));
+                Assert.IsNotNull(GameObject.Find("POINT LIGHT Source"));
+                Assert.IsNotNull(GameObject.Find("SPOT LIGHT Source"));
+                EditorSceneManager.OpenScene(ImportedSamplePath + "/WaterDropletProjectorGallery.unity");
+                Projector projector = Object.FindObjectOfType<Projector>();
+                Assert.IsNotNull(projector);
+                Assert.AreEqual(WaterAssetLibrary.DropletProjectorShaderName, projector.material.shader.name);
+                Assert.IsTrue(AssetDatabase.GetAssetPath(projector.material).StartsWith(ImportedSamplePath + "/"));
+            }
+            finally
+            {
+                EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
+                AssetDatabase.DeleteAsset(ImportedSamplePath);
+            }
+        }
+    }
+}

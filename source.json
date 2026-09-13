@@ -12,6 +12,7 @@
   "githubRepo": "sabas0ba/vrc_sabaprops",
   "packages": [
     "io.github.sabas0ba.sabaprops.foliage",
+    "io.github.sabas0ba.sabaprops.water",
     "io.github.sabas0ba.sabaprops.trees",
     "io.github.sabas0ba.sabaprops.softprops"
   ]

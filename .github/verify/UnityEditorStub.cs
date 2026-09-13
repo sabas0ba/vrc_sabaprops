@@ -11,6 +11,8 @@ using UnityEngine.SceneManagement;
 
 namespace UnityEditor
 {
+    [AttributeUsage(AttributeTargets.Class)]
+    public sealed class InitializeOnLoadAttribute : Attribute { }
     public enum MessageType { None = 0, Info = 1, Warning = 2, Error = 3 }
 
     [Flags]
@@ -199,6 +201,9 @@ namespace UnityEditor
         public static T LoadAssetAtPath<T>(string assetPath) where T : UnityEngine.Object => null;
         public static string GetAssetPath(UnityEngine.Object assetObject) => string.Empty;
         public static string AssetPathToGUID(string path) => string.Empty;
+        public static string GUIDToAssetPath(string guid) => string.Empty;
+        public static string[] FindAssets(string filter) => new string[0];
+        public static string[] GetDependencies(string pathName) => new string[0];
         public static string GenerateUniqueAssetPath(string path) => path;
         public static void SaveAssets() { }
         public static void Refresh() { }
@@ -207,6 +212,17 @@ namespace UnityEditor
         public static void StartAssetEditing() { }
         public static void StopAssetEditing() { }
         public static void AddObjectToAsset(UnityEngine.Object objectToAdd, UnityEngine.Object assetObject) { }
+        public static void RemoveObjectFromAsset(UnityEngine.Object objectToRemove) { }
+    }
+
+    public static class FileUtil
+    {
+        public static void CopyFileOrDirectory(string source, string destination) { }
+    }
+
+    public static class PrefabUtility
+    {
+        public static GameObject SaveAsPrefabAsset(GameObject instanceRoot, string assetPath) => null;
     }
 
     public static class Selection
@@ -219,6 +235,11 @@ namespace UnityEditor
     public static class Undo
     {
         public static event Action undoRedoPerformed;
+        public static void RegisterCompleteObjectUndo(UnityEngine.Object objectToUndo, string name) { }
+        public static void FlushUndoRecordObjects() { }
+        public static void PerformUndo() { }
+        public static void PerformRedo() { }
+        public static void IncrementCurrentGroup() { }
         public static void RegisterCreatedObjectUndo(UnityEngine.Object objectToUndo, string name) { }
         public static void DestroyObjectImmediate(UnityEngine.Object objectToUndo) { }
         public static void RecordObject(UnityEngine.Object objectToUndo, string name) { }
@@ -251,10 +272,10 @@ namespace UnityEditor
         public static Matrix4x4 matrix { get; set; }
 
         public static void DrawWireCube(Vector3 center, Vector3 size) { }
+        public static void DrawWireDisc(Vector3 center, Vector3 normal, float radius) { }
         public static void Label(Vector3 position, string text) { }
         public static void Label(Vector3 position, string text, GUIStyle style) { }
         public static void DrawLine(Vector3 p1, Vector3 p2) { }
-        public static void DrawWireDisc(Vector3 center, Vector3 normal, float radius) { }
 
         public static float RadiusHandle(Quaternion rotation, Vector3 position, float radius) => radius;
         public static Vector3 PositionHandle(Vector3 position, Quaternion rotation) => position;
@@ -365,6 +386,7 @@ namespace UnityEditor
         public static float FloatField(string label, float value, params GUILayoutOption[] options) => value;
 
         public static int IntField(string label, int value, params GUILayoutOption[] options) => value;
+        public static int IntSlider(string label, int value, int leftValue, int rightValue, params GUILayoutOption[] options) => value;
 
         public static Vector2 Vector2Field(string label, Vector2 value, params GUILayoutOption[] options) => value;
         public static Vector3 Vector3Field(string label, Vector3 value, params GUILayoutOption[] options) => value;
