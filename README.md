@@ -248,8 +248,12 @@ Markdown 変換は `build_listing.py` と同じ方針で自前実装です。CI 
   Worlds パッケージ内のソースで、`VRC.Udon` と OdinSerializer とコンパイラライブラリを
   引き連れています。この層で組み直すものではないため、`.github/verify/UdonSharpStub.cs` が
   代役です。`VRCPlayerApi` / `Networking` / `Utilities` / `VRC_Pickup` は実物の
-  `VRCSDKBase.dll` に対して検証されるので、スタブが担うのは基底クラスだけです。
+  `VRCSDKBase.dll` に対して検証されます。Editor 側のプロキシ操作と UI イベントの受信先は
+  `.github/verify/UdonSharpEditorStub.cs` で置き換えます。
   **UdonSharp が実際に Udon アセンブリへ変換できるかは、この層では一切分かりません。**
+- **uGUI の API とイベント接続。** `.github/verify/UnityUiStub.cs` はオフライン用の手書き定義です。
+  実物の UI に対するコンパイル、保存後のボタン接続と Udon の公開イベント、カメラごとの
+  設定独立性は VRChat SDK を含む Unity EditMode テストで確認します。
 - **サーフェスシェーダーの生成結果。** `#pragma surface` の設定を Unity が受け付けるか、
   生成されたバリアントがコンパイルできるかは検証していません。チェックしているのは
   シェーダー自身のコード（`vert` / `surf` / ライティング関数と `SabaFoliageCore.cginc`）だけです。

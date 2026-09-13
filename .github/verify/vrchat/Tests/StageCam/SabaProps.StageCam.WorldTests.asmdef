@@ -4,6 +4,7 @@
     "references": [
         "SabaProps.StageCam.Runtime",
         "SabaProps.StageCam.Editor",
+        "UnityEngine.UI",
         "VRC.SDK3",
         "UdonSharp.Runtime",
         "UdonSharp.Editor",

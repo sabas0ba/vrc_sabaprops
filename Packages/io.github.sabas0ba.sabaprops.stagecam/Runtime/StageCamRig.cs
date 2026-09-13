@@ -169,6 +169,23 @@ namespace SabaProps.StageCam
         // 追従先の指定
         // ------------------------------------------------------------------
 
+        /// <summary>UI が選択したプレイヤーを指定します。無効な ID は現在の対象を変更しません。</summary>
+        public void SetTargetPlayer(int playerId)
+        {
+            if (!Utilities.IsValid(VRCPlayerApi.GetPlayerById(playerId)))
+            {
+                return;
+            }
+
+            targetPlayerId = playerId;
+            hasPose = false;
+        }
+
+        public int GetTargetPlayerId()
+        {
+            return targetPlayerId;
+        }
+
         /// <summary>触れた人を追い始めます。ゼロ設定で使える最短の指定方法です。</summary>
         public override void Interact()
         {

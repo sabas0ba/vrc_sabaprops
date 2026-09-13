@@ -8,6 +8,8 @@
 
 ### Added
 
+- 複数カメラの選択、映像プレビュー、プレイヤー・部位の指定、構図調整を行うローカル操作用 Canvas。
+- 外部 UI から追従対象を指定する `SetTargetPlayer` と、現在の対象を取得する `GetTargetPlayerId`。
 - ステージ・スクリーン・顔追従とクレーンの 2 台のカメラ・Pickup・Spawn を生成するデモシーン。
 - カメラリグを配置する GameObject メニュー。
 - デモ保存後の参照とスクリーンの向きを実物の Unity で検証する EditMode テスト。

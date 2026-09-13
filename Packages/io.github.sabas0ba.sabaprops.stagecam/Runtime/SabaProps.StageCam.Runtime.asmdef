@@ -3,6 +3,7 @@
     "rootNamespace": "SabaProps.StageCam",
     "references": [
         "VRC.SDKBase",
+        "UnityEngine.UI",
         "VRC.Udon",
         "UdonSharp.Runtime"
     ],

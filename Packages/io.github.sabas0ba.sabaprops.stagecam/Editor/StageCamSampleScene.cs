@@ -102,6 +102,9 @@ namespace SabaProps.StageCam.Editors
             StageCamRig face = BuildFaceRig(cameras.transform, faceTexture);
             StageCamRig crane = BuildCraneRig(cameras.transform, craneTexture);
 
+            StageCamControlPanel panel = StageCamControlPanelBuilder.Create(new[] { face, crane });
+            panel.transform.position = new Vector3(0f, 1.6f, -1.5f);
+
             BuildWorld();
 
             AssetDatabase.SaveAssets();

@@ -1,8 +1,7 @@
 // Hand-written stand-in for the UdonSharp editor assembly.
 //
-// The stage camera's Editor assembly needs exactly one thing from it: the
-// extension that adds an UdonSharpBehaviour together with the UdonBehaviour
-// that actually runs it. Adding the component on its own leaves an inert proxy.
+// Covers component creation, proxy serialization and the backing behaviour used
+// as the persistent UI event target. The real Unity tests verify these paths.
 //
 // Everything else the Editor assembly touches from VRChat comes from real
 // shipped DLLs -- VRCSceneDescriptor and VRCPickup from VRCSDK3.dll,
@@ -17,6 +16,12 @@ using UnityEngine;
 
 namespace UdonSharpEditor
 {
+    public static class UdonSharpEditorUtility
+    {
+        public static VRC.Udon.UdonBehaviour GetBackingUdonBehaviour(UdonSharp.UdonSharpBehaviour proxy) { return null; }
+        public static void CopyProxyToUdon(UdonSharp.UdonSharpBehaviour proxy) { }
+    }
+
     public static class UdonSharpComponentExtensions
     {
         public static T AddUdonSharpComponent<T>(this GameObject gameObject)
@@ -24,5 +29,13 @@ namespace UdonSharpEditor
         {
             return gameObject.AddComponent<T>();
         }
+    }
+}
+
+namespace VRC.Udon
+{
+    public class UdonBehaviour : MonoBehaviour
+    {
+        public void SendCustomEvent(string eventName) { }
     }
 }

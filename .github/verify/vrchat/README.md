@@ -69,7 +69,7 @@ docs.microsoft.com の URL 到達性を検証するもの）ため、終了コ�
 | --- | --- | --- |
 | `SabaProps.Foliage.CITests` | EditMode | シーンが正しく作られているか。SDK の有無で期待値が切り替わります |
 | `SabaProps.Foliage.WorldTests` | PlayMode | ClientSim でワールドとして実行し、プレイヤーが Spawn するか |
-| `SabaProps.StageCam.WorldTests` | EditMode | UdonSharp が `StageCamRig` を Udon プログラムへコンパイルし、想定のイベントとフィールドが出ているか |
+| `SabaProps.StageCam.WorldTests` | EditMode | リグと操作パネルの Udon コンパイル、保存後の UI イベント接続、カメラ設定の独立性、サンプル構成を検証。`TestResults/stagecam-panel.png` にレイアウト確認画像を出力 |
 
 SDK を参照するテストは CI プロジェクト側には置けません。`Tests/` にあり、
 `assemble.sh` がワールドプロジェクトへコピーします。**アセンブリごとにサブフォルダを

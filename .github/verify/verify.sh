@@ -236,12 +236,16 @@ echo "ok"
 log "Compiling stage camera Runtime (real VRChat SDK references + stub)"
 # ---------------------------------------------------------------------------
 # VRCPlayerApi, Networking, Utilities and VRC_Pickup are checked against the
-# shipping VRCSDKBase.dll. Only UdonSharpBehaviour comes from the stub.
+# shipping VRCSDKBase.dll. UdonSharpBehaviour and uGUI use hand-written stubs;
+# actual UI APIs and persistent event targets are verified in the Unity tests.
+csc "${COMMON[@]}" "${NETSTANDARD_ARGS[@]}" "${UNITY_ARGS[@]}" \
+    -out:"$OUT/UnityEngine.UI.dll" "$HERE/UnityUiStub.cs"
+
 mapfile -t STAGECAM_SOURCES < <(find "$STAGECAM/Runtime" -name '*.cs' | sort)
 [ "${#STAGECAM_SOURCES[@]}" -gt 0 ] || fail "no Runtime sources found under $STAGECAM"
 
 csc "${COMMON[@]}" "${NETSTANDARD_ARGS[@]}" "${UNITY_ARGS[@]}" \
-    -r:"$SDK_PLUGINS/VRCSDKBase.dll" -r:"$OUT/UdonSharp.Runtime.dll" \
+    -r:"$SDK_PLUGINS/VRCSDKBase.dll" -r:"$OUT/UdonSharp.Runtime.dll" -r:"$OUT/UnityEngine.UI.dll" \
     -out:"$OUT/SabaProps.StageCam.Runtime.dll" "${STAGECAM_SOURCES[@]}"
 echo "ok: ${#STAGECAM_SOURCES[@]} file(s)"
 
@@ -275,6 +279,7 @@ csc "${COMMON[@]}" "${NETSTANDARD_ARGS[@]}" "${UNITY_ARGS[@]}" \
     -r:"$SDK_PLUGINS/VRCSDKBase.dll" -r:"$SDK3_PLUGINS/VRCSDK3.dll" \
     -r:"$OUT/UdonSharp.Runtime.dll" -r:"$OUT/UdonSharp.Editor.dll" \
     -r:"$OUT/UnityEditor.NetStandard.dll" -r:"$OUT/SabaProps.StageCam.Runtime.dll" \
+    -r:"$OUT/UnityEngine.UI.dll" \
     -out:"$OUT/SabaProps.StageCam.Editor.dll" "${STAGECAM_EDITOR_SOURCES[@]}"
 echo "ok: ${#STAGECAM_EDITOR_SOURCES[@]} file(s)"
 
