@@ -130,9 +130,11 @@ namespace SabaProps.Llama
                 for (int i = 0; i < tokens.Length; i++)
                 {
                     if (!(tokens[i] is string piece) || !(scores[i] is float score) || !(types[i] is int tokenType) ||
-                        piece.Length == 0 || piece.Length > 4096 || float.IsNaN(score) || float.IsInfinity(score) || tokenType < 1 || tokenType > 6 || tokenType == 4 ||
+                        piece.Length > 4096 || float.IsNaN(score) || float.IsInfinity(score) || tokenType < 1 || tokenType > 6 || tokenType == 4 ||
                         tokenType == 3 && i != 1 && i != 2)
                         throw new InvalidDataException("未対応/不正なGGUF token: " + i);
+                    // Legacy Stories15M GGUF contains one empty NORMAL piece (ID 30143).
+                    // Preserve its ID and empty output; do not fabricate a byte or shift vocabulary IDs.
                     tokenizer.pieces[i] = piece.Replace('\u2581', ' '); tokenizer.scores[i] = score;
                 }
                 tokenizer.Prepare();

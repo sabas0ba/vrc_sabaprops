@@ -25,7 +25,7 @@ internal static class GgufTests
         else throw new Exception("fixture metadata type");
     }
     private sealed class Entry { public string name; public int offset, columns, rows, rank; }
-    private static MemoryStream Fixture(LlamaCheckpoint model, string architecture = "llama", bool overlap = false, bool missing = false, uint version = 3)
+    private static MemoryStream Fixture(LlamaCheckpoint model, string architecture = "llama", bool overlap = false, bool missing = false, uint version = 3, bool emptyPiece = false)
     {
         var c = model.config; var l = model.layout; var list = new List<Entry>();
         Action<string, int, int, int, int> add = (n, o, x, y, rank) => list.Add(new Entry { name = n, offset = o, columns = x, rows = y, rank = rank });
@@ -50,6 +50,7 @@ internal static class GgufTests
         Metadata(w, "general.architecture", architecture); Metadata(w, "tokenizer.ggml.model", "llama");
         var tok = LlamaTokenizer.Fixture(); var pieces = (string[])tok.pieces.Clone();
         for (int i = 0; i < pieces.Length; i++) pieces[i] = pieces[i].Replace(' ', '\u2581');
+        if (emptyPiece) pieces[5] = "";
         Metadata(w, "tokenizer.ggml.tokens", pieces); Metadata(w, "tokenizer.ggml.scores", tok.scores);
         Metadata(w, "tokenizer.ggml.token_type", new[] { 2, 3, 3, 1, 1, 1, 1, 1 });
         Metadata(w, "llama.embedding_length", (uint)c.dimension); Metadata(w, "llama.feed_forward_length", (uint)c.hiddenDimension);
@@ -91,6 +92,12 @@ internal static class GgufTests
             }
         }
         var model = LlamaCheckpoint.Fixture();
+        using (var s = Fixture(model, emptyPiece: true))
+        {
+            var loaded = LlamaGguf.Read(s);
+            Check(loaded.tokenizer.pieces.Length == 8 && loaded.tokenizer.Find("") == 5, "legacy empty piece must preserve vocabulary IDs");
+            Check(loaded.tokenizer.Encode("a").Length == 3, "empty piece must not inject prompt tokens");
+        }
         using (var s = Fixture(model, architecture: "qwen2")) Reject(() => LlamaGguf.Read(s));
         using (var s = Fixture(model, overlap: true)) Reject(() => LlamaGguf.Read(s));
         using (var s = Fixture(model, missing: true)) Reject(() => LlamaGguf.Read(s));
