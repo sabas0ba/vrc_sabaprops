@@ -63,6 +63,11 @@ namespace SabaProps.Water.CITests
             {
                 WaterSurfaceProfile.LiteShaderName,
                 WaterSurfaceProfile.StandardShaderName,
+                WaterAssetLibrary.RainShaderName,
+                WaterAssetLibrary.SplashShaderName,
+                WaterAssetLibrary.RippleShaderName,
+                WaterAssetLibrary.CausticsShaderName,
+                WaterAssetLibrary.LightShaftShaderName,
                 WaterAssetLibrary.FogParticleShaderName,
                 WaterAssetLibrary.FogVolumeShaderName,
                 WaterAssetLibrary.UnderwaterLiteShaderName,
@@ -188,6 +193,63 @@ namespace SabaProps.Water.CITests
 
     public class WaterAssetAndRigTests
     {
+        [Test]
+        public void DuplicatedRiver_RebuildIsIndependentAndUndoRestoresReferences()
+        {
+            var original = new GameObject("Original River");
+            GameObject duplicate = null;
+            try
+            {
+                WaterPath first = original.AddComponent<WaterPath>();
+                Mesh originalMesh = WaterPathEditor.Rebuild(first);
+                Vector3[] originalVertices = originalMesh.vertices;
+                duplicate = Object.Instantiate(original);
+                duplicate.SetActive(false);
+                WaterPath second = duplicate.GetComponent<WaterPath>();
+                second.width *= 2f;
+                Undo.FlushUndoRecordObjects();
+                Undo.IncrementCurrentGroup();
+                Mesh rebuilt = WaterPathEditor.Rebuild(second);
+                Undo.FlushUndoRecordObjects();
+                Assert.AreNotEqual(originalMesh, rebuilt);
+                Assert.IsTrue(originalVertices.SequenceEqual(originalMesh.vertices));
+                Assert.AreEqual(rebuilt, second.GetComponent<MeshFilter>().sharedMesh);
+                Assert.Greater(rebuilt.bounds.size.x, originalMesh.bounds.size.x);
+                Undo.PerformUndo();
+                Assert.AreEqual(originalMesh, second.generatedMesh);
+                Assert.AreEqual(originalMesh, second.GetComponent<MeshFilter>().sharedMesh);
+            }
+            finally
+            {
+                Object.DestroyImmediate(duplicate);
+                Object.DestroyImmediate(original);
+            }
+        }
+
+        [Test]
+        public void RiverRebuild_UndoRestoresExistingMeshGeometry()
+        {
+            var river = new GameObject("Undo River");
+            try
+            {
+                WaterPath path = river.AddComponent<WaterPath>();
+                Mesh mesh = WaterPathEditor.Rebuild(path);
+                Vector3[] vertices = mesh.vertices;
+                path.width *= 2f;
+                Undo.FlushUndoRecordObjects();
+                Undo.IncrementCurrentGroup();
+                Assert.AreEqual(mesh, WaterPathEditor.Rebuild(path));
+                Undo.FlushUndoRecordObjects();
+                Assert.IsFalse(vertices.SequenceEqual(mesh.vertices));
+                Undo.PerformUndo();
+                Assert.IsTrue(vertices.SequenceEqual(mesh.vertices));
+            }
+            finally
+            {
+                Object.DestroyImmediate(river);
+            }
+        }
+
         [TearDown]
         public void TearDown()
         {

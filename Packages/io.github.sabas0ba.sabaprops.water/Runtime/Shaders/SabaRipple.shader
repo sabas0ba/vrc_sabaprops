@@ -22,6 +22,7 @@ Shader "SabaProps/Water/Ripple"
             #pragma target 2.0
             #pragma vertex vert
             #pragma fragment frag
+            #pragma multi_compile_instancing
             #pragma multi_compile_particles
             #pragma multi_compile_fwdbase nolightmap nodirlightmap nodynlightmap novertexlight
             #include "UnityCG.cginc"
@@ -34,6 +35,7 @@ Shader "SabaProps/Water/Ripple"
 
             struct appdata
             {
+                UNITY_VERTEX_INPUT_INSTANCE_ID
                 float4 vertex : POSITION;
                 float3 normal : NORMAL;
                 fixed4 color : COLOR;
@@ -42,6 +44,7 @@ Shader "SabaProps/Water/Ripple"
 
             struct v2f
             {
+                UNITY_VERTEX_OUTPUT_STEREO
                 float4 pos : SV_POSITION;
                 fixed4 color : COLOR;
                 float2 uv : TEXCOORD0;
@@ -54,6 +57,9 @@ Shader "SabaProps/Water/Ripple"
             v2f vert(appdata v)
             {
                 v2f output;
+                UNITY_SETUP_INSTANCE_ID(v);
+                UNITY_INITIALIZE_OUTPUT(v2f, output);
+                UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(output);
                 output.pos = UnityObjectToClipPos(v.vertex);
                 output.color = v.color * _Color;
                 output.uv = v.uv;
@@ -67,6 +73,7 @@ Shader "SabaProps/Water/Ripple"
 
             fixed4 frag(v2f input) : SV_Target
             {
+                UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(input);
                 float phase = 1.0 - saturate(input.color.a / max(_Color.a, 1e-4));
                 float radius = length(input.uv - 0.5);
                 float targetRadius = lerp(0.08, 0.48, phase);
@@ -93,6 +100,7 @@ Shader "SabaProps/Water/Ripple"
             #pragma target 2.0
             #pragma vertex vertAdd
             #pragma fragment fragAdd
+            #pragma multi_compile_instancing
             #pragma multi_compile_particles
             #pragma multi_compile_fwdadd_fullshadows
             #include "UnityCG.cginc"
@@ -105,6 +113,7 @@ Shader "SabaProps/Water/Ripple"
 
             struct appdataAdd
             {
+                UNITY_VERTEX_INPUT_INSTANCE_ID
                 float4 vertex : POSITION;
                 float3 normal : NORMAL;
                 fixed4 color : COLOR;
@@ -113,6 +122,7 @@ Shader "SabaProps/Water/Ripple"
 
             struct v2fAdd
             {
+                UNITY_VERTEX_OUTPUT_STEREO
                 float4 pos : SV_POSITION;
                 fixed4 color : COLOR;
                 float2 uv : TEXCOORD0;
@@ -124,6 +134,9 @@ Shader "SabaProps/Water/Ripple"
             v2fAdd vertAdd(appdataAdd v)
             {
                 v2fAdd output;
+                UNITY_SETUP_INSTANCE_ID(v);
+                UNITY_INITIALIZE_OUTPUT(v2fAdd, output);
+                UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(output);
                 output.pos = UnityObjectToClipPos(v.vertex);
                 output.color = v.color * _Color;
                 output.uv = v.uv;
@@ -135,6 +148,7 @@ Shader "SabaProps/Water/Ripple"
 
             fixed4 fragAdd(v2fAdd input) : SV_Target
             {
+                UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(input);
                 float phase = 1.0 - saturate(input.color.a / max(_Color.a, 1e-4));
                 float radius = length(input.uv - 0.5);
                 float targetRadius = lerp(0.08, 0.48, phase);

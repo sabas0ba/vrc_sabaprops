@@ -21,6 +21,7 @@ Shader "SabaProps/Water/Rain"
             #pragma target 2.0
             #pragma vertex vert
             #pragma fragment frag
+            #pragma multi_compile_instancing
             #pragma multi_compile_particles
             #pragma multi_compile_fwdbase nolightmap nodirlightmap nodynlightmap novertexlight
             #include "UnityCG.cginc"
@@ -33,6 +34,7 @@ Shader "SabaProps/Water/Rain"
 
             struct appdata
             {
+                UNITY_VERTEX_INPUT_INSTANCE_ID
                 float4 vertex : POSITION;
                 float3 normal : NORMAL;
                 fixed4 color : COLOR;
@@ -41,6 +43,7 @@ Shader "SabaProps/Water/Rain"
 
             struct v2f
             {
+                UNITY_VERTEX_OUTPUT_STEREO
                 float4 pos : SV_POSITION;
                 fixed4 color : COLOR;
                 float2 uv : TEXCOORD0;
@@ -53,6 +56,9 @@ Shader "SabaProps/Water/Rain"
             v2f vert(appdata v)
             {
                 v2f output;
+                UNITY_SETUP_INSTANCE_ID(v);
+                UNITY_INITIALIZE_OUTPUT(v2f, output);
+                UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(output);
                 output.pos = UnityObjectToClipPos(v.vertex);
                 output.color = v.color * _Color;
                 output.uv = v.uv;
@@ -66,6 +72,7 @@ Shader "SabaProps/Water/Rain"
 
             fixed4 frag(v2f input) : SV_Target
             {
+                UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(input);
                 float across = abs(input.uv.x * 2.0 - 1.0);
                 float core = 1.0 - smoothstep(_CoreWidth, 1.0, across);
                 float ends = smoothstep(0.0, 0.14, input.uv.y)
@@ -91,6 +98,7 @@ Shader "SabaProps/Water/Rain"
             #pragma target 2.0
             #pragma vertex vertAdd
             #pragma fragment fragAdd
+            #pragma multi_compile_instancing
             #pragma multi_compile_particles
             #pragma multi_compile_fwdadd_fullshadows
             #include "UnityCG.cginc"
@@ -103,6 +111,7 @@ Shader "SabaProps/Water/Rain"
 
             struct appdataAdd
             {
+                UNITY_VERTEX_INPUT_INSTANCE_ID
                 float4 vertex : POSITION;
                 float3 normal : NORMAL;
                 fixed4 color : COLOR;
@@ -111,6 +120,7 @@ Shader "SabaProps/Water/Rain"
 
             struct v2fAdd
             {
+                UNITY_VERTEX_OUTPUT_STEREO
                 float4 pos : SV_POSITION;
                 fixed4 color : COLOR;
                 float2 uv : TEXCOORD0;
@@ -122,6 +132,9 @@ Shader "SabaProps/Water/Rain"
             v2fAdd vertAdd(appdataAdd v)
             {
                 v2fAdd output;
+                UNITY_SETUP_INSTANCE_ID(v);
+                UNITY_INITIALIZE_OUTPUT(v2fAdd, output);
+                UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(output);
                 output.pos = UnityObjectToClipPos(v.vertex);
                 output.color = v.color * _Color;
                 output.uv = v.uv;
@@ -133,6 +146,7 @@ Shader "SabaProps/Water/Rain"
 
             fixed4 fragAdd(v2fAdd input) : SV_Target
             {
+                UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(input);
                 float across = abs(input.uv.x * 2.0 - 1.0);
                 float core = 1.0 - smoothstep(_CoreWidth, 1.0, across);
                 float ends = smoothstep(0.0, 0.14, input.uv.y)

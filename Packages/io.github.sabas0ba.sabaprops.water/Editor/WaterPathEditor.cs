@@ -108,20 +108,49 @@ namespace SabaProps.Water.Editors
             }
 
             Undo.RecordObject(path, "Rebuild Water Path");
+            MeshFilter filter = path.GetComponent<MeshFilter>();
+            Undo.RecordObject(filter, "Rebuild Water Path");
             Mesh mesh = WaterAssetLibrary.ReplaceOrWriteMesh(
                 generated,
-                path.generatedMesh,
+                IsMeshShared(path) ? null : path.generatedMesh,
                 WaterAssetLibrary.GeneratedSurfacesFolder,
                 path.name + "_River");
 
             path.generatedMesh = mesh;
-            path.GetComponent<MeshFilter>().sharedMesh = mesh;
+            filter.sharedMesh = mesh;
             path.ApplyProfile();
             EditorUtility.SetDirty(path);
             EditorUtility.SetDirty(path.GetComponent<MeshFilter>());
             AssetDatabase.SaveAssets();
             SceneView.RepaintAll();
             return mesh;
+        }
+
+        private static bool IsMeshShared(WaterPath path)
+        {
+            if (path.generatedMesh == null)
+            {
+                return false;
+            }
+
+            // Include inactive copies and loaded prefab assets, not only active paths.
+            foreach (MeshFilter filter in Resources.FindObjectsOfTypeAll<MeshFilter>())
+            {
+                if (filter.gameObject != path.gameObject && filter.sharedMesh == path.generatedMesh)
+                {
+                    return true;
+                }
+            }
+
+            foreach (WaterPath other in Resources.FindObjectsOfTypeAll<WaterPath>())
+            {
+                if (other != path && other.generatedMesh == path.generatedMesh)
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
     }
 }

@@ -23,6 +23,7 @@ Shader "SabaProps/Water/Caustics"
             #pragma target 2.0
             #pragma vertex vert
             #pragma fragment frag
+            #pragma multi_compile_instancing
             #include "UnityCG.cginc"
 
             fixed4 _Color;
@@ -33,12 +34,14 @@ Shader "SabaProps/Water/Caustics"
 
             struct appdata
             {
+                UNITY_VERTEX_INPUT_INSTANCE_ID
                 float4 vertex : POSITION;
                 float2 uv : TEXCOORD0;
             };
 
             struct v2f
             {
+                UNITY_VERTEX_OUTPUT_STEREO
                 float4 position : SV_POSITION;
                 float3 worldPosition : TEXCOORD0;
                 float2 uv : TEXCOORD1;
@@ -47,6 +50,9 @@ Shader "SabaProps/Water/Caustics"
             v2f vert(appdata input)
             {
                 v2f output;
+                UNITY_SETUP_INSTANCE_ID(input);
+                UNITY_INITIALIZE_OUTPUT(v2f, output);
+                UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(output);
                 output.position = UnityObjectToClipPos(input.vertex);
                 output.worldPosition = mul(unity_ObjectToWorld, input.vertex).xyz;
                 output.uv = input.uv;
@@ -55,6 +61,7 @@ Shader "SabaProps/Water/Caustics"
 
             fixed4 frag(v2f input) : SV_Target
             {
+                UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(input);
                 float2 position = input.worldPosition.xz * _Scale;
                 float first = sin(position.x + _Time.y * _Speed + sin(position.y * 1.31));
                 float second = sin(position.y * 1.47 - _Time.y * _Speed * 0.83 + sin(position.x));

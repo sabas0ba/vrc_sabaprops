@@ -210,6 +210,10 @@ namespace UnityEditor
 
     public static class Undo
     {
+        public static void RegisterCompleteObjectUndo(UnityEngine.Object objectToUndo, string name) { }
+        public static void FlushUndoRecordObjects() { }
+        public static void PerformUndo() { }
+        public static void IncrementCurrentGroup() { }
         public static void RegisterCreatedObjectUndo(UnityEngine.Object objectToUndo, string name) { }
         public static void DestroyObjectImmediate(UnityEngine.Object objectToUndo) { }
         public static void RecordObject(UnityEngine.Object objectToUndo, string name) { }

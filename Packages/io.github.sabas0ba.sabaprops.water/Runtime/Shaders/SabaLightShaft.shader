@@ -20,6 +20,7 @@ Shader "SabaProps/Water/Light Shaft"
             #pragma target 2.0
             #pragma vertex vert
             #pragma fragment frag
+            #pragma multi_compile_instancing
             #include "UnityCG.cginc"
 
             fixed4 _Color;
@@ -28,12 +29,14 @@ Shader "SabaProps/Water/Light Shaft"
 
             struct appdata
             {
+                UNITY_VERTEX_INPUT_INSTANCE_ID
                 float4 vertex : POSITION;
                 float2 uv : TEXCOORD0;
             };
 
             struct v2f
             {
+                UNITY_VERTEX_OUTPUT_STEREO
                 float4 position : SV_POSITION;
                 float2 uv : TEXCOORD0;
                 float3 worldPosition : TEXCOORD1;
@@ -42,6 +45,9 @@ Shader "SabaProps/Water/Light Shaft"
             v2f vert(appdata input)
             {
                 v2f output;
+                UNITY_SETUP_INSTANCE_ID(input);
+                UNITY_INITIALIZE_OUTPUT(v2f, output);
+                UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(output);
                 output.position = UnityObjectToClipPos(input.vertex);
                 output.uv = input.uv;
                 output.worldPosition = mul(unity_ObjectToWorld, input.vertex).xyz;
@@ -50,6 +56,7 @@ Shader "SabaProps/Water/Light Shaft"
 
             fixed4 frag(v2f input) : SV_Target
             {
+                UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(input);
                 float across = 1.0 - abs(input.uv.x * 2.0 - 1.0);
                 float along = sin(input.uv.y * UNITY_PI);
                 float pulse = sin(input.worldPosition.x * 0.7 + input.worldPosition.z * 0.5

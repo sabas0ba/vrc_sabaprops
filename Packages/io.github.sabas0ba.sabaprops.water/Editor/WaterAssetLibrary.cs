@@ -291,6 +291,7 @@ namespace SabaProps.Water.Editors
             if (existing != null && !string.IsNullOrEmpty(AssetDatabase.GetAssetPath(existing)))
             {
                 string previousName = existing.name;
+                Undo.RegisterCompleteObjectUndo(existing, "Rebuild Water Path");
                 EditorUtility.CopySerialized(generated, existing);
                 UnityEngine.Object.DestroyImmediate(generated);
                 existing.name = previousName;
