@@ -29,6 +29,7 @@ namespace SabaProps.Water.CITests
             WaterAssetLibrary.CausticsShaderName,
             WaterAssetLibrary.LightShaftShaderName,
             WaterAssetLibrary.WetSurfaceShaderName,
+            WaterAssetLibrary.DropletProjectorShaderName,
             WaterAssetLibrary.WetSurfaceTransparentShaderName,
         };
 
@@ -193,6 +194,31 @@ namespace SabaProps.Water.CITests
 
     public class WaterAssetAndRigTests
     {
+        [Test]
+        public void DropletProjector_UsesPortableComponentsAndLeavesReceiverMaterialUnchanged()
+        {
+            WaterProjectorSampleScene.Create();
+            try
+            {
+                Projector projector = Object.FindObjectOfType<Projector>();
+                Assert.IsNotNull(projector);
+                Assert.IsTrue(projector.orthographic);
+                Assert.Greater(projector.farClipPlane, projector.nearClipPlane);
+                Assert.AreEqual(WaterAssetLibrary.DropletProjectorShaderName, projector.material.shader.name);
+                Assert.IsTrue(AssetDatabase.GetAssetPath(projector.material)
+                    .StartsWith(WaterSampleScene.SampleFolder + "/"));
+                foreach (Renderer receiver in Object.FindObjectsOfType<Renderer>())
+                {
+                    Assert.AreEqual("Standard", receiver.sharedMaterial.shader.name);
+                }
+                Assert.AreEqual(0, projector.GetComponents<MonoBehaviour>().Length);
+            }
+            finally
+            {
+                EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
+            }
+        }
+
         [Test]
         public void DuplicatedRiver_RebuildIsIndependentAndUndoRestoresReferences()
         {
@@ -509,6 +535,11 @@ namespace SabaProps.Water.CITests
                 Assert.IsNotNull(GameObject.Find(WaterSampleScene.LightingGalleryRootName));
                 Assert.IsNotNull(GameObject.Find("POINT LIGHT Source"));
                 Assert.IsNotNull(GameObject.Find("SPOT LIGHT Source"));
+                EditorSceneManager.OpenScene(ImportedSamplePath + "/WaterDropletProjectorGallery.unity");
+                Projector projector = Object.FindObjectOfType<Projector>();
+                Assert.IsNotNull(projector);
+                Assert.AreEqual(WaterAssetLibrary.DropletProjectorShaderName, projector.material.shader.name);
+                Assert.IsTrue(AssetDatabase.GetAssetPath(projector.material).StartsWith(ImportedSamplePath + "/"));
             }
             finally
             {

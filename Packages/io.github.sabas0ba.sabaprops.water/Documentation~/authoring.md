@@ -102,6 +102,21 @@ UV seam付近の過大な屈折は`Distortion Edge Fade`を上げて抑えます
 0.05–0.2程度まで上げると、過度な凹凸を避けて調整できます。水滴ごとの擬似質量により重い滴から先に移動します。
 World object用のShaderであり、他者アバターのMaterialをWorld側から変更する機能ではありません。
 
+### アバター改変不要のDroplet Projector
+
+`GameObject > SabaProps > Water > Droplet Projector`で生成します。ローカル+Z方向へ投影し、ローカル-Y方向に滴が流れます。身体の側面に当てる場合は水平に向け、ローカル+Yを上に保ちます。
+
+- Projectorの`Orthographic Size`は範囲の高さの半分、`Aspect Ratio`は幅と高さの比です。`Near / Far Clip Plane`で奥行きを制限します。
+- Materialの`Opacity`で強さ、`Droplet Density`で密度と大きさ、`Fall Speed`で速度、`Highlight Relief`で明暗の強さを調整します。`Projection Edge Fade`は範囲境界のフェードです。
+- `Ambient Lighting Response`の既定値は1です。環境光・SHに応じて暗くします。専用のPoint/Spot Light追加パスや影には対応しません。
+- `Ignore Layers`で投影しないLayerを指定します。既定ではLayerによる除外はありません。
+
+受け側Materialの交換やアバターへのコンポーネント追加は不要です。`IgnoreProjector=True`など投影を受けないShaderは対象外です。水滴の明暗を追加する近似で、受け側のNormal・Smoothnessは変更しません。模様は投影空間に固定され、身体が動くと表面を滑ります。範囲から出た後の濡れ状態は保持しません。
+
+範囲内の複数面に投影されるため、壁越しの投影や多重描画が起こり得ます。範囲を狭くし、Projectorの多重配置を避けてください。SkinnedMeshの多いアバターでは再描画負荷にも注意してください。
+
+`Tools > SabaProps > Water > Create Droplet Projector Gallery`で比較Sceneを生成できます。左側2体は範囲内、右側1体は範囲外です。すべて通常のStandard Materialを共有し、ProjectorのEnabledを切り替えて比較します。PCのBuilt-in Render Pipeline向けです。VRChat実機の両眼・鏡・アバターShaderとの互換性は別途確認が必要です。
+
 ## 照明確認
 
 `WaterLightingGallery.unity`はDirectional Lightを持たず、暗い環境光のみ、Point Light、Spot Lightの3区画で

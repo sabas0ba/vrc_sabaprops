@@ -29,6 +29,8 @@ namespace SabaProps.Water.Editors
         public const string CausticsShaderName = "SabaProps/Water/Caustics";
         public const string LightShaftShaderName = "SabaProps/Water/Light Shaft";
         public const string WetSurfaceShaderName = "SabaProps/Water/Wet Surface";
+        public const string DropletProjectorShaderName = "SabaProps/Water/Droplet Projector";
+        public const string DropletProjectorMaterialName = "DropletProjector";
         public const string WetSurfaceTransparentShaderName =
             "SabaProps/Water/Wet Surface Transparent";
 
@@ -331,6 +333,7 @@ namespace SabaProps.Water.Editors
             yield return LightShaftMaterialName;
             yield return WetSurfaceMaterialName;
             yield return WetSurfaceTransparentMaterialName;
+            yield return DropletProjectorMaterialName;
         }
 
         private static string ShaderForMaterial(string materialName)
@@ -351,6 +354,7 @@ namespace SabaProps.Water.Editors
                 case CausticsMaterialName: return CausticsShaderName;
                 case LightShaftMaterialName: return LightShaftShaderName;
                 case WetSurfaceMaterialName: return WetSurfaceShaderName;
+                case DropletProjectorMaterialName: return DropletProjectorShaderName;
                 case WetSurfaceTransparentMaterialName: return WetSurfaceTransparentShaderName;
                 default: throw new ArgumentOutOfRangeException(nameof(materialName), materialName, null);
             }

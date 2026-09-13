@@ -84,6 +84,10 @@ namespace SabaProps.Water.Editors
         public static void CreateWetSurfacePreview(MenuCommand command) =>
             WaterRigFactory.CreateWetSurfacePreview(command.context as GameObject);
 
+        [MenuItem("GameObject/SabaProps/Water/Droplet Projector", false, 61)]
+        public static void CreateDropletProjector(MenuCommand command) =>
+            WaterRigFactory.CreateDropletProjector(command.context as GameObject);
+
         [MenuItem("Tools/SabaProps/Water/Configure VRChat World Descriptor", false, 3)]
         public static void ConfigureVrcWorldDescriptor()
         {

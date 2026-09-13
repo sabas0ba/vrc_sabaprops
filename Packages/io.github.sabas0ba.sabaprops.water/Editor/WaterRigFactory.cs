@@ -126,6 +126,24 @@ namespace SabaProps.Water.Editors
             return preview;
         }
 
+        public static GameObject CreateDropletProjector(GameObject parent = null)
+        {
+            var root = new GameObject("Droplet Projector [Copy Ready]", typeof(Projector));
+            ParentAndPosition(root, parent, PlacementPosition(parent) + Vector3.up * 1.5f);
+            Projector projector = root.GetComponent<Projector>();
+            projector.orthographic = true;
+            projector.orthographicSize = 1.5f;
+            projector.aspectRatio = 1f;
+            projector.nearClipPlane = 0.1f;
+            projector.farClipPlane = 4f;
+            projector.ignoreLayers = 0;
+            projector.material = WaterAssetLibrary.CreateOrLoadEnvironmentMaterial(
+                WaterAssetLibrary.DropletProjectorMaterialName);
+            Undo.RegisterCreatedObjectUndo(root, "Create Droplet Projector");
+            Selection.activeGameObject = root;
+            return root;
+        }
+
         public static GameObject CreateFogVolume(bool highQuality, GameObject parent = null)
         {
             WaterAssetLibrary.CreateOrLoadDefaults();

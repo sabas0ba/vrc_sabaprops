@@ -4,6 +4,8 @@
 
 ### Added
 
+- アバター側の準備なしで対応する受け面へ水滴を投影するDroplet Projectorと比較Scene
+
 - 暗所、Point Light、Spot Lightで水面・雨・Wet Surfaceを比較する`WaterLightingGallery` Scene
 - 水面Foamの模様を調整するscale、speed、warpパラメータ
 - 不透明・半透明のWet Surface Shaderと、滴head・trail別のNormal強度
