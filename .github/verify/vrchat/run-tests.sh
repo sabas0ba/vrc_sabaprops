@@ -77,7 +77,7 @@ if ! "$UNITY_BIN" \
     -executeMethod SabaProps.Foliage.WorldSetup.FoliageWorldProjectSetup.ConfigureForVrchat \
     -logFile "$(to_native "$SETUP_LOG")"; then
     echo "error: project setup failed; see $SETUP_LOG" >&2
-    grep -E "error CS|\[SabaProps Foliage\]" "$SETUP_LOG" | head -20 >&2 || true
+    grep -E "error CS|\[SabaProps (Foliage|Soft Props)\]" "$SETUP_LOG" | head -20 >&2 || true
     exit 1
 fi
 
@@ -94,7 +94,7 @@ set +e
     -batchmode \
     -projectPath "$(to_native "$PROJECT")" \
     -runTests -testPlatform EditMode \
-    -testFilter "SabaProps.Foliage.CITests;SabaProps.Foliage.WorldTests" \
+    -testFilter "SabaProps.Foliage.CITests;SabaProps.Foliage.WorldTests;SabaProps.SoftProps.WorldTests" \
     -testResults "$(to_native "$RESULTS")" \
     -logFile "$(to_native "$LOG")"
 set -e
