@@ -4,6 +4,11 @@ All notable changes to this package are documented in this file.
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-09-13
+
+初回配布に向け、初期実装と公開前レビューの修正をこのバージョンに集約しています。
+依存先は SabaProps Foliage `0.4.0` です。
+
 ### Added
 
 - Added an illustrated tree-authoring guide covering crown controls, branch and leaf distribution, shared assets, bark colour, wind and LOD review, with four Unity-rendered screenshots.
@@ -51,9 +56,7 @@ All notable changes to this package are documented in this file.
 - 構造枝の下向き成長を抑え、下垂を末端枝だけへ適用しました。継続枝は親枝終端の位置・半径を引き継ぎ、切断面を作りません
 - 実在種 preset は葉を一次枝まで分布させ、主枝層を増やしました。既定 LOD0 は各 preset 10 万 triangle 未満です
 
-## [0.1.0] - 2026-08-27
-
-### Added
+### Initial features
 
 - `TreeSpecies`: 広葉樹、針葉樹、枯れ木、砂漠低木を同一パラメータモデルで表現
 - 再帰的な枝分かれと決定的な Seed から 3 段階の LOD Mesh を生成

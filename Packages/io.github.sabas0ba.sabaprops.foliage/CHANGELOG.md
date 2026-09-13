@@ -6,6 +6,8 @@
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-09-13
+
 ### Fixed
 
 - Surface Vine / Rhizome Patch の複製後、片方の再生成が共有メッシュを上書きする問題を修正。保存済みシーンの所有者と他オブジェクトからの参照を確認し、必要な場合は別アセットへ分離します。
@@ -189,7 +191,8 @@
 - `FoliageSpecies` ScriptableObject による種別プリセット
 - セットアップメニュー: `Tools/SabaProps/Foliage/Create Default Assets`
 
-[Unreleased]: https://github.com/sabas0ba/vrc_sabaprops/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/sabas0ba/vrc_sabaprops/compare/io.github.sabas0ba.sabaprops.foliage/v0.4.0...HEAD
+[0.4.0]: https://github.com/sabas0ba/vrc_sabaprops/compare/v0.3.0...io.github.sabas0ba.sabaprops.foliage/v0.4.0
 [0.3.0]: https://github.com/sabas0ba/vrc_sabaprops/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/sabas0ba/vrc_sabaprops/compare/v0.1.1...v0.2.0
 [0.1.1]: https://github.com/sabas0ba/vrc_sabaprops/compare/v0.1.0...v0.1.1
