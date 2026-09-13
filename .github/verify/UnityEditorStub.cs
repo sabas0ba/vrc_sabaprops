@@ -177,6 +177,19 @@ namespace UnityEditor
         public static bool DisplayDialog(string title, string message, string ok) => false;
     }
 
+    public struct GlobalObjectId
+    {
+        public static GlobalObjectId GetGlobalObjectIdSlow(UnityEngine.Object obj) => default;
+        public override string ToString() => string.Empty;
+    }
+
+    public class AssetImporter : UnityEngine.Object
+    {
+        public string userData { get; set; }
+        public static AssetImporter GetAtPath(string path) => null;
+        public void SaveAndReimport() { }
+    }
+
     public static class AssetDatabase
     {
         public static bool IsValidFolder(string path) => false;

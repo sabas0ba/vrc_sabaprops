@@ -48,7 +48,7 @@ namespace SabaProps.Foliage.Editors
                 Undo.RecordObject(vine, "Build Surface Vine");
             }
             vine.generatedGraph = graph;
-            vine.generatedMesh = WriteMesh(vine.generatedMesh, mesh, vine.name + "_SurfaceVine");
+            vine.generatedMesh = WriteMesh(vine, vine.generatedMesh, mesh, vine.name + "_SurfaceVine");
             Bind(
                 vine.gameObject,
                 vine.generatedMesh,
@@ -99,6 +99,7 @@ namespace SabaProps.Foliage.Editors
             }
             patch.generatedGraph = graph;
             patch.generatedMesh = WriteMesh(
+                patch,
                 patch.generatedMesh,
                 mesh,
                 patch.name + "_RhizomePatch");
@@ -151,7 +152,18 @@ namespace SabaProps.Foliage.Editors
             MarkSceneDirty(patch.gameObject);
         }
 
-        private static Mesh WriteMesh(Mesh existing, Mesh generated, string name)
+        private static bool IsReferencedByAnotherObject(Component owner, Mesh mesh)
+        {
+            foreach (SurfaceVine vine in Resources.FindObjectsOfTypeAll<SurfaceVine>())
+                if (vine != owner && vine.generatedMesh == mesh) return true;
+            foreach (RhizomePatch patch in Resources.FindObjectsOfTypeAll<RhizomePatch>())
+                if (patch != owner && patch.generatedMesh == mesh) return true;
+            foreach (MeshFilter filter in Resources.FindObjectsOfTypeAll<MeshFilter>())
+                if (filter.gameObject != owner.gameObject && filter.sharedMesh == mesh) return true;
+            return false;
+        }
+
+        private static Mesh WriteMesh(Component owner, Mesh existing, Mesh generated, string name)
         {
             if (generated == null)
             {
@@ -161,7 +173,16 @@ namespace SabaProps.Foliage.Editors
             string existingPath = existing != null
                 ? AssetDatabase.GetAssetPath(existing)
                 : string.Empty;
-            if (!string.IsNullOrEmpty(existingPath))
+            // Saved scene object IDs distinguish copies even after a reload.
+            // Unsaved objects cannot prove ownership and get a fresh asset.
+            string ownerKey = string.IsNullOrEmpty(owner.gameObject.scene.path)
+                ? string.Empty
+                : "SabaProps.SurfaceGrowth:" + GlobalObjectId.GetGlobalObjectIdSlow(owner);
+            AssetImporter importer = string.IsNullOrEmpty(existingPath)
+                ? null : AssetImporter.GetAtPath(existingPath);
+            if (importer != null && !string.IsNullOrEmpty(ownerKey)
+                && importer.userData == ownerKey
+                && !IsReferencedByAnotherObject(owner, existing))
             {
                 EditorUtility.CopySerialized(generated, existing);
                 Object.DestroyImmediate(generated);
@@ -176,6 +197,12 @@ namespace SabaProps.Foliage.Editors
                 GeneratedFolder + "/" + fileName);
             generated.name = Path.GetFileNameWithoutExtension(path);
             AssetDatabase.CreateAsset(generated, path);
+            if (!string.IsNullOrEmpty(ownerKey))
+            {
+                AssetImporter createdImporter = AssetImporter.GetAtPath(path);
+                createdImporter.userData = ownerKey;
+                createdImporter.SaveAndReimport();
+            }
             return generated;
         }
 

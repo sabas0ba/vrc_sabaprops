@@ -8,6 +8,107 @@ namespace SabaProps.Foliage.CITests
 {
     public sealed class SurfaceGrowthEditorTests
     {
+        [TestCase(false, false)]
+        [TestCase(false, true)]
+        [TestCase(true, false)]
+        [TestCase(true, true)]
+        public void DuplicatedGrowthDoesNotRewriteTheOtherMesh(bool rhizome, bool rebuildOriginal)
+        {
+            var scene = UnityEditor.SceneManagement.EditorSceneManager.NewScene(
+                UnityEditor.SceneManagement.NewSceneSetup.EmptyScene,
+                UnityEditor.SceneManagement.NewSceneMode.Single);
+            string scenePath = AssetDatabase.GenerateUniqueAssetPath("Assets/SurfaceOwnershipTest.unity");
+            var paths = new HashSet<string>();
+            GameObject floor = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            var original = new GameObject("Growth Ownership Test");
+            GameObject duplicate = null;
+            Material material = new Material(Shader.Find("Standard"));
+            try
+            {
+                floor.transform.position = new Vector3(0f, -0.05f, 0f);
+                floor.transform.localScale = new Vector3(8f, 0.1f, 8f);
+                Physics.SyncTransforms();
+                if (rhizome)
+                {
+                    var patch = original.AddComponent<RhizomePatch>();
+                    patch.targetSurface = floor.GetComponent<Collider>();
+                    patch.material = material;
+                }
+                else
+                {
+                    var vine = original.AddComponent<SurfaceVine>();
+                    vine.targetSurface = floor.GetComponent<Collider>();
+                    vine.material = material;
+                }
+                UnityEditor.SceneManagement.EditorSceneManager.SaveScene(scene, scenePath);
+                Assert.IsTrue(BuildOwnershipObject(original, rhizome));
+                Mesh shared = original.GetComponent<MeshFilter>().sharedMesh;
+                paths.Add(AssetDatabase.GetAssetPath(shared));
+                Assert.IsTrue(BuildOwnershipObject(original, rhizome));
+                Assert.AreEqual(shared, original.GetComponent<MeshFilter>().sharedMesh,
+                    "an unshared saved owner should retain its mesh asset");
+                duplicate = Object.Instantiate(original);
+                duplicate.SetActive(false);
+                UnityEditor.SceneManagement.EditorSceneManager.SaveScene(scene, scenePath);
+                GameObject edited = rebuildOriginal ? original : duplicate;
+                GameObject untouched = rebuildOriginal ? duplicate : original;
+                Vector3[] before = shared.vertices;
+                if (rhizome) edited.GetComponent<RhizomePatch>().morphology.shootHeight *= 2f;
+                else edited.GetComponent<SurfaceVine>().morphology.stemWidth *= 2f;
+                Assert.IsTrue(BuildOwnershipObject(edited, rhizome));
+                Mesh independent = edited.GetComponent<MeshFilter>().sharedMesh;
+                paths.Add(AssetDatabase.GetAssetPath(independent));
+                Assert.AreNotEqual(shared, independent);
+                Assert.AreEqual(shared, untouched.GetComponent<MeshFilter>().sharedMesh);
+                CollectionAssert.AreEqual(before, shared.vertices,
+                    "rebuilding one object must not change the other's asset");
+            }
+            finally
+            {
+                if (duplicate != null) Object.DestroyImmediate(duplicate);
+                Object.DestroyImmediate(original);
+                Object.DestroyImmediate(floor);
+                Object.DestroyImmediate(material);
+                foreach (string path in paths) AssetDatabase.DeleteAsset(path);
+                AssetDatabase.DeleteAsset(scenePath);
+            }
+        }
+
+        private static bool BuildOwnershipObject(GameObject target, bool rhizome)
+        {
+            return rhizome
+                ? SurfaceGrowthAuthoringBuilder.Build(target.GetComponent<RhizomePatch>(), false)
+                : SurfaceGrowthAuthoringBuilder.Build(target.GetComponent<SurfaceVine>(), false);
+        }
+
+        [Test]
+        public void DenseRhizomeEmitsAllIntervalsInsideAnEdge()
+        {
+            var graph = new SurfaceGrowthGraph();
+            graph.Nodes.Add(new SurfaceGrowthNode(Vector3.zero, Vector3.up, -1, 0, 0f));
+            var growth = new SurfaceGrowthSettings { coverage = 1f };
+            var morphology = new RhizomePatchParams
+                { shootsPerMetre = 30f, renderRhizomes = false, flowerChance = 0f };
+            Mesh root = SurfaceGrowthMeshBuilder.BuildRhizomePatch(graph, growth, morphology);
+            graph.Nodes.Add(new SurfaceGrowthNode(Vector3.right * 0.12f, Vector3.up, 0, 0, 0.12f));
+            Mesh dense = SurfaceGrowthMeshBuilder.BuildRhizomePatch(graph, growth, morphology);
+            try
+            {
+                Assert.AreEqual(root.vertexCount * 4, dense.vertexCount,
+                    "root plus shoots at 1/30, 2/30 and 3/30 metres");
+                var pivots = new List<Vector4>();
+                dense.GetUVs(FoliageShaderContract.WindDataUvChannel, pivots);
+                for (int shoot = 0; shoot < 4; shoot++)
+                    Assert.AreEqual(shoot / 30f, pivots[shoot * root.vertexCount].x, 1e-5f);
+                AssertChannels(dense);
+            }
+            finally
+            {
+                Object.DestroyImmediate(root);
+                Object.DestroyImmediate(dense);
+            }
+        }
+
         [Test]
         public void ProjectedSplineIsDeterministicAndStaysOnSurface()
         {

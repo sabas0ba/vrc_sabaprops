@@ -210,24 +210,29 @@ namespace SabaProps.Foliage.Editors
             for (int i = 0; i < nodes.Count; i++)
             {
                 SurfaceGrowthNode node = nodes[i];
-                bool isRoot = node.parentIndex < 0;
-                bool crossedInterval = false;
-                if (!isRoot && node.parentIndex < nodes.Count && interval < float.MaxValue)
+                if (node.parentIndex < 0)
                 {
-                    SurfaceGrowthNode parent = nodes[node.parentIndex];
-                    crossedInterval = Mathf.FloorToInt(node.distanceFromRoot / interval)
-                        > Mathf.FloorToInt(parent.distanceFromRoot / interval);
-                }
-                if (!isRoot && !crossedInterval)
-                {
+                    if (i == 0 || random.Chance(growth.coverage))
+                        AddRhizomeShoot(buffer, node, morphology, ref random);
                     continue;
                 }
-                if (isRoot && i > 0 && !random.Chance(growth.coverage))
-                {
+                if (node.parentIndex >= nodes.Count || interval == float.MaxValue)
                     continue;
+                SurfaceGrowthNode parent = nodes[node.parentIndex];
+                float edgeDistance = node.distanceFromRoot - parent.distanceFromRoot;
+                if (edgeDistance <= 1e-6f) continue;
+                int first = Mathf.FloorToInt(parent.distanceFromRoot / interval) + 1;
+                int last = Mathf.FloorToInt(node.distanceFromRoot / interval);
+                for (int shoot = first; shoot <= last; shoot++)
+                {
+                    float along = Mathf.Clamp01(
+                        (shoot * interval - parent.distanceFromRoot) / edgeDistance);
+                    var attachment = new SurfaceGrowthNode(
+                        Vector3.Lerp(parent.position, node.position, along),
+                        Vector3.Slerp(parent.normal, node.normal, along).normalized,
+                        node.parentIndex, node.branchDepth, shoot * interval);
+                    AddRhizomeShoot(buffer, attachment, morphology, ref random);
                 }
-
-                AddRhizomeShoot(buffer, node, morphology, ref random);
             }
 
             float padding = Mathf.Max(

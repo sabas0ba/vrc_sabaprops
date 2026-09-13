@@ -6,6 +6,11 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- Surface Vine / Rhizome Patch の複製後、片方の再生成が共有メッシュを上書きする問題を修正。保存済みシーンの所有者と他オブジェクトからの参照を確認し、必要な場合は別アセットへ分離します。
+- 地下茎の1区間で複数の発芽間隔を通過する場合、各位置を補間してすべての芽を生成し、高密度設定が1区間1個で頭打ちになる問題を修正。
+
 ### Added
 
 - Added a placement and editing UI guide covering palette edit modes, stamp controls, Surface Growth, trees, auto rebuild, and VRChat world-build handling.
