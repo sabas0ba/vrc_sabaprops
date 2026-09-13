@@ -2,7 +2,7 @@
 
 VRChat 向けのアセットを **VCC (VRChat Creator Companion) / VPM** で配布するためのリポジトリです。
 
-複数パッケージの集合体として育てていく前提の構成になっています。第一弾として、GPU インスタンシング前提の軽量な草木配置パッケージ **SabaProps Foliage** を収録しています。
+複数パッケージの集合体として、草木配置の **SabaProps Foliage**、樹木生成の **SabaProps Trees**、PC VRChat向け接触変形家具の **SabaProps Soft Props** を収録しています。
 
 ---
 
@@ -27,12 +27,17 @@ https://sabas0ba.github.io/vrc_sabaprops/index.json
 | --- | --- | --- |
 | `io.github.sabas0ba.sabaprops.foliage` | SabaProps Foliage | GPU インスタンシング対応の草木スキャッタリングツール。草花 8 種と壁上から垂らすツタをプロシージャル生成。 |
 | `io.github.sabas0ba.sabaprops.trees` | SabaProps Trees | 再帰枝ジェネレータから樹木と 3 段階 LOD を生成。共有サーフェス散布 API を使う Tree Field に対応。 |
+| `io.github.sabas0ba.sabaprops.softprops` | SabaProps Soft Props | World Contactsでユーザーの接触を検知し、ふとん、ベッド、ソファー、クッションを最大8点で変形するPC向けprop集。 |
 
 各パッケージの詳細は `Packages/<package-id>/README.md` を参照してください。
 
 導入後に動作を確認する最短手順は `Tools > SabaProps > Foliage > Create Sample Scene` です。
 地面・ライト・カメラと 2 種類の出力モードのフィールドを含むデモシーンが、ビルド済みの状態で生成されます。
 VRChat Worlds SDK が入っているプロジェクトでは `VRCSceneDescriptor` と Spawn も配置され、そのままアップロードできます。
+
+Soft Propsは `Tools > SabaProps > Soft Props > Generate All Prefabs` で4種の家具Prefabと、指／棒／板の接触比較Prefabを生成します。
+
+レビュー用の完成済みsceneは `Tools > SabaProps > Soft Props > Open Demo Scene` から開けます。家具、肌Materialの接触試験台、指・棒・板の自動上下比較3台、形状別の静的比較、照明、床、VRChat Spawnを同梱しています。[デモのレビュー手順](Packages/io.github.sabas0ba.sabaprops.softprops/Documentation~/demo-review.md)と[更新・配布手順](Packages/io.github.sabas0ba.sabaprops.softprops/Documentation~/upgrading.md)を参照してください。
 
 ---
 
@@ -46,10 +51,15 @@ VRChat Worlds SDK が入っているプロジェクトでは `VRCSceneDescriptor
 │   │   ├── Runtime/                # シーンに残る最小限のコンポーネントとシェーダー
 │   │   ├── Editor/                 # 生成・配置ツール（ビルドには含まれない）
 │   │   └── Documentation~/
-│   └── io.github.sabas0ba.sabaprops.trees/
-│       ├── package.json
-│       ├── Runtime/                # TreeSpecies とパラメータ
-│       └── Editor/                 # 再帰枝、LOD Mesh、LODGroup 生成
+│   ├── io.github.sabas0ba.sabaprops.trees/
+│   │   ├── package.json
+│   │   ├── Runtime/                # TreeSpecies とパラメータ
+│   │   └── Editor/                 # 再帰枝、LOD Mesh、LODGroup 生成
+│   └── io.github.sabas0ba.sabaprops.softprops/
+│       ├── package.json            # VPM マニフェスト
+│       ├── Runtime/                # Udon controllerと変形shader
+│       ├── Editor/                 # Mesh／Material／Prefab生成器
+│       └── Documentation~/
 ├── Website/                        # GitHub Pages で公開するリスティングサイト
 ├── source.json                     # VPM リスティングのメタ情報
 └── .github/
