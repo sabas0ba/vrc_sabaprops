@@ -21,6 +21,7 @@ REPO="$(cd "$HERE/../../.." && pwd)"
 CIPROJECT="$REPO/.github/verify/CIProject"
 PACKAGE="$REPO/Packages/io.github.sabas0ba.sabaprops.foliage"
 WATER_PACKAGE="$REPO/Packages/io.github.sabas0ba.sabaprops.water"
+SOFT_PROPS_PACKAGE="$REPO/Packages/io.github.sabas0ba.sabaprops.softprops"
 
 PROJECT="${1:-$REPO/build/WorldProject}"
 VPM="${VPM_DIR:-$REPO/build/vpm}"
@@ -66,6 +67,7 @@ replace "$HERE/Setup" "$PROJECT/Assets/WorldSetup"
 # registry dependencies, so nothing has to be listed in manifest.json.
 replace "$PACKAGE" "$PROJECT/Packages/io.github.sabas0ba.sabaprops.foliage"
 replace "$WATER_PACKAGE" "$PROJECT/Packages/io.github.sabas0ba.sabaprops.water"
+replace "$SOFT_PROPS_PACKAGE" "$PROJECT/Packages/io.github.sabas0ba.sabaprops.softprops"
 replace "$VPM/com.vrchat.base" "$PROJECT/Packages/com.vrchat.base"
 replace "$VPM/com.vrchat.worlds" "$PROJECT/Packages/com.vrchat.worlds"
 

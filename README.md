@@ -2,7 +2,7 @@
 
 VRChat 向けのアセットを **VCC (VRChat Creator Companion) / VPM** で配布するためのリポジトリです。
 
-複数パッケージの集合体として、軽量な草木配置パッケージ **SabaProps Foliage** と、水面・雨・霧・水中表現をまとめた **SabaProps Water** を収録しています。
+草木配置の **SabaProps Foliage**、水面・雨・霧・水中表現の **SabaProps Water**、PC VRChat向け接触変形家具の **SabaProps Soft Props** を収録しています。
 
 ---
 
@@ -27,6 +27,7 @@ https://sabas0ba.github.io/vrc_sabaprops/index.json
 | --- | --- | --- |
 | `io.github.sabas0ba.sabaprops.foliage` | SabaProps Foliage | GPU インスタンシング対応の草木スキャッタリングツール。グラスシード／ひまわりをプロシージャル生成し、大量配置しても軽量。 |
 | `io.github.sabas0ba.sabaprops.water` | SabaProps Water | 水たまり・川・湖・海、衝突splash付きの雨、霧・雲、水中effectをbakeするShader／Editor tool。 |
+| `io.github.sabas0ba.sabaprops.softprops` | SabaProps Soft Props | World Contactsでユーザーの接触を検知し、ふとん、ベッド、ソファー、クッションを最大8点で変形するPC向けprop集。 |
 
 各パッケージの詳細は `Packages/<package-id>/README.md` を参照してください。
 
@@ -37,6 +38,10 @@ VRChat Worlds SDK が入っているプロジェクトでは `VRCSceneDescriptor
 Water packageは`Tools > SabaProps > Water > Create Default Assets`でMaterialとprofileを作成し、
 Hierarchyの`SabaProps > Water`／`SabaProps > Weather`から各propを配置できます。
 
+Soft Propsは `Tools > SabaProps > Soft Props > Generate All Prefabs` で4種の家具Prefabと、指／棒／板の接触比較Prefabを生成します。
+
+レビュー用の完成済みsceneは `Tools > SabaProps > Soft Props > Open Demo Scene` から開けます。家具、肌Materialの接触試験台、指・棒・板の自動上下比較3台、形状別の静的比較、照明、床、VRChat Spawnを同梱しています。[デモのレビュー手順](Packages/io.github.sabas0ba.sabaprops.softprops/Documentation~/demo-review.md)と[更新・配布手順](Packages/io.github.sabas0ba.sabaprops.softprops/Documentation~/upgrading.md)を参照してください。
+
 ---
 
 ## リポジトリ構成
@@ -45,10 +50,11 @@ Hierarchyの`SabaProps > Water`／`SabaProps > Weather`から各propを配置で
 .
 ├── Packages/                       # 配布する VPM パッケージ群（1 フォルダ = 1 パッケージ）
 │   ├── io.github.sabas0ba.sabaprops.foliage/
-│   └── io.github.sabas0ba.sabaprops.water/
+│   ├── io.github.sabas0ba.sabaprops.water/
+│   └── io.github.sabas0ba.sabaprops.softprops/
 │       ├── package.json            # VPM マニフェスト
-│       ├── Runtime/                # シーンに残る最小限のコンポーネントとシェーダー
-│       ├── Editor/                 # 生成・配置ツール（ビルドには含まれない）
+│       ├── Runtime/                # Udon controllerと変形shader
+│       ├── Editor/                 # Mesh／Material／Prefab生成器
 │       └── Documentation~/
 ├── Website/                        # GitHub Pages で公開するリスティングサイト
 ├── source.json                     # VPM リスティングのメタ情報
