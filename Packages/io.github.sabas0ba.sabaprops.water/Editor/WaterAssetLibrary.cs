@@ -276,6 +276,7 @@ namespace SabaProps.Water.Editors
                 folder + "/" + SanitizeFileName(baseName) + ".asset");
             mesh.name = Path.GetFileNameWithoutExtension(path);
             AssetDatabase.CreateAsset(mesh, path);
+            WaterMeshAssetUndo.Track(mesh, path);
             return mesh;
         }
 

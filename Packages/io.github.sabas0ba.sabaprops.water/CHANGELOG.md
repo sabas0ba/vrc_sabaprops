@@ -33,6 +33,10 @@
 
 ### Fixed
 
+- Fog Particleのsoft-particle深度UVをステレオ変換に対応
+- 未ロードScene／Prefabが共有するRiver Meshを再生成時に分離し、他の参照先の形状変更を防止
+- 水面・水中rigの生成MeshをUndoでアセットから削除し、RedoでGUIDと参照を維持して復元
+
 - Wet Surfaceのtrailが滴headを追い越す形状と、円形だった滴headを重力方向へ膨らむ雨滴形状へ修正
 - Ocean・River・雨衝突の飛沫を点に近い数mm級へ縮小
 

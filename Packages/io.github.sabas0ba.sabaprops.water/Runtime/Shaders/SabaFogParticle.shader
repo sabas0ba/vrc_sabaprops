@@ -81,8 +81,10 @@ Shader "SabaProps/Water/Fog Particle"
 
                 float soft = 1.0;
                 #if defined(SOFTPARTICLES_ON)
-                    float sceneDepth = LinearEyeDepth(SAMPLE_DEPTH_TEXTURE_PROJ(
-                        _CameraDepthTexture, UNITY_PROJ_COORD(input.projected)));
+                    float2 depthUV = UnityStereoTransformScreenSpaceTex(
+                        input.projected.xy / input.projected.w);
+                    float sceneDepth = LinearEyeDepth(SAMPLE_DEPTH_TEXTURE(
+                        _CameraDepthTexture, depthUV));
                     soft = saturate(_InvFade * (sceneDepth - input.projected.z));
                 #endif
 

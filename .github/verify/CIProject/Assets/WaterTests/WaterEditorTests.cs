@@ -97,6 +97,14 @@ namespace SabaProps.Water.CITests
             AssertSourceContains(WaterAssetLibrary.UnderwaterSurfaceStandardShaderName, "Cull Front");
         }
 
+        [Test]
+        public void SoftParticleDepth_UsesStereoTransformedUv()
+        {
+            string source = ReadShaderSource(WaterAssetLibrary.FogParticleShaderName);
+            Assert.IsTrue(source.Contains("float2 depthUV = UnityStereoTransformScreenSpaceTex("));
+            Assert.IsTrue(source.Contains("_CameraDepthTexture, depthUV"));
+        }
+
         private static void AssertSourceContains(string shaderName, string expected)
         {
             Assert.IsTrue(
@@ -273,6 +281,132 @@ namespace SabaProps.Water.CITests
             finally
             {
                 Object.DestroyImmediate(river);
+            }
+        }
+
+        [Test]
+        public void RiverRebuild_PreservesMeshReferencedByUnloadedScene()
+        {
+            string firstScenePath = AssetDatabase.GenerateUniqueAssetPath("Assets/WaterRiverOwnerTest.unity");
+            string secondScenePath = AssetDatabase.GenerateUniqueAssetPath("Assets/WaterRiverCopyTest.unity");
+            string originalMeshPath = null;
+            string rebuiltMeshPath = null;
+            try
+            {
+                Scene firstScene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
+                WaterPath original = new GameObject("Saved River").AddComponent<WaterPath>();
+                Mesh mesh = WaterPathEditor.Rebuild(original);
+                originalMeshPath = AssetDatabase.GetAssetPath(mesh);
+                Vector3[] originalVertices = mesh.vertices;
+                Assert.IsTrue(EditorSceneManager.SaveScene(firstScene, firstScenePath));
+
+                // Save As retains the mesh reference while unloading the original scene.
+                Assert.IsTrue(EditorSceneManager.SaveScene(firstScene, secondScenePath));
+                EditorSceneManager.OpenScene(secondScenePath);
+                WaterPath copy = Object.FindObjectOfType<WaterPath>();
+                copy.width *= 2f;
+                Mesh rebuilt = WaterPathEditor.Rebuild(copy);
+                rebuiltMeshPath = AssetDatabase.GetAssetPath(rebuilt);
+                Assert.AreNotEqual(originalMeshPath, rebuiltMeshPath);
+                Assert.IsTrue(originalVertices.SequenceEqual(
+                    AssetDatabase.LoadAssetAtPath<Mesh>(originalMeshPath).vertices));
+                Assert.IsTrue(EditorSceneManager.SaveScene(copy.gameObject.scene, secondScenePath));
+                EditorSceneManager.OpenScene(firstScenePath);
+                Assert.AreEqual(originalMeshPath,
+                    AssetDatabase.GetAssetPath(Object.FindObjectOfType<WaterPath>().generatedMesh));
+                Assert.IsTrue(originalVertices.SequenceEqual(
+                    Object.FindObjectOfType<WaterPath>().generatedMesh.vertices));
+            }
+            finally
+            {
+                EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
+                AssetDatabase.DeleteAsset(firstScenePath);
+                AssetDatabase.DeleteAsset(secondScenePath);
+                if (originalMeshPath != null) AssetDatabase.DeleteAsset(originalMeshPath);
+                if (rebuiltMeshPath != null) AssetDatabase.DeleteAsset(rebuiltMeshPath);
+            }
+        }
+
+        [Test]
+        public void RigCreation_UndoRemovesUniqueMeshAssets()
+        {
+            WaterAssetLibrary.CreateOrLoadDefaults();
+            for (int kind = 0; kind < 5; kind++)
+            {
+                Undo.FlushUndoRecordObjects();
+                Undo.IncrementCurrentGroup();
+                GameObject rig = kind == 4
+                    ? WaterRigFactory.CreateUnderwaterRig(false)
+                    : WaterRigFactory.CreateSurface((WaterBodyKind)kind, WaterQuality.Lite);
+                string[] meshPaths = rig.GetComponentsInChildren<MeshFilter>()
+                    .Select(filter => AssetDatabase.GetAssetPath(filter.sharedMesh))
+                    .Where(path => path.StartsWith(WaterAssetLibrary.GeneratedSurfacesFolder + "/")
+                        || path.StartsWith(WaterAssetLibrary.GeneratedPuddlesFolder + "/"))
+                    .Distinct().ToArray();
+                Assert.Greater(meshPaths.Length, 0);
+                string[] meshGuids = meshPaths.Select(AssetDatabase.AssetPathToGUID).ToArray();
+                Undo.FlushUndoRecordObjects();
+                Undo.PerformUndo();
+                Assert.IsTrue(rig == null, "Undo must remove the rig");
+                // Flush Unity's deferred asset deletion before checking the filesystem.
+                AssetDatabase.SaveAssets();
+                foreach (string meshPath in meshPaths)
+                {
+                    Assert.IsNull(AssetDatabase.LoadAssetAtPath<Mesh>(meshPath), meshPath);
+                    Assert.IsFalse(File.Exists(meshPath), "Undo must remove the asset file: " + meshPath);
+                }
+                AssetDatabase.Refresh();
+                Undo.PerformRedo();
+                AssetDatabase.SaveAssets();
+                Assert.IsTrue(rig != null, "Redo must restore the rig");
+                foreach (string meshPath in meshPaths)
+                {
+                    Assert.IsNotNull(AssetDatabase.LoadAssetAtPath<Mesh>(meshPath), meshPath);
+                    Assert.IsTrue(File.Exists(meshPath), "Redo must restore the asset file: " + meshPath);
+                }
+                Assert.IsTrue(meshGuids.SequenceEqual(meshPaths.Select(AssetDatabase.AssetPathToGUID)),
+                    "Redo must preserve mesh GUIDs");
+                foreach (MeshFilter filter in rig.GetComponentsInChildren<MeshFilter>())
+                {
+                    Assert.IsNotNull(filter.sharedMesh, "Redo must restore renderer mesh references");
+                }
+                Undo.PerformUndo();
+                AssetDatabase.SaveAssets();
+                foreach (string meshPath in meshPaths)
+                {
+                    Assert.IsFalse(File.Exists(meshPath));
+                    Assert.AreEqual(meshPath, AssetDatabase.GenerateUniqueAssetPath(meshPath),
+                        "Undo must release the asset name for the next creation");
+                }
+            }
+        }
+
+        [Test]
+        public void RiverRebuild_PreservesMeshReferencedByPrefab()
+        {
+            string prefabPath = AssetDatabase.GenerateUniqueAssetPath("Assets/WaterRiverOwnerTest.prefab");
+            GameObject original = new GameObject("Prefab River");
+            GameObject copy = null;
+            try
+            {
+                WaterPath originalPath = original.AddComponent<WaterPath>();
+                Mesh mesh = WaterPathEditor.Rebuild(originalPath);
+                Vector3[] vertices = mesh.vertices;
+                PrefabUtility.SaveAsPrefabAsset(original, prefabPath);
+                Object.DestroyImmediate(original);
+                copy = new GameObject("Independent River");
+                WaterPath copyPath = copy.AddComponent<WaterPath>();
+                copyPath.generatedMesh = mesh;
+                copyPath.GetComponent<MeshFilter>().sharedMesh = mesh;
+                copyPath.width *= 2f;
+                Assert.AreNotEqual(mesh, WaterPathEditor.Rebuild(copyPath));
+                Assert.IsTrue(vertices.SequenceEqual(mesh.vertices));
+            }
+            finally
+            {
+                Object.DestroyImmediate(original);
+                Object.DestroyImmediate(copy);
+                AssetDatabase.DeleteAsset(prefabPath);
             }
         }
 

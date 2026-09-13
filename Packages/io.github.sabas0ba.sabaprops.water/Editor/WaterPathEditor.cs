@@ -107,15 +107,16 @@ namespace SabaProps.Water.Editors
                 return null;
             }
 
-            Undo.RecordObject(path, "Rebuild Water Path");
             MeshFilter filter = path.GetComponent<MeshFilter>();
-            Undo.RecordObject(filter, "Rebuild Water Path");
             Mesh mesh = WaterAssetLibrary.ReplaceOrWriteMesh(
                 generated,
                 IsMeshShared(path) ? null : path.generatedMesh,
                 WaterAssetLibrary.GeneratedSurfacesFolder,
                 path.name + "_River");
 
+            // Record references after any asset creation undo bookkeeping has completed.
+            Undo.RecordObject(path, "Rebuild Water Path");
+            Undo.RecordObject(filter, "Rebuild Water Path");
             path.generatedMesh = mesh;
             filter.sharedMesh = mesh;
             path.ApplyProfile();
@@ -131,6 +132,28 @@ namespace SabaProps.Water.Editors
             if (path.generatedMesh == null)
             {
                 return false;
+            }
+
+            // Saved scenes and prefabs can retain this mesh while they are unloaded.
+            string meshAssetPath = AssetDatabase.GetAssetPath(path.generatedMesh);
+            if (!string.IsNullOrEmpty(meshAssetPath))
+            {
+                foreach (string guid in AssetDatabase.FindAssets("t:Scene t:Prefab"))
+                {
+                    string ownerPath = AssetDatabase.GUIDToAssetPath(guid);
+                    if (ownerPath == path.gameObject.scene.path)
+                    {
+                        continue;
+                    }
+
+                    foreach (string dependency in AssetDatabase.GetDependencies(ownerPath))
+                    {
+                        if (dependency == meshAssetPath)
+                        {
+                            return true;
+                        }
+                    }
+                }
             }
 
             // Include inactive copies and loaded prefab assets, not only active paths.

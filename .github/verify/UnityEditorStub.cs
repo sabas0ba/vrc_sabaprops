@@ -11,6 +11,8 @@ using UnityEngine.SceneManagement;
 
 namespace UnityEditor
 {
+    [AttributeUsage(AttributeTargets.Class)]
+    public sealed class InitializeOnLoadAttribute : Attribute { }
     public enum MessageType { None = 0, Info = 1, Warning = 2, Error = 3 }
 
     [Flags]
@@ -186,6 +188,9 @@ namespace UnityEditor
         public static T LoadAssetAtPath<T>(string assetPath) where T : UnityEngine.Object => null;
         public static string GetAssetPath(UnityEngine.Object assetObject) => string.Empty;
         public static string AssetPathToGUID(string path) => string.Empty;
+        public static string GUIDToAssetPath(string guid) => string.Empty;
+        public static string[] FindAssets(string filter) => new string[0];
+        public static string[] GetDependencies(string pathName) => new string[0];
         public static string GenerateUniqueAssetPath(string path) => path;
         public static void SaveAssets() { }
         public static void Refresh() { }
@@ -194,11 +199,17 @@ namespace UnityEditor
         public static void StartAssetEditing() { }
         public static void StopAssetEditing() { }
         public static void AddObjectToAsset(UnityEngine.Object objectToAdd, UnityEngine.Object assetObject) { }
+        public static void RemoveObjectFromAsset(UnityEngine.Object objectToRemove) { }
     }
 
     public static class FileUtil
     {
         public static void CopyFileOrDirectory(string source, string destination) { }
+    }
+
+    public static class PrefabUtility
+    {
+        public static GameObject SaveAsPrefabAsset(GameObject instanceRoot, string assetPath) => null;
     }
 
     public static class Selection
@@ -210,9 +221,11 @@ namespace UnityEditor
 
     public static class Undo
     {
+        public static event Action undoRedoPerformed;
         public static void RegisterCompleteObjectUndo(UnityEngine.Object objectToUndo, string name) { }
         public static void FlushUndoRecordObjects() { }
         public static void PerformUndo() { }
+        public static void PerformRedo() { }
         public static void IncrementCurrentGroup() { }
         public static void RegisterCreatedObjectUndo(UnityEngine.Object objectToUndo, string name) { }
         public static void DestroyObjectImmediate(UnityEngine.Object objectToUndo) { }
