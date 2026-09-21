@@ -98,6 +98,22 @@ inline float3 SabaWaterNormal(
     return normalize(float3(-gradient.x * waveStrength, 1.0, -gradient.y * waveStrength));
 }
 
+inline float3 SabaBoundaryNormal(
+    float3 worldNormal,
+    float3 worldPosition,
+    float waveScale,
+    float waveStrength,
+    float waveSpeed,
+    float2 flowDirection)
+{
+    float3 baseNormal = normalize(worldNormal);
+    float3 waveNormal = SabaWaterNormal(
+        worldPosition, waveScale, waveStrength, waveSpeed, flowDirection);
+    float3 slope = float3(waveNormal.x, 0.0, waveNormal.z) / max(waveNormal.y, 0.001);
+    float3 tangentSlope = slope - baseNormal * dot(slope, baseNormal);
+    return normalize(baseNormal + tangentSlope);
+}
+
 inline float SabaWaterHeight(
     float3 worldPosition,
     float waveScale,

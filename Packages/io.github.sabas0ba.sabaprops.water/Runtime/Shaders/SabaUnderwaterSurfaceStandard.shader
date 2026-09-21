@@ -90,14 +90,16 @@ Shader "SabaProps/Water/Underwater Surface Standard"
                     _BoundaryCardinal,
                     _BoundaryDiagonal);
                 clip(boundaryMask - 0.001);
-                float3 normal = SabaWaterNormal(
-                    input.worldPosition, _WaveScale, _WaveStrength, _WaveSpeed, _FlowDirection.xy);
+                float3 baseNormal = normalize(input.worldNormal);
+                float3 normal = SabaBoundaryNormal(
+                    input.worldNormal, input.worldPosition,
+                    _WaveScale, _WaveStrength, _WaveSpeed, _FlowDirection.xy);
                 float3 viewDirection = normalize(_WorldSpaceCameraPos.xyz - input.worldPosition);
                 float fresnel = pow(1.0 - saturate(abs(dot(normal, viewDirection))), 3.0);
 
                 float4 projected = input.grabPosition;
                 float edgeFade = SabaUvEdgeFade(input.uv, _BoundaryEdgeFade);
-                float2 distortion = normal.xz;
+                float2 distortion = normal.xz - baseNormal.xz;
                 projected.xy += distortion
                     * (_DistortionStrength * edgeFade * boundaryMask * projected.w);
                 float3 refracted = UNITY_SAMPLE_SCREENSPACE_TEXTURE(

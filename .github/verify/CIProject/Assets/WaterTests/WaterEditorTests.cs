@@ -95,6 +95,12 @@ namespace SabaProps.Water.CITests
 
             AssertSourceContains(WaterAssetLibrary.UnderwaterSurfaceLiteShaderName, "Cull Front");
             AssertSourceContains(WaterAssetLibrary.UnderwaterSurfaceStandardShaderName, "Cull Front");
+            AssertSourceContains(WaterAssetLibrary.UnderwaterSurfaceLiteShaderName,
+                "SabaBoundaryNormal(");
+            AssertSourceContains(WaterAssetLibrary.UnderwaterSurfaceStandardShaderName,
+                "SabaBoundaryNormal(");
+            AssertSourceContains(WaterAssetLibrary.UnderwaterSurfaceStandardShaderName,
+                "normal.xz - baseNormal.xz");
         }
 
         [Test]
@@ -430,6 +436,17 @@ namespace SabaProps.Water.CITests
                 GameObject rig = kind == 4
                     ? WaterRigFactory.CreateUnderwaterRig(false)
                     : WaterRigFactory.CreateSurface((WaterBodyKind)kind, WaterQuality.Lite);
+                if (kind != 1 && kind != 4)
+                {
+                    Mesh surfaceMesh = rig.GetComponent<MeshFilter>().sharedMesh;
+                    Bounds surfaceBounds = surfaceMesh.bounds;
+                    surfaceBounds.Expand(0.001f);
+                    foreach (Vector3 vertex in surfaceMesh.vertices)
+                    {
+                        Assert.IsTrue(surfaceBounds.Contains(vertex + Vector3.up));
+                        Assert.IsTrue(surfaceBounds.Contains(vertex - Vector3.up));
+                    }
+                }
                 string[] meshPaths = rig.GetComponentsInChildren<MeshFilter>()
                     .Select(filter => AssetDatabase.GetAssetPath(filter.sharedMesh))
                     .Where(path => path.StartsWith(WaterAssetLibrary.GeneratedSurfacesFolder + "/")

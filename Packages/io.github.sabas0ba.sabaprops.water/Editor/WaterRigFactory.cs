@@ -32,21 +32,17 @@ namespace SabaProps.Water.Editors
             }
 
             Mesh mesh;
-            float boundsPadding;
             switch (bodyKind)
             {
                 case WaterBodyKind.Puddle:
                     mesh = WaterMeshBuilder.BuildPuddle(1.25f, 1.3f, 4, 24, 1);
-                    boundsPadding = 0.05f;
                     break;
                 case WaterBodyKind.Ocean:
                     mesh = WaterMeshBuilder.BuildGrid(100f, 100f, 32, 32);
-                    boundsPadding = 0.5f;
                     break;
                 case WaterBodyKind.Lake:
                 default:
                     mesh = WaterMeshBuilder.BuildGrid(20f, 20f, 16, 16);
-                    boundsPadding = 0.2f;
                     break;
             }
 
@@ -56,7 +52,9 @@ namespace SabaProps.Water.Editors
                     ? WaterAssetLibrary.GeneratedPuddlesFolder
                     : WaterAssetLibrary.GeneratedSurfacesFolder,
                 bodyKind + "_" + quality);
-            ExpandVerticalBounds(mesh, boundsPadding);
+            // Profiles can be edited after creation without regenerating the mesh.
+            // Both displacement sliders permit 0.5 m, so reserve their combined range.
+            ExpandVerticalBounds(mesh, 1f);
 
             GameObject surface = CreateMeshObject(
                 bodyKind + " " + quality,
