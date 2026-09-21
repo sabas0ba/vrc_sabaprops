@@ -1,0 +1,6 @@
+{
+  "name": "SabaProps.PutItems.Runtime",
+  "rootNamespace": "SabaProps.PutItems",
+  "references": ["UdonSharp.Runtime"],
+  "autoReferenced": true
+}

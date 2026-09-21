@@ -1,0 +1,10 @@
+{
+  "name": "io.github.sabas0ba.sabaprops.putitems",
+  "displayName": "SabaProps Put Items",
+  "version": "0.1.0",
+  "unity": "2022.3",
+  "description": "Pickup を手放した位置の近くにある机や壁へ位置・姿勢を補正します。Object Sync 接続と独自同期向けの計算 API を提供します。",
+  "author": { "name": "sabas0ba", "url": "https://github.com/sabas0ba" },
+  "license": "MIT",
+  "vpmDependencies": { "com.vrchat.worlds": "3.10.4" }
+}

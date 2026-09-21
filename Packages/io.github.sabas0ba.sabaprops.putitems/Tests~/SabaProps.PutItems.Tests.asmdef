@@ -1,0 +1,8 @@
+{
+  "name": "SabaProps.PutItems.Tests",
+  "references": ["SabaProps.PutItems.Runtime", "SabaProps.PutItems.Editor", "UdonSharp.Runtime", "UdonSharp.Editor", "VRC.Udon", "VRC.Udon.Editor"],
+  "overrideReferences": true,
+  "precompiledReferences": ["nunit.framework.dll", "VRCSDKBase.dll", "VRCSDK3.dll"],
+  "includePlatforms": ["Editor"],
+  "optionalUnityReferences": ["TestAssemblies"]
+}

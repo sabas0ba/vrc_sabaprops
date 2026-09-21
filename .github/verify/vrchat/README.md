@@ -61,7 +61,7 @@ Unity は Unity Hub の既定の場所から `ProjectVersion.txt` に一致す�
 初回は SDK が要求する UPM パッケージ（burst、collections、cinemachine 等）を
 Unity がレジストリから取得するため、数分かかります。
 
-テストは Foliage、Soft Props、Stage Cam のアセンブリに絞って実行します。
+テストは `SabaProps.Foliage.CITests`、`SabaProps.Foliage.WorldTests`、`SabaProps.SoftProps.WorldTests`、`SabaProps.StageCam.WorldTests`、`SabaProps.PutItems.Tests` に絞って実行します。
 SDK 自身のテストアセンブリも同じプロジェクトに存在しますが、
 本パッケージとは無関係な理由で 2 件失敗する（ランダム生成の JSON ファズケースと、
 docs.microsoft.com の URL 到達性を検証するもの）ため、終了コードを意味のあるものにするためです。
@@ -74,6 +74,7 @@ docs.microsoft.com の URL 到達性を検証するもの）ため、終了コ�
 | `SabaProps.Foliage.WorldTests` | PlayMode | ClientSim でワールドとして実行し、プレイヤーが Spawn するか |
 | `SabaProps.StageCam.WorldTests` | EditMode | リグと操作パネルの Udon コンパイル、保存後の UI イベント接続、カメラ設定の独立性、サンプル構成を検証。`TestResults/stagecam-panel.png` にレイアウト確認画像を出力 |
 | `SabaProps.SoftProps.WorldTests` | EditMode + Playへの遷移 | Prefab生成、同梱デモのimport・参照・比較台、ClientSimでのCollider接触・復元・自動運動・立位荷重 |
+| `SabaProps.PutItems.Tests` | EditMode | 吸着対象と Pickup の設定、同梱デモの構成を検証 |
 
 Soft Propsの実行テストは指・棒・板の100 mmおよび0.5 mmの空隙、20 mmの侵入、離脱後の復元、自動上下運動、ローカルプレイヤーのFutonへの接地を検証します。VRChat実clientの手・胴体・リモートプレイヤーの接触を保証するテストではありません。
 
@@ -149,3 +150,5 @@ GameCI のイメージを使えば Unity もコンテナ化できますが、ラ
 `.github/workflows/unity.yml` と同じ構成にしてください。
 またコンテナへ 8 GB 程度のメモリ割り当てが要ります
 （podman machine の既定は小さいことが多いので、`podman machine set --memory` で拡張が必要です）。
+
+Put Items 単体の準備・検証手順は [PUT_ITEMS.md](PUT_ITEMS.md) を参照してください。

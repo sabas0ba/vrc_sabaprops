@@ -2,7 +2,7 @@
 
 VRChat 向けのアセットを **VCC (VRChat Creator Companion) / VPM** で配布するためのリポジトリです。
 
-草木配置の **SabaProps Foliage**、樹木生成の **SabaProps Trees**、PC VRChat 向け接触変形家具の **SabaProps Soft Props**、演者を追うカメラリグの **SabaProps Stage Cam** を収録しています。
+草木配置の **SabaProps Foliage**、樹木生成の **SabaProps Trees**、PC VRChat 向け接触変形家具の **SabaProps Soft Props**、演者を追うカメラリグの **SabaProps Stage Cam**、Pickup の配置補正を行う **SabaProps Put Items** を収録しています。
 
 ---
 
@@ -29,6 +29,7 @@ https://sabas0ba.github.io/vrc_sabaprops/index.json
 | `io.github.sabas0ba.sabaprops.trees` | SabaProps Trees | 再帰枝ジェネレータから樹木と 3 段階 LOD を生成。共有サーフェス散布 API を使う Tree Field に対応。 |
 | `io.github.sabas0ba.sabaprops.softprops` | SabaProps Soft Props | World Contactsでユーザーの接触を検知し、ふとん、ベッド、ソファー、クッションを最大8点で変形するPC向けprop集。 |
 | `io.github.sabas0ba.sabaprops.stagecam` | SabaProps Stage Cam | 特定のプレイヤーの部位を追う Udon カメラリグ。Pickup による構図補正と自動カメラワークに対応。 |
+| `io.github.sabas0ba.sabaprops.putitems` | SabaProps Put Items | Pickup を手放した位置の近くにある机・壁へ位置と姿勢を補正。Object Sync 接続と独自同期向けの計算 API を提供。 |
 
 各パッケージの詳細は `Packages/<package-id>/README.md` を参照してください。
 
@@ -39,6 +40,8 @@ VRChat Worlds SDK が入っているプロジェクトでは `VRCSceneDescriptor
 Soft Propsは `Tools > SabaProps > Soft Props > Generate All Prefabs` で4種の家具Prefabと、指／棒／板の接触比較Prefabを生成します。
 
 レビュー用の完成済みsceneは `Tools > SabaProps > Soft Props > Open Demo Scene` から開けます。家具、肌Materialの接触試験台、指・棒・板の自動上下比較3台、形状別の静的比較、照明、床、VRChat Spawnを同梱しています。[デモのレビュー手順](Packages/io.github.sabas0ba.sabaprops.softprops/Documentation~/demo-review.md)と[更新・配布手順](Packages/io.github.sabas0ba.sabaprops.softprops/Documentation~/upgrading.md)を参照してください。
+
+Put Items は `Tools > SabaProps > Put Items > Open Demo Scene` から、食卓と冷蔵庫を含む完成済み Scene を開けます。食器の机への吸着、メモやアクセサリーの冷蔵庫への貼り付け、おぼん・皿・料理の入れ子追従を確認できます。[デモの操作手順](Packages/io.github.sabas0ba.sabaprops.putitems/Documentation~/demo-review.md)と[配置・同期の設定](Packages/io.github.sabas0ba.sabaprops.putitems/Documentation~/authoring.md)を参照してください。
 
 ---
 
@@ -61,11 +64,16 @@ Soft Propsは `Tools > SabaProps > Soft Props > Generate All Prefabs` で4種の
 │   │   ├── Runtime/                # Udon controllerと変形shader
 │   │   ├── Editor/                 # Mesh／Material／Prefab生成器
 │   │   └── Documentation~/
-│   └── io.github.sabas0ba.sabaprops.stagecam/
-│       ├── package.json            # VRChat Worlds SDK に依存
-│       ├── Runtime/                # UdonSharp のカメラリグと幾何ソルバ
-│       ├── Editor/                 # リグとサンプルシーンの生成器
-│       └── Samples~/              # VRChat World のサンプル
+│   ├── io.github.sabas0ba.sabaprops.stagecam/
+│   │   ├── package.json            # VRChat Worlds SDK に依存
+│   │   ├── Runtime/                # UdonSharp のカメラリグと幾何ソルバ
+│   │   ├── Editor/                 # リグとサンプルシーンの生成器
+│   │   └── Samples~/              # VRChat World のサンプル
+│   └── io.github.sabas0ba.sabaprops.putitems/
+│       ├── Runtime/                # 吸着計算・Object Sync 接続・追従状態
+│       ├── Editor/                 # デモ Scene と Udon program の導入
+│       ├── Samples~/KitchenDemo/   # 同梱 Scene と依存アセット
+│       └── Documentation~/
 ├── Website/                        # GitHub Pages で公開するリスティングサイト
 ├── source.json                     # VPM リスティングのメタ情報
 └── .github/

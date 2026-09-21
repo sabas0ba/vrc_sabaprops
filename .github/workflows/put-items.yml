@@ -1,0 +1,75 @@
+name: Put Items Unity
+
+on:
+  pull_request:
+    paths:
+      - 'Packages/io.github.sabas0ba.sabaprops.putitems/**'
+      - '.github/verify/vrchat/**'
+      - '.github/workflows/put-items.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'Packages/io.github.sabas0ba.sabaprops.putitems/**'
+      - '.github/verify/vrchat/**'
+      - '.github/workflows/put-items.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: put-items-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  editmode:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - name: Check Unity licence
+        id: licence
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
+        run: |
+          if [ -n "$UNITY_LICENSE" ] || [ -n "$UNITY_SERIAL" ]; then
+            echo 'available=true' >> "$GITHUB_OUTPUT"
+          else
+            echo '::notice::Unity tests skipped: no licence configured.'
+          fi
+      # The GameCI editor image does not fit alongside the runner's preinstalled
+      # toolchains. Match the cleanup used by the repository's Unity workflow.
+      - name: Free disk space
+        if: steps.licence.outputs.available == 'true'
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc \
+                      /usr/local/share/boost "$AGENT_TOOLSDIRECTORY" || true
+          sudo docker image prune --all --force || true
+          df -h /
+      - name: Assemble pinned SDK test project
+        if: steps.licence.outputs.available == 'true'
+        run: |
+          .github/verify/vrchat/fetch.sh
+          .github/scripts/run.sh .github/verify/vrchat/prepare_putitems.py
+      - name: Run Unity and Udon tests
+        if: steps.licence.outputs.available == 'true'
+        uses: game-ci/unity-test-runner@0ff419b913a3630032cbe0de48a0099b5a9f0ed9
+        env:
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
+        with:
+          projectPath: build/PutItemsProject
+          testMode: EditMode
+          customParameters: -testFilter SabaProps.PutItems.Tests
+          artifactsPath: build/PutItemsResults
+          checkName: Put Items EditMode results
+      - name: Upload results
+        if: always() && steps.licence.outputs.available == 'true'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: put-items-results
+          path: build/PutItemsResults
+          if-no-files-found: warn

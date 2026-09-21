@@ -23,6 +23,7 @@ CIPROJECT="$REPO/.github/verify/CIProject"
 PACKAGE="$REPO/Packages/io.github.sabas0ba.sabaprops.foliage"
 STAGECAM="$REPO/Packages/io.github.sabas0ba.sabaprops.stagecam"
 SOFT_PROPS_PACKAGE="$REPO/Packages/io.github.sabas0ba.sabaprops.softprops"
+PUT_ITEMS_PACKAGE="$REPO/Packages/io.github.sabas0ba.sabaprops.putitems"
 
 PROJECT="${1:-$REPO/build/WorldProject}"
 VPM="${VPM_DIR:-$REPO/build/vpm}"
@@ -57,6 +58,7 @@ replace "$CIPROJECT/Assets/Tests" "$PROJECT/Assets/Tests"
 # subdirectory per assembly: Unity refuses a folder holding two asmdefs, and
 # fails the whole compile rather than the one folder.
 replace "$HERE/Tests" "$PROJECT/Assets/WorldTests"
+replace "$PUT_ITEMS_PACKAGE/Tests~" "$PROJECT/Assets/PutItemsTests"
 
 # The movement sample is not copied here. FoliageWorldProjectSetup imports it
 # through the same menu entry a user would, in the setup session, so what the
@@ -75,6 +77,7 @@ replace "$PACKAGE" "$PROJECT/Packages/io.github.sabas0ba.sabaprops.foliage"
 replace "$STAGECAM" "$PROJECT/Packages/io.github.sabas0ba.sabaprops.stagecam"
 
 replace "$SOFT_PROPS_PACKAGE" "$PROJECT/Packages/io.github.sabas0ba.sabaprops.softprops"
+replace "$PUT_ITEMS_PACKAGE" "$PROJECT/Packages/io.github.sabas0ba.sabaprops.putitems"
 replace "$VPM/com.vrchat.base" "$PROJECT/Packages/com.vrchat.base"
 replace "$VPM/com.vrchat.worlds" "$PROJECT/Packages/com.vrchat.worlds"
 
