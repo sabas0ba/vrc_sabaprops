@@ -1,0 +1,80 @@
+# Water Feature Gallery
+
+`Water Feature Gallery`は、packageの全機能を1つのSceneで比較するためのユーザー向けサンプルです。
+各展示は独立したrootに分かれ、`[Copy Ready]`と付いたobjectを対象Sceneへコピーして利用できます。
+
+![Water Feature Gallery overview](images/water-feature-gallery.png)
+
+## Import
+
+1. Unity Package Managerで`SabaProps Water`を選択します。
+2. `Samples`タブから`Water Feature Gallery`をimportします。
+3. `Assets/Samples/SabaProps Water/0.1.0/Water Feature Gallery/WaterFeatureGallery.unity`を開きます。
+4. Play Modeへ入り、Particle SystemとShader animationを確認します。
+
+Package Managerを使用しない場合は、`Tools > SabaProps > Water > Create Feature Gallery`を実行します。
+この場合は`Assets/SabaProps/Water/Samples/WaterFeatureGallery`へ同等のSceneとassetが生成されます。
+
+## Scene構成
+
+| Section | 内容 | コピー単位 |
+| --- | --- | --- |
+| `1 Water Surfaces` | Reflection Probe付き複数Puddle、小径飛沫・落水付きRiver、Lake、潮位・局所砕波spray・深度色付きOceanのLite／Standard比較 | 各`[Copy Ready]`root |
+| `2 Rain and Ripples` | World collision、Splash sub-emitter、Ripple sub-emitter、疑似水面波紋 | `Rain Rig [Copy Ready]` |
+| `3 Fog and Clouds` | Lite、濃霧、着色霧、Point Light付きHigh、Particle fog、Cloud Layer | 各`[Copy Ready]`root |
+| `4 Underwater` | 水面、volume、上面専用／8方向トンネル境界、コースティクス、light shaft | 各Underwater Pool root |
+| `5 Wet Surfaces and VRChat` | Dry／Wet／重力方向の滴head・長い残留軌跡・小滴散乱色を持つDropletsの人型proxy、不透明／半透明Material、Spot Light、VRCWorld状態 | 各Mannequin root |
+
+River展示には`WaterPath`と保存済みMeshの両方が含まれます。control pointを編集した後に`Rebuild Mesh`を実行できます。
+斜面、浅い上流、深い下流、落差上端の`Waterfall Spray`、着水点の`Plunge Pool Spray`も同じcopy rootに含まれます。
+Ocean展示は浅瀬境界に`Breaking Wave Spray`を持ちます。いずれも小径の伸長billboardで、連続する白泡Meshは使いません。
+Puddle展示は3枚の不定形Mesh、box-projected Reflection Probe、反射用landmarkを含み、stampを複数回使う場合の
+overdraw、重なり、雨波紋で歪む反射を確認できます。
+
+UnderwaterのLiteは上面境界だけを描画します。Standardには上面例に加えて
+`Eight-Direction Tunnel Boundary [Copy Ready]`があり、水平8方向を有効にしたMaterial設定を比較できます。
+通常プールのCameraを妨げないよう初期状態はinactiveです。Hierarchyから有効化して確認します。
+`Gallery Ground`はプール床より下へ配置され、水中Cameraの視線を遮りません。
+
+`VRCWorld/Spawn`は常に含まれます。Worlds SDK導入済みprojectでGalleryを生成するか、
+`Tools > SabaProps > Water > Configure VRChat World Descriptor`を実行すると`VRCSceneDescriptor`も追加されます。
+
+## 撮影用Camera
+
+- `Documentation Camera - Overview`: 全Sectionの俯瞰画像
+- `Documentation Camera - Underwater Standard`: Standard水中volume内部
+- `Documentation Camera - Lighting`: `WaterLightingGallery`の暗所／Point／Spot比較
+
+Overview Cameraが`MainCamera`です。水中Cameraを確認する場合はOverviewを無効化し、水中Cameraを有効化します。
+画角を変更せずに撮影すると、更新前後の比較画像を同じ構図で作成できます。
+
+![Underwater Standard camera](images/underwater-standard.png)
+
+## Lighting Gallery
+
+`WaterLightingGallery.unity`は、Directional Lightを使用しない暗所比較Sceneです。暗い環境光のみ、Point Light、Spot Lightの3区画で、Standard水面、雨、衝突飛沫、Wet Surfaceの応答を比較できます。暗所とPoint Light区画は不透明Wet Surface、Spot Light区画は半透明Wet Surfaceです。単独で再生成する場合は`Tools > SabaProps > Water > Create Lighting Gallery`を実行します。
+
+![Water Lighting Gallery](images/water-lighting-gallery.png)
+
+## Droplet Projector Gallery
+
+同じSample内の`WaterDropletProjectorGallery.unity`を開きます。個別生成する場合は
+`Tools > SabaProps > Water > Create Droplet Projector Gallery`を実行します。
+
+3体のReceiverは同一の通常Standard Materialを共有します。左側2体は投影範囲内、右側1体は範囲外です。
+`Droplet Projector [Copy Ready]`のProjectorコンポーネントを無効化し、Materialを変更せずに水滴が消えることを比較できます。
+Play Modeでは滴と軌跡の移動を確認します。自作WorldへはProjector rootをコピーし、投影範囲と除外Layerを調整してください。
+
+Wet Surfaceと異なりNormal・Smoothnessは変更しません。非対応Shaderへの投影、範囲外での濡れ状態保持、
+専用のPoint／Spot Light追加パスには対応しません。設定と制限は[配置と調整](authoring.md)を参照してください。
+Unity上のStandard Materialで表示確認済みですが、VRChat実機の両眼・鏡・個別アバターShaderは未検証です。
+
+## 利用時の注意
+
+- 雨、霧、雲はPlay Modeで確認します。
+- Rainは`Play On Awake`と`Prewarm`が有効で、Play Mode開始時に自動再生します。
+- Rain Collisionの対象を実Worldへコピーした後は、`Collides With`を必要なLayerだけに限定します。
+- Standard waterとStandard underwaterはGrabPassを使用するPC向け設定です。
+- Puddle Reflection ProbeはLite=64、Standard=128、Realtime + On Awakeです。静的WorldではBakedへ変更できます。
+- Wet Surfaceは対応Materialへ明示的に割り当てるShaderであり、Worldから任意アバターへ適用されません。
+- Sample内のMaterialやProfileはSample専用です。共通設定として使用する場合はproject内の管理folderへ移動してください。

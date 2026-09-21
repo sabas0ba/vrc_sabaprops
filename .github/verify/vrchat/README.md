@@ -113,8 +113,8 @@ UdonSharp の制約（ジェネリクス・インターフェース・ユーザ�
 **clean なプロジェクトで足りていること**を確認します。後者は利用者が VCC で
 導入した状態そのものです。
 
-`FoliageVrcWorld` が SDK を見つけ、`VRCWorld` ルートと Spawn を作り、
-`VRCSceneDescriptor` を実際に AddComponent できること。
+`FoliageVrcWorld` と `WaterVrcWorld` が SDK を見つけ、`VRCWorld` ルートと Spawn を作り、
+`VRCSceneDescriptor` を実際に AddComponent できること。Water Gallery では Reference Camera も検証します。
 `FoliageSampleSceneTests.SampleScene_MatchesTheVrchatSdkThatIsInstalled` が
 SDK の有無を見て期待値を切り替えるため、同じテストが両方の環境で意味を持ちます。
 

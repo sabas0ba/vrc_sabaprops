@@ -21,6 +21,7 @@ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO="$(cd "$HERE/../../.." && pwd)"
 CIPROJECT="$REPO/.github/verify/CIProject"
 PACKAGE="$REPO/Packages/io.github.sabas0ba.sabaprops.foliage"
+WATER_PACKAGE="$REPO/Packages/io.github.sabas0ba.sabaprops.water"
 STAGECAM="$REPO/Packages/io.github.sabas0ba.sabaprops.stagecam"
 SOFT_PROPS_PACKAGE="$REPO/Packages/io.github.sabas0ba.sabaprops.softprops"
 PUT_ITEMS_PACKAGE="$REPO/Packages/io.github.sabas0ba.sabaprops.putitems"
@@ -71,6 +72,7 @@ replace "$HERE/Setup" "$PROJECT/Assets/WorldSetup"
 # Embedded packages resolve against the working tree and pull their own
 # registry dependencies, so nothing has to be listed in manifest.json.
 replace "$PACKAGE" "$PROJECT/Packages/io.github.sabas0ba.sabaprops.foliage"
+replace "$WATER_PACKAGE" "$PROJECT/Packages/io.github.sabas0ba.sabaprops.water"
 
 # The stage camera package is Udon, so this project is the only place it can be
 # compiled by UdonSharp rather than merely by Roslyn. See Tests/StageCamProgramTests.cs.
