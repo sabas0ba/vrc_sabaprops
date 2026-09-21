@@ -3,7 +3,7 @@
 VRChat ワールド向けのプロシージャル樹木ジェネレータです。互換用の広葉樹、針葉樹、
 枯れ木、砂漠低木 archetype に加え、実在種を根拠にした樹冠・分枝・葉序の preset を生成します。
 
-このパッケージは `io.github.sabas0ba.sabaprops.foliage` 0.4.0 に依存します。
+このパッケージは `io.github.sabas0ba.sabaprops.foliage` 0.6.0 に依存します。
 Foliage の shader と風チャンネル契約を共有しますが、草向けの Distance Shrink と
 影 OFF の既定値は使いません。
 
@@ -60,7 +60,7 @@ Mesh の AssetDatabase 書き出しは Unity Undo の対象外です。Scene に
 ビルドから自動除外されます。ビルド前に手動で削除する必要はありません。生成済みの GameObject、
 `MeshFilter`、`MeshRenderer`、`LODGroup` は通常どおりビルドへ残ります。
 
-`TreeField` は Foliage 0.4.0 の共有サーフェス散布 API を利用します。矩形／円形、固定
+`TreeField` は Foliage 0.6.0 の共有サーフェス散布 API を利用します。矩形／円形、固定
 Seed、地面へのレイキャスト、高度制限、除外レイヤー、Density Mask の挙動は
 Foliage Field と共通です。種の選択、傾斜制限、最小間隔、スケールと姿勢だけを
 Trees 側のポリシーとして追加します。
