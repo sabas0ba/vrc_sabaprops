@@ -9,6 +9,15 @@ using System;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
+namespace UnityEditor.Events
+{
+    public static class UnityEventTools
+    {
+        public static void AddStringPersistentListener(UnityEngine.Events.UnityEventBase target,
+            UnityEngine.Events.UnityAction<string> call, string argument) { }
+    }
+}
+
 namespace UnityEditor
 {
     public enum MessageType { None = 0, Info = 1, Warning = 2, Error = 3 }

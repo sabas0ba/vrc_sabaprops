@@ -94,7 +94,7 @@ set +e
     -batchmode \
     -projectPath "$(to_native "$PROJECT")" \
     -runTests -testPlatform EditMode \
-    -testFilter "SabaProps.Foliage.CITests;SabaProps.Foliage.WorldTests;SabaProps.SoftProps.WorldTests" \
+    -testFilter "SabaProps.Foliage.CITests;SabaProps.Foliage.WorldTests;SabaProps.SoftProps.WorldTests;SabaProps.StageCam.WorldTests" \
     -testResults "$(to_native "$RESULTS")" \
     -logFile "$(to_native "$LOG")"
 set -e
