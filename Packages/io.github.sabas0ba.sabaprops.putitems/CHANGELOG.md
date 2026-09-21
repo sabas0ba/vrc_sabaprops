@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.1.0
+## [0.1.0] - 2026-09-21
 
 - Pickup を手放したとき、近くの矩形面へ接触点と姿勢を補正する `PlacementSolver` を追加。
 - `VRCObjectSync` を使う標準接続と、既存の `UdonSynced` 制御から呼べる計算 API を追加。
