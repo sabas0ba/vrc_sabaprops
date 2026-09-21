@@ -1,0 +1,19 @@
+{
+    "name": "SabaProps.StageCam.Runtime",
+    "rootNamespace": "SabaProps.StageCam",
+    "references": [
+        "VRC.SDKBase",
+        "UnityEngine.UI",
+        "VRC.Udon",
+        "UdonSharp.Runtime"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
