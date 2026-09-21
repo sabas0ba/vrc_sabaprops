@@ -38,6 +38,8 @@ namespace SabaProps.StageCam.Editors
         public const string CraneScreenMaterialPath = StageCamAssets.SampleFolder + "/CraneScreen.mat";
         public const string GroundMaterialPath = StageCamAssets.SampleFolder + "/DemoGround.mat";
         public const string StageMaterialPath = StageCamAssets.SampleFolder + "/DemoStage.mat";
+        public const string CameraBodyMaterialPath = StageCamAssets.SampleFolder + "/CameraBody.mat";
+        public const string CameraGlassMaterialPath = StageCamAssets.SampleFolder + "/CameraGlass.mat";
 
         // Named as constants because the world tests navigate the scene by them.
         public const string StageRootName = "Stage";
@@ -45,6 +47,7 @@ namespace SabaProps.StageCam.Editors
         public const string CamerasRootName = "Cameras";
         public const string FaceRigName = "Face Cam";
         public const string CraneRigName = "Crane Cam";
+        public const string CameraModelName = "Camera Model";
         public const string FaceScreenName = "Face Screen";
         public const string CraneScreenName = "Crane Screen";
 
@@ -194,6 +197,7 @@ namespace SabaProps.StageCam.Editors
             pickup.allowManipulationWhenEquipped = true;
 
             Camera camera = CreateRigCamera(root.transform, texture, 45f);
+            BuildCameraModel(root.transform);
 
             StageCamRig rig = root.AddUdonSharpComponent<StageCamRig>();
             rig.rigRoot = root.transform;
@@ -252,6 +256,52 @@ namespace SabaProps.StageCam.Editors
             camera.allowMSAA = false;
 
             return camera;
+        }
+
+        /// <summary>
+        /// A small camera-shaped pickup body. All visible parts fit inside the
+        /// pickup collider and use the layer culled by the rig cameras.
+        /// </summary>
+        private static void BuildCameraModel(Transform parent)
+        {
+            Material body = StageCamAssets.CreateOrLoadSurfaceMaterial(
+                CameraBodyMaterialPath, new Color(0.09f, 0.11f, 0.14f), 0.35f);
+            Material glass = StageCamAssets.CreateOrLoadSurfaceMaterial(
+                CameraGlassMaterialPath, new Color(0.12f, 0.42f, 0.65f), 0.8f);
+
+            var model = new GameObject(CameraModelName);
+            model.layer = StageCamAssets.ScreenLayer;
+            model.transform.SetParent(parent, false);
+
+            CreateCameraPart(model.transform, PrimitiveType.Cube, "Body",
+                new Vector3(0f, 0f, -0.05f), Quaternion.identity,
+                new Vector3(0.24f, 0.17f, 0.2f), body);
+            CreateCameraPart(model.transform, PrimitiveType.Cylinder, "Lens Barrel",
+                new Vector3(0f, 0f, 0.075f), Quaternion.Euler(90f, 0f, 0f),
+                new Vector3(0.063f, 0.055f, 0.063f), body);
+            CreateCameraPart(model.transform, PrimitiveType.Cylinder, "Lens Glass",
+                new Vector3(0f, 0f, 0.13f), Quaternion.Euler(90f, 0f, 0f),
+                new Vector3(0.05f, 0.006f, 0.05f), glass);
+            CreateCameraPart(model.transform, PrimitiveType.Cube, "Viewfinder",
+                new Vector3(0f, 0.11f, -0.05f), Quaternion.identity,
+                new Vector3(0.1f, 0.05f, 0.09f), body);
+        }
+
+        private static void CreateCameraPart(
+            Transform parent, PrimitiveType type, string name,
+            Vector3 position, Quaternion rotation, Vector3 scale, Material material)
+        {
+            GameObject part = GameObject.CreatePrimitive(type);
+            part.name = name;
+            part.layer = StageCamAssets.ScreenLayer;
+            part.transform.SetParent(parent, false);
+            part.transform.localPosition = position;
+            part.transform.localRotation = rotation;
+            part.transform.localScale = scale;
+            part.GetComponent<MeshRenderer>().sharedMaterial = material;
+
+            // The root collider alone defines the pickup volume.
+            Object.DestroyImmediate(part.GetComponent<Collider>());
         }
 
         // ------------------------------------------------------------------

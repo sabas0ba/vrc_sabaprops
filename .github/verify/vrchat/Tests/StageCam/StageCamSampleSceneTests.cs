@@ -34,6 +34,22 @@ namespace SabaProps.StageCam.WorldTests
             Assert.That(crane.cameraWork, Is.True);
             Assert.That(crane.allowPickupAdjust, Is.True);
 
+            Transform model = crane.transform.Find(StageCamSampleScene.CameraModelName);
+            Assert.That(model, Is.Not.Null);
+            Assert.That(model.localPosition, Is.EqualTo(Vector3.zero));
+            Assert.That(model.GetComponentsInChildren<Collider>(), Is.Empty);
+            Assert.That(crane.GetComponentsInChildren<Collider>().Length, Is.EqualTo(1));
+            var renderers = model.GetComponentsInChildren<MeshRenderer>();
+            Assert.That(renderers.Length, Is.EqualTo(4));
+            foreach (var renderer in renderers)
+            {
+                Assert.That(renderer.gameObject.layer, Is.EqualTo(StageCamAssets.ScreenLayer));
+                Assert.That(renderer.sharedMaterial, Is.Not.Null);
+            }
+
+            Assert.That(model.Find("Lens Glass").localPosition.z,
+                Is.GreaterThan(model.Find("Body").localPosition.z));
+
             foreach (string name in new[] { StageCamSampleScene.FaceScreenName, StageCamSampleScene.CraneScreenName })
             {
                 var screen = GameObject.Find(name);
