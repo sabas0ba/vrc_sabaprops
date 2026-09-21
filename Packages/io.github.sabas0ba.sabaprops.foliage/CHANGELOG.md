@@ -6,7 +6,21 @@
 
 ## [Unreleased]
 
-## [0.4.0] - 2026-09-13
+## [0.4.0] - 2026-09-21
+
+### Added
+
+- `Window > SabaProps > Foliage Palette` provides a persistent workflow for selecting species mixtures, editing species parameters, previewing generated meshes, and placing fields in the Scene.
+- Palette edits support temporary working copies and direct editing of existing Species assets, with the existing Undo and field generation paths.
+
+## [0.5.0] - 2026-09-21
+
+### Changed
+
+- Extracted the shared Foliage runtime and editor APIs used by the separately distributed Trees package, including shared shader, wind, placement, and surface-scattering contracts.
+- Added the shared placement and editing workflow used by Foliage and Trees authoring tools.
+
+## [0.6.0] - 2026-09-21
 
 ### Fixed
 
@@ -191,7 +205,9 @@
 - `FoliageSpecies` ScriptableObject による種別プリセット
 - セットアップメニュー: `Tools/SabaProps/Foliage/Create Default Assets`
 
-[Unreleased]: https://github.com/sabas0ba/vrc_sabaprops/compare/io.github.sabas0ba.sabaprops.foliage/v0.4.0...HEAD
+[Unreleased]: https://github.com/sabas0ba/vrc_sabaprops/compare/io.github.sabas0ba.sabaprops.foliage/v0.6.0...HEAD
+[0.6.0]: https://github.com/sabas0ba/vrc_sabaprops/compare/io.github.sabas0ba.sabaprops.foliage/v0.5.0...io.github.sabas0ba.sabaprops.foliage/v0.6.0
+[0.5.0]: https://github.com/sabas0ba/vrc_sabaprops/compare/io.github.sabas0ba.sabaprops.foliage/v0.4.0...io.github.sabas0ba.sabaprops.foliage/v0.5.0
 [0.4.0]: https://github.com/sabas0ba/vrc_sabaprops/compare/v0.3.0...io.github.sabas0ba.sabaprops.foliage/v0.4.0
 [0.3.0]: https://github.com/sabas0ba/vrc_sabaprops/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/sabas0ba/vrc_sabaprops/compare/v0.1.1...v0.2.0

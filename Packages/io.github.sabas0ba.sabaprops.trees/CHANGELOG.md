@@ -7,7 +7,7 @@ All notable changes to this package are documented in this file.
 ## [0.1.0] - 2026-09-13
 
 初回配布に向け、初期実装と公開前レビューの修正をこのバージョンに集約しています。
-依存先は SabaProps Foliage `0.4.0` です。
+依存先は SabaProps Foliage `0.6.0` です。
 
 ### Added
 
