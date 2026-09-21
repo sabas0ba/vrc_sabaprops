@@ -36,6 +36,12 @@ ClientSim は `PostLateUpdate` を呼ばないため、Play だけでは追従�
 
 生成し直すと同名のシーンを上書きします。編集を残す場合は別名で保存してください。
 
+完成済みの VRChat World サンプルは UPM/VCC の Package Manager で本パッケージを選択し、
+`Samples > Stage Camera World > Import` から Assets に取り込めます。取り込み後は
+`Assets/SabaProps/StageCam/Samples/StageCamDemo.unity` を開いてください。シーン、RenderTexture、
+マテリアル、Udon のシリアライズ済みプログラムをパッケージに同梱しているため、生成メニューを
+先に実行する必要はありません。World SDK の `VRCSceneDescriptor` と Spawn もシーンに含まれます。
+
 ### 手動で配置
 
 `GameObject > SabaProps > Stage Camera Rig` で、カメラと Collider 付きのリグを配置できます。

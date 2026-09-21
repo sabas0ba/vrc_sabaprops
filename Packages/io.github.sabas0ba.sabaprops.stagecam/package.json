@@ -15,6 +15,13 @@
   "vpmDependencies": {
     "com.vrchat.worlds": "3.10.4"
   },
+  "samples": [
+    {
+      "displayName": "Stage Camera World",
+      "description": "VRChat World 用のステージ、2 台の追従カメラ、スクリーン、ローカル操作 Canvas を含むサンプルシーン。",
+      "path": "Samples~/StageCamDemo"
+    }
+  ],
   "keywords": [
     "vrchat",
     "world",
