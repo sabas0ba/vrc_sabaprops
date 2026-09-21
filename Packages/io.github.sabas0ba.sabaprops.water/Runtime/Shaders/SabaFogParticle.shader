@@ -26,6 +26,7 @@ Shader "SabaProps/Water/Fog Particle"
             #pragma multi_compile_particles
             #pragma multi_compile_instancing
             #include "UnityCG.cginc"
+            #include "SabaWaterCommon.cginc"
 
             UNITY_DECLARE_DEPTH_TEXTURE(_CameraDepthTexture);
             fixed4 _Color;
@@ -81,8 +82,7 @@ Shader "SabaProps/Water/Fog Particle"
 
                 float soft = 1.0;
                 #if defined(SOFTPARTICLES_ON)
-                    float2 depthUV = UnityStereoTransformScreenSpaceTex(
-                        input.projected.xy / input.projected.w);
+                    float2 depthUV = SabaDepthScreenUv(input.projected);
                     float sceneDepth = LinearEyeDepth(SAMPLE_DEPTH_TEXTURE(
                         _CameraDepthTexture, depthUV));
                     soft = saturate(_InvFade * (sceneDepth - input.projected.z));

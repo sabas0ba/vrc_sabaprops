@@ -30,6 +30,26 @@ inline float2 SabaSafeDirection(float2 direction)
     return lengthSquared > 1e-5 ? direction * rsqrt(lengthSquared) : float2(1.0, 0.0);
 }
 
+inline float4 SabaGrabScreenPosition(float4 clipPosition)
+{
+#if defined(UNITY_STEREO_INSTANCING_ENABLED) || defined(UNITY_STEREO_MULTIVIEW_ENABLED)
+    // Array-backed eye textures use full-range UVs for each slice.
+    return ComputeNonStereoScreenPos(clipPosition);
+#else
+    return ComputeGrabScreenPos(clipPosition);
+#endif
+}
+
+inline float2 SabaDepthScreenUv(float4 screenPosition)
+{
+    float2 uv = screenPosition.xy / screenPosition.w;
+#if defined(UNITY_STEREO_INSTANCING_ENABLED) || defined(UNITY_STEREO_MULTIVIEW_ENABLED)
+    return uv;
+#else
+    return UnityStereoTransformScreenSpaceTex(uv);
+#endif
+}
+
 inline float3 SabaWaterProbeLighting(float3 worldNormal)
 {
     // Unity supplies per-renderer Light Probe SH coefficients here. When a

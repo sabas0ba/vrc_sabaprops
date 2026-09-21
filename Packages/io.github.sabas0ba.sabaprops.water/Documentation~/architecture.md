@@ -44,6 +44,8 @@ Standardはnamed GrabPass `_SabaWaterGrab`と`_CameraDepthTexture`を使用し�
 
 named GrabPassは同一camera内で共有されますが、camera、mirror、描画条件ごとのcopy costは残ります。
 Standardを広い海面へ適用するときは、shaderの算術量よりframe buffer copyとoverdrawを先に確認します。
+Single Pass Instanced／Multiviewでは画面テクスチャが眼別array sliceになるため、GrabPassと深度のUVは各slice内の0–1範囲を使います。
+double-wide方式でのみpacked stereo UV変換を適用します。Mock HMDでMulti PassとSingle Pass Instancedの左右眼描画を比較できますが、実機の表示品質や負荷は別途確認が必要です。
 
 ## Fog Volume
 

@@ -77,7 +77,7 @@ Shader "SabaProps/Water/Underwater Surface Standard"
                 output.worldNormal = UnityObjectToWorldNormal(input.normal);
                 output.uv = input.uv;
                 output.position = UnityWorldToClipPos(output.worldPosition);
-                output.grabPosition = ComputeGrabScreenPos(output.position);
+                output.grabPosition = SabaGrabScreenPosition(output.position);
                 return output;
             }
 

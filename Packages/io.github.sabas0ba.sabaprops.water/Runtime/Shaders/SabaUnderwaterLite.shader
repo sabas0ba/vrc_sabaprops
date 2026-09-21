@@ -25,6 +25,7 @@ Shader "SabaProps/Water/Underwater Lite"
             #pragma fragment frag
             #pragma multi_compile_instancing
             #include "UnityCG.cginc"
+            #include "SabaWaterCommon.cginc"
 
             UNITY_DECLARE_DEPTH_TEXTURE(_CameraDepthTexture);
             fixed4 _Tint;
@@ -67,8 +68,7 @@ Shader "SabaProps/Water/Underwater Lite"
                 float inside = 0.5001 - max(max(abs(cameraLocal.x), abs(cameraLocal.y)), abs(cameraLocal.z));
                 clip(inside);
 
-                float2 screenUv = input.screenPosition.xy / input.screenPosition.w;
-                screenUv = UnityStereoTransformScreenSpaceTex(screenUv);
+                float2 screenUv = SabaDepthScreenUv(input.screenPosition);
                 float sceneDepth = LinearEyeDepth(SAMPLE_DEPTH_TEXTURE(_CameraDepthTexture, screenUv));
                 float fog = saturate(1.0 - exp(-max(0.0, sceneDepth) * _Density));
 

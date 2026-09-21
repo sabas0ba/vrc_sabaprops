@@ -28,6 +28,7 @@ Shader "SabaProps/Water/Underwater Standard"
             #pragma fragment frag
             #pragma multi_compile_instancing
             #include "UnityCG.cginc"
+            #include "SabaWaterCommon.cginc"
 
             UNITY_DECLARE_SCREENSPACE_TEXTURE(_SabaUnderwaterGrab);
             UNITY_DECLARE_DEPTH_TEXTURE(_CameraDepthTexture);
@@ -60,7 +61,7 @@ Shader "SabaProps/Water/Underwater Standard"
                 UNITY_INITIALIZE_OUTPUT(v2f, output);
                 UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(output);
                 output.position = UnityObjectToClipPos(input.vertex);
-                output.grabPosition = ComputeGrabScreenPos(output.position);
+                output.grabPosition = SabaGrabScreenPosition(output.position);
                 output.screenPosition = ComputeNonStereoScreenPos(output.position);
                 output.worldPosition = mul(unity_ObjectToWorld, input.vertex).xyz;
                 return output;
@@ -74,8 +75,7 @@ Shader "SabaProps/Water/Underwater Standard"
                 float inside = 0.5001 - max(max(abs(cameraLocal.x), abs(cameraLocal.y)), abs(cameraLocal.z));
                 clip(inside);
 
-                float2 screenUv = input.screenPosition.xy / input.screenPosition.w;
-                screenUv = UnityStereoTransformScreenSpaceTex(screenUv);
+                float2 screenUv = SabaDepthScreenUv(input.screenPosition);
                 float waveA = sin(screenUv.y * 47.0 + _Time.y * 1.4);
                 float waveB = sin(screenUv.x * 31.0 - _Time.y * 0.9);
                 // This is deliberately only a weak volume shimmer. Strong

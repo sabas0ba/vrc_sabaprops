@@ -98,10 +98,10 @@ namespace SabaProps.Water.CITests
         }
 
         [Test]
-        public void SoftParticleDepth_UsesStereoTransformedUv()
+        public void SoftParticleDepth_UsesEyeAwareUv()
         {
             string source = ReadShaderSource(WaterAssetLibrary.FogParticleShaderName);
-            Assert.IsTrue(source.Contains("float2 depthUV = UnityStereoTransformScreenSpaceTex("));
+            Assert.IsTrue(source.Contains("float2 depthUV = SabaDepthScreenUv(input.projected)"));
             Assert.IsTrue(source.Contains("_CameraDepthTexture, depthUV"));
             Assert.IsTrue(source.Contains("ComputeNonStereoScreenPos"));
         }
@@ -112,11 +112,18 @@ namespace SabaProps.Water.CITests
             foreach (string shaderName in new[] { WaterSurfaceProfile.StandardShaderName,
                 WaterAssetLibrary.UnderwaterStandardShaderName, WaterAssetLibrary.UnderwaterSurfaceStandardShaderName })
             {
-                AssertSourceContains(shaderName, "ComputeGrabScreenPos");
+                AssertSourceContains(shaderName, "SabaGrabScreenPosition");
                 AssertSourceContains(shaderName, "UNITY_DECLARE_SCREENSPACE_TEXTURE");
                 AssertSourceContains(shaderName, "UNITY_SAMPLE_SCREENSPACE_TEXTURE");
                 Assert.IsFalse(ReadShaderSource(shaderName).Contains("tex2Dproj("));
             }
+
+            string commonSource = ReadWaterCommonSource();
+            Assert.IsTrue(commonSource.Contains("UNITY_STEREO_INSTANCING_ENABLED"));
+            Assert.IsTrue(commonSource.Contains("UNITY_STEREO_MULTIVIEW_ENABLED"));
+            Assert.IsTrue(commonSource.Contains("return ComputeNonStereoScreenPos(clipPosition)"));
+            Assert.IsTrue(commonSource.Contains("return ComputeGrabScreenPos(clipPosition)"));
+            Assert.IsTrue(commonSource.Contains("return UnityStereoTransformScreenSpaceTex(uv)"));
         }
 
         private static void AssertSourceContains(string shaderName, string expected)
@@ -132,6 +139,14 @@ namespace SabaProps.Water.CITests
             Assert.IsNotNull(shader, shaderName);
             string assetPath = AssetDatabase.GetAssetPath(shader);
             return File.ReadAllText(assetPath);
+        }
+
+        private static string ReadWaterCommonSource()
+        {
+            string waterShaderPath = AssetDatabase.GetAssetPath(
+                Shader.Find(WaterSurfaceProfile.StandardShaderName));
+            return File.ReadAllText(Path.Combine(
+                Path.GetDirectoryName(waterShaderPath), "SabaWaterCommon.cginc"));
         }
     }
 

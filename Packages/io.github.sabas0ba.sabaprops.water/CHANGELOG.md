@@ -36,7 +36,7 @@
 - 水たまりの縁・浅瀬色を不定形Meshの外周に沿ってフェードするよう修正
 - 河川Meshのboundsへ波・潮位による頂点移動を反映
 - サンプル再生成時にDroplet Projector Galleryとそのassetを保持
-- GrabPassの片眼ごとの参照と深度座標の二重ステレオ変換を修正
+- Single Pass Instanced／Multiviewで、GrabPassと深度テクスチャを各眼のarray slice内の0–1 UVで参照するよう修正
 - VPM metadataのライセンスURLを同梱MIT Licenseへ修正
 
 - Fog Particleのsoft-particle深度UVをステレオ変換に対応

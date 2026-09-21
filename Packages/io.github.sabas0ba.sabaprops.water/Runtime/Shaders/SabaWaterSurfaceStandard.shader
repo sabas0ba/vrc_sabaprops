@@ -146,7 +146,7 @@ Shader "SabaProps/Water/Surface Standard"
                 worldPosition.y += SabaTideOffset(_TideHeight, _TideSpeed);
 
                 output.pos = UnityWorldToClipPos(worldPosition);
-                output.grabPosition = ComputeGrabScreenPos(output.pos);
+                output.grabPosition = SabaGrabScreenPosition(output.pos);
                 output.screenPosition = ComputeNonStereoScreenPos(output.pos);
                 output.worldPosition = worldPosition;
                 output.worldNormal = UnityObjectToWorldNormal(v.normal);
@@ -186,12 +186,10 @@ Shader "SabaProps/Water/Surface Standard"
                 float4 refractedPosition = input.grabPosition;
                 refractedPosition.xy += reflectionNormal.xz
                     * (_RefractionStrength * refractedPosition.w);
-                // ComputeGrabScreenPos already maps packed stereo UVs; the macro selects the SPI eye slice.
                 float3 background = UNITY_SAMPLE_SCREENSPACE_TEXTURE(
                     _SabaWaterGrab, refractedPosition.xy / refractedPosition.w).rgb;
 
-                float2 screenUv = input.screenPosition.xy / input.screenPosition.w;
-                screenUv = UnityStereoTransformScreenSpaceTex(screenUv);
+                float2 screenUv = SabaDepthScreenUv(input.screenPosition);
                 float sceneEyeDepth = LinearEyeDepth(SAMPLE_DEPTH_TEXTURE(_CameraDepthTexture, screenUv));
                 float waterDepth = max(0.0, sceneEyeDepth - input.eyeDepth);
                 float depthFactor = saturate(waterDepth / max(0.01, _DepthDistance));

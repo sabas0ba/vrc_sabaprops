@@ -32,6 +32,7 @@ Shader "SabaProps/Water/Fog Volume"
             #pragma shader_feature_local _FOG_HIGH_QUALITY
             #pragma multi_compile_instancing
             #include "UnityCG.cginc"
+            #include "SabaWaterCommon.cginc"
 
             UNITY_DECLARE_DEPTH_TEXTURE(_CameraDepthTexture);
             fixed4 _Color;
@@ -100,8 +101,7 @@ Shader "SabaProps/Water/Fog Volume"
                 float leave = min(min(farther.x, farther.y), farther.z);
                 enter = max(enter, 0.0);
 
-                float2 screenUv = input.screenPosition.xy / input.screenPosition.w;
-                screenUv = UnityStereoTransformScreenSpaceTex(screenUv);
+                float2 screenUv = SabaDepthScreenUv(input.screenPosition);
                 float sceneDepth = LinearEyeDepth(SAMPLE_DEPTH_TEXTURE(
                     _CameraDepthTexture, screenUv));
                 // Eye depth is linear along this view ray, so it can trim the
