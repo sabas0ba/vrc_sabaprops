@@ -28,7 +28,9 @@ namespace SabaProps.Foliage.Editors
         /// </summary>
         private const int InstancedRendererWarning = 10000;
 
-        public static FoliageBuildStats Build(FoliageField field)
+        public static FoliageBuildStats Build(
+            FoliageField field,
+            bool recordUndo = true)
         {
             if (field == null)
             {
@@ -39,8 +41,11 @@ namespace SabaProps.Foliage.Editors
 
             // Clearing and rebuilding are separate operations internally; collapse
             // them so a single Ctrl+Z undoes the whole build.
-            int undoGroup = Undo.GetCurrentGroup();
-            Undo.SetCurrentGroupName("Build Foliage");
+            int undoGroup = recordUndo ? Undo.GetCurrentGroup() : -1;
+            if (recordUndo)
+            {
+                Undo.SetCurrentGroupName("Build Foliage");
+            }
 
             try
             {
@@ -97,7 +102,7 @@ namespace SabaProps.Foliage.Editors
                 }
 
                 EditorUtility.DisplayProgressBar("SabaProps Foliage", "既存の生成物を削除中...", 0.3f);
-                Clear(field);
+                Clear(field, recordUndo);
 
                 var root = new GameObject(FoliageField.GeneratedRootName);
                 root.transform.SetParent(field.transform, false);
@@ -129,11 +134,17 @@ namespace SabaProps.Foliage.Editors
                 stats.buildSeconds = stopwatch.ElapsedMilliseconds / 1000f;
                 field.lastBuildStats = stats;
 
-                Undo.RegisterCreatedObjectUndo(root, "Build Foliage");
+                if (recordUndo)
+                {
+                    Undo.RegisterCreatedObjectUndo(root, "Build Foliage");
+                }
                 EditorUtility.SetDirty(field);
                 MarkSceneDirty(field);
 
-                Undo.CollapseUndoOperations(undoGroup);
+                if (recordUndo)
+                {
+                    Undo.CollapseUndoOperations(undoGroup);
+                }
 
                 ReportScaleWarnings(stats);
                 return stats;
@@ -150,7 +161,7 @@ namespace SabaProps.Foliage.Editors
         /// belonged to it. Objects a user parented under the field by hand are
         /// left alone: only the container this builder created is touched.
         /// </summary>
-        public static void Clear(FoliageField field)
+        public static void Clear(FoliageField field, bool recordUndo = true)
         {
             if (field == null)
             {
@@ -165,7 +176,14 @@ namespace SabaProps.Foliage.Editors
 
             if (existing != null)
             {
-                Undo.DestroyObjectImmediate(existing.gameObject);
+                if (recordUndo)
+                {
+                    Undo.DestroyObjectImmediate(existing.gameObject);
+                }
+                else
+                {
+                    Object.DestroyImmediate(existing.gameObject);
+                }
             }
 
             field.generatedRoot = null;

@@ -11,25 +11,168 @@ using UnityEngine.SceneManagement;
 
 namespace SabaProps.Foliage.CITests
 {
+    public class AuthoringComponentBuildSafetyTests
+    {
+        [Test]
+        public void AutoRebuildCoalescesRepeatedChangesForOneComponent()
+        {
+            var owner = new GameObject("Auto Rebuild Owner");
+            int firstBuilds = 0;
+            int latestBuilds = 0;
+            try
+            {
+                SabaPropsAutoRebuild.Schedule(owner, () => firstBuilds++);
+                SabaPropsAutoRebuild.Schedule(owner, () => latestBuilds++);
+
+                MethodInfo flush = typeof(SabaPropsAutoRebuild).GetMethod(
+                    "FlushDueBuilds",
+                    BindingFlags.NonPublic | BindingFlags.Static);
+                Assert.IsNotNull(flush);
+
+                // The production path waits 0.4 seconds. Move the editor clock
+                // far enough ahead without making the test suite sleep.
+                FieldInfo pendingField = typeof(SabaPropsAutoRebuild).GetField(
+                    "Pending",
+                    BindingFlags.NonPublic | BindingFlags.Static);
+                Assert.IsNotNull(pendingField);
+                var pending = pendingField.GetValue(null) as System.Collections.IDictionary;
+                Assert.IsNotNull(pending);
+                object pendingBuild = pending[owner.GetInstanceID()];
+                Assert.IsNotNull(pendingBuild);
+                FieldInfo dueAt = pendingBuild.GetType().GetField("dueAt");
+                Assert.IsNotNull(dueAt);
+                dueAt.SetValue(pendingBuild, double.MinValue);
+
+                flush.Invoke(null, null);
+
+                Assert.AreEqual(0, firstBuilds,
+                    "an older queued rebuild was not replaced");
+                Assert.AreEqual(1, latestBuilds,
+                    "the latest change did not produce exactly one rebuild");
+            }
+            finally
+            {
+                SabaPropsAutoRebuild.Cancel(owner);
+                Object.DestroyImmediate(owner);
+            }
+        }
+
+        [Test]
+        public void FoliageAuthoringComponentsAreExcludedButRenderersRemain()
+        {
+            var objects = new List<GameObject>();
+            try
+            {
+                var fieldObject = new GameObject("Field");
+                objects.Add(fieldObject);
+                AssertExcluded(fieldObject.AddComponent<FoliageField>());
+
+                var chunkObject = new GameObject("Chunk");
+                objects.Add(chunkObject);
+                AssertExcluded(chunkObject.AddComponent<FoliageChunk>());
+
+                var vineObject = new GameObject("Vine");
+                objects.Add(vineObject);
+                SurfaceVine vine = vineObject.AddComponent<SurfaceVine>();
+                AssertExcluded(vine);
+                AssertIncluded(vineObject.GetComponent<MeshFilter>());
+                AssertIncluded(vineObject.GetComponent<MeshRenderer>());
+
+                var patchObject = new GameObject("Patch");
+                objects.Add(patchObject);
+                RhizomePatch patch = patchObject.AddComponent<RhizomePatch>();
+                AssertExcluded(patch);
+                AssertIncluded(patchObject.GetComponent<MeshFilter>());
+                AssertIncluded(patchObject.GetComponent<MeshRenderer>());
+            }
+            finally
+            {
+                foreach (GameObject gameObject in objects)
+                {
+                    Object.DestroyImmediate(gameObject);
+                }
+            }
+        }
+
+        private static void AssertExcluded(Component component)
+        {
+            Assert.AreNotEqual(
+                0,
+                (int)(component.hideFlags & HideFlags.DontSaveInBuild),
+                component.GetType().Name + " must not be included in a world build");
+        }
+
+        private static void AssertIncluded(Component component)
+        {
+            Assert.AreEqual(
+                0,
+                (int)(component.hideFlags & HideFlags.DontSaveInBuild),
+                component.GetType().Name + " is baked output and must remain in the build");
+        }
+    }
+
     public class FoliageFieldWizardTests
     {
         [Test]
         public void DefaultWeights_MatchTheNewSpeciesPresets()
         {
-            MethodInfo defaultWeight = typeof(FoliageFieldWizard).GetMethod(
-                "DefaultWeight", BindingFlags.NonPublic | BindingFlags.Static);
+            Assert.AreEqual(0.45f, FoliageAssetLibrary.DefaultFieldWeight(FoliageSpeciesKind.SmallFlower));
+            Assert.AreEqual(0.3f, FoliageAssetLibrary.DefaultFieldWeight(FoliageSpeciesKind.Weed));
+            Assert.AreEqual(0.5f, FoliageAssetLibrary.DefaultFieldWeight(FoliageSpeciesKind.Grain));
+            Assert.AreEqual(0.22f, FoliageAssetLibrary.DefaultFieldWeight(FoliageSpeciesKind.Dandelion));
+            Assert.AreEqual(0.3f, FoliageAssetLibrary.DefaultFieldWeight(FoliageSpeciesKind.Vine));
+        }
+    }
 
-            Assert.IsNotNull(defaultWeight, "the field wizard has no default-weight policy");
+    public class FoliagePaletteTests
+    {
+        [Test]
+        public void WorkingCopy_IsIndependentFromTheSourceAsset()
+        {
+            MethodInfo createWorkingCopy = typeof(FoliagePaletteWindow).GetMethod(
+                "CreateWorkingCopy", BindingFlags.NonPublic | BindingFlags.Static);
+            Assert.IsNotNull(createWorkingCopy, "the palette has no isolated edit path");
 
-            Assert.AreEqual(0.45f, DefaultWeight(defaultWeight, FoliageSpeciesKind.SmallFlower));
-            Assert.AreEqual(0.3f, DefaultWeight(defaultWeight, FoliageSpeciesKind.Weed));
-            Assert.AreEqual(0.5f, DefaultWeight(defaultWeight, FoliageSpeciesKind.Grain));
-            Assert.AreEqual(0.22f, DefaultWeight(defaultWeight, FoliageSpeciesKind.Dandelion));
+            var source = ScriptableObject.CreateInstance<FoliageSpecies>();
+            source.grass.height = 0.72f;
+
+            var copy = (FoliageSpecies)createWorkingCopy.Invoke(
+                null, new object[] { source });
+
+            try
+            {
+                Assert.IsNotNull(copy);
+                Assert.AreNotEqual(source, copy);
+                Assert.IsNull(copy.generatedMesh);
+
+                copy.grass.height = 0.31f;
+                Assert.AreEqual(0.72f, source.grass.height, 1e-5f,
+                    "editing the working copy changed the source Species");
+            }
+            finally
+            {
+                Object.DestroyImmediate(copy);
+                Object.DestroyImmediate(source);
+            }
         }
 
-        private static float DefaultWeight(MethodInfo method, FoliageSpeciesKind kind)
+        [Test]
+        public void PlacementRay_FallsBackToTheWorldGroundPlane()
         {
-            return (float)method.Invoke(null, new object[] { kind });
+            MethodInfo findPoint = typeof(FoliagePaletteWindow).GetMethod(
+                "TryFindPlacementPoint", BindingFlags.NonPublic | BindingFlags.Static);
+            Assert.IsNotNull(findPoint, "the palette has no Scene placement path");
+
+            var ray = new Ray(new Vector3(12345f, 8f, 12345f), Vector3.down);
+            var arguments = new object[] { ray, null };
+
+            bool found = (bool)findPoint.Invoke(null, arguments);
+            var point = (Vector3)arguments[1];
+
+            Assert.IsTrue(found);
+            Assert.AreEqual(12345f, point.x, 1e-4f);
+            Assert.AreEqual(0f, point.y, 1e-4f);
+            Assert.AreEqual(12345f, point.z, 1e-4f);
         }
     }
 
@@ -354,6 +497,13 @@ namespace SabaProps.Foliage.CITests
                 AssertMeshIsWellFormed(dandelion, "upgraded dandelion");
                 Assert.IsNotNull(species.dandelion);
                 Object.DestroyImmediate(dandelion);
+
+                species.kind = FoliageSpeciesKind.Vine;
+                species.vine = null;
+                Mesh vine = FoliageMeshBuilder.Build(species);
+                AssertMeshIsWellFormed(vine, "upgraded vine");
+                Assert.IsNotNull(species.vine);
+                Object.DestroyImmediate(vine);
             }
             finally
             {
@@ -422,6 +572,129 @@ namespace SabaProps.Foliage.CITests
             {
                 Object.DestroyImmediate(a);
                 Object.DestroyImmediate(b);
+            }
+        }
+    }
+
+    public class FoliageScatterCompatibilityTests
+    {
+        [Test]
+        public void SharedSurfaceRefactorPreservesTheExistingSeedSequence()
+        {
+            GameObject ground = GameObject.CreatePrimitive(PrimitiveType.Plane);
+            GameObject owner = new GameObject("Scatter Compatibility Field");
+            FoliageSpecies species = ScriptableObject.CreateInstance<FoliageSpecies>();
+            Material material = new Material(Shader.Find(FoliageShaderContract.ShaderName));
+
+            try
+            {
+                ground.transform.localScale = new Vector3(5f, 1f, 5f);
+                species.material = material;
+                species.minSpacing = 0.05f;
+                species.scaleRange = new Vector2(0.85f, 1.2f);
+                species.maxTilt = 7f;
+                species.alignToGroundNormal = 0.3f;
+                species.slopeLimits = new Vector2(0f, 40f);
+
+                FoliageField field = owner.AddComponent<FoliageField>();
+                field.shape = FoliageAreaShape.Rectangle;
+                field.size = new Vector2(8f, 8f);
+                field.density = 4f;
+                field.seed = 1234;
+                field.raycastHeight = 10f;
+                field.raycastDistance = 40f;
+                field.species.Add(species);
+
+                List<FoliageInstance> instances = FoliageScatterer.Scatter(field, out string error);
+                Assert.IsNull(error);
+                Assert.Greater(instances.Count, 5);
+
+                Vector3[] positions =
+                {
+                    new Vector3(-3.656223f, -0.01f, -3.53236771f),
+                    new Vector3(-3.40992451f, -0.01f, -3.73406458f),
+                    new Vector3(-2.58091545f, -0.01f, -3.790736f),
+                    new Vector3(-2.29066014f, -0.01f, -3.83968925f),
+                    new Vector3(-1.51888144f, -0.01f, -3.96986532f),
+                };
+                float[] scales =
+                {
+                    1.04562247f,
+                    1.14164317f,
+                    0.931809545f,
+                    1.08452082f,
+                    1.02049589f,
+                };
+
+                for (int i = 0; i < positions.Length; i++)
+                {
+                    Assert.AreEqual(positions[i].x, instances[i].Position.x, 1e-5f, "position.x " + i);
+                    Assert.AreEqual(positions[i].y, instances[i].Position.y, 1e-5f, "position.y " + i);
+                    Assert.AreEqual(positions[i].z, instances[i].Position.z, 1e-5f, "position.z " + i);
+                    Assert.AreEqual(scales[i], instances[i].Scale, 1e-5f, "scale " + i);
+                }
+            }
+            finally
+            {
+                Object.DestroyImmediate(owner);
+                Object.DestroyImmediate(ground);
+                Object.DestroyImmediate(species);
+                Object.DestroyImmediate(material);
+            }
+        }
+
+        [Test]
+        public void VineHangsBelowItsAnchorAndKeepsRigidRoots()
+        {
+            var species = ScriptableObject.CreateInstance<FoliageSpecies>();
+            try
+            {
+                species.kind = FoliageSpeciesKind.Vine;
+                species.meshSeed = 79;
+                Mesh mesh = FoliageMeshBuilder.Build(species);
+                try
+                {
+                    Assert.IsNotNull(mesh);
+                    Assert.Greater(mesh.vertexCount, 0);
+                    Assert.Greater(mesh.triangles.Length, 0);
+
+                    float lowest = 0f;
+                    float highest = float.MinValue;
+                    foreach (Vector3 vertex in mesh.vertices)
+                    {
+                        lowest = Mathf.Min(lowest, vertex.y);
+                        highest = Mathf.Max(highest, vertex.y);
+                    }
+                    Assert.Less(lowest, -1f);
+                    Assert.LessOrEqual(highest, 1e-5f,
+                        "a hanging vine must not grow above its ledge anchor");
+
+                    var uv0 = new List<Vector2>();
+                    var uv3 = new List<Vector4>();
+                    mesh.GetUVs(0, uv0);
+                    mesh.GetUVs(FoliageShaderContract.WindDataUvChannel, uv3);
+
+                    int rigidRoots = 0;
+                    for (int i = 0; i < mesh.vertexCount; i++)
+                    {
+                        Assert.AreEqual(0f, uv3[i].y, 1e-6f,
+                            "every strand wind pivot must stay on the ledge");
+                        if (Mathf.Abs(mesh.vertices[i].y) <= 1e-5f &&
+                            uv0[i].y <= 1e-5f)
+                        {
+                            rigidRoots++;
+                        }
+                    }
+                    Assert.Greater(rigidRoots, 0);
+                }
+                finally
+                {
+                    Object.DestroyImmediate(mesh);
+                }
+            }
+            finally
+            {
+                Object.DestroyImmediate(species);
             }
         }
     }
@@ -643,7 +916,7 @@ namespace SabaProps.Foliage.CITests
 
         /// <summary>
         /// Built once for the whole fixture. Generating the demo writes a merged
-        /// mesh asset per chunk per species across 28 plots, and every one
+        /// mesh asset per chunk per species across 29 plots, and every one
         /// is an AssetDatabase import: doing that per test costs minutes.
         /// Nothing here modifies the scene, so one build serves them all.
         /// </summary>
@@ -674,7 +947,7 @@ namespace SabaProps.Foliage.CITests
             // placed something: an empty plot in a showcase reads as a broken
             // package, and one silently empty plot is easy to miss by eye.
             var fields = new List<FoliageField>(Object.FindObjectsOfType<FoliageField>());
-            Assert.AreEqual(28, fields.Count,
+            Assert.AreEqual(29, fields.Count,
                 "the demo plot count changed; update its documented layout and aggregate statistics");
 
             foreach (FoliageField field in fields)

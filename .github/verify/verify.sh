@@ -50,6 +50,7 @@ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO="$(cd "$HERE/../.." && pwd)"
 PACKAGE="${1:-$REPO/Packages/io.github.sabas0ba.sabaprops.foliage}"
 STAGECAM="$REPO/Packages/io.github.sabas0ba.sabaprops.stagecam"
+TREE_PACKAGE="${TREE_PACKAGE:-$REPO/Packages/io.github.sabas0ba.sabaprops.trees}"
 
 WORK="${VERIFY_WORK_DIR:-$REPO/.verify}"
 REFS="$WORK/refs"
@@ -129,8 +130,10 @@ COMMON=(-nostdlib+ -noconfig -langversion:9.0 -nowarn:1701,1702 -target:library 
 
 csc() { dotnet "$CSC_DLL" "$@"; }
 
-# All Python in this repository runs in a pinned container; see run.sh.
-PYTHON="$REPO/.github/scripts/run.sh"
+# CI and host runs use the digest-pinned Python container. A separately pinned
+# development container can name the interpreter from its own immutable Nix
+# closure to avoid nesting another container engine.
+PYTHON="${VERIFY_PYTHON:-$REPO/.github/scripts/run.sh}"
 
 # ---------------------------------------------------------------------------
 log "Compiling Runtime assembly (real UnityEngine references)"
@@ -141,6 +144,14 @@ mapfile -t RUNTIME_SOURCES < <(find "$PACKAGE/Runtime" -name '*.cs' | sort)
 csc "${COMMON[@]}" "${BCL[@]}" "${UNITY_ARGS[@]}" \
     -out:"$OUT/SabaProps.Foliage.Runtime.dll" "${RUNTIME_SOURCES[@]}"
 echo "ok: ${#RUNTIME_SOURCES[@]} file(s)"
+
+if [ -d "$TREE_PACKAGE/Runtime" ]; then
+    mapfile -t TREE_RUNTIME_SOURCES < <(find "$TREE_PACKAGE/Runtime" -name '*.cs' | sort)
+    csc "${COMMON[@]}" "${BCL[@]}" "${UNITY_ARGS[@]}" \
+        -r:"$OUT/SabaProps.Foliage.Runtime.dll" \
+        -out:"$OUT/SabaProps.Trees.Runtime.dll" "${TREE_RUNTIME_SOURCES[@]}"
+    echo "ok: ${#TREE_RUNTIME_SOURCES[@]} tree runtime file(s)"
+fi
 
 # ---------------------------------------------------------------------------
 log "Compiling UnityEditor stub"
@@ -159,6 +170,17 @@ csc "${COMMON[@]}" "${BCL[@]}" "${UNITY_ARGS[@]}" \
     -r:"$OUT/SabaProps.Foliage.Runtime.dll" -r:"$OUT/UnityEditor.dll" \
     -out:"$OUT/SabaProps.Foliage.Editor.dll" "${EDITOR_SOURCES[@]}"
 echo "ok: ${#EDITOR_SOURCES[@]} file(s)"
+
+if [ -d "$TREE_PACKAGE/Editor" ]; then
+    mapfile -t TREE_EDITOR_SOURCES < <(find "$TREE_PACKAGE/Editor" -name '*.cs' | sort)
+    csc "${COMMON[@]}" "${BCL[@]}" "${UNITY_ARGS[@]}" \
+        -r:"$OUT/SabaProps.Foliage.Runtime.dll" \
+        -r:"$OUT/SabaProps.Foliage.Editor.dll" \
+        -r:"$OUT/SabaProps.Trees.Runtime.dll" \
+        -r:"$OUT/UnityEditor.dll" \
+        -out:"$OUT/SabaProps.Trees.Editor.dll" "${TREE_EDITOR_SOURCES[@]}"
+    echo "ok: ${#TREE_EDITOR_SOURCES[@]} tree editor file(s)"
+fi
 
 # ---------------------------------------------------------------------------
 log "Compiling the documentation capture tool"
@@ -191,6 +213,8 @@ if [ -d "$TEST_DIR" ]; then
         csc "${COMMON[@]}" "${BCL[@]}" "${UNITY_ARGS[@]}" \
             -r:"$OUT/SabaProps.Foliage.Runtime.dll" \
             -r:"$OUT/SabaProps.Foliage.Editor.dll" \
+            -r:"$OUT/SabaProps.Trees.Runtime.dll" \
+            -r:"$OUT/SabaProps.Trees.Editor.dll" \
             -r:"$OUT/UnityEditor.dll" \
             -out:"$OUT/SabaProps.Foliage.CITests.dll" "${TEST_SOURCES[@]}"
         echo "ok: ${#TEST_SOURCES[@]} file(s)"
@@ -320,6 +344,27 @@ for variant in "${variants[@]}"; do
     fi
 done
 
+# Soft PropsはVRChat/Udon型を参照するためC#のoffline compile対象には
+# 入れないが、shader本体は同じglslang経路で検査できる。
+SOFT_SHADER_DIR="$REPO/Packages/io.github.sabas0ba.sabaprops.softprops/Runtime/Shaders"
+SOFT_SHADER="$SOFT_SHADER_DIR/SabaSoftSurface.shader"
+if [ -f "$SOFT_SHADER" ]; then
+    "$PYTHON" .github/verify/extract_shader_body.py \
+        "$SOFT_SHADER" "$OUT/soft_shader_body.hlsl"
+    cp "$HERE/soft_shader_harness.hlsl" "$OUT/soft_shader_harness.hlsl"
+
+    if glslangValidator -D -e main -S vert --target-env vulkan1.0 \
+        -o "$OUT/soft_shader.spv" \
+        -I"$SOFT_SHADER_DIR" -I"$OUT" "$OUT/soft_shader_harness.hlsl" >/dev/null; then
+        echo "ok: SabaProps/Soft Surface"
+    else
+        glslangValidator -D -e main -S vert --target-env vulkan1.0 \
+            -o "$OUT/soft_shader.spv" \
+            -I"$SOFT_SHADER_DIR" -I"$OUT" "$OUT/soft_shader_harness.hlsl" || true
+        fail "soft surface shader failed"
+    fi
+fi
+
 # ---------------------------------------------------------------------------
 log "Running mesh generation (no Unity)"
 # ---------------------------------------------------------------------------
@@ -358,9 +403,12 @@ csc -nologo -langversion:9.0 -target:exe -nostdlib+ -noconfig \
     "$PACKAGE/Runtime/FoliageRandom.cs" \
     "$PACKAGE/Runtime/FoliageSeason.cs" \
     "$PACKAGE/Runtime/FoliageSpecies.cs" \
+    "$PACKAGE/Runtime/SurfaceGrowth.cs" \
     "$PACKAGE/Editor/FoliageMeshBuffer.cs" \
     "$PACKAGE/Editor/FoliageMeshBuilder.cs" \
-    "$PACKAGE/Editor/FoliageSeasonPass.cs"
+    "$PACKAGE/Editor/FoliageSeasonPass.cs" \
+    "$PACKAGE/Editor/SurfaceGrowthGraphBuilder.cs" \
+    "$PACKAGE/Editor/SurfaceGrowthMeshBuilder.cs"
 
 cat > "$OFFLINE_OUT/OfflineMeshTests.runtimeconfig.json" <<'JSON'
 {
@@ -425,7 +473,9 @@ rm -rf "$OUT/site/docs"
 # ---------------------------------------------------------------------------
 log "Validating manifests"
 # ---------------------------------------------------------------------------
-"$PYTHON" .github/scripts/check_package.py "$REPO" "$PACKAGE"
-"$PYTHON" .github/scripts/check_package.py "$REPO" "$STAGECAM"
+for package_dir in "$REPO"/Packages/*; do
+    [ -d "$package_dir" ] || continue
+    "$PYTHON" .github/scripts/check_package.py "$REPO" "$package_dir"
+done
 
 log "All checks passed"

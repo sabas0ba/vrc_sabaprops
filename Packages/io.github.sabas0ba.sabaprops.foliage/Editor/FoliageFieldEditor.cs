@@ -35,6 +35,7 @@ namespace SabaProps.Foliage.Editors
 
         private SerializedProperty _outputMode;
         private SerializedProperty _chunkSize;
+        private SerializedProperty _autoRebuild;
 
         private bool _showGround = true;
         private bool _showMask;
@@ -70,6 +71,14 @@ namespace SabaProps.Foliage.Editors
 
             _outputMode = serializedObject.FindProperty("outputMode");
             _chunkSize = serializedObject.FindProperty("chunkSize");
+            _autoRebuild = serializedObject.FindProperty("autoRebuild");
+
+            Undo.undoRedoPerformed += OnUndoRedo;
+        }
+
+        private void OnDisable()
+        {
+            Undo.undoRedoPerformed -= OnUndoRedo;
         }
 
         public override void OnInspectorGUI()
@@ -84,8 +93,12 @@ namespace SabaProps.Foliage.Editors
             DrawMask();
             DrawSpecies();
             DrawOutput(field);
+            DrawAutoRebuild();
 
-            serializedObject.ApplyModifiedProperties();
+            if (serializedObject.ApplyModifiedProperties())
+            {
+                ScheduleAutoRebuilds();
+            }
 
             EditorGUILayout.Space(8f);
             DrawActions();
@@ -286,6 +299,7 @@ namespace SabaProps.Foliage.Editors
                 {
                     foreach (Object each in targets)
                     {
+                        SabaPropsAutoRebuild.Cancel(each);
                         FoliageFieldBuilder.Build((FoliageField)each);
                     }
                 }
@@ -294,10 +308,54 @@ namespace SabaProps.Foliage.Editors
                 {
                     foreach (Object each in targets)
                     {
+                        SabaPropsAutoRebuild.Cancel(each);
                         FoliageFieldBuilder.Clear((FoliageField)each);
                     }
                 }
             }
+        }
+
+        private void DrawAutoRebuild()
+        {
+            EditorGUILayout.Space(6f);
+            EditorGUILayout.PropertyField(
+                _autoRebuild,
+                new GUIContent(SabaPropsEditorLocalization.Text(
+                    "値変更時に自動再生成",
+                    "Auto Rebuild on Changes")));
+            EditorGUILayout.HelpBox(
+                SabaPropsEditorLocalization.Text(
+                    "生成済みの内容だけを、値・範囲・Undo/Redo の変更後に更新します。初回は Generate を使用してください。Component は World ビルド時に自動除外されるため、手動で削除する必要はありません。",
+                    "Updates existing generated content after value, area, or Undo/Redo changes. Use Generate for the first build. The component is automatically excluded from world builds and does not need to be removed manually."),
+                MessageType.None);
+        }
+
+        private void OnUndoRedo()
+        {
+            ScheduleAutoRebuilds();
+        }
+
+        private void ScheduleAutoRebuilds()
+        {
+            foreach (Object each in targets)
+            {
+                var field = each as FoliageField;
+                if (field == null || !field.autoRebuild || !HasGeneratedOutput(field))
+                {
+                    SabaPropsAutoRebuild.Cancel(each);
+                    continue;
+                }
+
+                SabaPropsAutoRebuild.Schedule(
+                    field,
+                    () => FoliageFieldBuilder.Build(field, false));
+            }
+        }
+
+        private static bool HasGeneratedOutput(FoliageField field)
+        {
+            return field.generatedRoot != null ||
+                field.transform.Find(FoliageField.GeneratedRootName) != null;
         }
 
         private void DrawStats(FoliageField field)
@@ -355,6 +413,8 @@ namespace SabaProps.Foliage.Editors
                     {
                         Undo.RecordObject(field, "Resize Foliage Field");
                         field.radius = Mathf.Max(0.1f, radius);
+                        EditorUtility.SetDirty(field);
+                        ScheduleAutoRebuilds();
                     }
                 }
                 else
@@ -376,6 +436,8 @@ namespace SabaProps.Foliage.Editors
                         field.size = new Vector2(
                             Mathf.Max(0.1f, halfX * 2f),
                             Mathf.Max(0.1f, halfZ * 2f));
+                        EditorUtility.SetDirty(field);
+                        ScheduleAutoRebuilds();
                     }
                 }
             }

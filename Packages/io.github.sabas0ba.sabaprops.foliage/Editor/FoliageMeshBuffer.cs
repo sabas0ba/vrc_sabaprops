@@ -13,6 +13,12 @@ namespace SabaProps.Foliage.Editors
         public readonly List<Vector3> Positions = new List<Vector3>();
         public readonly List<Vector3> Normals = new List<Vector3>();
         public readonly List<Color> Colors = new List<Color>();
+        /// <summary>
+        /// x = texture data. y = bend coordinate, encoded as -(1 + bend)
+        /// for vertices that require one-sided surface-wind clipping.
+        /// Keeping UV0 two-dimensional avoids an extra vertex stream and
+        /// preserves the existing generated-mesh layout.
+        /// </summary>
         public readonly List<Vector2> Uv0 = new List<Vector2>();
 
         /// <summary>xyz = element root in object space, w = wind stiffness.</summary>
@@ -48,12 +54,21 @@ namespace SabaProps.Foliage.Editors
             get { return Triangles.Count / 3; }
         }
 
-        public int AddVertex(Vector3 position, Vector3 normal, Color color, Vector2 uv0, Vector4 uv3)
+        public int AddVertex(
+            Vector3 position,
+            Vector3 normal,
+            Color color,
+            Vector2 uv0,
+            Vector4 uv3,
+            bool constrainWindToSurface = false)
         {
             Positions.Add(position);
             Normals.Add(normal);
             Colors.Add(color);
-            Uv0.Add(uv0);
+            float encodedBend = constrainWindToSurface
+                ? -1f - uv0.y
+                : uv0.y;
+            Uv0.Add(new Vector2(uv0.x, encodedBend));
             Uv3.Add(uv3);
             SeasonWeights.Add(SeasonWeight);
             return Positions.Count - 1;
