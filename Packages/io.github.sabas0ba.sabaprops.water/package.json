@@ -9,7 +9,7 @@
     "url": "https://github.com/sabas0ba"
   },
   "license": "MIT",
-  "licensesUrl": "https://github.com/sabas0ba/vrc_sabaprops/blob/main/LICENSE",
+  "licensesUrl": "https://github.com/sabas0ba/vrc_sabaprops/blob/main/Packages/io.github.sabas0ba.sabaprops.water/LICENSE.md",
   "documentationUrl": "https://github.com/sabas0ba/vrc_sabaprops/blob/main/Packages/io.github.sabas0ba.sabaprops.water/README.md",
   "changelogUrl": "https://github.com/sabas0ba/vrc_sabaprops/blob/main/Packages/io.github.sabas0ba.sabaprops.water/CHANGELOG.md",
   "vpmDependencies": {},

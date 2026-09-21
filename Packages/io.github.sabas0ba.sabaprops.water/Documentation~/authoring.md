@@ -10,6 +10,8 @@
 
 水たまりの外形はMesh自体でも不規則になります。Materialの`UV Edge Fade`は透明度をさらに落とすため、
 不透明な外周が必要な場合は0へ戻します。
+新規生成MeshはUV2に外周からの距離を保存し、`UV Edge Fade`と浅瀬色を実際の輪郭に沿って計算します。
+既存のstamp MeshはこのUV2を持たないため、輪郭に沿うフェードを適用するには再配置してください。
 
 風景を映す場合は水たまりを覆うReflection Probeを置き、Box Projectionを有効にします。静的WorldではBaked、
 動く空や時間帯が必要な場合はRealtime + On Awakeを基準にします。GalleryはLite=64、Standard=128です。
@@ -41,6 +43,8 @@ Shader内のfoamは広域水面全体で同じ計算を行います。落差上�
 3. `Width`を設定します。
 4. 曲率が大きい区間だけ`Subdivisions`を増やします。
 5. `UV Meters Per Tile`でflow patternの長さを調整します。
+
+波・潮位による頂点移動を含む描画boundsは`Rebuild Mesh`で更新されます。既存のRiverも一度Rebuildしてください。
 
 幅が急変する河川は現時点の一定幅pathでは表現しません。区間ごとに複数pathへ分けるか、生成Meshを通常の
 modeling toolで編集します。岸への自動intersectionやterrain carvingは行いません。

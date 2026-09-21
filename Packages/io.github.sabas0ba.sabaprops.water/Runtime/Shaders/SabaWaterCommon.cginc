@@ -273,6 +273,14 @@ inline float SabaUvEdgeFade(float2 uv, float fadeWidth)
     return lerp(1.0, faded, enabled);
 }
 
+// Puddles store ring distance in UV2.x and a -1 marker in UV2.y.
+inline float SabaUvEdgeFade(float4 uv, float fadeWidth)
+{
+    float radial = smoothstep(0.0, max(fadeWidth, 1e-4), uv.z);
+    radial = lerp(1.0, radial, step(1e-4, fadeWidth));
+    return lerp(SabaUvEdgeFade(uv.xy, fadeWidth), radial, step(0.5, -uv.w));
+}
+
 inline float SabaBoundaryDirectionMask(
     float3 worldNormal,
     float4 upDown,

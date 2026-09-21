@@ -103,6 +103,20 @@ namespace SabaProps.Water.CITests
             string source = ReadShaderSource(WaterAssetLibrary.FogParticleShaderName);
             Assert.IsTrue(source.Contains("float2 depthUV = UnityStereoTransformScreenSpaceTex("));
             Assert.IsTrue(source.Contains("_CameraDepthTexture, depthUV"));
+            Assert.IsTrue(source.Contains("ComputeNonStereoScreenPos"));
+        }
+
+        [Test]
+        public void GrabShaders_UseEyeAwareScreenTextureSampling()
+        {
+            foreach (string shaderName in new[] { WaterSurfaceProfile.StandardShaderName,
+                WaterAssetLibrary.UnderwaterStandardShaderName, WaterAssetLibrary.UnderwaterSurfaceStandardShaderName })
+            {
+                AssertSourceContains(shaderName, "ComputeGrabScreenPos");
+                AssertSourceContains(shaderName, "UNITY_DECLARE_SCREENSPACE_TEXTURE");
+                AssertSourceContains(shaderName, "UNITY_SAMPLE_SCREENSPACE_TEXTURE");
+                Assert.IsFalse(ReadShaderSource(shaderName).Contains("tex2Dproj("));
+            }
         }
 
         private static void AssertSourceContains(string shaderName, string expected)
@@ -123,6 +137,29 @@ namespace SabaProps.Water.CITests
 
     public class WaterMeshTests
     {
+        [Test]
+        public void PuddlePerimeter_CoversEveryOuterVertexForIrregularShapes()
+        {
+            foreach (float irregularity in new[] { 0f, 0.45f })
+            {
+                Mesh mesh = WaterMeshBuilder.BuildPuddle(2f, 2.3f, 4, 32, 73, irregularity);
+                try
+                {
+                    Assert.AreEqual(mesh.vertexCount, mesh.uv2.Length);
+                    Assert.AreEqual(new Vector2(1f, -1f), mesh.uv2[0]);
+                    for (int ring = 1; ring <= 4; ring++)
+                    {
+                        for (int segment = 0; segment < 32; segment++)
+                        {
+                            Assert.AreEqual(new Vector2(1f - ring / 4f, -1f),
+                                mesh.uv2[1 + (ring - 1) * 32 + segment]);
+                        }
+                    }
+                }
+                finally { Object.DestroyImmediate(mesh); }
+            }
+        }
+
         [Test]
         public void Puddle_IsFiniteAndHasExpectedTopology()
         {
@@ -325,6 +362,46 @@ namespace SabaProps.Water.CITests
                 if (originalMeshPath != null) AssetDatabase.DeleteAsset(originalMeshPath);
                 if (rebuiltMeshPath != null) AssetDatabase.DeleteAsset(rebuiltMeshPath);
             }
+        }
+
+        [Test]
+        public void RiverBounds_ContainWorldDisplacementWhenRotatedAndScaled()
+        {
+            var river = new GameObject("Bounds River");
+            try
+            {
+                river.transform.rotation = Quaternion.Euler(20f, 10f, 30f);
+                river.transform.localScale = new Vector3(2f, 0.25f, 1.5f);
+                Mesh mesh = WaterPathEditor.Rebuild(river.AddComponent<WaterPath>());
+                Bounds bounds = mesh.bounds;
+                bounds.Expand(0.001f);
+                foreach (Vector3 vertex in mesh.vertices)
+                {
+                    foreach (float direction in new[] { -1f, 1f })
+                    {
+                        Vector3 displaced = river.transform.TransformPoint(vertex) + Vector3.up * direction;
+                        Assert.IsTrue(bounds.Contains(river.transform.InverseTransformPoint(displaced)));
+                    }
+                }
+            }
+            finally { Object.DestroyImmediate(river); }
+        }
+
+        [Test]
+        public void FeatureRegeneration_PreservesProjectorGalleryAndMaterialGuids()
+        {
+            WaterProjectorSampleScene.Create();
+            string sceneGuid = AssetDatabase.AssetPathToGUID(WaterProjectorSampleScene.ScenePath);
+            Projector projector = Object.FindObjectOfType<Projector>();
+            string materialPath = AssetDatabase.GetAssetPath(projector.material);
+            string materialGuid = AssetDatabase.AssetPathToGUID(materialPath);
+            WaterSampleScene.Create();
+            Assert.IsNotNull(AssetDatabase.LoadAssetAtPath<SceneAsset>(WaterProjectorSampleScene.ScenePath));
+            Assert.AreEqual(sceneGuid, AssetDatabase.AssetPathToGUID(WaterProjectorSampleScene.ScenePath));
+            Assert.AreEqual(materialGuid, AssetDatabase.AssetPathToGUID(materialPath));
+            Assert.IsTrue(File.ReadAllText(
+                "Packages/io.github.sabas0ba.sabaprops.water/Editor/WaterSampleScene.cs")
+                .Contains("WaterProjectorSampleScene.CreateAndCapture();"));
         }
 
         [Test]

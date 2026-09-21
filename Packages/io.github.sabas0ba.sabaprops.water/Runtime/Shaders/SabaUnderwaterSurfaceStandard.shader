@@ -35,7 +35,7 @@ Shader "SabaProps/Water/Underwater Surface Standard"
             #include "UnityCG.cginc"
             #include "SabaWaterCommon.cginc"
 
-            sampler2D _SabaUnderwaterSurfaceGrab;
+            UNITY_DECLARE_SCREENSPACE_TEXTURE(_SabaUnderwaterSurfaceGrab);
             fixed4 _Tint;
             fixed4 _HighlightColor;
             float _DistortionStrength;
@@ -100,8 +100,8 @@ Shader "SabaProps/Water/Underwater Surface Standard"
                 float2 distortion = normal.xz;
                 projected.xy += distortion
                     * (_DistortionStrength * edgeFade * boundaryMask * projected.w);
-                float3 refracted = tex2Dproj(
-                    _SabaUnderwaterSurfaceGrab, UNITY_PROJ_COORD(projected)).rgb;
+                float3 refracted = UNITY_SAMPLE_SCREENSPACE_TEXTURE(
+                    _SabaUnderwaterSurfaceGrab, projected.xy / projected.w).rgb;
                 refracted = lerp(refracted, refracted * _Tint.rgb, _TintStrength);
                 refracted = lerp(refracted, _HighlightColor.rgb, fresnel * 0.42);
                 return fixed4(refracted, 1.0);

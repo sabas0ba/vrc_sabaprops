@@ -71,11 +71,13 @@ namespace SabaProps.Water.Editors
             var vertices = new Vector3[vertexCount];
             var normals = new Vector3[vertexCount];
             var uv = new Vector2[vertexCount];
+            var perimeter = new Vector2[vertexCount];
             var triangles = new int[radialSegments * 3 + (rings - 1) * radialSegments * 6];
 
             vertices[0] = Vector3.zero;
             normals[0] = Vector3.up;
             uv[0] = new Vector2(0.5f, 0.5f);
+            perimeter[0] = new Vector2(1f, -1f);
 
             var boundary = new float[radialSegments];
             for (int segment = 0; segment < radialSegments; segment++)
@@ -96,6 +98,7 @@ namespace SabaProps.Water.Editors
                     float z = Mathf.Sin(angle) * distance;
                     int index = 1 + (ring - 1) * radialSegments + segment;
                     vertices[index] = new Vector3(x, 0f, z);
+                    perimeter[index] = new Vector2(1f - ringFraction, -1f);
                     normals[index] = Vector3.up;
                     uv[index] = new Vector2(
                         x / (radius * aspect * 2f) + 0.5f,
@@ -134,7 +137,9 @@ namespace SabaProps.Water.Editors
                 }
             }
 
-            return CreateMesh("SabaWater_Puddle", vertices, normals, uv, triangles);
+            Mesh mesh = CreateMesh("SabaWater_Puddle", vertices, normals, uv, triangles);
+            mesh.uv2 = perimeter;
+            return mesh;
         }
 
         public static Mesh BuildRiver(

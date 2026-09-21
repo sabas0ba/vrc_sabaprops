@@ -59,7 +59,7 @@ Shader "SabaProps/Water/Fog Particle"
                 UNITY_INITIALIZE_OUTPUT(v2f, output);
                 UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(output);
                 output.position = UnityObjectToClipPos(input.vertex);
-                output.projected = ComputeScreenPos(output.position);
+                output.projected = ComputeNonStereoScreenPos(output.position);
                 output.projected.z = -UnityObjectToViewPos(input.vertex).z;
                 output.worldPosition = mul(unity_ObjectToWorld, input.vertex).xyz;
                 output.color = input.color * _Color;

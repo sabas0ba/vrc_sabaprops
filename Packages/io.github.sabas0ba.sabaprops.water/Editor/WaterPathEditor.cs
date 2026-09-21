@@ -108,6 +108,14 @@ namespace SabaProps.Water.Editors
             }
 
             MeshFilter filter = path.GetComponent<MeshFilter>();
+            // Reserve the combined world-space range of wave height and tide (0.5 m each).
+            float displacement = path.profile == null ? 1f : Mathf.Max(
+                1f, Mathf.Abs(path.profile.vertexWaveHeight) + Mathf.Abs(path.profile.tideHeight));
+            Vector3 localPadding = path.transform.InverseTransformVector(Vector3.up * displacement);
+            Bounds bounds = generated.bounds;
+            bounds.Expand(new Vector3(
+                Mathf.Abs(localPadding.x), Mathf.Abs(localPadding.y), Mathf.Abs(localPadding.z)) * 2f);
+            generated.bounds = bounds;
             Mesh mesh = WaterAssetLibrary.ReplaceOrWriteMesh(
                 generated,
                 IsMeshShared(path) ? null : path.generatedMesh,

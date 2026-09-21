@@ -29,7 +29,7 @@ Shader "SabaProps/Water/Underwater Standard"
             #pragma multi_compile_instancing
             #include "UnityCG.cginc"
 
-            sampler2D _SabaUnderwaterGrab;
+            UNITY_DECLARE_SCREENSPACE_TEXTURE(_SabaUnderwaterGrab);
             UNITY_DECLARE_DEPTH_TEXTURE(_CameraDepthTexture);
             fixed4 _Tint;
             float _Density;
@@ -61,7 +61,7 @@ Shader "SabaProps/Water/Underwater Standard"
                 UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(output);
                 output.position = UnityObjectToClipPos(input.vertex);
                 output.grabPosition = ComputeGrabScreenPos(output.position);
-                output.screenPosition = ComputeScreenPos(output.position);
+                output.screenPosition = ComputeNonStereoScreenPos(output.position);
                 output.worldPosition = mul(unity_ObjectToWorld, input.vertex).xyz;
                 return output;
             }
@@ -90,9 +90,12 @@ Shader "SabaProps/Water/Underwater Standard"
                 projectedB.x -= _ChromaticAberration * projected.w;
 
                 float3 background;
-                background.r = tex2Dproj(_SabaUnderwaterGrab, UNITY_PROJ_COORD(projectedR)).r;
-                background.g = tex2Dproj(_SabaUnderwaterGrab, UNITY_PROJ_COORD(projected)).g;
-                background.b = tex2Dproj(_SabaUnderwaterGrab, UNITY_PROJ_COORD(projectedB)).b;
+                background.r = UNITY_SAMPLE_SCREENSPACE_TEXTURE(
+                    _SabaUnderwaterGrab, projectedR.xy / projectedR.w).r;
+                background.g = UNITY_SAMPLE_SCREENSPACE_TEXTURE(
+                    _SabaUnderwaterGrab, projected.xy / projected.w).g;
+                background.b = UNITY_SAMPLE_SCREENSPACE_TEXTURE(
+                    _SabaUnderwaterGrab, projectedB.xy / projectedB.w).b;
 
                 float sceneDepth = LinearEyeDepth(SAMPLE_DEPTH_TEXTURE(_CameraDepthTexture, screenUv));
                 float fog = saturate(1.0 - exp(-max(0.0, sceneDepth) * _Density));

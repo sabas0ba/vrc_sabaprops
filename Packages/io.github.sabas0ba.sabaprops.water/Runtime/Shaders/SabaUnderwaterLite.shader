@@ -54,7 +54,7 @@ Shader "SabaProps/Water/Underwater Lite"
                 UNITY_INITIALIZE_OUTPUT(v2f, output);
                 UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(output);
                 output.position = UnityObjectToClipPos(input.vertex);
-                output.screenPosition = ComputeScreenPos(output.position);
+                output.screenPosition = ComputeNonStereoScreenPos(output.position);
                 output.worldPosition = mul(unity_ObjectToWorld, input.vertex).xyz;
                 return output;
             }

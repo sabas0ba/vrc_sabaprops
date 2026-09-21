@@ -109,6 +109,7 @@ Shader "SabaProps/Water/Surface Lite"
                 float4 vertex : POSITION;
                 float3 normal : NORMAL;
                 float2 uv : TEXCOORD0;
+                float2 perimeter : TEXCOORD1;
                 UNITY_VERTEX_INPUT_INSTANCE_ID
             };
 
@@ -117,7 +118,7 @@ Shader "SabaProps/Water/Surface Lite"
                 float4 pos : SV_POSITION;
                 float3 worldPosition : TEXCOORD0;
                 float3 worldNormal : TEXCOORD1;
-                float2 uv : TEXCOORD2;
+                float4 uv : TEXCOORD2;
                 LIGHTING_COORDS(3, 4)
                 UNITY_VERTEX_OUTPUT_STEREO
             };
@@ -137,7 +138,7 @@ Shader "SabaProps/Water/Surface Lite"
                 output.pos = UnityWorldToClipPos(worldPosition);
                 output.worldPosition = worldPosition;
                 output.worldNormal = UnityObjectToWorldNormal(v.normal);
-                output.uv = v.uv;
+                output.uv = float4(v.uv, v.perimeter);
                 TRANSFER_VERTEX_TO_FRAGMENT(output);
                 return output;
             }
@@ -154,7 +155,7 @@ Shader "SabaProps/Water/Surface Lite"
                     _FlowDirection.xy);
                 float3 normal = normalize(baseNormal + proceduralNormal - float3(0, 1, 0));
                 float3 flowData = SabaFlowTurbulence(
-                    input.uv, input.worldPosition, _WaveScale, _WaveSpeed);
+                    input.uv.xy, input.worldPosition, _WaveScale, _WaveSpeed);
                 normal = normalize(normal + float3(
                     flowData.y * _FlowTurbulence * 0.08,
                     0.0,
@@ -268,6 +269,7 @@ Shader "SabaProps/Water/Surface Lite"
                 float4 vertex : POSITION;
                 float3 normal : NORMAL;
                 float2 uv : TEXCOORD0;
+                float2 perimeter : TEXCOORD1;
                 UNITY_VERTEX_INPUT_INSTANCE_ID
             };
 
@@ -276,7 +278,7 @@ Shader "SabaProps/Water/Surface Lite"
                 float4 pos : SV_POSITION;
                 float3 worldPosition : TEXCOORD0;
                 float3 worldNormal : TEXCOORD1;
-                float2 uv : TEXCOORD2;
+                float4 uv : TEXCOORD2;
                 LIGHTING_COORDS(3, 4)
                 UNITY_VERTEX_OUTPUT_STEREO
             };
@@ -294,7 +296,7 @@ Shader "SabaProps/Water/Surface Lite"
                 output.pos = UnityWorldToClipPos(worldPosition);
                 output.worldPosition = worldPosition;
                 output.worldNormal = UnityObjectToWorldNormal(v.normal);
-                output.uv = v.uv;
+                output.uv = float4(v.uv, v.perimeter);
                 TRANSFER_VERTEX_TO_FRAGMENT(output);
                 return output;
             }

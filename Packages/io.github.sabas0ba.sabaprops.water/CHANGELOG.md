@@ -33,6 +33,12 @@
 
 ### Fixed
 
+- 水たまりの縁・浅瀬色を不定形Meshの外周に沿ってフェードするよう修正
+- 河川Meshのboundsへ波・潮位による頂点移動を反映
+- サンプル再生成時にDroplet Projector Galleryとそのassetを保持
+- GrabPassの片眼ごとの参照と深度座標の二重ステレオ変換を修正
+- VPM metadataのライセンスURLを同梱MIT Licenseへ修正
+
 - Fog Particleのsoft-particle深度UVをステレオ変換に対応
 - 未ロードScene／Prefabが共有するRiver Meshを再生成時に分離し、他の参照先の形状変更を防止
 - 水面・水中rigの生成MeshをUndoでアセットから削除し、RedoでGUIDと参照を維持して復元

@@ -68,7 +68,7 @@ Shader "SabaProps/Water/Fog Volume"
                 UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(output);
                 output.position = UnityObjectToClipPos(input.vertex);
                 output.localPosition = input.vertex.xyz;
-                output.screenPosition = ComputeScreenPos(output.position);
+                output.screenPosition = ComputeNonStereoScreenPos(output.position);
                 output.eyeDepth = -UnityObjectToViewPos(input.vertex).z;
                 return output;
             }

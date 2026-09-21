@@ -86,11 +86,7 @@ namespace SabaProps.Water.Editors
         {
             WaterAssetLibrary.CreateOrLoadDefaults();
             Scene scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
-            if (AssetDatabase.IsValidFolder(SampleFolder))
-            {
-                AssetDatabase.DeleteAsset(SampleFolder);
-            }
-
+            // Other galleries share this folder; update owned assets without deleting siblings.
             EnsureSampleFolders();
             _materialCopies = new Dictionary<Material, Material>();
             _meshCopies = new Dictionary<Mesh, Mesh>();
@@ -138,6 +134,7 @@ namespace SabaProps.Water.Editors
             CaptureDocumentationImages();
             CreateLightingGallery();
             CaptureLightingDocumentationImage();
+            WaterProjectorSampleScene.CreateAndCapture();
         }
 
         /// <summary>
