@@ -21,6 +21,7 @@ REPO="$(cd "$HERE/../../.." && pwd)"
 CIPROJECT="$REPO/.github/verify/CIProject"
 PACKAGE="$REPO/Packages/io.github.sabas0ba.sabaprops.foliage"
 SOFT_PROPS_PACKAGE="$REPO/Packages/io.github.sabas0ba.sabaprops.softprops"
+PUT_ITEMS_PACKAGE="$REPO/Packages/io.github.sabas0ba.sabaprops.putitems"
 
 PROJECT="${1:-$REPO/build/WorldProject}"
 VPM="${VPM_DIR:-$REPO/build/vpm}"
@@ -53,6 +54,7 @@ replace "$CIPROJECT/Assets/Tests" "$PROJECT/Assets/Tests"
 
 # PlayMode tests that need the SDK, so they cannot live in the CI project.
 replace "$HERE/Tests" "$PROJECT/Assets/WorldTests"
+replace "$PUT_ITEMS_PACKAGE/Tests~" "$PROJECT/Assets/PutItemsTests"
 
 # The movement sample is not copied here. FoliageWorldProjectSetup imports it
 # through the same menu entry a user would, in the setup session, so what the
@@ -66,6 +68,7 @@ replace "$HERE/Setup" "$PROJECT/Assets/WorldSetup"
 # registry dependencies, so nothing has to be listed in manifest.json.
 replace "$PACKAGE" "$PROJECT/Packages/io.github.sabas0ba.sabaprops.foliage"
 replace "$SOFT_PROPS_PACKAGE" "$PROJECT/Packages/io.github.sabas0ba.sabaprops.softprops"
+replace "$PUT_ITEMS_PACKAGE" "$PROJECT/Packages/io.github.sabas0ba.sabaprops.putitems"
 replace "$VPM/com.vrchat.base" "$PROJECT/Packages/com.vrchat.base"
 replace "$VPM/com.vrchat.worlds" "$PROJECT/Packages/com.vrchat.worlds"
 

@@ -50,7 +50,7 @@ Unity は Unity Hub の既定の場所から `ProjectVersion.txt` に一致す�
 初回は SDK が要求する UPM パッケージ（burst、collections、cinemachine 等）を
 Unity がレジストリから取得するため、数分かかります。
 
-テストは `SabaProps.Foliage.CITests`、`SabaProps.Foliage.WorldTests`、`SabaProps.SoftProps.WorldTests` に絞って実行します。
+テストは `SabaProps.Foliage.CITests`、`SabaProps.Foliage.WorldTests`、`SabaProps.SoftProps.WorldTests`、`SabaProps.PutItems.Tests` に絞って実行します。
 SDK 自身のテストアセンブリも同じプロジェクトに存在しますが、
 本パッケージとは無関係な理由で 2 件失敗する（ランダム生成の JSON ファズケースと、
 docs.microsoft.com の URL 到達性を検証するもの）ため、終了コードを意味のあるものにするためです。
@@ -116,3 +116,5 @@ GameCI のイメージを使えば Unity もコンテナ化できますが、ラ
 `.github/workflows/unity.yml` と同じ構成にしてください。
 またコンテナへ 8 GB 程度のメモリ割り当てが要ります
 （podman machine の既定は小さいことが多いので、`podman machine set --memory` で拡張が必要です）。
+
+Put Items 単体の準備・検証手順は [PUT_ITEMS.md](PUT_ITEMS.md) を参照してください。
