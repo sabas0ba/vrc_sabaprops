@@ -6,7 +6,7 @@ Unity 2022.3 / VRChat Worlds SDK 3.10.4 の World プロジェクトにパッケ
 
 UdonSharp program は `Assets/SabaProps/PutItemsPrograms` の共有アセットを使用します。`Samples~` を手動でコピーすると program が重複するため、上記メニューから導入してください。
 
-![Unity で描画した Kitchen Demo の全景](images/Overview.png)
+![Unity で描画した Kitchen Demo の全景](demo-overview.png)
 
 ## Scene の構成
 
@@ -18,9 +18,9 @@ UdonSharp program は `Assets/SabaProps/PutItemsPrograms` の共有アセット�
 
 机・椅子の Collider は VRChat の `Walkthrough` Layer にあり、プレイヤーが通り抜けられます。床の Collider は残してあります。Scene には照明、カメラ、`VRCSceneDescriptor`、Spawn を含みます。
 
-![おぼん、皿、料理、カトラリーを配置した食卓](images/Table.png)
+![おぼん、皿、料理、カトラリーを配置した食卓](demo-table.png)
 
-![壁面配置を示す冷蔵庫](images/Fridge.png)
+![壁面配置を示す冷蔵庫](demo-fridge.png)
 
 ## 動作確認
 

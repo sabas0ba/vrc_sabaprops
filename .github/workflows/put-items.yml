@@ -38,6 +38,15 @@ jobs:
           else
             echo '::notice::Unity tests skipped: no licence configured.'
           fi
+      # The GameCI editor image does not fit alongside the runner's preinstalled
+      # toolchains. Match the cleanup used by the repository's Unity workflow.
+      - name: Free disk space
+        if: steps.licence.outputs.available == 'true'
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc \
+                      /usr/local/share/boost "$AGENT_TOOLSDIRECTORY" || true
+          sudo docker image prune --all --force || true
+          df -h /
       - name: Assemble pinned SDK test project
         if: steps.licence.outputs.available == 'true'
         run: |
