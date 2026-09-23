@@ -11,6 +11,19 @@ VRChat World向けの水面、雨、霧、雲、水中エフェクトをEditor�
 - 水面、霧、水中表現はLite／StandardまたはHighを分離
 - Worlds SDKがある場合だけ`VRCSceneDescriptor`を追加する任意連携
 
+![Water Feature Gallery の水面・雨・霧の全体像](Documentation~/images/water-feature-gallery.png)
+
+水面、雨、霧、雲、水中表現を一つの Gallery で確認できます。各機能の構成は [Water Feature Gallery](Documentation~/sample-gallery.md) を参照してください。
+
+## 収録要素
+
+- 水面: Puddle / River / Lake / Ocean（各Lite / Standard）
+- 天候: Rain Rig / Ground Fog / Cloud Layer / Fog Volume
+- 水中: Underwater Lake / Caustics / Light Shaft / Water Surface
+- 表面効果: Wet Surface / Droplet Projector / Splash / Ripple
+
+各項目の用途と制約は[水面](#水面)、[雨](#雨)、[霧と雲](#霧と雲)、[水中](#水中)、[濡れた表面とアバター](#濡れた表面とアバター)を参照してください。
+
 ## クイックスタート
 
 全機能をまとめて確認する場合は、Package Managerの`Samples`から`Water Feature Gallery`をimportします。

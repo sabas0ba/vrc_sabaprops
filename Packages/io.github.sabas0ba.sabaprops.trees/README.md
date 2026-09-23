@@ -7,6 +7,19 @@ VRChat ワールド向けのプロシージャル樹木ジェネレータです�
 Foliage の shader と風チャンネル契約を共有しますが、草向けの Distance Shrink と
 影 OFF の既定値は使いません。
 
+![Trees の季節・樹種プリセットの比較](Documentation~/images/seasonal-overview.png)
+
+季節差と樹種差を同じ縮尺で比較した概要です。LOD と配置手順は [樹木の調整・確認ガイド](Documentation~/tree-authoring.md) にまとめています。
+
+## 収録要素
+
+- 広葉樹: ケヤキ / イロハモミジ / シラカバ
+- 針葉樹: スギ / アカマツ / ヒノキ
+- 季節差分: ソメイヨシノ（春・夏）/ イチョウ（夏・秋）
+- 汎用形: Broadleaf / Conifer / Dead Tree / Desert Shrub
+
+樹冠、分枝、葉序の違いは[実在種 Preset](#実在種-preset)に一覧化しています。
+
 ## 配置ツール
 
 スクリーンショット、樹冠・枝葉・色・LODのパラメータ一覧と調整順は

@@ -4,6 +4,10 @@ VRChat の Pickup を手放したとき、近くの静止した机・壁へ接�
 
 [デモの導入とレビュー](Documentation~/demo-review.md)に操作例と確認項目、[配置と同期の設定](Documentation~/authoring.md)に各コンポーネントの設定と追従構成を記載しています。
 
+![Kitchen Demo の机・冷蔵庫・おぼんへの配置例](Documentation~/demo-overview.png)
+
+配置面、冷蔵庫、親子追従を含む同梱 Demo の全体像です。操作手順と確認項目は [デモの導入とレビュー](Documentation~/demo-review.md) を参照してください。
+
 ## 導入
 
 Unity 2022.3 / VRChat Worlds SDK 3.10.x（3.10.4で検証）を使用します。VPM で追加するか、このパッケージを Unity プロジェクトの Packages に配置します。
