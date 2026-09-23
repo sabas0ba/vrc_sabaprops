@@ -7,6 +7,14 @@ GPU インスタンシング前提の、軽量な草木スキャッタリング�
 - ワールド座標ハッシュによる個体差なので、per-instance データの送信が一切不要です
 - Built-in Render Pipeline / Unity 2022.3 / VRChat ワールド・アバターの両方で使えます
 
+## 収録要素
+
+- 地面配置: Grass Clump / Clover / Sunflower / Reed / Small Flower / Weed / Grain / Dandelion
+- 表面配置: Surface Vine（壁面を這うツタ）/ Rhizome Patch（地下茎で連結したグラウンドカバー）
+- 共通機能: 季節差分、風、GPU Instanced / Merged Chunks、距離縮退
+
+各Speciesの形状と用途は[Species](#species)、表面配置は[表面を這うツタと根茎パッチ](#表面を這うツタと根茎パッチ)を参照してください。
+
 ## 配置ツール
 
 Trees package も導入した環境では、`Window > SabaProps > Placement` が

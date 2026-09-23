@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 520" role="img" aria-labelledby="title desc">
+  <title id="title">Stage Cam の構成</title>
+  <desc id="desc">プレイヤーの追従対象と Pickup 操作を Stage Cam Rig が受け取り、カメラと RenderTexture を通じてワールド内のスクリーンへ表示する構成図。</desc>
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#176b70"/></marker>
+    <style>
+      .bg { fill: #f4f7f6; }
+      .box { fill: #ffffff; stroke: #176b70; stroke-width: 3; }
+      .input { fill: #e4f2f1; stroke: #176b70; stroke-width: 3; }
+      .output { fill: #fff0e8; stroke: #b65f32; stroke-width: 3; }
+      .title { font: 700 26px system-ui, sans-serif; fill: #182426; }
+      .label { font: 700 22px system-ui, sans-serif; fill: #182426; text-anchor: middle; }
+      .small { font: 18px system-ui, sans-serif; fill: #5c6c6d; text-anchor: middle; }
+      .arrow { stroke: #176b70; stroke-width: 4; fill: none; marker-end: url(#arrow); }
+      .dash { stroke-dasharray: 10 8; }
+    </style>
+  </defs>
+  <rect class="bg" width="1200" height="520" rx="24"/>
+  <text class="title" x="54" y="58">SabaProps Stage Cam — 実行時のデータフロー</text>
+
+  <rect class="input" x="70" y="150" width="250" height="130" rx="18"/>
+  <text class="label" x="195" y="200">追従対象</text>
+  <text class="small" x="195" y="235">顔・胸・手・足など</text>
+  <text class="small" x="195" y="262">VRCPlayerApi</text>
+
+  <rect class="input" x="70" y="340" width="250" height="100" rx="18"/>
+  <text class="label" x="195" y="382">Pickup 操作</text>
+  <text class="small" x="195" y="414">構図を手動補正</text>
+
+  <rect class="box" x="430" y="150" width="330" height="290" rx="18"/>
+  <text class="label" x="595" y="205">Stage Cam Rig</text>
+  <text class="small" x="595" y="245">距離・角度・追従平滑化</text>
+  <text class="small" x="595" y="275">自動フレーミング</text>
+  <text class="small" x="595" y="305">自動カメラワーク</text>
+  <line x1="485" y1="335" x2="705" y2="335" stroke="#c9d8d7" stroke-width="2"/>
+  <text class="small" x="595" y="370">Pickup終了位置を基準に更新</text>
+  <text class="small" x="595" y="402">追従時は設定した構図を維持</text>
+
+  <rect class="output" x="870" y="150" width="250" height="130" rx="18"/>
+  <text class="label" x="995" y="200">Camera</text>
+  <text class="small" x="995" y="235">RenderTexture へ描画</text>
+  <text class="small" x="995" y="262">ローカル表示</text>
+
+  <rect class="output" x="870" y="340" width="250" height="100" rx="18"/>
+  <text class="label" x="995" y="382">World Screen</text>
+  <text class="small" x="995" y="414">マテリアルで表示</text>
+
+  <path class="arrow" d="M320 215 H425"/>
+  <path class="arrow" d="M320 390 H425"/>
+  <path class="arrow" d="M765 215 H865"/>
+  <path class="arrow" d="M995 285 V335"/>
+</svg>

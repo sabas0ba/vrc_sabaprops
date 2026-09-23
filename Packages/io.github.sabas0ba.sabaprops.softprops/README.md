@@ -2,6 +2,10 @@
 
 PC VRChat world向けの接触変形shaderと、ふとん、ベッド、ソファー、クッションのmodel／Prefab生成器です。VRChat Worlds SDK 3.10系のWorld Contactsを使用します。
 
+![Soft Props の家具と接触変形のデモ](Documentation~/demo-overview.png)
+
+家具の種類、接触 probe、比較用ステージを同じ Scene で確認できます。
+
 ## ドキュメント
 
 - [デモの導入とレビュー](Documentation~/demo-review.md): 自動比較、手動接触、家具への立位、実行画像

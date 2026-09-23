@@ -12,6 +12,14 @@
 0.1.0 はローカル専用です。各クライアントが自分の見たい対象を自分で追います。
 全員で同じ画を見る運用は 0.2.0 で入れます（[ロードマップ](Documentation~/roadmap.md)）。
 
+![Stage Camera World Sample をUnityで表示した画面](Documentation~/images/stagecam-demo.png)
+
+同梱Sample SceneをUnity 2022.3で表示した画面です。ステージ、2台のカメラ、2枚のWorld Screenを確認できます。
+
+![Stage Cam の実行時構成図](Documentation~/images/stagecam-architecture.svg)
+
+追従対象と Pickup 操作を Stage Cam Rig が受け取り、Camera の RenderTexture を経由して World Screen に表示します。0.1.0 では表示は各クライアントのローカルです。
+
 ---
 
 ## 導入
