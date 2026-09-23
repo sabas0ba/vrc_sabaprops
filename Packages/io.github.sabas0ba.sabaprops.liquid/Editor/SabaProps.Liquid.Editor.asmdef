@@ -1,0 +1,23 @@
+{
+    "name": "SabaProps.Liquid.Editor",
+    "rootNamespace": "SabaProps.Liquid.Editors",
+    "references": [
+        "SabaProps.Liquid.Runtime",
+        "VRC.SDKBase",
+        "VRC.SDK3",
+        "VRC.Udon",
+        "UdonSharp.Runtime",
+        "UdonSharp.Editor"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

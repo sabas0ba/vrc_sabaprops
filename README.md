@@ -33,7 +33,7 @@ https://sabas0ba.github.io/vrc_sabaprops/index.json
 | `io.github.sabas0ba.sabaprops.putitems` | SabaProps Put Items | Pickup を手放した位置の近くにある机・壁へ位置と姿勢を補正。Object Sync 接続と独自同期向けの計算 API を提供。 |
 | `io.github.sabas0ba.sabaprops.tablet` | SabaProps Tablet | キー・頭上からの取り出し・アイテムの Interact で呼び出すタブレット型 UI。物理ボタンでミラー・コライダー・エフェクトの切り替え、テレポート、任意の Udon イベント呼び出しを行う。 |
 | `io.github.sabas0ba.sabaprops.flock` | SabaProps Flock | 鳥 27 種・魚・水生生物 41 種の群れを、Shader が時刻から計算する固定配置を含む 13 種の群れの動きで配置。Silhouette / Low / High の 3 段階 LOD。 |
-| `io.github.sabas0ba.sabaprops.liquid` | SabaProps Liquid | アバターとワールドの表面へ液体の付着を Projector で描画する PC 向け Udon パッケージ。設計段階。 |
+| `io.github.sabas0ba.sabaprops.liquid` | SabaProps Liquid | アバターとワールドの表面へ液体の付着を Projector で描画する PC 向け Udon パッケージ。開発中。 |
 
 各パッケージの詳細は `Packages/<package-id>/README.md` を参照してください。
 
@@ -96,7 +96,9 @@ Put Items は `Tools > SabaProps > Put Items > Open Demo Scene` から、食卓�
 │   │   └── Documentation~/
 │   └── io.github.sabas0ba.sabaprops.liquid/
 │       ├── package.json            # VRChat Worlds SDK に依存
-│       └── Documentation~/         # 設計文書（実装前）
+│       ├── Runtime/                # Body Canvas と Canvas 更新・Projector シェーダ
+│       ├── Editor/                 # Canvas Pool の生成器
+│       └── Documentation~/         # 設計文書
 ├── Website/                        # GitHub Pages で公開するリスティングサイト
 ├── source.json                     # VPM リスティングのメタ情報
 └── .github/
@@ -117,7 +119,7 @@ Put Items は `Tools > SabaProps > Put Items > Open Demo Scene` から、食卓�
 `Packages/` 配下に、このリポジトリの `Packages/<package-id>` をシンボリックリンク（または
 クローンごと配置）してください。編集するパッケージの分だけ張ります。
 
-`io.github.sabas0ba.sabaprops.stagecam` と `io.github.sabas0ba.sabaprops.tablet` は Udon を使うため、リンク先のプロジェクトには
+`io.github.sabas0ba.sabaprops.stagecam`、`io.github.sabas0ba.sabaprops.tablet` と `io.github.sabas0ba.sabaprops.liquid` は Udon を使うため、リンク先のプロジェクトには
 VRChat Worlds SDK が入っている必要があります。`io.github.sabas0ba.sabaprops.foliage` の方は
 SDK が無くても動きます。
 
@@ -242,6 +244,8 @@ Markdown 変換は `build_listing.py` と同じ方針で自前実装です。CI 
 | **Stage Cam の追従計算** | **実際に実行**して幾何の性質を検査（下記） |
 | Tablet の Runtime / Authoring / Editor | 実物の VRChat SDK アセンブリ（`VRCSDKBase.dll`、`VRCSDK3.dll`、`VRC.Udon.Common.dll`）に対してコンパイル。TextMeshPro は手書きのスタブ |
 | **Tablet の判定と生成** | 召喚位置、指先の押下の状態遷移、取り出し位置、プレイヤー選択、ボタン配置、角丸メッシュの閉包性と面の向きを**実際に実行**して検査 |
+| Liquid の Runtime / Editor | Stage Cam と同じく実物の VRChat SDK アセンブリに対してコンパイル |
+| **Liquid の Body Canvas 計算** | **実際に実行**して体の座標系とアトラスの性質を検査（下記） |
 | **ドキュメントの図** | 生成器を実行し直し、committed の図と一致するかを検査 |
 | ドキュメント | サイトの生成、未変換の記法・壊れたリンク・存在しない画像の検出 |
 | マニフェスト | `package.json` の必須項目、フォルダ名との一致、CHANGELOG のバージョン記載、`source.json` への登録、`.meta` の欠落 |
@@ -287,6 +291,23 @@ Markdown 変換は `build_listing.py` と同じ方針で自前実装です。CI 
 
 こちらも故障注入で確認済みです。平滑化を線形に、注視の合成順を入れ替えて roll を混ぜ、
 デッドゾーンを素通しにする 3 つの変更を入れると、それぞれ対応する検査だけが落ちます。
+
+#### Body Canvas の実行検査
+
+`LiquidCanvasSolver.cs` も `LiquidBodyCanvas` の部分クラスとして同じ構成を取り、
+Unity 無しで実行します。
+
+| 検査 | 内容 |
+| --- | --- |
+| 体の座標系 | 任意の姿勢で正規直交かつ左手系であること、欠損ボーンでプレイヤーの向きへ落ちること |
+| Canvas 空間 | 箱が [-1, 1] に写ること、ローカル座標の往復 |
+| アトラス | 各面が自分のタイルに収まり余白を保つこと、面内の軸の対応、表と裏が同じタイルを共有しないこと |
+| 付着と浸漬 | 減衰の形、蒸発率の符号化とシェーダの計算の一致、液面高さと液膜の下降 |
+| シェーダとの一致 | HLSL 側の定数と面内の軸の対応が C# 側と一致すること |
+
+故障注入で確認済みです。座標系の外積の順序、裏面への重み、面内の軸、蒸発率の符号化を
+それぞれ壊すと、対応する検査が落ちます。シェーダの描画結果そのものは、
+VRChat SDK を含む Unity の EditMode テストで GPU 上に書き込んで確認します。
 
 ### 検証できないこと
 

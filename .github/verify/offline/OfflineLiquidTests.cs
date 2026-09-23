@@ -1,0 +1,542 @@
+// Behavioural checks on the liquid Body Canvas solver, executed without Unity.
+//
+// LiquidCanvasSolver.cs is a partial of LiquidBodyCanvas that carries no base
+// type and no VRChat references, so it compiles on its own against the shim in
+// UnityEngineShim.cs. This file is another partial of the same class, which is
+// how it reaches the solver's private members without widening their
+// visibility in the shipped package. It is never part of the package.
+//
+// What this can assert: the body frame, the mapping from the body to the
+// six-face atlas, the stamp and immersion arithmetic, and that the constants
+// the HLSL side restates still agree with the C# ones.
+//
+// What it cannot: that the shaders compile or draw what is intended, that
+// UdonSharp accepts the behaviour, or that VRChat returns bones the way the
+// collection layer expects. Those stay with the VRChat world tests.
+//
+// Usage: OfflineLiquidTests <package directory>
+using System;
+using System.IO;
+using System.Text.RegularExpressions;
+using UnityEngine;
+
+namespace SabaProps.Liquid
+{
+    public partial class LiquidBodyCanvas
+    {
+        private static int _failures;
+        private static string _packageDirectory;
+
+        private const float Tolerance = 1e-4f;
+
+        private static int Main(string[] args)
+        {
+            if (args.Length != 1 || !Directory.Exists(args[0]))
+            {
+                Console.Error.WriteLine("usage: OfflineLiquidTests <package directory>");
+                return 2;
+            }
+
+            _packageDirectory = args[0];
+
+            Run("an upright body gives the world axes", UprightBodyGivesWorldAxes);
+            Run("the frame is orthonormal and left-handed in any pose", FrameIsOrthonormalInAnyPose);
+            Run("missing bones fall back to the player orientation", MissingBonesFallBack);
+            Run("a player facing sideways without legs keeps its facing", SidewaysPlayerKeepsItsFacing);
+
+            Run("canvas rows map the box to [-1, 1]", CanvasRowsMapTheBox);
+            Run("local conversion round trips", LocalConversionRoundTrips);
+
+            Run("every face lands in its own tile", EveryFaceLandsInItsOwnTile);
+            Run("atlas tiles do not overlap and keep their inset", AtlasTilesDoNotOverlap);
+            Run("tile axes follow the documented mapping", TileAxesFollowTheMapping);
+            Run("front and back never share a tile", FrontAndBackNeverShareATile);
+            Run("face weights are non-negative and sum to one", FaceWeightsSumToOne);
+
+            Run("stamp falloff is one at the centre and zero at the radius", StampFalloffShape);
+            Run("evaporation encoding matches the drying time", EvaporationEncodingMatchesDryingTime);
+            Run("immersion level follows the body axis", ImmersionLevelFollowsTheBodyAxis);
+            Run("the film line drains down and stops at the bottom", FilmLineDrains);
+
+            Run("shader constants agree with the solver", ShaderConstantsAgree);
+            Run("degenerate input stays finite", DegenerateInputStaysFinite);
+
+            if (_failures > 0)
+            {
+                Console.Error.WriteLine($"\n{_failures} liquid canvas check(s) failed");
+                return 1;
+            }
+
+            Console.WriteLine("\nall liquid canvas checks passed");
+            return 0;
+        }
+
+        // ------------------------------------------------------------------
+        // 体の座標系
+        // ------------------------------------------------------------------
+
+        private static void UprightBodyGivesWorldAxes()
+        {
+            var canvas = new LiquidBodyCanvas();
+            Vector3 hips = new Vector3(2f, 1f, -3f);
+            Vector3 up = canvas.SolveFrameUp(hips, hips + new Vector3(0f, 0.3f, 0f), Vector3.up);
+            Vector3 right = canvas.SolveFrameRight(up,
+                hips + new Vector3(-0.1f, -0.05f, 0f), hips + new Vector3(0.1f, -0.05f, 0f), Vector3.forward);
+            Vector3 forward = canvas.SolveFrameForward(right, up);
+
+            Require(Near(up, Vector3.up), $"up {up}");
+            Require(Near(right, Vector3.right), $"right {right}");
+            Require(Near(forward, Vector3.forward), $"forward {forward}");
+        }
+
+        private static void FrameIsOrthonormalInAnyPose()
+        {
+            var canvas = new LiquidBodyCanvas();
+            var random = new System.Random(7);
+
+            for (int i = 0; i < 500; i++)
+            {
+                Vector3 hips = RandomVector(random) * 5f;
+                Vector3 spine = RandomVector(random);
+                Vector3 lateral = RandomVector(random);
+                if (spine.sqrMagnitude < 1e-3f || lateral.sqrMagnitude < 1e-3f)
+                {
+                    continue;
+                }
+
+                Vector3 up = canvas.SolveFrameUp(hips, hips + spine * 0.3f, Vector3.up);
+                Vector3 right = canvas.SolveFrameRight(up, hips - lateral * 0.1f, hips + lateral * 0.1f, Vector3.forward);
+                Vector3 forward = canvas.SolveFrameForward(right, up);
+
+                Require(Mathf.Abs(up.magnitude - 1f) < Tolerance, $"|up| {up.magnitude}");
+                Require(Mathf.Abs(right.magnitude - 1f) < Tolerance, $"|right| {right.magnitude}");
+                Require(Mathf.Abs(forward.magnitude - 1f) < Tolerance, $"|forward| {forward.magnitude}");
+                Require(Mathf.Abs(Vector3.Dot(up, right)) < Tolerance, "up and right are not orthogonal");
+                Require(Mathf.Abs(Vector3.Dot(up, forward)) < Tolerance, "up and forward are not orthogonal");
+                Require(Mathf.Abs(Vector3.Dot(right, forward)) < Tolerance, "right and forward are not orthogonal");
+
+                // Unity の左手系: right x up = forward。符号が逆だと鏡像の座標系になり、
+                // シェーダの面の向きと Canvas の中身が左右反転します。
+                Require(Near(Vector3.Cross(right, up), forward), "the frame is mirrored");
+
+                // 右方向は太腿を結ぶ向きと同じ側を向きます。
+                if (Mathf.Abs(Vector3.Dot(lateral.normalized, spine.normalized)) < 0.95f)
+                {
+                    Require(Vector3.Dot(right, lateral) > 0f, "right points away from the right leg");
+                }
+            }
+        }
+
+        private static void MissingBonesFallBack()
+        {
+            var canvas = new LiquidBodyCanvas();
+            Vector3 hips = new Vector3(0f, 1f, 0f);
+
+            Vector3 up = canvas.SolveFrameUp(hips, Vector3.zero, Vector3.up);
+            Require(Near(up, Vector3.up), $"missing chest: up {up}");
+
+            Vector3 tilted = new Vector3(0f, 1f, 1f).normalized;
+            up = canvas.SolveFrameUp(Vector3.zero, new Vector3(0f, 2f, 0f), tilted);
+            Require(Near(up, tilted), $"missing hips: up {up}");
+
+            up = canvas.SolveFrameUp(hips, hips, Vector3.zero);
+            Require(Near(up, Vector3.up), $"coincident bones and no fallback: up {up}");
+
+            Vector3 right = canvas.SolveFrameRight(Vector3.up, Vector3.zero, new Vector3(0.1f, 1f, 0f), Vector3.forward);
+            Require(Near(right, Vector3.right), $"missing left leg: right {right}");
+
+            right = canvas.SolveFrameRight(Vector3.up, new Vector3(0f, 1f, 0f), new Vector3(0f, 1.2f, 0f), Vector3.forward);
+            Require(Near(right, Vector3.right), $"legs along the spine: right {right}");
+
+            right = canvas.SolveFrameRight(Vector3.up, Vector3.zero, Vector3.zero, Vector3.up);
+            Require(Mathf.Abs(right.magnitude - 1f) < Tolerance && Mathf.Abs(Vector3.Dot(right, Vector3.up)) < Tolerance,
+                $"facing parallel to up: right {right}");
+        }
+
+        private static void SidewaysPlayerKeepsItsFacing()
+        {
+            var canvas = new LiquidBodyCanvas();
+            Vector3 facing = Vector3.right;
+            Vector3 up = canvas.SolveFrameUp(Vector3.zero, Vector3.zero, Vector3.up);
+            Vector3 right = canvas.SolveFrameRight(up, Vector3.zero, Vector3.zero, facing);
+            Vector3 forward = canvas.SolveFrameForward(right, up);
+            Require(Near(forward, facing), $"forward {forward} does not follow the player facing {facing}");
+        }
+
+        // ------------------------------------------------------------------
+        // Canvas 空間
+        // ------------------------------------------------------------------
+
+        private static void CanvasRowsMapTheBox()
+        {
+            var canvas = new LiquidBodyCanvas();
+            Vector3 origin = new Vector3(1f, 2f, 3f);
+            Vector3 axis = new Vector3(1f, 1f, 0f).normalized;
+            Vector3 other = new Vector3(-1f, 1f, 0f).normalized;
+            const float half = 0.7f;
+            Vector4 row = canvas.CanvasRow(axis, origin, half);
+
+            Require(Mathf.Abs(Apply(row, origin)) < Tolerance, "the origin is not at 0");
+            Require(Mathf.Abs(Apply(row, origin + axis * half) - 1f) < Tolerance, "the positive face is not at 1");
+            Require(Mathf.Abs(Apply(row, origin - axis * half) + 1f) < Tolerance, "the negative face is not at -1");
+            Require(Mathf.Abs(Apply(row, origin + other * 5f)) < Tolerance, "a perpendicular offset changed the value");
+        }
+
+        private static void LocalConversionRoundTrips()
+        {
+            var canvas = new LiquidBodyCanvas();
+            Vector3 up = new Vector3(0.2f, 1f, 0.1f).normalized;
+            Vector3 right = canvas.SolveFrameRight(up, Vector3.zero, Vector3.zero, Vector3.forward);
+            Vector3 forward = canvas.SolveFrameForward(right, up);
+            Vector3 origin = new Vector3(-4f, 0.5f, 9f);
+            Vector3 expected = new Vector3(0.3f, -0.6f, 0.25f);
+            Vector3 world = origin + right * expected.x + up * expected.y + forward * expected.z;
+
+            Vector3 local = canvas.ToCanvasLocalPoint(world, origin, right, up, forward);
+            Require(Near(local, expected), $"point {local} != {expected}");
+
+            Vector3 direction = canvas.ToCanvasLocalDirection(forward * 2f, right, up, forward);
+            Require(Near(direction, new Vector3(0f, 0f, 2f)), $"direction {direction}");
+        }
+
+        // ------------------------------------------------------------------
+        // アトラス
+        // ------------------------------------------------------------------
+
+        private static void EveryFaceLandsInItsOwnTile()
+        {
+            var canvas = new LiquidBodyCanvas();
+            const float inset = 0.02f;
+            var random = new System.Random(11);
+
+            for (int face = 0; face < FaceCount; face++)
+            {
+                int axis = face / 2;
+                float sign = face % 2 == 0 ? 1f : -1f;
+
+                for (int i = 0; i < 200; i++)
+                {
+                    // 箱の面上の点。面の軸は ±1、他の 2 軸は [-1, 1] の乱数です。
+                    Vector3 q = RandomVector(random);
+                    q = SetAxis(q, axis, sign);
+                    Vector3 normal = SetAxis(Vector3.zero, axis, sign);
+
+                    Require(canvas.DominantAxis(normal) == axis, $"face {face}: dominant axis");
+                    Require(canvas.FaceOf(axis, sign) == face, $"face {face}: FaceOf");
+
+                    Vector2 tile = canvas.TileUv(q, axis);
+                    Require(tile.x >= 0f && tile.x <= 1f && tile.y >= 0f && tile.y <= 1f, $"face {face}: tile uv {tile}");
+
+                    Vector2 atlas = canvas.AtlasUv(face, tile, inset);
+                    Require(canvas.FaceAtAtlasUv(atlas) == face, $"face {face}: atlas uv {atlas} reads back as face {canvas.FaceAtAtlasUv(atlas)}");
+
+                    Vector2 back = canvas.TileUvAtAtlasUv(atlas, inset);
+                    Require(Mathf.Abs(back.x - tile.x) < Tolerance && Mathf.Abs(back.y - tile.y) < Tolerance,
+                        $"face {face}: tile uv {tile} round trips to {back}");
+                }
+            }
+        }
+
+        private static void AtlasTilesDoNotOverlap()
+        {
+            var canvas = new LiquidBodyCanvas();
+            const float inset = 0.02f;
+            float marginX = inset / AtlasColumns;
+            float marginY = inset / AtlasRows;
+
+            for (int face = 0; face < FaceCount; face++)
+            {
+                float column = face % AtlasColumns;
+                float row = face / AtlasColumns;
+
+                for (int i = 0; i <= 20; i++)
+                {
+                    for (int j = 0; j <= 20; j++)
+                    {
+                        Vector2 atlas = canvas.AtlasUv(face, new Vector2(i / 20f, j / 20f), inset);
+                        float lx = atlas.x - column / AtlasColumns;
+                        float ly = atlas.y - row / AtlasRows;
+                        float width = 1f / AtlasColumns;
+                        float height = 1f / AtlasRows;
+
+                        Require(lx >= marginX - Tolerance && lx <= width - marginX + Tolerance,
+                            $"face {face}: u {atlas.x} is inside the inset");
+                        Require(ly >= marginY - Tolerance && ly <= height - marginY + Tolerance,
+                            $"face {face}: v {atlas.y} is inside the inset");
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// 面内の軸は X 面が (z, y)、Y 面が (x, z)、Z 面が (x, y)。
+        /// 往復の検査は C# 内で閉じているため、軸を入れ替えても通ってしまいます。
+        /// シェーダと同じ対応であることは、ここで対応そのものを固定して確かめます。
+        /// </summary>
+        private static void TileAxesFollowTheMapping()
+        {
+            var canvas = new LiquidBodyCanvas();
+            Vector3 q = new Vector3(0.2f, -0.4f, 0.6f);
+            Vector2 x = canvas.TileUv(q, 0);
+            Vector2 y = canvas.TileUv(q, 1);
+            Vector2 z = canvas.TileUv(q, 2);
+
+            Require(Mathf.Abs(x.x - 0.8f) < Tolerance && Mathf.Abs(x.y - 0.3f) < Tolerance, $"X face maps to {x}, expected (z, y)");
+            Require(Mathf.Abs(y.x - 0.6f) < Tolerance && Mathf.Abs(y.y - 0.8f) < Tolerance, $"Y face maps to {y}, expected (x, z)");
+            Require(Mathf.Abs(z.x - 0.6f) < Tolerance && Mathf.Abs(z.y - 0.3f) < Tolerance, $"Z face maps to {z}, expected (x, y)");
+        }
+
+        private static void FrontAndBackNeverShareATile()
+        {
+            var canvas = new LiquidBodyCanvas();
+            var random = new System.Random(13);
+
+            for (int i = 0; i < 1000; i++)
+            {
+                Vector3 n = RandomVector(random).normalized;
+                if (n.sqrMagnitude < 0.5f)
+                {
+                    continue;
+                }
+
+                for (int axis = 0; axis < 3; axis++)
+                {
+                    float c = canvas.AxisComponent(n, axis);
+                    if (Mathf.Abs(c) < 1e-6f)
+                    {
+                        continue;
+                    }
+
+                    int behind = canvas.FaceOf(axis, -c);
+                    Require(canvas.FaceWeight(n, behind) == 0f,
+                        $"normal {n} writes to face {behind}, which faces away from it");
+                }
+            }
+        }
+
+        private static void FaceWeightsSumToOne()
+        {
+            var canvas = new LiquidBodyCanvas();
+            var random = new System.Random(17);
+
+            for (int i = 0; i < 1000; i++)
+            {
+                Vector3 n = RandomVector(random).normalized;
+                if (n.sqrMagnitude < 0.5f)
+                {
+                    continue;
+                }
+
+                float sum = 0f;
+                for (int face = 0; face < FaceCount; face++)
+                {
+                    float w = canvas.FaceWeight(n, face);
+                    Require(w >= 0f && w <= 1f, $"weight {w} out of range");
+                    sum += w;
+                }
+
+                Require(Mathf.Abs(sum - 1f) < Tolerance, $"weights for {n} sum to {sum}");
+            }
+
+            Require(Mathf.Abs(canvas.FaceWeight(Vector3.forward, 4) - 1f) < Tolerance, "a +Z normal does not fully select +Z");
+        }
+
+        // ------------------------------------------------------------------
+        // 付着と浸漬
+        // ------------------------------------------------------------------
+
+        private static void StampFalloffShape()
+        {
+            var canvas = new LiquidBodyCanvas();
+            const float radius = 0.08f;
+            Require(Mathf.Abs(canvas.StampFalloff(0f, radius) - 1f) < Tolerance, "not 1 at the centre");
+            Require(canvas.StampFalloff(radius, radius) == 0f, "not 0 at the radius");
+            Require(canvas.StampFalloff(radius * 3f, radius) == 0f, "not 0 beyond the radius");
+
+            float previous = 2f;
+            for (int i = 0; i <= 50; i++)
+            {
+                float value = canvas.StampFalloff(radius * i / 50f, radius);
+                Require(value <= previous, "falloff increases with distance");
+                previous = value;
+            }
+
+            Require(IsFinite(canvas.StampFalloff(0f, 0f)), "a zero radius is not finite");
+        }
+
+        private static void EvaporationEncodingMatchesDryingTime()
+        {
+            var canvas = new LiquidBodyCanvas();
+            const float maxRate = 0.2f;
+            const float dt = 0.1f;
+
+            foreach (float seconds in new[] { 5f, 30f, 90f, 600f })
+            {
+                float encoded = canvas.EncodeEvaporation(seconds, maxRate);
+                Require(encoded > 0f && encoded <= 1f, $"{seconds}s encodes to {encoded}");
+
+                // Canvas Update シェーダは amount - dt * encoded * maxRate で減らします。
+                float shader = Mathf.Max(0f, 1f - dt * encoded * maxRate);
+                float solver = canvas.EvaporateAmount(1f, seconds, dt);
+                Require(Mathf.Abs(shader - solver) < Tolerance, $"{seconds}s: shader {shader} != solver {solver}");
+            }
+
+            Require(canvas.EncodeEvaporation(0f, maxRate) == 0f, "never drying does not encode to 0");
+            Require(canvas.EncodeEvaporation(-1f, maxRate) == 0f, "a negative time does not encode to 0");
+            Require(canvas.EncodeEvaporation(0.5f, maxRate) == 1f, "a drying time faster than the cap does not clamp");
+            Require(canvas.EvaporateAmount(0.4f, 0f, 10f) == 0.4f, "never drying still evaporated");
+            Require(canvas.EvaporateAmount(0.01f, 1f, 10f) == 0f, "evaporation went below zero");
+        }
+
+        private static void ImmersionLevelFollowsTheBodyAxis()
+        {
+            var canvas = new LiquidBodyCanvas();
+            Vector3 origin = new Vector3(0f, 1f, 0f);
+            const float half = 1.1f;
+
+            Require(Mathf.Abs(canvas.ImmersionLevel(1f, origin, Vector3.up, half)) < Tolerance, "surface at the origin is not 0");
+            Require(Mathf.Abs(canvas.ImmersionLevel(1f + half, origin, Vector3.up, half) - 1f) < Tolerance, "surface at the top is not 1");
+            Require(Mathf.Abs(canvas.ImmersionLevel(1f - half, origin, Vector3.up, half) + 1f) < Tolerance, "surface at the bottom is not -1");
+
+            // 体が傾くと、同じ液面でも体軸に沿った交点は遠くなります。
+            Vector3 leaning = new Vector3(0f, 1f, 1f).normalized;
+            float upright = canvas.ImmersionLevel(1.5f, origin, Vector3.up, half);
+            float leant = canvas.ImmersionLevel(1.5f, origin, leaning, half);
+            Require(leant > upright, "leaning does not raise the level along the body");
+
+            Require(canvas.ImmersionLevel(2f, origin, Vector3.forward, half) == 2f, "lying below the surface is not fully immersed");
+            Require(canvas.ImmersionLevel(0f, origin, Vector3.forward, half) == -2f, "lying above the surface is not dry");
+        }
+
+        private static void FilmLineDrains()
+        {
+            var canvas = new LiquidBodyCanvas();
+            float level = 0.8f;
+            for (int i = 0; i < 100; i++)
+            {
+                float next = canvas.DrainLevel(level, 0.2f, 0.05f, 0.1f);
+                Require(next <= level, "the line rose while draining");
+                Require(next >= -1f, "the line went below the bottom");
+                level = next;
+            }
+
+            Require(canvas.DrainLevel(0.3f, 1f, 0.05f, 10f) == 0.3f, "a fully viscous film drained");
+            Require(canvas.DrainLevel(-0.99f, 0f, 1f, 10f) == -1f, "the line did not stop at the bottom");
+        }
+
+        // ------------------------------------------------------------------
+        // シェーダとの一致
+        // ------------------------------------------------------------------
+
+        private static void ShaderConstantsAgree()
+        {
+            string shaders = Path.Combine(_packageDirectory, "Runtime", "Shaders");
+            string canvasInclude = File.ReadAllText(Path.Combine(shaders, "SabaLiquidCanvas.cginc"));
+            string update = File.ReadAllText(Path.Combine(shaders, "SabaLiquidCanvasUpdate.shader"));
+
+            Require(DefineValue(canvasInclude, "SABA_LIQUID_ATLAS_COLUMNS") == AtlasColumns, "atlas columns differ");
+            Require(DefineValue(canvasInclude, "SABA_LIQUID_ATLAS_ROWS") == AtlasRows, "atlas rows differ");
+            Require(DefineValue(update, "SABA_LIQUID_MAX_STAMPS") == MaxStampsPerUpdate, "stamp array length differs");
+
+            // 面内の軸の対応。TileAxesFollowTheMapping が C# 側を固定し、ここで HLSL 側を固定します。
+            string mapping = "axis == 0 ? q.zy : (axis == 1 ? q.xz : q.xy)";
+            Require(canvasInclude.Contains(mapping), "SabaLiquidTileUv no longer uses the (z, y) / (x, z) / (x, y) mapping");
+        }
+
+        private static float DefineValue(string source, string name)
+        {
+            Match match = Regex.Match(source, @"#define\s+" + name + @"\s+([0-9.]+)");
+            Require(match.Success, $"#define {name} not found");
+            return float.Parse(match.Groups[1].Value, System.Globalization.CultureInfo.InvariantCulture);
+        }
+
+        private static void DegenerateInputStaysFinite()
+        {
+            var canvas = new LiquidBodyCanvas();
+            Vector3 up = canvas.SolveFrameUp(Vector3.zero, Vector3.zero, Vector3.zero);
+            Vector3 right = canvas.SolveFrameRight(up, Vector3.zero, Vector3.zero, Vector3.zero);
+            Vector3 forward = canvas.SolveFrameForward(right, up);
+            Require(IsFinite(up) && IsFinite(right) && IsFinite(forward), "the frame is not finite");
+            Require(Mathf.Abs(forward.magnitude - 1f) < Tolerance, "the frame collapsed");
+
+            Vector4 row = canvas.CanvasRow(Vector3.right, Vector3.zero, 0f);
+            Require(IsFinite(row.x) && IsFinite(row.w), "a zero half extent is not finite");
+            Require(IsFinite(canvas.ImmersionLevel(1f, Vector3.zero, Vector3.up, 0f)), "a zero height is not finite");
+            Require(IsFinite(canvas.FaceWeight(Vector3.zero, 0)), "a zero normal is not finite");
+        }
+
+        // ------------------------------------------------------------------
+        // 補助
+        // ------------------------------------------------------------------
+
+        private static float Apply(Vector4 row, Vector3 p)
+        {
+            return row.x * p.x + row.y * p.y + row.z * p.z + row.w;
+        }
+
+        private static Vector3 SetAxis(Vector3 v, int axis, float value)
+        {
+            if (axis == 0) v.x = value;
+            else if (axis == 1) v.y = value;
+            else v.z = value;
+            return v;
+        }
+
+        private static Vector3 RandomVector(System.Random random)
+        {
+            return new Vector3(
+                (float)(random.NextDouble() * 2.0 - 1.0),
+                (float)(random.NextDouble() * 2.0 - 1.0),
+                (float)(random.NextDouble() * 2.0 - 1.0));
+        }
+
+        private static bool Near(Vector3 a, Vector3 b)
+        {
+            return (a - b).magnitude < Tolerance;
+        }
+
+        private static bool IsFinite(float value)
+        {
+            return !float.IsNaN(value) && !float.IsInfinity(value);
+        }
+
+        private static bool IsFinite(Vector3 value)
+        {
+            return IsFinite(value.x) && IsFinite(value.y) && IsFinite(value.z);
+        }
+
+        private static void Run(string name, Action check)
+        {
+            try
+            {
+                check();
+                Console.WriteLine($"  ok   {name}");
+            }
+            catch (CheckFailed failure)
+            {
+                _failures++;
+                Console.WriteLine($"  FAIL {name}");
+                Console.WriteLine($"       {failure.Message}");
+            }
+            catch (Exception error)
+            {
+                _failures++;
+                Console.WriteLine($"  FAIL {name}");
+                Console.WriteLine($"       threw {error.GetType().Name}: {error.Message}");
+            }
+        }
+
+        private static void Require(bool condition, string message)
+        {
+            if (!condition)
+            {
+                throw new CheckFailed(message);
+            }
+        }
+
+        private sealed class CheckFailed : Exception
+        {
+            public CheckFailed(string message) : base(message) { }
+        }
+    }
+}

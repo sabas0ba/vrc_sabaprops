@@ -22,6 +22,10 @@
 #     same pinned SDK, and its solvers RUN: summon pose, finger press state
 #     machine, page wrapping, reach anchor, player cycling, the button grid and
 #     the rounded meshes. See offline/OfflineTabletTests.cs.
+#   * the liquid Runtime and Editor compile against the same pinned SDK, and
+#     the Body Canvas solver RUNS: the body frame, the six-face atlas, the
+#     stamp and immersion arithmetic, and agreement with the constants the
+#     HLSL restates. See offline/OfflineLiquidTests.cs.
 #   * the documentation figures still match what the generators produce, and
 #     the site renders, with no raw Markdown left in the text, no broken
 #     internal links and no missing images
@@ -57,6 +61,7 @@ REPO="$(cd "$HERE/../.." && pwd)"
 FOLIAGE_PACKAGE="${1:-$REPO/Packages/io.github.sabas0ba.sabaprops.foliage}"
 WATER_PACKAGE="$REPO/Packages/io.github.sabas0ba.sabaprops.water"
 STAGECAM="$REPO/Packages/io.github.sabas0ba.sabaprops.stagecam"
+LIQUID="$REPO/Packages/io.github.sabas0ba.sabaprops.liquid"
 TREE_PACKAGE="${TREE_PACKAGE:-$REPO/Packages/io.github.sabas0ba.sabaprops.trees}"
 FLOCK_PACKAGE="$REPO/Packages/io.github.sabas0ba.sabaprops.flock"
 TABLET="$REPO/Packages/io.github.sabas0ba.sabaprops.tablet"
@@ -430,6 +435,25 @@ csc "${COMMON[@]}" "${NETSTANDARD_ARGS[@]}" "${UNITY_ARGS[@]}" "${TABLET_REFS[@]
 echo "ok: ${#TABLET_SAMPLE_RUNTIME[@]} sample Runtime, ${#TABLET_SAMPLE_EDITOR[@]} sample Editor file(s)"
 
 # ---------------------------------------------------------------------------
+log "Compiling liquid Runtime and Editor (real VRChat SDK references + stubs)"
+# ---------------------------------------------------------------------------
+# Same arrangement as the stage camera: VRCPlayerApi, Utilities and
+# VRCGraphics come from the pinned VRCSDKBase.dll, UdonSharp and UnityEditor
+# from the stubs. Whether UdonSharp accepts the behaviours is settled in
+# vrchat/, not here.
+mapfile -t LIQUID_SOURCES < <(find "$LIQUID/Runtime" -name '*.cs' | sort)
+[ "${#LIQUID_SOURCES[@]}" -gt 0 ] || fail "no Runtime sources found under $LIQUID"
+
+csc "${COMMON[@]}" "${NETSTANDARD_ARGS[@]}" "${UNITY_ARGS[@]}"     -r:"$SDK_PLUGINS/VRCSDKBase.dll" -r:"$OUT/UdonSharp.Runtime.dll"     -out:"$OUT/SabaProps.Liquid.Runtime.dll" "${LIQUID_SOURCES[@]}"
+echo "ok: ${#LIQUID_SOURCES[@]} Runtime file(s)"
+
+mapfile -t LIQUID_EDITOR_SOURCES < <(find "$LIQUID/Editor" -name '*.cs' | sort)
+[ "${#LIQUID_EDITOR_SOURCES[@]}" -gt 0 ] || fail "no Editor sources found under $LIQUID"
+
+csc "${COMMON[@]}" "${NETSTANDARD_ARGS[@]}" "${UNITY_ARGS[@]}"     -r:"$SDK_PLUGINS/VRCSDKBase.dll" -r:"$SDK3_PLUGINS/VRCSDK3.dll"     -r:"$OUT/UdonSharp.Runtime.dll" -r:"$OUT/UdonSharp.Editor.dll"     -r:"$OUT/UnityEditor.NetStandard.dll" -r:"$OUT/SabaProps.Liquid.Runtime.dll"     -out:"$OUT/SabaProps.Liquid.Editor.dll" "${LIQUID_EDITOR_SOURCES[@]}"
+echo "ok: ${#LIQUID_EDITOR_SOURCES[@]} Editor file(s)"
+
+# ---------------------------------------------------------------------------
 log "Type-checking shader HLSL"
 # ---------------------------------------------------------------------------
 SHADER_DIR="$FOLIAGE_PACKAGE/Runtime/Shaders"
@@ -646,6 +670,19 @@ cp "$OFFLINE_OUT/OfflineMeshTests.runtimeconfig.json" \
    "$OFFLINE_OUT/OfflineTabletTests.runtimeconfig.json"
 
 dotnet "$OFFLINE_OUT/OfflineTabletTests.dll" || fail "offline tablet checks failed"
+
+# ---------------------------------------------------------------------------
+log "Running the liquid canvas solver (no Unity)"
+# ---------------------------------------------------------------------------
+# LiquidCanvasSolver.cs is split out of LiquidBodyCanvas the same way. The
+# checks also read the package's shader sources to confirm the constants the
+# HLSL restates, so they take the package directory and need the regex
+# assembly on top of the usual runtime set.
+csc_exe -r:"$RUNTIME_DIR/System.Text.RegularExpressions.dll"     -out:"$OFFLINE_OUT/OfflineLiquidTests.dll"     "$OFFLINE/UnityEngineShim.cs"     "$OFFLINE/OfflineLiquidTests.cs"     "$LIQUID/Runtime/LiquidCanvasSolver.cs"
+
+cp "$OFFLINE_OUT/OfflineMeshTests.runtimeconfig.json"    "$OFFLINE_OUT/OfflineLiquidTests.runtimeconfig.json"
+
+dotnet "$OFFLINE_OUT/OfflineLiquidTests.dll" "$LIQUID" || fail "offline liquid canvas checks failed"
 
 # ---------------------------------------------------------------------------
 log "Checking the documentation figures"

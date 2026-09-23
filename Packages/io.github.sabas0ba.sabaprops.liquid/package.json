@@ -3,7 +3,7 @@
   "displayName": "SabaProps Liquid",
   "version": "0.0.1",
   "unity": "2022.3",
-  "description": "ワールド側から、アバターとワールドの表面へ水・塗料・泥などの液体の付着を Projector で描画する PC 向け Udon パッケージ。現在は設計段階です。",
+  "description": "ワールド側から、アバターとワールドの表面へ水・塗料・泥などの液体の付着を Projector で描画する PC 向け Udon パッケージ。現在は開発中です。",
   "author": {
     "name": "sabas0ba",
     "url": "https://github.com/sabas0ba"
