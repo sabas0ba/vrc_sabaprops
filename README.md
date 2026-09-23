@@ -33,6 +33,7 @@ https://sabas0ba.github.io/vrc_sabaprops/index.json
 | `io.github.sabas0ba.sabaprops.putitems` | SabaProps Put Items | Pickup を手放した位置の近くにある机・壁へ位置と姿勢を補正。Object Sync 接続と独自同期向けの計算 API を提供。 |
 | `io.github.sabas0ba.sabaprops.tablet` | SabaProps Tablet | キー・頭上からの取り出し・アイテムの Interact で呼び出すタブレット型 UI。物理ボタンでミラー・コライダー・エフェクトの切り替え、テレポート、任意の Udon イベント呼び出しを行う。 |
 | `io.github.sabas0ba.sabaprops.flock` | SabaProps Flock | 鳥 27 種・魚・水生生物 41 種の群れを、Shader が時刻から計算する固定配置を含む 13 種の群れの動きで配置。Silhouette / Low / High の 3 段階 LOD。 |
+| `io.github.sabas0ba.sabaprops.liquid` | SabaProps Liquid | アバターとワールドの表面へ液体の付着を Projector で描画する PC 向け Udon パッケージ。設計段階。 |
 
 各パッケージの詳細は `Packages/<package-id>/README.md` を参照してください。
 
@@ -89,10 +90,13 @@ Put Items は `Tools > SabaProps > Put Items > Open Demo Scene` から、食卓�
 │   │   ├── Editor/                 # 生成器、Setup Window、サンプルシーン
 │   │   ├── Samples~/               # Stage Cam 連携の実装例
 │   │   └── Documentation~/
-│   └── io.github.sabas0ba.sabaprops.flock/
-│       ├── Runtime/                # 種のプリセット、運動の基準実装、群れのShader
-│       ├── Editor/                 # 個体形状と群れMeshの生成器、ギャラリーScene
-│       └── Documentation~/
+│   ├── io.github.sabas0ba.sabaprops.flock/
+│   │   ├── Runtime/                # 種のプリセット、運動の基準実装、群れのShader
+│   │   ├── Editor/                 # 個体形状と群れMeshの生成器、ギャラリーScene
+│   │   └── Documentation~/
+│   └── io.github.sabas0ba.sabaprops.liquid/
+│       ├── package.json            # VRChat Worlds SDK に依存
+│       └── Documentation~/         # 設計文書（実装前）
 ├── Website/                        # GitHub Pages で公開するリスティングサイト
 ├── source.json                     # VPM リスティングのメタ情報
 └── .github/
