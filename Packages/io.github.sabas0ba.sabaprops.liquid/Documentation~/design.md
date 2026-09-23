@@ -57,6 +57,23 @@ PC のみです。Android／iOS は対象としません。Projector は対象�
 | ネットワークイベント | `[NetworkCallable]`（SDK 3.8.1 以降）。引数 8 個まで、1 イベント 16 KB まで、既定 5 回/秒、最大 100 回/秒 | [Network Events](https://creators.vrchat.com/worlds/udon/networking/events/) |
 | 同期の上限 | 送信は全体で約 11 KB/s。Manual sync は 1 回あたり約 280 KB | [Network Details](https://creators.vrchat.com/worlds/udon/networking/network-details/) |
 
+### Udon から利用できる API
+
+公式文書に記載の無い範囲は、`.github/verify/vrchat/packages.lock` で固定した SDK 3.10.4 の
+`VRC.Udon.Wrapper.dll` と `VRC.Udon.Graph.dll` に含まれる extern シグネチャで確認しました。
+
+| API | 可否 | 設計への影響 |
+|---|---|---|
+| `Projector` | 不可。wrapper モジュールが存在しない | 投影サイズ、`ignoreLayers`、マテリアルの割り当ては Editor で確定させる。実行時に操作できるのは Transform、`GameObject.SetActive`、割り当て済みマテリアルの値のみ |
+| `Material.Set*`（`SetVectorArray` を含む） | 可 | Projector のマテリアルを別途参照して値を渡す |
+| `new Material(...)` | 不可 | Canvas ごとのマテリアルは Editor で事前生成する |
+| `new RenderTexture(...)`、`Create`、`Release` | 可 | Canvas の RenderTexture は実行時に確保できる |
+| `VRCGraphics.Blit`（マテリアル指定を含む） | 可 | Canvas への書き込み手段とする |
+| `Camera.Render`、`Camera.targetTexture` | 可 | 書き込み手段の代替 |
+| `CustomRenderTexture` | 本体は可、`CustomRenderTextureUpdateZone` は構築不可 | 部分更新に使えないため採用しない |
+| `VRCShader.PropertyToID`、`VRCShader.SetGlobal*` | 可 | 全 Canvas 共通の値（時刻など）の配布に使う |
+| `ParticleSystem.GetCollisionEvents` | 不可 | パーティクルからは命中位置を得られない。位置は Raycast で求める |
+
 ## 全体構成
 
 ```
@@ -149,7 +166,8 @@ Source の状態（放水の有無、姿勢、液面の高さなど）だけが�
 
 ### 当たり判定
 
-- 流下は Source の放出方向に沿った Raycast、またはパーティクルの衝突で到達点を得る
+- 流下は Source の放出方向に沿った Raycast で到達点を得る。パーティクルは見た目のみに用いる。
+  Udon ではパーティクルの衝突位置を取得できないため
 - 接触は Trigger と最寄り表面への Raycast で接触点を得る
 - 浸漬は Source のボリュームと液面の高さから、Canvas に書き込む高さを得る
 - アバターのボーンには Collider が無いため、到達点に最も近い Humanoid ボーンを
@@ -167,6 +185,19 @@ Source の状態（放水の有無、姿勢、液面の高さなど）だけが�
 - 元のマテリアルのアルファを参照できない。カットアウトの板ポリゴンは矩形のまま描画される
 - 投影方向の裏面にも描画される
 - MaterialPropertyBlock を受け取れない。Projector ごとの値はマテリアルを分けて持つ
+- Udon から Projector コンポーネントを操作できない。投影範囲は Editor で固定する
+
+### Canvas への書き込み
+
+Canvas の RenderTexture は 2 枚を交互に使い、`VRCGraphics.Blit` で前回の内容を読みながら
+次の内容を書きます。1 回の Blit で次の処理をまとめて行います。
+
+- その周期に溜まった DrawOp の適用。DrawOp は `Material.SetVectorArray` で最大数を決めて渡す
+- 乾燥による付着量の減衰
+- 浸漬による液面より下への付着
+
+書き込みは Canvas ごとに 5〜10 Hz とし、描画と同じ頻度では行いません。1 回の Blit の
+コストは RenderTexture の解像度で決まり、DrawOp の数にはほぼ依存しません。
 
 ### 付着ごとに Projector を置かない
 
@@ -283,10 +314,10 @@ PlayerLocal と MirrorReflection を含めるのは、自分の身体と鏡像�
 
 ## 未確定事項
 
-- Udon から操作できる Projector のプロパティ。Unity 上の Class Exposure Tree で確認する
-- RenderTexture への書き込み手段（Camera による描画、Blit、CustomRenderTexture のいずれか）と、
-  それぞれが Udon から利用できるか
-- `OnPlayerParticleCollision` がどのクライアントで発火するか
+- Projector の投影範囲が Transform のスケールの影響を受けるか。受けない場合、Body Canvas の
+  投影範囲は想定する最大の体格に合わせて固定する
+- `OnPlayerParticleCollision` がどのクライアントで発火するか。命中位置は Raycast で求めるため、
+  見た目のパーティクルとの整合のみに関わる
 - Canvas の解像度とメモリ量。アトラスの面あたり解像度と、同時に存在する Canvas 数から決める
 - 遮蔽判定の Raycast に用いるレイヤ構成
 
