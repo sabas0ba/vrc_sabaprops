@@ -4,6 +4,10 @@
 フォーマットは [Keep a Changelog](https://keepachangelog.com/ja/1.1.0/) に、
 バージョニングは [Semantic Versioning](https://semver.org/lang/ja/) に従います。
 
+## [0.1.1] - 2026-09-23
+
+- VRChat Worlds SDK の依存範囲を 3.10.x に変更し、3.10 系の既存 SDK と競合しないように修正。
+
 ## [Unreleased]
 
 ### Added

@@ -6,7 +6,7 @@ VRChat の Pickup を手放したとき、近くの静止した机・壁へ接�
 
 ## 導入
 
-Unity 2022.3 / VRChat Worlds SDK 3.10.4 を使用します。VPM で追加するか、このパッケージを Unity プロジェクトの Packages に配置します。
+Unity 2022.3 / VRChat Worlds SDK 3.10.x（3.10.4で検証）を使用します。VPM で追加するか、このパッケージを Unity プロジェクトの Packages に配置します。
 
 最初に Tools > SabaProps > Put Items > Prepare Udon Programs を実行します。Assets/SabaProps/PutItemsPrograms に4個のプログラムアセットを生成します。Create Placement Demo からも同じ準備を行います。
 
