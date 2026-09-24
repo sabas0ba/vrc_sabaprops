@@ -126,6 +126,22 @@ namespace SabaProps.Capture.WorldTests
         }
 
         [Test]
+        public void ThinPolicy_WithOneFrame_KeepsTheFirstFrame()
+        {
+            _recorder.fullPolicy = CaptureRecorder.PolicyThin;
+            _recorder.maxFrames = 1;
+            _recorder._CaptureNow();
+
+            Fill(_source, Color.blue);
+            _recorder._CaptureNow();
+
+            Assert.That(_recorder.GetFrameCount(), Is.EqualTo(1));
+            Color kept = ReadCentre(_recorder.GetFrame(0));
+            Assert.That(kept.r, Is.GreaterThan(0.9f), $"the first frame was overwritten: {kept}");
+            Assert.That(kept.b, Is.LessThan(0.1f), $"the first frame was overwritten: {kept}");
+        }
+
+        [Test]
         public void Clear_EmptiesWithoutLosingCapacity()
         {
             _recorder._CaptureNow();

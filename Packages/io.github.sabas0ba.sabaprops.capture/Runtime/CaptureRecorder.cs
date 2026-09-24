@@ -75,7 +75,6 @@ namespace SabaProps.Capture
         private int allocatedFrames;
 
         private bool recording;
-        private bool stoppedByPolicy;
         private double clockBeforeResume;
         private double resumedAt;
         private double nextCaptureTime;
@@ -107,15 +106,16 @@ namespace SabaProps.Capture
                 return;
             }
 
+            int policy = EffectivePolicy(fullPolicy, capacity);
             if (count >= capacity)
             {
-                if (fullPolicy == PolicyStop)
+                if (policy == PolicyStop)
                 {
                     StopByPolicy();
                     return;
                 }
 
-                if (fullPolicy == PolicyThin && capacity > 1)
+                if (policy == PolicyThin)
                 {
                     // 間引き後の格子に今の時刻が載るとは限らないため、この回は撮らずに次の予定を決め直します。
                     Thin();
@@ -125,6 +125,7 @@ namespace SabaProps.Capture
 
             StoreFrame(now);
             nextCaptureTime = NextCaptureTime(nextCaptureTime, currentInterval, now);
+            StopIfFilled(policy);
         }
 
         // ------------------------------------------------------------------
@@ -147,12 +148,12 @@ namespace SabaProps.Capture
                 currentInterval = Mathf.Max(interval, MinInterval);
             }
 
-            if (stoppedByPolicy && count >= capacity && fullPolicy == PolicyStop)
+            // 停止モードで満杯なら、撮れる枠が無いので始めません。
+            if (count >= capacity && EffectivePolicy(fullPolicy, capacity) == PolicyStop)
             {
                 return;
             }
 
-            stoppedByPolicy = false;
             resumedAt = Time.timeAsDouble;
             recording = true;
             revision++;
@@ -193,20 +194,22 @@ namespace SabaProps.Capture
                 currentInterval = Mathf.Max(interval, MinInterval);
             }
 
+            int policy = EffectivePolicy(fullPolicy, capacity);
             if (count >= capacity)
             {
-                if (fullPolicy == PolicyStop)
+                if (policy == PolicyStop)
                 {
                     return;
                 }
 
-                if (fullPolicy == PolicyThin && capacity > 1)
+                if (policy == PolicyThin)
                 {
                     Thin();
                 }
             }
 
             StoreFrame(RecordingClock());
+            StopIfFilled(policy);
         }
 
         /// <summary>
@@ -216,7 +219,6 @@ namespace SabaProps.Capture
         public void _Clear()
         {
             recording = false;
-            stoppedByPolicy = false;
             head = 0;
             count = 0;
             clockBeforeResume = 0.0;
@@ -305,11 +307,22 @@ namespace SabaProps.Capture
             return clockBeforeResume + (Time.timeAsDouble - resumedAt);
         }
 
+        /// <summary>
+        /// 停止モードで最後の枠を埋めた時点で止めます。次の予定時刻まで待つと、その間も
+        /// 撮影中の表示と撮影時計が進み続けるためです。
+        /// </summary>
+        private void StopIfFilled(int policy)
+        {
+            if (recording && policy == PolicyStop && count >= capacity)
+            {
+                StopByPolicy();
+            }
+        }
+
         private void StopByPolicy()
         {
             clockBeforeResume = RecordingClock();
             recording = false;
-            stoppedByPolicy = true;
             revision++;
         }
 

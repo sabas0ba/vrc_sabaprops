@@ -32,6 +32,7 @@ namespace SabaProps.Capture
             Run("the schedule skips missed slots instead of bursting", ScheduleSkipsMissedSlots);
             Run("the schedule clamps a too short interval", ScheduleClampsShortInterval);
             Run("the schedule does not drift over hours", ScheduleDoesNotDriftOverHours);
+            Run("thinning needs two frames and unknown policies thin", EffectivePolicyFallsBack);
             Run("physical indices wrap around the ring", PhysicalIndicesWrap);
             Run("thinning is a permutation that keeps even frames", ThinningIsAPermutation);
             Run("repeated thinning keeps uniform spacing", RepeatedThinningKeepsUniformSpacing);
@@ -164,6 +165,19 @@ namespace SabaProps.Capture
         // ------------------------------------------------------------------
         // リングバッファと間引き
         // ------------------------------------------------------------------
+
+        private static void EffectivePolicyFallsBack()
+        {
+            var recorder = new CaptureRecorder();
+
+            Require(recorder.EffectivePolicy(PolicyThin, 2) == PolicyThin, "two frames can be thinned");
+            Require(recorder.EffectivePolicy(PolicyThin, 1) == PolicyStop,
+                "one frame cannot be thinned without losing the first frame, so it must stop");
+            Require(recorder.EffectivePolicy(PolicyRing, 1) == PolicyRing, "the ring policy is kept as is");
+            Require(recorder.EffectivePolicy(PolicyStop, 360) == PolicyStop, "the stop policy is kept as is");
+            Require(recorder.EffectivePolicy(99, 360) == PolicyThin, "an unknown policy falls back to thinning");
+            Require(recorder.EffectivePolicy(-1, 1) == PolicyStop, "an unknown policy on one frame falls back to stopping");
+        }
 
         private static void PhysicalIndicesWrap()
         {

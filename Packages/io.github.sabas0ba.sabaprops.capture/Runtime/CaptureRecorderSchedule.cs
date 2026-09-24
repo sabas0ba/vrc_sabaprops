@@ -43,6 +43,28 @@ namespace SabaProps.Capture
         /// <summary>撮影間隔の下限 (s)。これより短い指定はこの値に丸めます。</summary>
         public const float MinInterval = 0.1f;
 
+        /// <summary>
+        /// 実際に適用する満杯時の動作。
+        /// <para>
+        /// 間引きは 1 枚以下では成り立ちません。1 枚を捨てると撮影開始の画像が残らないためです。
+        /// その場合は停止として扱い、最初の 1 枚を保持します。未知の値は既定の間引きと同じ扱いにします。
+        /// </para>
+        /// </summary>
+        private int EffectivePolicy(int policy, int capacity)
+        {
+            if (policy != PolicyRing && policy != PolicyStop)
+            {
+                policy = PolicyThin;
+            }
+
+            if (policy == PolicyThin && capacity < 2)
+            {
+                return PolicyStop;
+            }
+
+            return policy;
+        }
+
         /// <summary>1 画素あたりの byte 数。未知の形式は ARGB32 と同じ扱いにします。</summary>
         private int BytesPerPixel(int format)
         {
