@@ -61,7 +61,7 @@ Unity は Unity Hub の既定の場所から `ProjectVersion.txt` に一致す�
 初回は SDK が要求する UPM パッケージ（burst、collections、cinemachine 等）を
 Unity がレジストリから取得するため、数分かかります。
 
-テストは `SabaProps.Foliage.CITests`、`SabaProps.Foliage.WorldTests`、`SabaProps.SoftProps.WorldTests`、`SabaProps.StageCam.WorldTests`、`SabaProps.PutItems.Tests` に絞って実行します。
+テストは `SabaProps.Foliage.CITests`、`SabaProps.Foliage.WorldTests`、`SabaProps.SoftProps.WorldTests`、`SabaProps.StageCam.WorldTests`、`SabaProps.Capture.WorldTests`、`SabaProps.PutItems.Tests` に絞って実行します。
 SDK 自身のテストアセンブリも同じプロジェクトに存在しますが、
 本パッケージとは無関係な理由で 2 件失敗する（ランダム生成の JSON ファズケースと、
 docs.microsoft.com の URL 到達性を検証するもの）ため、終了コードを意味のあるものにするためです。
@@ -73,6 +73,7 @@ docs.microsoft.com の URL 到達性を検証するもの）ため、終了コ�
 | `SabaProps.Foliage.CITests` | EditMode | シーンが正しく作られているか。SDK の有無で期待値が切り替わります |
 | `SabaProps.Foliage.WorldTests` | PlayMode | ClientSim でワールドとして実行し、プレイヤーが Spawn するか |
 | `SabaProps.StageCam.WorldTests` | EditMode | リグと操作パネルの Udon コンパイル、保存後の UI イベント接続、カメラ設定の独立性、サンプル構成を検証。`TestResults/stagecam-panel.png` にレイアウト確認画像を出力 |
+| `SabaProps.Capture.WorldTests` | EditMode | Recorder と Player の Udon コンパイル、公開イベントとフィールド、再生パネルの UI イベント接続を検証。Recorder を実物の RenderTexture で動かし、Blit による複製と満杯時の 3 種類の動作を確認 |
 | `SabaProps.SoftProps.WorldTests` | EditMode + Playへの遷移 | Prefab生成、同梱デモのimport・参照・比較台、ClientSimでのCollider接触・復元・自動運動・立位荷重 |
 | `SabaProps.PutItems.Tests` | EditMode | 吸着対象と Pickup の設定、同梱デモの構成を検証 |
 

@@ -23,6 +23,7 @@ CIPROJECT="$REPO/.github/verify/CIProject"
 PACKAGE="$REPO/Packages/io.github.sabas0ba.sabaprops.foliage"
 WATER_PACKAGE="$REPO/Packages/io.github.sabas0ba.sabaprops.water"
 STAGECAM="$REPO/Packages/io.github.sabas0ba.sabaprops.stagecam"
+CAPTURE_PACKAGE="$REPO/Packages/io.github.sabas0ba.sabaprops.capture"
 SOFT_PROPS_PACKAGE="$REPO/Packages/io.github.sabas0ba.sabaprops.softprops"
 PUT_ITEMS_PACKAGE="$REPO/Packages/io.github.sabas0ba.sabaprops.putitems"
 
@@ -77,6 +78,9 @@ replace "$WATER_PACKAGE" "$PROJECT/Packages/io.github.sabas0ba.sabaprops.water"
 # The stage camera package is Udon, so this project is the only place it can be
 # compiled by UdonSharp rather than merely by Roslyn. See Tests/StageCamProgramTests.cs.
 replace "$STAGECAM" "$PROJECT/Packages/io.github.sabas0ba.sabaprops.stagecam"
+
+# Also Udon, for the same reason. See Tests/Capture/CaptureProgramTests.cs.
+replace "$CAPTURE_PACKAGE" "$PROJECT/Packages/io.github.sabas0ba.sabaprops.capture"
 
 replace "$SOFT_PROPS_PACKAGE" "$PROJECT/Packages/io.github.sabas0ba.sabaprops.softprops"
 replace "$PUT_ITEMS_PACKAGE" "$PROJECT/Packages/io.github.sabas0ba.sabaprops.putitems"

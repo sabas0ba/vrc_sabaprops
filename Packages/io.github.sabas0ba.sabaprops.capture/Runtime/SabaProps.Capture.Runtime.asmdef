@@ -1,0 +1,19 @@
+{
+    "name": "SabaProps.Capture.Runtime",
+    "rootNamespace": "SabaProps.Capture",
+    "references": [
+        "VRC.SDKBase",
+        "UnityEngine.UI",
+        "VRC.Udon",
+        "UdonSharp.Runtime"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
