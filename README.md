@@ -30,6 +30,7 @@ https://sabas0ba.github.io/vrc_sabaprops/index.json
 | `io.github.sabas0ba.sabaprops.trees` | SabaProps Trees | 再帰枝ジェネレータから樹木と 3 段階 LOD を生成。共有サーフェス散布 API を使う Tree Field に対応。 |
 | `io.github.sabas0ba.sabaprops.softprops` | SabaProps Soft Props | World Contactsでユーザーの接触を検知し、ふとん、ベッド、ソファー、クッションを最大8点で変形するPC向けprop集。 |
 | `io.github.sabas0ba.sabaprops.stagecam` | SabaProps Stage Cam | 特定のプレイヤーの部位を追う Udon カメラリグ。Pickup による構図補正と自動カメラワークに対応。 |
+| `io.github.sabas0ba.sabaprops.capture` | SabaProps Capture | RenderTexture や Camera から一定間隔で撮影して有限枚数を保持し、タイムラインで見返す Udon の Recorder と再生パネル。タイムラプス向けの間引きに対応。 |
 | `io.github.sabas0ba.sabaprops.putitems` | SabaProps Put Items | Pickup を手放した位置の近くにある机・壁へ位置と姿勢を補正。Object Sync 接続と独自同期向けの計算 API を提供。 |
 
 各パッケージの詳細は `Packages/<package-id>/README.md` を参照してください。
@@ -74,6 +75,11 @@ Put Items は `Tools > SabaProps > Put Items > Open Demo Scene` から、食卓�
 │   │   ├── Runtime/                # UdonSharp のカメラリグと幾何ソルバ
 │   │   ├── Editor/                 # リグとサンプルシーンの生成器
 │   │   └── Samples~/              # VRChat World のサンプル
+│   ├── io.github.sabas0ba.sabaprops.capture/
+│   │   ├── package.json            # VRChat Worlds SDK に依存
+│   │   ├── Runtime/                # UdonSharp の Recorder・Player と計算部分
+│   │   ├── Editor/                 # Recorder と再生パネルの生成器
+│   │   └── Documentation~/
 │   └── io.github.sabas0ba.sabaprops.putitems/
 │       ├── Runtime/                # 吸着計算・Object Sync 接続・追従状態
 │       ├── Editor/                 # デモ Scene と Udon program の導入
@@ -99,7 +105,7 @@ Put Items は `Tools > SabaProps > Put Items > Open Demo Scene` から、食卓�
 `Packages/` 配下に、このリポジトリの `Packages/<package-id>` をシンボリックリンク（または
 クローンごと配置）してください。編集するパッケージの分だけ張ります。
 
-`io.github.sabas0ba.sabaprops.stagecam` は Udon を使うため、リンク先のプロジェクトには
+`io.github.sabas0ba.sabaprops.stagecam` と `io.github.sabas0ba.sabaprops.capture` は Udon を使うため、リンク先のプロジェクトには
 VRChat Worlds SDK が入っている必要があります。`io.github.sabas0ba.sabaprops.foliage` の方は
 SDK が無くても動きます。
 
@@ -267,6 +273,18 @@ Markdown 変換は `build_listing.py` と同じ方針で自前実装です。CI 
 
 こちらも故障注入で確認済みです。平滑化を線形に、注視の合成順を入れ替えて roll を混ぜ、
 デッドゾーンを素通しにする 3 つの変更を入れると、それぞれ対応する検査だけが落ちます。
+
+#### 撮影と再生の計算の実行検査
+
+`io.github.sabas0ba.sabaprops.capture` も同じ構成です。`CaptureRecorderSchedule.cs` と `CapturePlayerTimeline.cs` を単独でコンパイルし、`.github/verify/offline/OfflineCaptureTests.cs` から実行します。
+
+| 検査 | 内容 |
+| --- | --- |
+| 保存枚数 | 最大枚数と VRAM の予算の小さい方になること、1 枚未満にならないこと、大きな画像で桁あふれしないこと |
+| 撮影周期 | 予定時刻の格子に留まること、飛ばした回をまとめて撮らないこと、90 fps で 3 時間回しても撮影回数と時刻がずれないこと |
+| リングバッファ | 添字が折り返すこと、2 周目に入った状態でも時刻から画像を探せること |
+| 間引き | 並べ替えが置換になっていること、最古の画像を残すこと、繰り返し間引いても等間隔を保つこと |
+| 再生 | 再生位置がフレームレートに依存しないこと、端での折り返しと停止、スライダーとの往復、サムネイルが両端を含むこと、時刻の表示 |
 
 ### 検証できないこと
 

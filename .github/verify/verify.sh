@@ -18,6 +18,9 @@
 #     pickup round trip, frame rate independence of the smoothing, the deadzone
 #     contract, bone fallback, framing, and the continuity of the automatic
 #     camera move. See offline/OfflineStageCamTests.cs.
+#   * the capture package compiles against the same SDK, and its schedule,
+#     frame budget, ring buffer, thinning and playback arithmetic RUN. See
+#     offline/OfflineCaptureTests.cs.
 #   * the documentation figures still match what the generators produce, and
 #     the site renders, with no raw Markdown left in the text, no broken
 #     internal links and no missing images
@@ -53,6 +56,7 @@ REPO="$(cd "$HERE/../.." && pwd)"
 FOLIAGE_PACKAGE="${1:-$REPO/Packages/io.github.sabas0ba.sabaprops.foliage}"
 WATER_PACKAGE="$REPO/Packages/io.github.sabas0ba.sabaprops.water"
 STAGECAM="$REPO/Packages/io.github.sabas0ba.sabaprops.stagecam"
+CAPTURE_PACKAGE="$REPO/Packages/io.github.sabas0ba.sabaprops.capture"
 TREE_PACKAGE="${TREE_PACKAGE:-$REPO/Packages/io.github.sabas0ba.sabaprops.trees}"
 
 WORK="${VERIFY_WORK_DIR:-$REPO/.verify}"
@@ -340,6 +344,31 @@ csc "${COMMON[@]}" "${NETSTANDARD_ARGS[@]}" "${UNITY_ARGS[@]}" \
 echo "ok: ${#STAGECAM_EDITOR_SOURCES[@]} file(s)"
 
 # ---------------------------------------------------------------------------
+log "Compiling capture Runtime and Editor (real VRChat SDK references + stubs)"
+# ---------------------------------------------------------------------------
+# Same arrangement as the stage camera: VRCGraphics comes from the shipping
+# VRCSDKBase.dll, UdonSharpBehaviour and uGUI from the stubs. Whether UdonSharp
+# accepts the behaviours is settled in vrchat/, not here.
+mapfile -t CAPTURE_SOURCES < <(find "$CAPTURE_PACKAGE/Runtime" -name '*.cs' | sort)
+[ "${#CAPTURE_SOURCES[@]}" -gt 0 ] || fail "no Runtime sources found under $CAPTURE_PACKAGE"
+
+csc "${COMMON[@]}" "${NETSTANDARD_ARGS[@]}" "${UNITY_ARGS[@]}" \
+    -r:"$SDK_PLUGINS/VRCSDKBase.dll" -r:"$OUT/UdonSharp.Runtime.dll" -r:"$OUT/UnityEngine.UI.dll" \
+    -out:"$OUT/SabaProps.Capture.Runtime.dll" "${CAPTURE_SOURCES[@]}"
+echo "ok: ${#CAPTURE_SOURCES[@]} Runtime file(s)"
+
+mapfile -t CAPTURE_EDITOR_SOURCES < <(find "$CAPTURE_PACKAGE/Editor" -name '*.cs' | sort)
+[ "${#CAPTURE_EDITOR_SOURCES[@]}" -gt 0 ] || fail "no Editor sources found under $CAPTURE_PACKAGE"
+
+csc "${COMMON[@]}" "${NETSTANDARD_ARGS[@]}" "${UNITY_ARGS[@]}" \
+    -r:"$SDK_PLUGINS/VRCSDKBase.dll" -r:"$SDK3_PLUGINS/VRCSDK3.dll" \
+    -r:"$OUT/UdonSharp.Runtime.dll" -r:"$OUT/UdonSharp.Editor.dll" \
+    -r:"$OUT/UnityEditor.NetStandard.dll" -r:"$OUT/SabaProps.Capture.Runtime.dll" \
+    -r:"$OUT/UnityEngine.UI.dll" \
+    -out:"$OUT/SabaProps.Capture.Editor.dll" "${CAPTURE_EDITOR_SOURCES[@]}"
+echo "ok: ${#CAPTURE_EDITOR_SOURCES[@]} Editor file(s)"
+
+# ---------------------------------------------------------------------------
 log "Type-checking shader HLSL"
 # ---------------------------------------------------------------------------
 SHADER_DIR="$FOLIAGE_PACKAGE/Runtime/Shaders"
@@ -475,6 +504,22 @@ cp "$OFFLINE_OUT/OfflineMeshTests.runtimeconfig.json" \
    "$OFFLINE_OUT/OfflineStageCamTests.runtimeconfig.json"
 
 dotnet "$OFFLINE_OUT/OfflineStageCamTests.dll" || fail "offline stage camera checks failed"
+
+# ---------------------------------------------------------------------------
+log "Running the capture schedule and timeline (no Unity)"
+# ---------------------------------------------------------------------------
+# The same partial-class arrangement as the stage camera solver, for both of
+# the capture behaviours at once.
+csc_exe -out:"$OFFLINE_OUT/OfflineCaptureTests.dll" \
+    "$OFFLINE/UnityEngineShim.cs" \
+    "$OFFLINE/OfflineCaptureTests.cs" \
+    "$CAPTURE_PACKAGE/Runtime/CaptureRecorderSchedule.cs" \
+    "$CAPTURE_PACKAGE/Runtime/CapturePlayerTimeline.cs"
+
+cp "$OFFLINE_OUT/OfflineMeshTests.runtimeconfig.json" \
+   "$OFFLINE_OUT/OfflineCaptureTests.runtimeconfig.json"
+
+dotnet "$OFFLINE_OUT/OfflineCaptureTests.dll" || fail "offline capture checks failed"
 
 # ---------------------------------------------------------------------------
 log "Checking the documentation figures"

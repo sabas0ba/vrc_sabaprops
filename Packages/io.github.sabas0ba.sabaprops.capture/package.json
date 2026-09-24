@@ -1,0 +1,28 @@
+{
+  "name": "io.github.sabas0ba.sabaprops.capture",
+  "displayName": "SabaProps Capture",
+  "version": "0.1.0",
+  "unity": "2022.3",
+  "description": "RenderTexture または Camera から一定間隔で画像を撮り、有限枚数を VRAM 上に保持する Udon の Recorder と、保持した画像をタイムラインで見返す再生パネル。満杯時の動作は上書き・停止・間引きから選べ、間引きでは枚数の上限を守ったまま撮影開始から現在までを均等な間隔で覆います。タイムラプスや、進行を後から見返す用途向けです。",
+  "author": {
+    "name": "sabas0ba",
+    "url": "https://github.com/sabas0ba"
+  },
+  "license": "MIT",
+  "licensesUrl": "https://github.com/sabas0ba/vrc_sabaprops/blob/main/LICENSE",
+  "documentationUrl": "https://github.com/sabas0ba/vrc_sabaprops/blob/main/Packages/io.github.sabas0ba.sabaprops.capture/README.md",
+  "changelogUrl": "https://github.com/sabas0ba/vrc_sabaprops/blob/main/Packages/io.github.sabas0ba.sabaprops.capture/CHANGELOG.md",
+  "vpmDependencies": {
+    "com.vrchat.worlds": "3.10.x"
+  },
+  "keywords": [
+    "vrchat",
+    "world",
+    "udon",
+    "udonsharp",
+    "camera",
+    "capture",
+    "timelapse",
+    "rendertexture"
+  ]
+}
