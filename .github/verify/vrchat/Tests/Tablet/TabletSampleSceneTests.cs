@@ -1,0 +1,189 @@
+using System.Collections.Generic;
+using NUnit.Framework;
+using SabaProps.Tablet.Authoring;
+using SabaProps.Tablet.Editors;
+using UdonSharp;
+using UdonSharp.Compiler;
+using UdonSharpEditor;
+using UnityEditor;
+using UnityEditor.SceneManagement;
+using UnityEngine;
+using VRC.SDK3.Components;
+using VRC.Udon.Common.Interfaces;
+
+namespace SabaProps.Tablet.WorldTests
+{
+    /// <summary>
+    /// What the offline tier cannot see: that UdonSharp accepts every behaviour, and
+    /// that the builder wires a saved scene so each button reaches an event Udon
+    /// actually exports.
+    /// </summary>
+    public class TabletSampleSceneTests
+    {
+        [OneTimeSetUp]
+        public void CompilePrograms()
+        {
+            UdonSharpCompilerV1.CompileSync(new UdonSharpCompileOptions { IsEditorBuild = true });
+        }
+
+        [SetUp]
+        public void CreateSample()
+        {
+            TabletSampleScene.Create();
+            EditorSceneManager.OpenScene(TabletSampleScene.ScenePath);
+        }
+
+        [Test]
+        public void EveryBehaviour_CompilesToAnUdonProgram()
+        {
+            foreach (var type in new[]
+                     {
+                         typeof(TabletController), typeof(TabletButton), typeof(TabletToggle), typeof(TabletTeleport),
+                         typeof(TabletKeyTrigger), typeof(TabletReachTrigger), typeof(TabletInteractTrigger),
+                     })
+            {
+                var behaviour = (UdonSharpBehaviour)Object.FindObjectOfType(type);
+                Assert.That(behaviour, Is.Not.Null, type.Name + " is missing from the sample");
+                Assert.That(Program(behaviour), Is.Not.Null, type.Name + " did not compile; see the Unity console");
+            }
+        }
+
+        [Test]
+        public void EveryButton_TargetsAnExportedEvent()
+        {
+            var controller = Object.FindObjectOfType<TabletController>();
+            var buttons = Object.FindObjectsOfType<TabletButton>(true);
+            Assert.That(buttons.Length, Is.GreaterThan(0));
+            Assert.That(controller.buttons.Length, Is.EqualTo(buttons.Length), "every button is registered for finger presses");
+
+            foreach (TabletButton button in buttons)
+            {
+                Assert.That(button.target, Is.Not.Null, button.name);
+                Assert.That(button.pressZone, Is.Not.Null, button.name);
+                Assert.That(button.pressZone.isTrigger, Is.True, button.name + ": the press zone must not block players");
+                var exported = new List<string>(Program(button.target).EntryPoints.GetExportedSymbols());
+                CollectionAssert.Contains(exported, button.eventName, button.name);
+                if (button.useArgument)
+                {
+                    var symbols = new List<string>(Program(button.target).SymbolTable.GetExportedSymbols());
+                    CollectionAssert.Contains(symbols, "tabletArgument", button.name);
+                }
+            }
+        }
+
+        [Test]
+        public void ReachTrigger_ExportsInputGrab()
+        {
+            var reach = Object.FindObjectOfType<TabletReachTrigger>();
+            CollectionAssert.Contains(new List<string>(Program(reach).EntryPoints.GetExportedSymbols()), "_inputGrab");
+        }
+
+        [Test]
+        public void Toggle_DeclaresManualSync()
+        {
+            var toggle = Object.FindObjectOfType<TabletToggle>();
+            var backing = UdonSharpEditorUtility.GetBackingUdonBehaviour(toggle);
+            Assert.That(backing.SyncMethod, Is.EqualTo(VRC.SDKBase.Networking.SyncType.Manual));
+        }
+
+        [Test]
+        public void MirrorToggles_AreExclusive()
+        {
+            TabletToggle high = ToggleFor("Mirror HQ");
+            TabletToggle low = ToggleFor("Mirror LQ");
+            GameObject highObject = high.objects[0];
+            GameObject lowObject = low.objects[0];
+
+            low._TurnOn();
+            Assert.That(lowObject.activeSelf, Is.True);
+            Assert.That(highObject.activeSelf, Is.False);
+            Assert.That(high.IsOn(), Is.False);
+
+            high._Toggle();
+            Assert.That(highObject.activeSelf, Is.True);
+            Assert.That(lowObject.activeSelf, Is.False);
+            Assert.That(high.buttons[0].IsLit(), Is.True);
+            Assert.That(low.buttons[0].IsLit(), Is.False);
+        }
+
+        [Test]
+        public void TeleportButtons_CarryTheirDestinationIndex()
+        {
+            var teleport = Object.FindObjectOfType<TabletTeleport>();
+            Assert.That(teleport.destinations.Length, Is.EqualTo(3));
+            foreach (TabletButton button in Object.FindObjectsOfType<TabletButton>(true))
+            {
+                if (button.eventName != "_TeleportToDestination")
+                {
+                    continue;
+                }
+
+                Assert.That(button.useArgument, Is.True);
+                Assert.That(teleport.destinations[button.argument].name, Is.EqualTo(button.name));
+            }
+        }
+
+        [Test]
+        public void Build_ReplacesGeneratedObjectsWithoutDuplicates()
+        {
+            var definition = Object.FindObjectOfType<TabletDefinition>();
+            TabletBuilder.Build(definition);
+            TabletBuilder.Build(definition);
+
+            int bodies = 0;
+            foreach (Transform child in definition.transform)
+            {
+                if (child.name == TabletBuilder.BodyName)
+                {
+                    bodies++;
+                }
+            }
+
+            Assert.That(bodies, Is.EqualTo(1));
+            Assert.That(Object.FindObjectsOfType<TabletController>().Length, Is.EqualTo(1));
+            Assert.That(Object.FindObjectsOfType<VRCPickup>().Length, Is.EqualTo(1), "only the handle is a pickup");
+        }
+
+        [Test]
+        public void SampleDefinition_HasNoErrors()
+        {
+            var definition = Object.FindObjectOfType<TabletDefinition>();
+            foreach (TabletIssue issue in TabletValidation.Validate(definition))
+            {
+                Assert.That(issue.type, Is.Not.EqualTo(MessageType.Error), issue.message);
+            }
+        }
+
+        [Test]
+        public void InteractItem_SummonsTheTablet()
+        {
+            GameObject stand = GameObject.Find(TabletSampleScene.StandName);
+            var trigger = stand.GetComponent<TabletInteractTrigger>();
+            Assert.That(trigger, Is.Not.Null);
+            Assert.That(trigger.controller, Is.EqualTo(Object.FindObjectOfType<TabletController>()));
+        }
+
+        private static TabletToggle ToggleFor(string objectName)
+        {
+            foreach (TabletToggle toggle in Object.FindObjectsOfType<TabletToggle>())
+            {
+                if (toggle.objects.Length > 0 && toggle.objects[0].name == objectName)
+                {
+                    return toggle;
+                }
+            }
+
+            Assert.Fail("no toggle for " + objectName);
+            return null;
+        }
+
+        private static IUdonProgram Program(UdonSharpBehaviour behaviour)
+        {
+            var backing = UdonSharpEditorUtility.GetBackingUdonBehaviour(behaviour);
+            var asset = UdonSharpEditorUtility.GetUdonSharpProgramAsset(backing);
+            Assert.That(asset, Is.Not.Null, behaviour.GetType().Name + " has no program asset");
+            Assert.That(asset.SerializedProgramAsset, Is.Not.Null, behaviour.GetType().Name + " has no compiled program");
+            return asset.SerializedProgramAsset.RetrieveProgram();
+        }
+    }
+}

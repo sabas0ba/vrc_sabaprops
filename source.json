@@ -16,6 +16,7 @@
     "io.github.sabas0ba.sabaprops.trees",
     "io.github.sabas0ba.sabaprops.softprops",
     "io.github.sabas0ba.sabaprops.stagecam",
-    "io.github.sabas0ba.sabaprops.putitems"
+    "io.github.sabas0ba.sabaprops.putitems",
+    "io.github.sabas0ba.sabaprops.tablet"
   ]
 }

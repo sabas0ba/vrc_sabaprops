@@ -237,6 +237,7 @@ namespace UnityEditor
     public static class Selection
     {
         public static GameObject activeGameObject { get; set; }
+        public static GameObject[] gameObjects => new GameObject[0];
         public static UnityEngine.Object activeObject { get; set; }
         public static UnityEngine.Object[] objects { get; set; }
     }
@@ -402,6 +403,7 @@ namespace UnityEditor
 
         public static Enum EnumPopup(string label, Enum selected, params GUILayoutOption[] options) => selected;
         public static int Popup(string label, int selectedIndex, string[] displayedOptions, params GUILayoutOption[] options) => selectedIndex;
+        public static string TextField(string label, string text, params GUILayoutOption[] options) => text;
 
         public static Vector2 BeginScrollView(Vector2 position, params GUILayoutOption[] options) => position;
         public static void EndScrollView() { }

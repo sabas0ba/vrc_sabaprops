@@ -1,0 +1,31 @@
+{
+    "name": "SabaProps.Tablet.WorldTests",
+    "rootNamespace": "SabaProps.Tablet.WorldTests",
+    "references": [
+        "SabaProps.Tablet.Runtime",
+        "SabaProps.Tablet.Authoring",
+        "SabaProps.Tablet.Editor",
+        "Unity.TextMeshPro",
+        "VRC.SDK3",
+        "UdonSharp.Runtime",
+        "UdonSharp.Editor",
+        "VRC.Udon",
+        "VRC.Udon.Editor",
+        "VRC.SDKBase",
+        "UnityEngine.TestRunner",
+        "UnityEditor.TestRunner"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": false,
+    "defineConstraints": [
+        "UNITY_INCLUDE_TESTS"
+    ],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
