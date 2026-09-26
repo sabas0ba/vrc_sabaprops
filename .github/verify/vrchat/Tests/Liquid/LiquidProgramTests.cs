@@ -54,7 +54,7 @@ namespace SabaProps.Liquid.WorldTests
 
             foreach (string method in new[] { "Assign", "Release", "QueueStamp", "ApplyImmersion", "WashImmersion", "GetPlayerId", "GetLastActivityTime" })
             {
-                CollectionAssert.Contains(exported, method, method + " is not callable from other behaviours");
+                AssertExportsMethod(exported, method);
             }
         }
 
@@ -64,8 +64,8 @@ namespace SabaProps.Liquid.WorldTests
             List<string> exported = Exported(Compile<LiquidCanvasPool>());
 
             CollectionAssert.Contains(exported, "_onPlayerLeft");
-            CollectionAssert.Contains(exported, "AcquireCanvas");
-            CollectionAssert.Contains(exported, "FindCanvas");
+            AssertExportsMethod(exported, "AcquireCanvas");
+            AssertExportsMethod(exported, "FindCanvas");
         }
 
         [Test]
@@ -88,6 +88,17 @@ namespace SabaProps.Liquid.WorldTests
                 "UdonSharp produced no program for " + typeof(T).Name + ". The Unity console holds the diagnostics.");
 
             return asset.SerializedProgramAsset.RetrieveProgram();
+        }
+
+        /// <summary>
+        /// UdonSharp exports a method without parameters under its own name and a
+        /// method with parameters under a mangled one ("__0_Assign"). Either means
+        /// another behaviour can call it.
+        /// </summary>
+        private static void AssertExportsMethod(List<string> exported, string method)
+        {
+            bool found = exported.Exists(name => name == method || name.EndsWith("_" + method));
+            Assert.IsTrue(found, method + " is not callable from other behaviours. Exported: " + string.Join(", ", exported));
         }
 
         private static List<string> Exported(IUdonProgram program)

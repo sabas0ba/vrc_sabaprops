@@ -83,15 +83,18 @@ namespace SabaProps.Liquid.WorldTests
             Assert.IsNotNull(pool);
             Assert.AreEqual(3, pool.canvases.Length);
 
-            var materials = new HashSet<Material>();
+            var materials = new HashSet<string>();
             foreach (LiquidBodyCanvas canvas in pool.canvases)
             {
                 Assert.IsNotNull(canvas);
                 Assert.IsNotNull(canvas.updateMaterial);
                 Assert.IsNotNull(canvas.projectorMaterial);
-                Assert.IsTrue(materials.Add(canvas.projectorMaterial),
+                // Compared by asset path: what matters is which asset each reference
+                // resolves to, not which in-memory instance the editor handed back.
+                Assert.IsTrue(materials.Add(AssetDatabase.GetAssetPath(canvas.projectorMaterial)),
                     "two canvases share a projector material, so they would show each other's contents");
-                Assert.AreSame(pool.canvases[0].updateMaterial, canvas.updateMaterial);
+                Assert.AreEqual(AssetDatabase.GetAssetPath(pool.canvases[0].updateMaterial),
+                    AssetDatabase.GetAssetPath(canvas.updateMaterial));
 
                 Assert.IsNotNull(canvas.projectorObject);
                 Assert.IsFalse(canvas.projectorObject.activeSelf, "an unassigned canvas must not draw");
@@ -99,7 +102,9 @@ namespace SabaProps.Liquid.WorldTests
                 Projector projector = canvas.projectorObject.GetComponent<Projector>();
                 Assert.IsNotNull(projector);
                 Assert.IsTrue(projector.orthographic);
-                Assert.AreSame(canvas.projectorMaterial, projector.material);
+                Assert.AreEqual(AssetDatabase.GetAssetPath(canvas.projectorMaterial),
+                    AssetDatabase.GetAssetPath(projector.material),
+                    "the projector draws with a different material from the one the canvas writes to");
                 Assert.AreEqual(canvas.halfExtents.y, projector.orthographicSize, 1e-5f);
                 Assert.AreEqual(canvas.halfExtents.x / canvas.halfExtents.y, projector.aspectRatio, 1e-5f);
                 Assert.AreEqual(canvas.halfExtents.z * 2f, projector.farClipPlane, 1e-5f);
