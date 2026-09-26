@@ -23,6 +23,7 @@ namespace SabaProps.Liquid.WorldTests
     /// </summary>
     [TestFixture("Assets/SabaProps/Liquid/Samples/LiquidDemo.unity")]
     [TestFixture("Assets/SabaProps/Liquid/Samples/LiquidComparison.unity")]
+    [TestFixture("Assets/SabaProps/Liquid/Samples/LiquidInteractive.unity")]
     public class LiquidBundledSampleTests
     {
         private const string SampleSource = "Packages/io.github.sabas0ba.sabaprops.liquid/Samples~/LiquidDemo/Assets";

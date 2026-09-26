@@ -4,7 +4,8 @@
     "references": [
         "VRC.SDKBase",
         "VRC.Udon",
-        "UdonSharp.Runtime"
+        "UdonSharp.Runtime",
+        "UnityEngine.UI"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

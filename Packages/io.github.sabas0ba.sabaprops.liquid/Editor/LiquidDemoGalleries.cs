@@ -394,7 +394,7 @@ namespace SabaProps.Liquid.Editors
         }
 
         /// <summary>A world-space text label facing the walkway.</summary>
-        public static void Label(Transform parent, string text, Vector3 position, Quaternion facing)
+        public static TextMesh Label(Transform parent, string text, Vector3 position, Quaternion facing)
         {
             var label = new GameObject("Label");
             label.transform.SetParent(parent, false);
@@ -416,6 +416,8 @@ namespace SabaProps.Liquid.Editors
                 mesh.font = font;
                 label.GetComponent<MeshRenderer>().sharedMaterial = font.material;
             }
+
+            return mesh;
         }
 
         /// <summary>

@@ -25,6 +25,7 @@ Package Manager の Samples から **Liquid Demo World** を取り込むと、�
 |---|---|
 | `Assets/SabaProps/Liquid/Samples/LiquidDemo.unity` | 自分で試す場所、服を着た人型、Source の比較、雨と雪の区画 |
 | `Assets/SabaProps/Liquid/Samples/LiquidComparison.unity` | 液体、受け手の素材、体の色、液体の色の比較 |
+| `Assets/SabaProps/Liquid/Samples/LiquidInteractive.unity` | 操作できるノズル、粘性ごとのパーティクル、サウナと浴室と湿った空気、暗い部屋の蛍光と蓄光、Prefab |
 
 マネキンはそれぞれ Canvas の RenderTexture を持つため、比較の列は別のシーンに分けています。
 
@@ -50,6 +51,20 @@ Package Manager の Samples から **Liquid Demo World** を取り込むと、�
 | 右（Source の比較） | 周期的に放水するシャワー、液面が上下する水槽と泥の槽、水流、上からの滴り、明るい体と暗い体の違い |
 | 鏡の奥の左（雨） | 40 秒降って 50 秒止む雨。体と地面が濡れ、地面には水たまりができ、止むと乾きます。屋根の下の人型は濡れません |
 | 鏡の奥の右（雪） | 60 秒降って 60 秒止む雪。上を向いた面（頭、肩、足先、屋根、地面）に積もり、止むと溶けて濡れ、乾きます |
+
+### LiquidInteractive
+
+`Tools > SabaProps > Liquid > Create Interactive Scene` で作り直せます。
+
+| 場所 | 内容 |
+|---|---|
+| 左手前（ノズル台） | 1 回（Fire）、定期、連続（Start / Stop）の 3 つのノズル。操作盤の +/- で量、距離、速さ、断面を変えられます |
+| 右手前（粘性の比較） | 水、ジュース、塗料、泥、スライム、シロップ。飛沫、塊、糸を引く様子を比べます |
+| 奥の左（サウナ） | 湿度 97 %。湯気と霧が立ちこめ、壁に露が付き、肌には汗のような水滴、服には湿りが出て、水滴が垂れます |
+| 奥（浴室） | シャワーが出ている間は湿度が上がり、湯気が立ち、鏡が曇ります。止まると晴れていきます |
+| 奥の中央（湿った空気） | 乾いた空気と湿度 70 % の空気で、1 分ごとにかける水の乾き方を比べます |
+| 奥の右（暗い部屋） | 普通の塗料、蛍光塗料（桃、緑）、蓄光塗料。点灯、紫外線のみ、消灯を繰り返し、入口の Lamp / UV / Auto で切り替えられます |
+| 手前（Prefab） | コップ、バケツ、水鉄砲、水道、シャワー、ノズル台、雨の中の傘 |
 
 ### LiquidComparison
 
@@ -80,6 +95,11 @@ VCC でこのパッケージを追加すると、依存する VRChat Worlds SDK 
 | `LiquidWeather` | 降下の Source。箱の範囲に雨または雪を周期的に降らせる。屋根の下には降らない。雪は上を向いた面に積もり、止むと溶けて濡れる。地面のマテリアルの濡れと積雪も更新する。同期なし |
 | `LiquidTurntable` | サーバー時刻に合わせて回る台 |
 | `LiquidLighting` | ワールドの主光源を付着のシェーダへ渡す。ワールドに 1 つ置く |
+| `LiquidNozzle` | 液体を放つ汎用の Source。1 回、定期、連続の放ち方と、量、距離、速さ、断面の設定を持ち、操作盤から変えられる |
+| `LiquidHumidity` | 湿度の Source。乾きを遅らせ、閾値を超えると体に結露と垂れる水滴を生じさせる。シャワーとの連動、湯気、霧、面の曇り |
+| `LiquidLightZone` | 暗い部屋の照明と紫外線（ブラックライト）を付着に伝える。蛍光と蓄光の顔料が光る |
+| `LiquidUmbrella` | 雨と雪を遮る傘。傘の下の相手には天候の Source が降らせない |
+| `LiquidButton` | Interact や Pickup の使用ボタンで、別の behaviour のイベントを呼ぶボタン |
 | `LiquidSurfaceProfile` | 液体を受ける素材の定義。吸水性、撥水性、艶、流れにくさ、にじみ、毛束。部位（衣服、髪、肌）ごとに Canvas に設定する |
 
 Hierarchy の `SabaProps > Liquid` から配置できます。
@@ -91,6 +111,19 @@ Hierarchy の `SabaProps > Liquid` から配置できます。
 | Shower | 高さ 2.2 m の下向きのシャワー。Interact で放水を切り替えます |
 | Water Gun | Pickup の水鉄砲。使用ボタンを押している間放水します |
 | Rain Area / Snow Area | 10 m 四方、高さ 6 m の範囲に雨または雪を降らせる Source と、降る様子のパーティクル。地面を濡らすには `SabaProps/Liquid/Weather Surface` のマテリアルを `groundMaterials` に設定します |
+| Prefabs > Cup / Bucket / Faucet / Shower / Umbrella / Water Gun / Nozzle Stand | パッケージの `Prefabs` にある Prefab。シーンにプールが無ければ作成します |
+
+Prefab はそれぞれ自分の液体の定義を子に持ち、プールは実行時に名前（`Liquid Canvas Pool`）で探します。
+液体を変えるには、Prefab の子の `Liquid` の値を変えます。
+
+| Prefab | 使い方 |
+|---|---|
+| Liquid Cup / Liquid Bucket | 持って使用ボタンで、中身を前へ投げかけます。コップは少量、バケツは 5 L を一度に |
+| Liquid Faucet | 流しと蛇口。Interact で開閉し、差し出した手を濡らします |
+| Liquid Shower | 高さ 2.2 m の固定シャワー。Interact で切り替えます |
+| Liquid Umbrella | 持つか立てておくと、傘の下には雨と雪が降りません |
+| Liquid Water Gun | 持って使用ボタンを押している間、放水します |
+| Liquid Nozzle Stand | 操作盤付きのノズル。量、距離、速さ、断面を変え、Start / Stop で出し続けます |
 
 Source を配置すると、シーンにプールが無ければ作成し、水と泥のプロファイルを
 `Liquid Profiles` の下にまとめて作成します。

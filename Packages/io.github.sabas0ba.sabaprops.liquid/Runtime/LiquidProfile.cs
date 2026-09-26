@@ -48,6 +48,15 @@ namespace SabaProps.Liquid
         [Range(0f, 1f)]
         public float washStrength = 0.5f;
 
+        [Header("発光")]
+        [Tooltip("蛍光。紫外線（ブラックライト）を受けている間だけ、顔料の色で光ります。")]
+        [Range(0f, 1f)]
+        public float fluorescence = 0f;
+
+        [Tooltip("蓄光。明るい所で光を蓄え、暗くなってからしばらく顔料の色で光ります。")]
+        [Range(0f, 1f)]
+        public float luminescence = 0f;
+
         [Header("付着形状")]
         [Tooltip("付着の輪郭の不規則さ。粘性の高い液体ほど小さくします。")]
         [Range(0f, 1f)]

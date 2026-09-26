@@ -1,7 +1,7 @@
 // 天候に応じて濡れと積雪を描くワールドの面のシェーダ。
 //
 // LiquidWeather が _WeatherState にサーバー時刻から求めた地面の状態を渡します。
-//   x: 濡れ（0〜1）  y: 積雪（0〜1）
+//   x: 濡れ（0〜1）  y: 積雪（0〜1）  z: 結露（0〜1、LiquidHumidity が渡します）
 // 濡れると下地が暗く艶を帯び、上を向いた面のくぼみ（ノイズの低い所）から水たまりになります。
 // 雪は上を向いた面に積もり、縁はむらになります。
 //
@@ -15,7 +15,7 @@ Shader "SabaProps/Liquid/Weather Surface"
         _MainTex ("Albedo", 2D) = "white" {}
         _Glossiness ("Smoothness", Range(0, 1)) = 0.2
         _Metallic ("Metallic", Range(0, 1)) = 0
-        _WeatherState ("Weather State (wet, snow)", Vector) = (0, 0, 0, 0)
+        _WeatherState ("Weather State (wet, snow, dew)", Vector) = (0, 0, 0, 0)
         _PuddleScale ("Puddle Scale (1/m)", Float) = 0.6
         _PuddleAmount ("Puddle Amount", Range(0, 1)) = 0.6
         _SnowColor ("Snow Color", Color) = (0.9, 0.92, 0.95, 1)
@@ -77,6 +77,17 @@ Shader "SabaProps/Liquid/Weather Surface"
             float snow = smoothstep(0.25, 0.6, saturate(_WeatherState.y) * upFacing * 1.3 + (patch - 0.5) * 0.35);
             albedo = lerp(albedo, _SnowColor.rgb, snow);
             smoothness = lerp(smoothness, 0.3, snow);
+
+            // 結露。細かい水滴の膜で白っぽく曇り、水滴の所だけ艶が出ます。向きに関係なく付きます。
+            float dew = saturate(_WeatherState.z);
+            if (dew > 0.001)
+            {
+                float2 across = float2(input.worldPos.x + input.worldPos.z, input.worldPos.y) + ground * 0.3;
+                float4 beads = SabaLiquidBeads(across, 0.004, dew, float2(0.0, -1.0));
+                albedo = lerp(albedo, albedo * 0.75 + 0.1, dew * 0.5);
+                smoothness = lerp(smoothness, 0.35, dew * 0.6);
+                smoothness = lerp(smoothness, 0.85, beads.x * dew * 0.5);
+            }
 
             o.Albedo = albedo;
             o.Metallic = _Metallic * (1.0 - snow);

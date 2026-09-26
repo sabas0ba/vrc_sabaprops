@@ -32,7 +32,7 @@ namespace SabaProps.Liquid
         public const int MaxHitsPerSecond = 10;
 
         [Header("構成")]
-        [Tooltip("Canvas を割り当て、命中を判定するプール。")]
+        [Tooltip("Canvas を割り当て、命中を判定するプール。未設定なら名前で探します。")]
         public LiquidCanvasPool pool;
 
         [Tooltip("出す液体の定義。")]
@@ -75,6 +75,15 @@ namespace SabaProps.Liquid
             if (muzzle == null)
             {
                 muzzle = transform;
+            }
+
+            if (pool == null)
+            {
+                GameObject found = GameObject.Find(LiquidCanvasPool.DefaultName);
+                if (found != null)
+                {
+                    pool = found.GetComponent<LiquidCanvasPool>();
+                }
             }
 
             ApplyVisual();

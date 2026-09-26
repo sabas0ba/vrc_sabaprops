@@ -125,6 +125,18 @@ namespace SabaProps.Liquid
         private float _lastEvaluation;
         private float _dropCarry;
 
+        private void Start()
+        {
+            if (pool == null)
+            {
+                GameObject found = GameObject.Find(LiquidCanvasPool.DefaultName);
+                if (found != null)
+                {
+                    pool = found.GetComponent<LiquidCanvasPool>();
+                }
+            }
+        }
+
         private void Update()
         {
             double time = Networking.GetServerTimeInSeconds() + phaseOffset;
@@ -221,7 +233,8 @@ namespace SabaProps.Liquid
                 return;
             }
 
-            if (Physics.Raycast(top, Vector3.up, shelterCheckDistance, pool.occluderLayers, QueryTriggerInteraction.Ignore))
+            if (Physics.Raycast(top, Vector3.up, shelterCheckDistance, pool.occluderLayers, QueryTriggerInteraction.Ignore)
+                || pool.IsUnderUmbrella(top))
             {
                 return;
             }

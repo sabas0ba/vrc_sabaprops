@@ -55,7 +55,7 @@ namespace SabaProps.Liquid.Editors
                 return null;
             }
 
-            var root = new GameObject("Liquid Canvas Pool");
+            var root = new GameObject(LiquidCanvasPool.DefaultName);
             LiquidCanvasPool pool = root.AddUdonSharpComponent<LiquidCanvasPool>();
             var canvases = new LiquidBodyCanvas[canvasCount];
 

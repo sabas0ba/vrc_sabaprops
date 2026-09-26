@@ -31,6 +31,10 @@ Material:
         m_Texture: {fileID: 0}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
+    - _GlowTex:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
     - _PigmentTex:
         m_Texture: {fileID: 0}
         m_Scale: {x: 1, y: 1}
@@ -41,6 +45,8 @@ Material:
     - _DepthTolerance: 0.12
     - _DryLighten: 1.15
     - _EdgeFade: 0.04
+    - _FluorescentGain: 2.5
+    - _LuminousGain: 0.8
     - _PigmentGrain: 0.12
     - _Relief: 1.5
     - _WetDarken: 0.5

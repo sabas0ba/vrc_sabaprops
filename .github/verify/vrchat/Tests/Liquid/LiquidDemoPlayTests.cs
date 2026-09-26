@@ -178,7 +178,7 @@ namespace SabaProps.Liquid.WorldTests
         /// work through immersion, which the canvas does not store, so those two
         /// count their immersion amounts instead.
         /// </summary>
-        private static float Coverage(Material projector)
+        internal static float Coverage(Material projector)
         {
             Vector4 immersion = projector.GetVector("_ImmersionAmounts");
             if (immersion.x > 0f || immersion.y > 0f)
@@ -217,12 +217,12 @@ namespace SabaProps.Liquid.WorldTests
         /// One portrait per mannequin, from the walkway side of its bay, side by
         /// side in a single image so the bays can be compared directly.
         /// </summary>
-        private static void CaptureGrid(string fileName, LiquidBodyCanvas[] mannequins, int first, int count)
+        internal static void CaptureGrid(string fileName, LiquidBodyCanvas[] mannequins, int first, int count)
         {
             CaptureGrid(fileName, mannequins, first, count, 2.6f, 1.05f);
         }
 
-        private static void CaptureGrid(string fileName, LiquidBodyCanvas[] mannequins, int first, int count,
+        internal static void CaptureGrid(string fileName, LiquidBodyCanvas[] mannequins, int first, int count,
             float distance, float lookHeight)
         {
             const int tileWidth = 300;
@@ -267,7 +267,7 @@ namespace SabaProps.Liquid.WorldTests
             Object.DestroyImmediate(image);
         }
 
-        private static void Capture(string fileName, Vector3 position, Vector3 lookAt, float fieldOfView)
+        internal static void Capture(string fileName, Vector3 position, Vector3 lookAt, float fieldOfView)
         {
             const int width = 1280;
             const int height = 720;

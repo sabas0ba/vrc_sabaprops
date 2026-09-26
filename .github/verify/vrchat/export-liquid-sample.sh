@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 #
 # Regenerates the liquid package's bundled sample (Samples~/LiquidDemo, with the
-# demo and comparison scenes) from the generator, in the world verification project.
+# demo, comparison and interactive scenes) and its Prefabs folder from the
+# generators, in the world verification project.
 #
 # The sample is generated rather than hand-edited: this script replaces the
 # package in the project with the working tree's copy, deletes the previously
@@ -52,9 +53,17 @@ echo "generating the sample scene in $PROJECT"
     -logFile "$(to_native "$LOG")"
 
 GENERATED="$PROJECT/Assets/SabaProps/Liquid"
-for scene in LiquidDemo LiquidComparison; do
+for scene in LiquidDemo LiquidComparison LiquidInteractive; do
     [ -f "$GENERATED/Samples/$scene.unity" ] || { echo "error: $scene was not generated; see $LOG" >&2; exit 1; }
 done
+
+# The prefabs are generated into the project's copy of the package; bring them
+# back into the working tree, with their materials and metas.
+PREFABS="$PROJECT/Packages/io.github.sabas0ba.sabaprops.liquid/Prefabs"
+[ -d "$PREFABS" ] || { echo "error: the prefabs were not generated; see $LOG" >&2; exit 1; }
+rm -rf "$PACKAGE/Prefabs" "$PACKAGE/Prefabs.meta"
+cp -r "$PREFABS" "$PACKAGE/Prefabs"
+cp "$PREFABS.meta" "$PACKAGE/Prefabs.meta"
 
 rm -rf "$SAMPLE"
 mkdir -p "$SAMPLE/Assets/SabaProps" "$SAMPLE/Assets/SerializedUdonPrograms"

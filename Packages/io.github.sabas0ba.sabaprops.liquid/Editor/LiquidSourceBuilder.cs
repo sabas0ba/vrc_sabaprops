@@ -31,14 +31,15 @@ namespace SabaProps.Liquid.Editors
         public const string GreyPaintName = "Grey Paint";
         public const string LightGreyPaintName = "Light Grey Paint";
         public const string WhitePaintName = "White Paint";
+        public const string FluorescentPinkName = "Fluorescent Pink Paint";
+        public const string FluorescentGreenName = "Fluorescent Green Paint";
+        public const string LuminousPaintName = "Luminous Paint";
 
         /// <summary>Paint from black to white, for seeing how pigment lightness reads on a body.</summary>
         public static readonly string[] GreyscalePaintNames =
         {
             BlackPaintName, DarkGreyPaintName, GreyPaintName, LightGreyPaintName, WhitePaintName,
         };
-
-        public const string StreamMaterialPath = LiquidAssets.MaterialFolder + "/LiquidStream.mat";
 
         [MenuItem("GameObject/SabaProps/Liquid/Pool Volume (Water)", false, 21)]
         public static void CreateWaterVolumeFromMenu(MenuCommand command)
@@ -142,6 +143,23 @@ namespace SabaProps.Liquid.Editors
         /// </summary>
         public static void ApplyPreset(LiquidProfile profile, string name)
         {
+            ApplyBasePreset(profile, name);
+            profile.fluorescence = 0f;
+            profile.luminescence = 0f;
+            switch (name)
+            {
+                case FluorescentPinkName:
+                case FluorescentGreenName:
+                    profile.fluorescence = 1f;
+                    return;
+                case LuminousPaintName:
+                    profile.luminescence = 1f;
+                    return;
+            }
+        }
+
+        private static void ApplyBasePreset(LiquidProfile profile, string name)
+        {
             switch (name)
             {
                 case JuiceName:
@@ -170,6 +188,15 @@ namespace SabaProps.Liquid.Editors
                     return;
                 case WhitePaintName:
                     Set(profile, new Color(0.96f, 0.96f, 0.95f), 1f, 0.5f, 0.85f, 0.6f, 240f, 0f, 0.3f);
+                    return;
+                case FluorescentPinkName:
+                    Set(profile, new Color(1f, 0.16f, 0.55f), 1f, 0.5f, 0.85f, 0.6f, 240f, 0f, 0.3f);
+                    return;
+                case FluorescentGreenName:
+                    Set(profile, new Color(0.45f, 1f, 0.12f), 1f, 0.5f, 0.85f, 0.6f, 240f, 0f, 0.3f);
+                    return;
+                case LuminousPaintName:
+                    Set(profile, new Color(0.72f, 0.95f, 0.62f), 1f, 0.5f, 0.85f, 0.6f, 240f, 0f, 0.3f);
                     return;
                 case MudName:
                     Set(profile, new Color(0.44f, 0.31f, 0.19f), 0.9f, 0.8f, 0.6f, 0.85f, 180f, 0f, 0.35f);
@@ -228,6 +255,12 @@ namespace SabaProps.Liquid.Editors
         /// </summary>
         public static GameObject CreateShower(LiquidCanvasPool pool, LiquidProfile profile)
         {
+            return CreateShower(pool, profile, LiquidAssets.MaterialFolder);
+        }
+
+        /// <summary>The shower, with its particle materials kept in <paramref name="materialFolder"/>.</summary>
+        public static GameObject CreateShower(LiquidCanvasPool pool, LiquidProfile profile, string materialFolder)
+        {
             var root = new GameObject("Shower");
 
             var head = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
@@ -241,7 +274,8 @@ namespace SabaProps.Liquid.Editors
             nozzle.transform.localPosition = new Vector3(0f, 2.18f, 0f);
             nozzle.transform.localRotation = Quaternion.LookRotation(Vector3.down, Vector3.forward);
 
-            ParticleSystem stream = CreateStream(nozzle.transform, 12f, 4f, 1.2f);
+            ParticleSystem stream = LiquidParticleBuilder.CreateLiquidStream(nozzle.transform, profile, materialFolder,
+                4f, 1.2f, 12f, 250f);
 
             LiquidShower shower = head.AddUdonSharpComponent<LiquidShower>();
             shower.pool = pool;
@@ -261,6 +295,12 @@ namespace SabaProps.Liquid.Editors
         /// sync, a muzzle at the front and a stream effect.
         /// </summary>
         public static GameObject CreateWaterGun(LiquidCanvasPool pool, LiquidProfile profile)
+        {
+            return CreateWaterGun(pool, profile, LiquidAssets.MaterialFolder);
+        }
+
+        /// <summary>The water gun, with its particle materials kept in <paramref name="materialFolder"/>.</summary>
+        public static GameObject CreateWaterGun(LiquidCanvasPool pool, LiquidProfile profile, string materialFolder)
         {
             var root = new GameObject("Water Gun");
 
@@ -289,7 +329,8 @@ namespace SabaProps.Liquid.Editors
             muzzle.transform.SetParent(root.transform, false);
             muzzle.transform.localPosition = new Vector3(0f, 0.02f, 0.14f);
 
-            ParticleSystem stream = CreateStream(muzzle.transform, 1.5f, 9f, 0.6f);
+            ParticleSystem stream = LiquidParticleBuilder.CreateLiquidStream(muzzle.transform, profile, materialFolder,
+                9f, 0.6f, 1.5f, 250f);
 
             LiquidWaterGun gun = root.AddUdonSharpComponent<LiquidWaterGun>();
             gun.pool = pool;
@@ -299,64 +340,6 @@ namespace SabaProps.Liquid.Editors
             UdonSharpEditorUtility.CopyProxyToUdon(gun);
             EditorUtility.SetDirty(gun);
             return root;
-        }
-
-        /// <summary>
-        /// A stopped particle stream along the parent's +Z. Visual only: hits are
-        /// decided by the Source's rays, never by particle collisions, because
-        /// Udon cannot read where a particle hit.
-        /// </summary>
-        private static ParticleSystem CreateStream(Transform parent, float coneAngle, float speed, float lifetime)
-        {
-            return CreateStream(parent, coneAngle, speed, lifetime, new Color(0.85f, 0.93f, 1f, 0.6f), 250f, 0.02f, 1f);
-        }
-
-        /// <summary>
-        /// The stream with a given colour, emission rate and droplet size. A rate
-        /// of zero makes a stream that only emits when a Source calls Emit.
-        /// </summary>
-        public static ParticleSystem CreateStream(Transform parent, float coneAngle, float speed, float lifetime,
-            Color colour, float rate, float size, float gravity)
-        {
-            var streamObject = new GameObject("Stream");
-            streamObject.transform.SetParent(parent, false);
-
-            var stream = streamObject.AddComponent<ParticleSystem>();
-            stream.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
-
-            ParticleSystem.MainModule main = stream.main;
-            main.playOnAwake = false;
-            main.loop = true;
-            main.startLifetime = lifetime;
-            main.startSpeed = speed;
-            main.startSize = size;
-            main.startColor = colour;
-            main.gravityModifier = gravity;
-            main.simulationSpace = ParticleSystemSimulationSpace.World;
-            main.maxParticles = 600;
-
-            ParticleSystem.EmissionModule emission = stream.emission;
-            emission.rateOverTime = rate;
-
-            ParticleSystem.ShapeModule shape = stream.shape;
-            shape.shapeType = ParticleSystemShapeType.Cone;
-            shape.angle = coneAngle;
-            shape.radius = 0.01f;
-
-            ParticleSystem.CollisionModule collision = stream.collision;
-            collision.enabled = true;
-            collision.type = ParticleSystemCollisionType.World;
-            collision.bounce = 0.05f;
-            collision.lifetimeLoss = 0.6f;
-
-            var renderer = streamObject.GetComponent<ParticleSystemRenderer>();
-            Material material = LiquidAssets.StreamMaterial(StreamMaterialPath);
-            if (material != null)
-            {
-                renderer.sharedMaterial = material;
-            }
-
-            return stream;
         }
 
         /// <summary>
@@ -390,14 +373,13 @@ namespace SabaProps.Liquid.Editors
             head.transform.localScale = new Vector3(0.08f, 0.06f, 0.08f);
             head.GetComponent<Renderer>().sharedMaterial = postMaterial;
 
-            Color droplet = profile.pigmentAmount > 0f
-                ? new Color(profile.pigmentColor.r, profile.pigmentColor.g, profile.pigmentColor.b, 0.9f)
-                : new Color(0.85f, 0.93f, 1f, 0.6f);
             float distance = Vector3.Distance(position, aimAt);
             // Droplets reach the target in about a third of a second. Gravity is
             // reduced so they arrive near where the rays land rather than short of it.
-            ParticleSystem stream = CreateStream(nozzle.transform, 6f, distance / 0.35f, 0.45f, droplet, 0f,
-                0.012f + profile.viscosity * 0.05f, 0.3f);
+            ParticleSystem stream = LiquidParticleBuilder.CreateLiquidStream(nozzle.transform, profile,
+                LiquidAssets.MaterialFolder, distance / 0.35f, 0.45f, 6f, 0f);
+            ParticleSystem.MainModule main = stream.main;
+            main.gravityModifier = 0.3f;
 
             LiquidSprayer sprayer = root.AddUdonSharpComponent<LiquidSprayer>();
             sprayer.pool = pool;

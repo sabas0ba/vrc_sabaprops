@@ -11,7 +11,7 @@ namespace SabaProps.Liquid
     /// 幾何計算は LiquidCanvasSolver.cs にあり、そちらは Unity 無しで実行して検査できます。
     /// </para>
     /// <para>
-    /// 付着は 3 種類の RenderTexture（顔料、液膜、付着した面の奥行き）に蓄えます。各テクスチャは前回の内容を
+    /// 付着は 4 種類の RenderTexture（顔料、液膜、付着した面の奥行き、顔料の発光の割合）に蓄えます。各テクスチャは前回の内容を
     /// 読みながら次を書くため 2 枚ずつ持ち、updateInterval ごとに VRCGraphics.Blit で進めます。
     /// 表示は子の Projector が担い、その投影範囲とマテリアルは Editor で確定させてあります。
     /// Udon からは Projector を操作できないためです。
@@ -79,6 +79,24 @@ namespace SabaProps.Liquid
         [Tooltip("雨と溶けた雪で上を向いた面に残る水が、乾ききるまでの秒数。")]
         [Min(1f)]
         public float surfaceWaterDryingSeconds = 90f;
+
+        [Header("湿度")]
+        [Tooltip("飽和した空気の中での乾きやすさの倍率。")]
+        [Range(0f, 1f)]
+        public float saturatedDryingScale = 0.08f;
+
+        [Tooltip("結露した水が、乾いた空気の中で乾ききるまでの秒数。")]
+        [Min(1f)]
+        public float condensationDryingSeconds = 60f;
+
+        [Header("発光")]
+        [Tooltip("蓄光が暗い所から明るい所で蓄えきるまでの時定数（秒）。")]
+        [Min(0.1f)]
+        public float luminousChargeSeconds = 6f;
+
+        [Tooltip("蓄光が暗い所で光り続ける時定数（秒）。")]
+        [Min(0.1f)]
+        public float luminousAfterglowSeconds = 60f;
 
         [Header("マネキン")]
         [Tooltip("プレイヤーの代わりに追従する Transform（マネキンの腰）。設定するとプールを介さず常に有効になります。")]
@@ -149,6 +167,8 @@ namespace SabaProps.Liquid
         private RenderTexture _filmB;
         private RenderTexture _depthA;
         private RenderTexture _depthB;
+        private RenderTexture _glowA;
+        private RenderTexture _glowB;
         private bool _frontIsA = true;
 
         private Vector3 _origin;
@@ -162,6 +182,7 @@ namespace SabaProps.Liquid
         private Vector4[] _stampColor = new Vector4[MaxStampsPerUpdate];
         private Vector4[] _stampFilm = new Vector4[MaxStampsPerUpdate];
         private Vector4[] _stampShape = new Vector4[MaxStampsPerUpdate];
+        private Vector4[] _stampGlow = new Vector4[MaxStampsPerUpdate];
         private int _stampCount;
 
         private float _lastUpdateTime;
@@ -183,6 +204,21 @@ namespace SabaProps.Liquid
         private float _snowDepth;
         private float _surfaceWater;
         private float _lastSnowTime = -1000f;
+
+        // 湿度と結露。湿度の Source が評価周期ごとに伝え、途切れたら乾いた空気に戻します。
+        private float _humidity;
+        private float _condensationThreshold = 0.75f;
+        private float _condenseSeconds = 30f;
+        private float _lastHumidityTime = -1000f;
+        private float _condensation;
+
+        // 光の環境。明かりの範囲が評価周期ごとに伝え、途切れたらワールドの主光源に戻します。
+        private Vector3 _lightDirection = Vector3.up;
+        private Color _lightColor = Color.black;
+        private Color _ambientColor = Color.black;
+        private float _ultraviolet;
+        private float _lastLightTime = -1000f;
+        private float _glowCharge = 1f;
 
         // この周期に洗う範囲。高さは Canvas の正規化 y で、それより下の顔料を洗います。
         private float _washLevel = -2f;
@@ -431,6 +467,7 @@ namespace SabaProps.Liquid
                 profile.viscosity,
                 EncodeEvaporation(profile.dryingSeconds, maxEvaporationRate));
             _stampShape[i] = new Vector4(seed, profile.edgeIrregularity, 0f, 0f);
+            _stampGlow[i] = new Vector4(profile.fluorescence, profile.luminescence, 0f, 0f);
             _stampCount = i + 1;
             _lastActivityTime = Time.time;
         }
@@ -497,6 +534,57 @@ namespace SabaProps.Liquid
             _snowDepth = Mathf.Min(1f, _snowDepth + Mathf.Max(0f, amount));
             _lastSnowTime = Time.time;
             _lastActivityTime = Time.time;
+        }
+
+        /// <summary>
+        /// 周りの湿度を伝えます。湿度の Source が評価周期ごとに呼びます。
+        /// <para>
+        /// 湿度が高いほど液膜と上を向いた面の水が乾きにくくなります。湿度が threshold を超えると、
+        /// 体の表面全体に結露が生じ、はじく素材や肌では細かい水滴、吸う素材では湿りとして描きます。
+        /// 伝えられなくなると乾いた空気に戻り、結露は乾いていきます。
+        /// </para>
+        /// </summary>
+        public void ApplyHumidity(float humidity, float threshold, float condenseSeconds)
+        {
+            if (!_active)
+            {
+                return;
+            }
+
+            _humidity = Mathf.Clamp01(humidity);
+            _condensationThreshold = threshold;
+            _condenseSeconds = condenseSeconds;
+            _lastHumidityTime = Time.time;
+            _lastActivityTime = Time.time;
+        }
+
+        /// <summary>今の結露の量（0〜1）。湿度の Source が、水滴を垂らすかどうかの判断に読みます。</summary>
+        public float GetCondensation()
+        {
+            return _condensation;
+        }
+
+        /// <summary>
+        /// 周りの光を伝えます。明かりの範囲が評価周期ごとに呼びます。
+        /// <para>
+        /// 伝えている間は、ワールドの主光源の代わりにこの光と環境光で付着を照らします。
+        /// ultraviolet は紫外線の強さで、蛍光の顔料はこれに比例して光ります。蓄光の顔料は、
+        /// 光と環境光の明るさで光を蓄え、暗い間はそれを放ちます。
+        /// 伝えられなくなると、ワールドの主光源と、蓄光が蓄えきる明るさに戻ります。
+        /// </para>
+        /// </summary>
+        public void ApplyLightEnvironment(Vector3 towardsLight, Color lightColor, Color ambient, float ultraviolet)
+        {
+            if (!_active)
+            {
+                return;
+            }
+
+            _lightDirection = towardsLight.sqrMagnitude > 1e-8f ? towardsLight.normalized : Vector3.up;
+            _lightColor = lightColor;
+            _ambientColor = ambient;
+            _ultraviolet = Mathf.Max(0f, ultraviolet);
+            _lastLightTime = Time.time;
         }
 
         /// <summary>
@@ -648,12 +736,13 @@ namespace SabaProps.Liquid
             updateMaterial.SetVectorArray("_StampColor", _stampColor);
             updateMaterial.SetVectorArray("_StampFilm", _stampFilm);
             updateMaterial.SetVectorArray("_StampShape", _stampShape);
+            updateMaterial.SetVectorArray("_StampGlow", _stampGlow);
             updateMaterial.SetVector("_HalfExtents", new Vector4(halfExtents.x, halfExtents.y, halfExtents.z, 0f));
             updateMaterial.SetVector("_GravityCanvas", new Vector4(gravity.x, gravity.y, gravity.z, 0f));
             updateMaterial.SetFloat("_Inset", atlasInset);
             updateMaterial.SetFloat("_DeltaTime", dt);
             updateMaterial.SetFloat("_FlowSpeed", flowSpeed);
-            updateMaterial.SetFloat("_MaxEvaporationRate", maxEvaporationRate);
+            updateMaterial.SetFloat("_MaxEvaporationRate", maxEvaporationRate * CurrentDryingScale());
             updateMaterial.SetFloat("_Friction", bodySurface != null ? bodySurface.friction : 0.5f);
             updateMaterial.SetVector("_Wash", new Vector4(_washLevel, _washAmount, immersionEdge, 0f));
 
@@ -663,10 +752,13 @@ namespace SabaProps.Liquid
             RenderTexture filmTarget = _frontIsA ? _filmB : _filmA;
             RenderTexture depthSource = _frontIsA ? _depthA : _depthB;
             RenderTexture depthTarget = _frontIsA ? _depthB : _depthA;
+            RenderTexture glowSource = _frontIsA ? _glowA : _glowB;
+            RenderTexture glowTarget = _frontIsA ? _glowB : _glowA;
 
-            // 顔料と奥行きは流下の判定に更新前の液膜を読みます。液膜より先に進めます。
+            // 顔料、発光、奥行きは流下の判定に更新前の液膜を読みます。液膜より先に進めます。
             updateMaterial.SetTexture("_FilmTex", filmSource);
             VRCGraphics.Blit(pigmentSource, pigmentTarget, updateMaterial, 0);
+            VRCGraphics.Blit(glowSource, glowTarget, updateMaterial, 4);
             VRCGraphics.Blit(depthSource, depthTarget, updateMaterial, 3);
             VRCGraphics.Blit(filmSource, filmTarget, updateMaterial, 1);
             _frontIsA = !_frontIsA;
@@ -676,6 +768,8 @@ namespace SabaProps.Liquid
 
             AdvanceImmersion(dt);
             AdvanceSnow(dt);
+            AdvanceHumidity(dt);
+            AdvanceLight(dt);
             BindTextures();
             PushImmersion();
         }
@@ -701,14 +795,78 @@ namespace SabaProps.Liquid
                 _surfaceWater = Mathf.Min(1f, _surfaceWater + melted * 2f);
             }
 
-            _surfaceWater = EvaporateAmount(_surfaceWater, surfaceWaterDryingSeconds, dt);
+            _surfaceWater = EvaporateAmount(_surfaceWater, surfaceWaterDryingSeconds / CurrentDryingScale(), dt);
 
             bool visible = _snowDepth > 0f || _surfaceWater > 0f;
             projectorMaterial.SetVector("_Snow", new Vector4(_snowDepth, _surfaceWater, 0f, visible ? 1f : 0f));
         }
 
+        /// <summary>湿度による今の乾きやすさの倍率。湿度が伝えられていなければ 1 です。</summary>
+        private float CurrentDryingScale()
+        {
+            return Mathf.Max(DryingScale(CurrentHumidity(), saturatedDryingScale), 0.01f);
+        }
+
+        private float CurrentHumidity()
+        {
+            return Time.time - _lastHumidityTime > 0.5f ? 0f : _humidity;
+        }
+
+        private void AdvanceHumidity(float dt)
+        {
+            float humidity = CurrentHumidity();
+            _condensation = Condense(_condensation, humidity, _condensationThreshold, _condenseSeconds,
+                condensationDryingSeconds / CurrentDryingScale(), dt);
+            projectorMaterial.SetVector("_Condensation", new Vector4(_condensation, humidity, 0f, 0f));
+        }
+
+        private void AdvanceLight(float dt)
+        {
+            bool local = Time.time - _lastLightTime <= 0.5f;
+            float brightness = 1f;
+            if (local)
+            {
+                brightness = Luminance(_lightColor) + Luminance(_ambientColor) * 2f;
+            }
+
+            _glowCharge = ChargeGlow(_glowCharge, brightness, luminousChargeSeconds, luminousAfterglowSeconds, dt);
+
+            if (local)
+            {
+                bool lit = Luminance(_lightColor) > 1e-4f;
+                projectorMaterial.SetVector("_LocalLight",
+                    new Vector4(_lightDirection.x, _lightDirection.y, _lightDirection.z, lit ? 1f : 0f));
+                projectorMaterial.SetVector("_LocalLightColor", new Vector4(_lightColor.r, _lightColor.g, _lightColor.b, 1f));
+                projectorMaterial.SetVector("_LocalAmbient", new Vector4(_ambientColor.r, _ambientColor.g, _ambientColor.b, 1f));
+            }
+            else
+            {
+                projectorMaterial.SetVector("_LocalLight", Vector4.zero);
+                projectorMaterial.SetVector("_LocalLightColor", Vector4.zero);
+                projectorMaterial.SetVector("_LocalAmbient", Vector4.zero);
+            }
+
+            projectorMaterial.SetVector("_Glow", new Vector4(local ? _ultraviolet : 0f, _glowCharge, 0f, 0f));
+        }
+
+        private float Luminance(Color c)
+        {
+            return c.r * 0.2126f + c.g * 0.7152f + c.b * 0.0722f;
+        }
+
         private void ResetImmersion()
         {
+            _condensation = 0f;
+            _lastHumidityTime = -1000f;
+            _lastLightTime = -1000f;
+            _glowCharge = 1f;
+            if (projectorMaterial != null)
+            {
+                projectorMaterial.SetVector("_Condensation", Vector4.zero);
+                projectorMaterial.SetVector("_LocalLight", Vector4.zero);
+                projectorMaterial.SetVector("_Glow", new Vector4(0f, 1f, 0f, 0f));
+            }
+
             _snowDepth = 0f;
             _surfaceWater = 0f;
             _lastSnowTime = -1000f;
@@ -740,6 +898,7 @@ namespace SabaProps.Liquid
             projectorMaterial.SetTexture("_PigmentTex", _frontIsA ? _pigmentA : _pigmentB);
             projectorMaterial.SetTexture("_FilmTex", _frontIsA ? _filmA : _filmB);
             projectorMaterial.SetTexture("_DepthTex", _frontIsA ? _depthA : _depthB);
+            projectorMaterial.SetTexture("_GlowTex", _frontIsA ? _glowA : _glowB);
             projectorMaterial.SetFloat("_CanvasInset", atlasInset);
         }
 
@@ -763,6 +922,10 @@ namespace SabaProps.Liquid
             // 付着した面の奥行き（m、符号付き）と記録の確かさ。
             _depthA = CreateCanvasTexture(width, height, RenderTextureFormat.RGHalf);
             _depthB = CreateCanvasTexture(width, height, RenderTextureFormat.RGHalf);
+
+            // 顔料のうち蛍光と蓄光の割合（被覆で重み付け済み）。
+            _glowA = CreateCanvasTexture(width, height, RenderTextureFormat.RGHalf);
+            _glowB = CreateCanvasTexture(width, height, RenderTextureFormat.RGHalf);
         }
 
         private RenderTexture CreateCanvasTexture(int width, int height, RenderTextureFormat format)
@@ -785,6 +948,8 @@ namespace SabaProps.Liquid
             VRCGraphics.Blit(_filmA, _filmB, updateMaterial, 2);
             VRCGraphics.Blit(_depthB, _depthA, updateMaterial, 2);
             VRCGraphics.Blit(_depthA, _depthB, updateMaterial, 2);
+            VRCGraphics.Blit(_glowB, _glowA, updateMaterial, 2);
+            VRCGraphics.Blit(_glowA, _glowB, updateMaterial, 2);
             _frontIsA = true;
         }
     }

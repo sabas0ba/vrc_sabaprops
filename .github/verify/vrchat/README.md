@@ -116,7 +116,7 @@ docs.microsoft.com の URL 到達性を検証するもの）ため、終了コ�
 | `SabaProps.SoftProps.WorldTests` | EditMode + Playへの遷移 | Prefab生成、同梱デモのimport・参照・比較台、ClientSimでのCollider接触・復元・自動運動・立位荷重 |
 | `SabaProps.Tablet.WorldTests` | EditMode | 全コンポーネントの Udon コンパイル、サンプルシーンの全ボタンがエクスポート済みのイベントを呼ぶこと、ミラーの排他、テレポート地点の番号、Build の再実行で生成物が重複しないことを検証 |
 | `SabaProps.PutItems.Tests` | EditMode | 吸着対象と Pickup の設定、同梱デモの構成を検証 |
-| `SabaProps.Liquid.WorldTests` | EditMode | 全 Udon behaviour の UdonSharp コンパイルと公開イベント・同期変数、シェーダのコンパイル、生成された Projector と Source の構成、Canvas 更新シェーダの GPU 上での付着・蒸発・洗浄・奥行きの記録、サンプルシーンの構成（トリガーと液面の位置、泥に沈む床、スロープ、鏡、服を着たマネキンの素材、天候の範囲と屋根の下のマネキン）と、比較シーンの構成（マネキンの数、Projector マテリアルがデモと重ならないこと）を検証。`TestResults/liquid-preview.png` に代用の体へ Projector で描いた確認画像を、`liquid-preview-pigment.png` と `liquid-preview-film.png` に Canvas のアトラスを出力。デモを ClientSim で 20 秒動かし、操作なしで全マネキンに付着が付くこと、雨と雪が屋外のマネキンにだけ届くこと、雪が止むと溶けて水が残ることを検査して、`liquid-demo-clothed.png`・`liquid-demo-sources.png`・`liquid-demo-immersion.png`・`liquid-demo-overview.png`・`liquid-demo-yards.png`・`liquid-demo-rain.png`・`liquid-demo-snow.png`・`liquid-demo-snow-melting.png` などを出力。同梱サンプルの 2 つのシーンを取り込んで参照が解決することを検査 |
+| `SabaProps.Liquid.WorldTests` | EditMode | 全 Udon behaviour の UdonSharp コンパイルと公開イベント・同期変数、シェーダのコンパイル、生成された Projector と Source の構成、Canvas 更新シェーダの GPU 上での付着・蒸発・洗浄・奥行きの記録、サンプルシーンの構成（トリガーと液面の位置、泥に沈む床、スロープ、鏡、服を着たマネキンの素材、天候の範囲と屋根の下のマネキン）と、比較シーンの構成（マネキンの数、Projector マテリアルがデモと重ならないこと）を検証。`TestResults/liquid-preview.png` に代用の体へ Projector で描いた確認画像を、`liquid-preview-pigment.png` と `liquid-preview-film.png` に Canvas のアトラスを出力。デモを ClientSim で 20 秒動かし、操作なしで全マネキンに付着が付くこと、雨と雪が屋外のマネキンにだけ届くこと、雪が止むと溶けて水が残ることを検査して、`liquid-demo-clothed.png`・`liquid-demo-sources.png`・`liquid-demo-immersion.png`・`liquid-demo-overview.png`・`liquid-demo-yards.png`・`liquid-demo-rain.png`・`liquid-demo-snow.png`・`liquid-demo-snow-melting.png` などを出力。操作と環境のシーンでは、ノズルを放ち、湿度と結露、傘の遮蔽、暗い部屋の点灯・紫外線のみ・消灯での蛍光と蓄光を検査して `liquid-interactive-*.png` を出力。Prefab が液体を自分で持ち、パッケージ外のアセットを参照しないことを検査。同梱サンプルの 3 つのシーンを取り込んで参照が解決することを検査 |
 
 Soft Propsの実行テストは指・棒・板の100 mmおよび0.5 mmの空隙、20 mmの侵入、離脱後の復元、自動上下運動、ローカルプレイヤーのFutonへの接地を検証します。VRChat実clientの手・胴体・リモートプレイヤーの接触を保証するテストではありません。
 
@@ -205,6 +205,6 @@ Put Items 単体の準備・検証手順は [PUT_ITEMS.md](PUT_ITEMS.md) を参�
 ```
 
 作業ツリーのパッケージをプロジェクトへ入れ直し、前回の生成物を消してから
-`LiquidSampleScene.CreateForExport` を batch mode で実行し、2 つのシーン（デモと比較）・マテリアル・
+`LiquidSampleScene.CreateForExport` を batch mode で実行し、パッケージの `Prefabs` と、3 つのシーン（デモ、比較、操作と環境）・マテリアル・
 シーンが参照する Udon のシリアライズ済みプログラムをパッケージへ複製します。
 生成物は書き出すたびに GUID が変わります。

@@ -450,6 +450,7 @@ mapfile -t LIQUID_SOURCES < <(find "$LIQUID/Runtime" -name '*.cs' | sort)
 csc "${COMMON[@]}" "${NETSTANDARD_ARGS[@]}" "${UNITY_ARGS[@]}" \
     -r:"$SDK_PLUGINS/VRCSDKBase.dll" -r:"$SDK3_PLUGINS/VRCSDK3.dll" \
     -r:"$UDON_EXTERNAL/VRC.Udon.Common.dll" -r:"$OUT/UdonSharp.Runtime.dll" \
+    -r:"$OUT/UnityEngine.UI.dll" \
     -out:"$OUT/SabaProps.Liquid.Runtime.dll" "${LIQUID_SOURCES[@]}"
 echo "ok: ${#LIQUID_SOURCES[@]} Runtime file(s)"
 
@@ -461,6 +462,7 @@ csc "${COMMON[@]}" "${NETSTANDARD_ARGS[@]}" "${UNITY_ARGS[@]}" \
     -r:"$UDON_EXTERNAL/VRC.Udon.Common.dll" \
     -r:"$OUT/UdonSharp.Runtime.dll" -r:"$OUT/UdonSharp.Editor.dll" \
     -r:"$OUT/UnityEditor.NetStandard.dll" -r:"$OUT/SabaProps.Liquid.Runtime.dll" \
+    -r:"$OUT/UnityEngine.UI.dll" \
     -out:"$OUT/SabaProps.Liquid.Editor.dll" "${LIQUID_EDITOR_SOURCES[@]}"
 echo "ok: ${#LIQUID_EDITOR_SOURCES[@]} Editor file(s)"
 
@@ -695,7 +697,8 @@ csc_exe -r:"$RUNTIME_DIR/System.Text.RegularExpressions.dll" \
     "$OFFLINE/OfflineLiquidTests.cs" \
     "$LIQUID/Runtime/LiquidCanvasSolver.cs" \
     "$LIQUID/Runtime/LiquidCanvasPoolSolver.cs" \
-    "$LIQUID/Runtime/LiquidWeatherSolver.cs"
+    "$LIQUID/Runtime/LiquidWeatherSolver.cs" \
+    "$LIQUID/Runtime/LiquidNozzleSolver.cs"
 
 cp "$OFFLINE_OUT/OfflineMeshTests.runtimeconfig.json" \
    "$OFFLINE_OUT/OfflineLiquidTests.runtimeconfig.json"

@@ -70,8 +70,8 @@ namespace SabaProps.Liquid.Editors
         public const float MudFloorY = -0.45f;
         public const float MudSurfaceY = 0f;
 
-        private const float GroundHalfSize = 25f;
-        private const float GroundThickness = 2f;
+        internal const float GroundHalfSize = 25f;
+        internal const float GroundThickness = 2f;
 
         [MenuItem("Tools/SabaProps/Liquid/Create Sample Scene", false, 1)]
         public static void CreateAndOpen()
@@ -130,7 +130,10 @@ namespace SabaProps.Liquid.Editors
         {
             UdonSharp.Compiler.UdonSharpCompilerV1.CompileSync(
                 new UdonSharp.Compiler.UdonSharpCompileOptions { IsEditorBuild = true });
+            // The prefabs first: the interactive scene places them.
+            LiquidPrefabBuilder.BuildAll();
             CreateComparison();
+            LiquidInteractiveScene.Create();
             Create();
             AssetDatabase.SaveAssets();
         }
@@ -172,7 +175,7 @@ namespace SabaProps.Liquid.Editors
             LiquidDemoWeather.BuildWeatherYards(pool, update, mannequins);
             AssignMannequins(pool, mannequins);
 
-            BuildWorld();
+            BuildWorld(SpawnPosition);
 
             AssetDatabase.SaveAssets();
             EditorSceneManager.SaveScene(scene, ScenePath);
@@ -206,7 +209,7 @@ namespace SabaProps.Liquid.Editors
             LiquidDemoGalleries.BuildLiquidColourRow(pool, update, mannequins);
             AssignMannequins(pool, mannequins);
 
-            BuildWorld();
+            BuildWorld(SpawnPosition);
 
             AssetDatabase.SaveAssets();
             EditorSceneManager.SaveScene(scene, ComparisonScenePath);
@@ -215,12 +218,12 @@ namespace SabaProps.Liquid.Editors
             return scene;
         }
 
-        private static Material CanvasUpdateMaterial()
+        internal static Material CanvasUpdateMaterial()
         {
             return LiquidAssets.CreateOrLoadMaterial(LiquidAssets.CanvasUpdateMaterialPath, LiquidAssets.CanvasUpdateShader);
         }
 
-        private static void AssignMannequins(LiquidCanvasPool pool, List<LiquidBodyCanvas> mannequins)
+        internal static void AssignMannequins(LiquidCanvasPool pool, List<LiquidBodyCanvas> mannequins)
         {
             pool.mannequins = mannequins.ToArray();
             UdonSharpEditorUtility.CopyProxyToUdon(pool);
@@ -271,7 +274,7 @@ namespace SabaProps.Liquid.Editors
         }
 
         /// <summary>A box spanning x and z, with its top face at <paramref name="top"/>.</summary>
-        private static GameObject Slab(Transform parent, string name, float xMin, float xMax, float zMin, float zMax,
+        internal static GameObject Slab(Transform parent, string name, float xMin, float xMax, float zMin, float zMax,
             float top, float thickness, Material material)
         {
             if (xMax - xMin < 1e-3f || zMax - zMin < 1e-3f)
@@ -440,7 +443,7 @@ namespace SabaProps.Liquid.Editors
             mirror.AddComponent<VRCMirrorReflection>();
         }
 
-        private static void ConfigureLight()
+        internal static void ConfigureLight()
         {
             Light light = Object.FindObjectOfType<Light>();
             if (light == null)
@@ -477,13 +480,13 @@ namespace SabaProps.Liquid.Editors
             }
         }
 
-        private static void BuildWorld()
+        internal static void BuildWorld(Vector3 spawnPosition)
         {
             var world = new GameObject("VRCWorld");
 
             var spawn = new GameObject("Spawn");
             spawn.transform.SetParent(world.transform, false);
-            spawn.transform.SetPositionAndRotation(SpawnPosition, Quaternion.identity);
+            spawn.transform.SetPositionAndRotation(spawnPosition, Quaternion.identity);
 
             var descriptor = world.AddComponent<VRCSceneDescriptor>();
             descriptor.spawns = new[] { spawn.transform };

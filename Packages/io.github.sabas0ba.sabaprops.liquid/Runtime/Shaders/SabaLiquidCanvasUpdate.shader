@@ -4,6 +4,7 @@
 // Pass 1: 液膜（R: 液量, G: 平滑度, B: 粘性, A: 蒸発率）
 // Pass 2: 消去
 // Pass 3: 奥行き（R: 付着した面の奥行き（m）, G: 記録の確かさ）
+// Pass 4: 発光（R: 蛍光の割合, G: 蓄光の割合。どちらも顔料の被覆で重み付け済み）
 //
 // 1 回の Blit で、重力方向への流下、DrawOp の適用、蒸発をまとめて行います。
 // 流下と蒸発は液膜の状態で決まり、顔料は液膜に運ばれるだけです。
@@ -36,6 +37,8 @@ Shader "Hidden/SabaProps/Liquid/Canvas Update"
     float4 _StampFilm[SABA_LIQUID_MAX_STAMPS];
     // x: 乱数シード, y: 輪郭の不規則さ
     float4 _StampShape[SABA_LIQUID_MAX_STAMPS];
+    // x: 蛍光, y: 蓄光
+    float4 _StampGlow[SABA_LIQUID_MAX_STAMPS];
 
     float4 _HalfExtents;
     float4 _GravityCanvas;
@@ -261,6 +264,40 @@ Shader "Hidden/SabaProps/Liquid/Canvas Update"
         return float4(depth, 0.0, 0.0);
     }
 
+    // 顔料と同じ規則で運び、洗い、上書きします。顔料の被覆のうち光る割合を持つため、
+    // 光らない塗料を上から塗れば、その分だけ光らなくなります。
+    float4 fragGlow(v2f_blit input) : SV_Target
+    {
+        CanvasTexel t = SabaLiquidTexel(input.uv);
+        float2 upstreamUv = SabaLiquidUpstreamUv(input.uv, t);
+
+        float2 self = tex2D(_MainTex, input.uv).rg;
+        float2 upstream = tex2D(_MainTex, upstreamUv).rg;
+        float leave = SabaLiquidMobility(tex2D(_FilmTex, input.uv), t);
+        float arrive = SabaLiquidMobility(tex2D(_FilmTex, upstreamUv), t);
+        float2 glow = self * (1.0 - leave) + upstream * arrive;
+
+        float edge = max(_Wash.z, 1e-4);
+        float washed = smoothstep(_Wash.x + edge, _Wash.x - edge, SabaLiquidTexelHeight(t));
+        glow *= 1.0 - saturate(washed * _Wash.y);
+
+        int count = (int)_StampCount;
+        for (int i = 0; i < SABA_LIQUID_MAX_STAMPS; i++)
+        {
+            if (i >= count)
+            {
+                break;
+            }
+
+            float k = SabaLiquidStampAt(i, t);
+            glow *= 1.0 - saturate(k * _StampFilm[i].x);
+            float cover = saturate(smoothstep(0.0, 0.35, k) * _StampNormal[i].w);
+            glow = glow * (1.0 - cover) + _StampGlow[i].xy * cover;
+        }
+
+        return float4(saturate(glow), 0.0, 0.0);
+    }
+
     float4 fragClear(v2f_blit input) : SV_Target
     {
         return float4(0.0, 0.0, 0.0, 0.0);
@@ -310,6 +347,16 @@ Shader "Hidden/SabaProps/Liquid/Canvas Update"
             #pragma target 3.5
             #pragma vertex vert
             #pragma fragment fragDepth
+            ENDCG
+        }
+
+        Pass
+        {
+            Name "Glow"
+            CGPROGRAM
+            #pragma target 3.5
+            #pragma vertex vert
+            #pragma fragment fragGlow
             ENDCG
         }
     }

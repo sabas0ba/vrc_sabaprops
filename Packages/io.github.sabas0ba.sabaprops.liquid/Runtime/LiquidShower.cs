@@ -23,7 +23,7 @@ namespace SabaProps.Liquid
     public class LiquidShower : UdonSharpBehaviour
     {
         [Header("構成")]
-        [Tooltip("Canvas を割り当て、命中を判定するプール。")]
+        [Tooltip("Canvas を割り当て、命中を判定するプール。未設定なら名前で探します。")]
         public LiquidCanvasPool pool;
 
         [Tooltip("出す液体の定義。通常は水です。")]
@@ -90,6 +90,15 @@ namespace SabaProps.Liquid
             if (nozzle == null)
             {
                 nozzle = transform;
+            }
+
+            if (pool == null)
+            {
+                GameObject found = GameObject.Find(LiquidCanvasPool.DefaultName);
+                if (found != null)
+                {
+                    pool = found.GetComponent<LiquidCanvasPool>();
+                }
             }
 
             if (Networking.IsOwner(gameObject))

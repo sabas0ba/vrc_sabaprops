@@ -52,7 +52,7 @@ namespace SabaProps.Liquid.WorldTests
             // event, the canvas never follows the body.
             CollectionAssert.Contains(exported, "_postLateUpdate");
 
-            foreach (string method in new[] { "Assign", "Release", "QueueStamp", "ApplyImmersion", "WashImmersion", "ApplySnow", "ApplyRain", "GetPlayerId", "GetLastActivityTime" })
+            foreach (string method in new[] { "Assign", "Release", "QueueStamp", "ApplyImmersion", "WashImmersion", "ApplySnow", "ApplyRain", "ApplyHumidity", "ApplyLightEnvironment", "GetCondensation", "GetPlayerId", "GetLastActivityTime" })
             {
                 AssertExportsMethod(exported, method);
             }
@@ -144,6 +144,68 @@ namespace SabaProps.Liquid.WorldTests
             CollectionAssert.Contains(exported, "_update");
             AssertExportsMethod(exported, "IsFalling");
             AssertSyncMode<LiquidWeather>(BehaviourSyncMode.None);
+        }
+
+        [Test]
+        public void Nozzle_SyncsItsSettingsAndSendsShotsAsEvents()
+        {
+            IUdonProgram program = Compile<LiquidNozzle>();
+            List<string> exported = Exported(program);
+            CollectionAssert.Contains(exported, "_update");
+            CollectionAssert.Contains(exported, "_interact");
+            CollectionAssert.Contains(exported, "_onPickupUseDown");
+            foreach (string method in new[] { "Trigger", "Fire", "Toggle", "ReceiveShot", "VolumeUp", "VolumeDown",
+                "RangeUp", "RangeDown", "SpeedUp", "SpeedDown", "DiameterUp", "DiameterDown", "IsRunning" })
+            {
+                AssertExportsMethod(exported, method);
+            }
+
+            AssertSyncMode<LiquidNozzle>(BehaviourSyncMode.Manual);
+            AssertSyncedFields(program, "_volume", "_range", "_speed", "_diameter", "_running");
+        }
+
+        [Test]
+        public void LightZone_SyncsItsSwitchesOnly()
+        {
+            IUdonProgram program = Compile<LiquidLightZone>();
+            List<string> exported = Exported(program);
+            foreach (string method in new[] { "ToggleLamp", "ToggleBlacklight", "ResumeAutomatic", "IsLampOn", "IsBlacklightOn" })
+            {
+                AssertExportsMethod(exported, method);
+            }
+
+            AssertSyncMode<LiquidLightZone>(BehaviourSyncMode.Manual);
+            AssertSyncedFields(program, "_manual", "_lampOn", "_blacklightOn");
+        }
+
+        [Test]
+        public void Humidity_RunsWithoutSyncing()
+        {
+            List<string> exported = Exported(Compile<LiquidHumidity>());
+            CollectionAssert.Contains(exported, "_update");
+            AssertExportsMethod(exported, "GetHumidity");
+            AssertSyncMode<LiquidHumidity>(BehaviourSyncMode.None);
+        }
+
+        [Test]
+        public void Button_RelaysInteractAndPickupUse()
+        {
+            IUdonProgram program = Compile<LiquidButton>();
+            List<string> exported = Exported(program);
+            CollectionAssert.Contains(exported, "_interact");
+            CollectionAssert.Contains(exported, "_onPickupUseDown");
+            // It may sit on a pickup with VRCObjectSync.
+            AssertSyncMode<LiquidButton>(BehaviourSyncMode.NoVariableSync);
+            AssertSyncedFields(program);
+        }
+
+        [Test]
+        public void Umbrella_RegistersItselfWithoutSyncing()
+        {
+            List<string> exported = Exported(Compile<LiquidUmbrella>());
+            CollectionAssert.Contains(exported, "_start");
+            AssertSyncMode<LiquidUmbrella>(BehaviourSyncMode.None);
+            AssertExportsMethod(Exported(Compile<LiquidCanvasPool>()), "RegisterUmbrella");
         }
 
         [Test]

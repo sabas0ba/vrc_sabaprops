@@ -45,6 +45,19 @@
 - 服を着たマネキン（Tシャツとジーンズ、雨合羽、ニットと短パン）
 - デモに服を着た人型の列と、雨と雪の区画を追加
 - 比較の列を別のシーン（`LiquidComparison.unity`）に分け、`Create Comparison Scene` メニューを追加
+- `LiquidNozzle`: 1 回、定期、連続の放ち方と、量、距離、速さ、断面の設定を持つ汎用の Source。操作盤から設定を変えられる
+- `LiquidHumidity`: 湿度の Source。乾きを遅らせ、結露と垂れる水滴を生じさせる。シャワーとの連動、湯気、霧、面の曇り
+- `LiquidLightZone`: 暗い部屋の照明と紫外線を付着に伝える明かりの範囲
+- 液体の蛍光と蓄光。Canvas に発光の割合の RenderTexture を追加
+- プリセット：蛍光塗料（桃、緑）、蓄光塗料
+- `LiquidUmbrella`: 雨と雪を遮る傘
+- `LiquidButton`: Interact と Pickup の使用ボタンでイベントを呼ぶボタン
+- 粘性に応じたパーティクル（伸びる粒と飛沫、塊、糸）と湯気のパーティクル
+- シェーダ：霧の体積（`SabaProps/Liquid/Fog Volume`）、曇るガラス（`SabaProps/Liquid/Fogged Glass`）。
+  `Weather Surface` に結露を追加
+- Prefab：コップ、バケツ、水道、シャワー、傘、水鉄砲、ノズル台（`Prefabs`）と、配置する GameObject メニュー
+- Source はプールが未設定なら名前で探す
+- 操作と環境のシーン（`LiquidInteractive.unity`）と `Create Interactive Scene` メニュー
 
 ### Changed
 

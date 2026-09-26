@@ -117,6 +117,30 @@ namespace SabaProps.Liquid
         /// 整数から [0, 1) の擬似乱数。Source が評価周期の番号から方向や形状を作るのに使います。
         /// 全クライアントで同じ番号を与えれば同じ値になります。
         /// </summary>
+        /// <summary>箱の中心から見た点が、半分の大きさ half の箱の中にあるか。</summary>
+        private bool InsideBox(Vector3 local, Vector3 half)
+        {
+            return Mathf.Abs(local.x) <= half.x && Mathf.Abs(local.y) <= half.y && Mathf.Abs(local.z) <= half.z;
+        }
+
+        /// <summary>
+        /// 点が傘の下にあるか。傘の面の中心 centre、上向き up、半径 radius から、下へ depth までを覆います。
+        /// 雨は少し斜めにも降るため、下へ行くほど 15 % ずつ広げます。面より 0.1 m 上までは下と見なします。
+        /// </summary>
+        private bool UnderCanopy(Vector3 point, Vector3 centre, Vector3 up, float radius, float depth)
+        {
+            Vector3 axis = up.sqrMagnitude > 1e-8f ? up.normalized : Vector3.up;
+            Vector3 d = point - centre;
+            float below = -Vector3.Dot(d, axis);
+            if (below < -0.1f || below > depth)
+            {
+                return false;
+            }
+
+            Vector3 lateral = d + axis * below;
+            return lateral.magnitude <= radius + Mathf.Max(below, 0f) * 0.15f;
+        }
+
         private float Hash01(int value)
         {
             // 整数の乗算による混合は Udon で桁あふれの扱いが保証されないため、浮動小数で作ります。

@@ -60,7 +60,11 @@ namespace SabaProps.Liquid.WorldTests
         [Test]
         public void Shaders_AreFoundAndCompile()
         {
-            foreach (string shaderName in new[] { LiquidAssets.BodyProjectorShader, LiquidAssets.CanvasUpdateShader })
+            foreach (string shaderName in new[]
+            {
+                LiquidAssets.BodyProjectorShader, LiquidAssets.CanvasUpdateShader, LiquidWeatherBuilder.WeatherSurfaceShader,
+                "SabaProps/Liquid/Fog Volume", "SabaProps/Liquid/Fogged Glass",
+            })
             {
                 Shader shader = Shader.Find(shaderName);
                 Assert.IsNotNull(shader, $"shader '{shaderName}' was not found");
@@ -80,8 +84,48 @@ namespace SabaProps.Liquid.WorldTests
                 Assert.Fail($"shader '{shaderName}' failed to compile:\n" + string.Join("\n", details));
             }
 
-            // LiquidBodyCanvas blits with passes 0 to 3 by index.
-            Assert.AreEqual(4, Shader.Find(LiquidAssets.CanvasUpdateShader).passCount);
+            // LiquidBodyCanvas blits with passes 0 to 4 by index.
+            Assert.AreEqual(5, Shader.Find(LiquidAssets.CanvasUpdateShader).passCount);
+        }
+
+        [Test]
+        public void Glow_IsCarriedByPigmentAndPaintedOver()
+        {
+            Material update = UpdateMaterial();
+            RenderTexture pigmentSource = Canvas(RenderTextureFormat.ARGB32);
+            RenderTexture pigmentTarget = Canvas(RenderTextureFormat.ARGB32);
+            RenderTexture filmSource = Canvas(RenderTextureFormat.ARGBHalf);
+            RenderTexture filmTarget = Canvas(RenderTextureFormat.ARGBHalf);
+            RenderTexture glowSource = Canvas(RenderTextureFormat.RGHalf);
+            RenderTexture glowTarget = Canvas(RenderTextureFormat.RGHalf);
+
+            // Fluorescent paint on the front face: the glow canvas records it as fluorescent, not luminous.
+            SetStamp(update, new Vector3(0f, 0f, HalfExtents.z), Vector3.forward, 0.3f,
+                Color.magenta, pigment: 1f, film: 0.5f, dryingEncoded: 0f);
+            SetGlow(update, 1f, 0f);
+            update.SetFloat("_DeltaTime", 0f);
+            update.SetTexture("_FilmTex", filmSource);
+            Graphics.Blit(glowSource, glowTarget, update, 4);
+
+            Color glow = TileCentre(Read(glowTarget, TextureFormat.RGBAHalf), 4);
+            Assert.Greater(glow.r, 0.9f, "fluorescent paint left no fluorescence");
+            Assert.Less(glow.g, 0.01f, "fluorescent paint was recorded as luminous");
+            Assert.Less(TileCentre(Read(glowTarget, TextureFormat.RGBAHalf), 5).r, 0.01f, "the back face glows");
+
+            // Ordinary paint over it covers the glow, as it covers the colour.
+            SetStamp(update, new Vector3(0f, 0f, HalfExtents.z), Vector3.forward, 0.3f,
+                Color.red, pigment: 1f, film: 0.5f, dryingEncoded: 0f);
+            SetGlow(update, 0f, 0f);
+            Graphics.Blit(glowTarget, glowSource, update, 4);
+            Assert.Less(TileCentre(Read(glowSource, TextureFormat.RGBAHalf), 4).r, 0.05f,
+                "ordinary paint over fluorescent paint still glows");
+        }
+
+        private static void SetGlow(Material update, float fluorescence, float luminescence)
+        {
+            var glow = new Vector4[LiquidBodyCanvas.MaxStampsPerUpdate];
+            glow[0] = new Vector4(fluorescence, luminescence, 0f, 0f);
+            update.SetVectorArray("_StampGlow", glow);
         }
 
         [Test]

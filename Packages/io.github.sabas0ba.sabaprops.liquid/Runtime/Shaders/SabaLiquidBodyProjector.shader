@@ -23,6 +23,9 @@ Shader "SabaProps/Liquid/Body Projector"
         [NoScaleOffset] _PigmentTex ("Pigment Canvas", 2D) = "black" {}
         [NoScaleOffset] _FilmTex ("Film Canvas", 2D) = "black" {}
         [NoScaleOffset] _DepthTex ("Depth Canvas", 2D) = "black" {}
+        [NoScaleOffset] _GlowTex ("Glow Canvas", 2D) = "black" {}
+        _FluorescentGain ("Fluorescent Emission", Range(0, 8)) = 2.5
+        _LuminousGain ("Luminous Emission", Range(0, 4)) = 0.8
         _DepthTolerance ("Surface Depth Tolerance (m)", Range(0.01, 0.3)) = 0.12
         _WetDarken ("Wet Darkening", Range(0, 1)) = 0.5
         _WetReflection ("Wet Reflection", Range(0, 2)) = 1
@@ -69,7 +72,19 @@ Shader "SabaProps/Liquid/Body Projector"
             float4 _PigmentTex_TexelSize;
             sampler2D _FilmTex;
             sampler2D _DepthTex;
+            sampler2D _GlowTex;
             float _DepthTolerance;
+            float _FluorescentGain;
+            float _LuminousGain;
+            // 発光。x: 紫外線の強さ, y: 蓄光の蓄えた量
+            float4 _Glow;
+            // 明かりの範囲が与える光。_LocalLight.xyz: 光源へ向かう方向, w: 1 = 光源あり。
+            // _LocalAmbient.a が 1 のとき、主光源と環境光をこれらで置き換えます。
+            float4 _LocalLight;
+            float4 _LocalLightColor;
+            float4 _LocalAmbient;
+            // 結露。x: 結露の量, y: 湿度
+            float4 _Condensation;
             float4 _CanvasRowX;
             float4 _CanvasRowY;
             float4 _CanvasRowZ;
@@ -205,13 +220,14 @@ Shader "SabaProps/Liquid/Body Projector"
                 return pigment.a * 0.6 + film.r * (0.25 + 0.75 * film.b);
             }
 
-            void SampleCanvas(float3 q, float3 n, out float4 pigment, out float4 film)
+            void SampleCanvas(float3 q, float3 n, out float4 pigment, out float4 film, out float2 glow)
             {
                 float3 weights = SabaLiquidAxisWeights(n);
                 // 受け手の奥行きをメートルに戻して、付着した面の奥行きと比べます。
                 float3 surface = q * CanvasHalfExtents();
                 pigment = 0.0;
                 film = 0.0;
+                glow = 0.0;
 
                 [unroll]
                 for (int axis = 0; axis < 3; axis++)
@@ -227,6 +243,7 @@ Shader "SabaProps/Liquid/Body Projector"
 
                     pigment += tex2D(_PigmentTex, uv) * weight;
                     film += tex2D(_FilmTex, uv) * weight;
+                    glow += tex2D(_GlowTex, uv).rg * weight;
                 }
             }
 
@@ -265,7 +282,21 @@ Shader "SabaProps/Liquid/Body Projector"
 
                 float4 pigment;
                 float4 film;
-                SampleCanvas(q, n, pigment, film);
+                float2 glow;
+                SampleCanvas(q, n, pigment, film, glow);
+
+                // 発光する顔料の色。浸漬や雪を重ねる前の顔料から取ります。
+                float3 glowHue = pigment.rgb / max(pigment.a, 1e-3);
+                float glowAmount = glow.x * _Glow.x * _FluorescentGain + glow.y * _Glow.y * _LuminousGain;
+
+                // 結露は体の表面全体に付く薄い水です。描き方は液膜と同じで、はじく素材では水滴になります。
+                float condensation = saturate(_Condensation.x);
+                if (condensation > 0.001)
+                {
+                    float dew = condensation * 0.7;
+                    film.g = lerp(film.g, 0.95, saturate(dew - film.r));
+                    film.r = max(film.r, dew);
+                }
 
                 // 浸漬は Canvas に焼かず、液面の高さから直接求めます。
                 // 高さはテクセルからは復元できないが、ここでは受け手の位置が分かるため。
@@ -296,7 +327,7 @@ Shader "SabaProps/Liquid/Body Projector"
                     film.r = max(film.r, melt);
                 }
 
-                if (pigment.a <= 0.001 && film.r <= 0.001 && snow <= 0.001)
+                if (pigment.a <= 0.001 && film.r <= 0.001 && snow <= 0.001 && glowAmount <= 0.001)
                 {
                     return fixed4(0.0, 0.0, 0.0, 0.0);
                 }
@@ -314,7 +345,8 @@ Shader "SabaProps/Liquid/Body Projector"
                 float sheen = saturate(surfaceA.z);
                 float bleed = saturate(surfaceB.x);
                 float strands = saturate(surfaceB.y);
-                float beadSize = max(surfaceB.z, 0.002);
+                // 結露の水滴は、付着した液の水滴より細かくなります。
+                float beadSize = max(surfaceB.z * lerp(1.0, 0.45, condensation), 0.002);
 
                 DominantTile tile = Dominant(q, n);
 
@@ -340,7 +372,8 @@ Shader "SabaProps/Liquid/Body Projector"
                 pigment = pigment * (1.0 - snow) + float4(float3(0.9, 0.92, 0.95) * snow, snow);
 
                 // 水滴：はじく素材では、顔料の無い液膜が面ではなく水滴として見えます。
-                float beadWeight = repellency * (1.0 - saturate(pigment.a * 2.0));
+                // 結露は肌のように吸わない面でも水滴（汗や露）になります。
+                float beadWeight = max(repellency, condensation * (1.0 - absorbency)) * (1.0 - saturate(pigment.a * 2.0));
                 // 面内の重力方向。タイルの軸へ投影し、面が水平に近いときは伸ばしません。
                 float2 gravity = float2(dot(float3(0.0, -1.0, 0.0), tile.uAxis), dot(float3(0.0, -1.0, 0.0), tile.vAxis));
                 gravity = dot(gravity, gravity) > 0.04 ? normalize(gravity) : float2(0.0, 0.0);
@@ -361,13 +394,20 @@ Shader "SabaProps/Liquid/Body Projector"
                 // 環境光は SH と固定の環境色の大きい方を使います。
                 float3 ambient = max(unity_AmbientSky.rgb,
                     max(UNITY_LIGHTMODEL_AMBIENT.rgb, max(0.0, ShadeSH9(float4(shaded, 1.0)))));
+
+                // 明かりの範囲の中では、その範囲の光と環境光で照らします。
+                bool localLight = _LocalAmbient.a > 0.5;
+                float4 mainLight = localLight ? _LocalLight : _Udon_SabaLiquidLightDirection;
+                float3 mainColor = localLight ? _LocalLightColor.rgb : _Udon_SabaLiquidLightColor.rgb;
+                ambient = localLight ? _LocalAmbient.rgb : ambient;
+
                 float3 diffuse = lerp(float3(1.0, 1.0, 1.0), ambient, _AmbientResponse);
                 float3 highlight = 0.0;
 
-                if (_Udon_SabaLiquidLightDirection.w > 0.5)
+                if (mainLight.w > 0.5)
                 {
-                    float3 lightDir = normalize(_Udon_SabaLiquidLightDirection.xyz);
-                    float3 lightColor = _Udon_SabaLiquidLightColor.rgb;
+                    float3 lightDir = normalize(mainLight.xyz);
+                    float3 lightColor = mainColor;
                     diffuse += lightColor * saturate(dot(shaded, lightDir));
 
                     // 正規化 Blinn-Phong。平滑度から指数を決め、濡れているほど強く光ります。
@@ -379,7 +419,9 @@ Shader "SabaProps/Liquid/Body Projector"
                 }
 
                 float fresnel = 0.04 + 0.96 * pow(1.0 - saturate(dot(shaded, viewDir)), 5.0);
-                float3 environment = max(0.0, ShadeSH9(float4(reflect(-viewDir, shaded), 1.0)));
+                float3 environment = localLight
+                    ? ambient + mainColor * 0.2
+                    : max(0.0, ShadeSH9(float4(reflect(-viewDir, shaded), 1.0)));
                 // 水滴は丸い表面が周りを映すため、平らな液膜より反射が強く見えます。
                 float3 reflection = environment * fresnel * (wetLook + beaded) * smoothness * _WetReflection;
 
@@ -393,19 +435,24 @@ Shader "SabaProps/Liquid/Body Projector"
                 // 下地の暗化は吸う素材ほど強く、はじく素材では水滴の所だけ少し暗くなります。
                 float darkenStrength = _WetDarken * lerp(0.25, 1.2, absorbency);
                 // 水滴の中は、光が屈折して下地の見え方が暗く沈みます。
-                float darken = saturate(sheet * darkenStrength + beaded * _WetDarken * 0.9) * (1.0 - pigment.a);
+                // 結露の細かい水滴は薄く、下地をほとんど暗くしません。艶と映り込みで見せます。
+                float beadDarken = _WetDarken * 0.9 * (1.0 - 0.8 * condensation);
+                float darken = saturate(sheet * darkenStrength + beaded * beadDarken) * (1.0 - pigment.a);
                 float alpha = 1.0 - (1.0 - pigment.a) * (1.0 - darken);
 
                 // 雪のきらめき。細かい結晶が主光源を拾って点状に光ります。
                 float3 sparkle = 0.0;
-                if (snow > 0.01 && _Udon_SabaLiquidLightDirection.w > 0.5)
+                if (snow > 0.01 && mainLight.w > 0.5)
                 {
                     float glint = step(0.992, SabaLiquidHash(floor(input.worldPos.xz * 300.0) + floor(input.worldPos.y * 300.0)));
-                    sparkle = _Udon_SabaLiquidLightColor.rgb * glint * snow
-                        * saturate(dot(shaded, normalize(_Udon_SabaLiquidLightDirection.xyz))) * 2.0;
+                    sparkle = mainColor * glint * snow * saturate(dot(shaded, normalize(mainLight.xyz))) * 2.0;
                 }
 
-                return fixed4((pigmentColor + reflection + highlight * fresnel * 2.5 + sparkle) * fade, saturate(alpha * fade));
+                // 発光。照明と関係なく顔料の色で光ります。雪の下は光りません。
+                float3 emission = glowHue * glowAmount * (1.0 - snow);
+
+                return fixed4((pigmentColor + reflection + highlight * fresnel * 2.5 + sparkle + emission) * fade,
+                    saturate(alpha * fade));
             }
             ENDCG
         }

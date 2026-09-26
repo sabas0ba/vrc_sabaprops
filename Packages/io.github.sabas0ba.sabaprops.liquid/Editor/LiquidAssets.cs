@@ -128,13 +128,20 @@ namespace SabaProps.Liquid.Editors
         /// </summary>
         public static Texture2D CreateOrLoadDropletTexture()
         {
-            var existing = AssetDatabase.LoadAssetAtPath<Texture2D>(DropletTexturePath);
+            return CreateOrLoadDropletTexture(MaterialFolder);
+        }
+
+        /// <summary>The droplet texture in <paramref name="folder"/>.</summary>
+        public static Texture2D CreateOrLoadDropletTexture(string folder)
+        {
+            string path = folder + "/LiquidDroplet.asset";
+            var existing = AssetDatabase.LoadAssetAtPath<Texture2D>(path);
             if (existing != null)
             {
                 return existing;
             }
 
-            EnsureFolder(MaterialFolder);
+            EnsureFolder(folder);
             const int size = 64;
             var texture = new Texture2D(size, size, TextureFormat.RGBA32, true) { name = "LiquidDroplet" };
             for (int y = 0; y < size; y++)
@@ -153,7 +160,45 @@ namespace SabaProps.Liquid.Editors
             }
 
             texture.Apply();
-            AssetDatabase.CreateAsset(texture, DropletTexturePath);
+            AssetDatabase.CreateAsset(texture, path);
+            return texture;
+        }
+
+        /// <summary>
+        /// A soft, uneven puff for steam: a gaussian blob broken up by a few
+        /// overlapping lobes, so neighbouring puffs do not look stamped.
+        /// </summary>
+        public static Texture2D CreateOrLoadPuffTexture(string folder)
+        {
+            string path = folder + "/LiquidPuff.asset";
+            var existing = AssetDatabase.LoadAssetAtPath<Texture2D>(path);
+            if (existing != null)
+            {
+                return existing;
+            }
+
+            EnsureFolder(folder);
+            const int size = 64;
+            var texture = new Texture2D(size, size, TextureFormat.RGBA32, true) { name = "LiquidPuff" };
+            Vector2[] lobes = { new Vector2(-0.25f, -0.1f), new Vector2(0.2f, 0.15f), new Vector2(0.05f, -0.3f), new Vector2(-0.1f, 0.3f) };
+            for (int y = 0; y < size; y++)
+            {
+                for (int x = 0; x < size; x++)
+                {
+                    var p = new Vector2((x + 0.5f) / size * 2f - 1f, (y + 0.5f) / size * 2f - 1f);
+                    float alpha = Mathf.Exp(-p.sqrMagnitude * 3f) * 0.6f;
+                    foreach (Vector2 lobe in lobes)
+                    {
+                        alpha += Mathf.Exp(-(p - lobe).sqrMagnitude * 12f) * 0.25f;
+                    }
+
+                    alpha *= Mathf.Clamp01((1f - p.magnitude) * 2.5f);
+                    texture.SetPixel(x, y, new Color(1f, 1f, 1f, Mathf.Clamp01(alpha)));
+                }
+            }
+
+            texture.Apply();
+            AssetDatabase.CreateAsset(texture, path);
             return texture;
         }
 
@@ -164,13 +209,30 @@ namespace SabaProps.Liquid.Editors
         /// </summary>
         public static Material StreamMaterial(string assetPath)
         {
+            return StreamMaterial(assetPath, MaterialFolder);
+        }
+
+        /// <summary>The stream material, with its texture kept in <paramref name="textureFolder"/>.</summary>
+        public static Material StreamMaterial(string assetPath, string textureFolder)
+        {
+            return FadeParticleMaterial(assetPath, CreateOrLoadDropletTexture(textureFolder));
+        }
+
+        /// <summary>The steam material: soft puffs, faded in and out by the particle colour.</summary>
+        public static Material PuffMaterial(string assetPath, string textureFolder)
+        {
+            return FadeParticleMaterial(assetPath, CreateOrLoadPuffTexture(textureFolder));
+        }
+
+        private static Material FadeParticleMaterial(string assetPath, Texture2D texture)
+        {
             Material material = CreateOrLoadMaterial(assetPath, "Particles/Standard Unlit");
             if (material == null)
             {
                 return null;
             }
 
-            material.mainTexture = CreateOrLoadDropletTexture();
+            material.mainTexture = texture;
             // Fade mode, set the way the particle shader's inspector sets it.
             material.SetFloat("_Mode", 2f);
             material.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);

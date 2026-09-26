@@ -357,6 +357,55 @@ namespace SabaProps.Liquid
         }
 
         /// <summary>
+        /// 蓄光の蓄えた量（0〜1）を 1 周期進めます。周りの明るさ brightness（0〜1）が今の量より
+        /// 明るければ chargeSeconds の時定数で近づき、暗ければ afterglowSeconds の時定数で減ります。
+        /// 暗い所では蓄えた量まで光り、明るい所の量を下回るまでは減りません。
+        /// </summary>
+        private float ChargeGlow(float charge, float brightness, float chargeSeconds, float afterglowSeconds,
+            float deltaSeconds)
+        {
+            float target = Mathf.Clamp01(brightness);
+            if (target >= charge)
+            {
+                float rise = chargeSeconds <= 0f ? 1f : 1f - Mathf.Exp(-deltaSeconds / chargeSeconds);
+                return Mathf.Clamp01(charge + (target - charge) * rise);
+            }
+
+            float decay = afterglowSeconds <= 0f ? 0f : Mathf.Exp(-deltaSeconds / afterglowSeconds);
+            return Mathf.Clamp01(Mathf.Max(target, charge * decay));
+        }
+
+        /// <summary>
+        /// 湿度（0〜1）による乾きやすさの倍率。乾いた空気で 1、飽和した空気で minimum です。
+        /// 湿度が高いほど急に乾きにくくなるよう、湿度の 2 乗で下げます。
+        /// </summary>
+        private float DryingScale(float humidity, float minimum)
+        {
+            float h = Mathf.Clamp01(humidity);
+            return Mathf.Lerp(1f, Mathf.Clamp01(minimum), h * h);
+        }
+
+        /// <summary>
+        /// 結露の量（0〜1）を 1 周期進めます。湿度が threshold を超えると、超えた割合に比例した速さで
+        /// 増え、condenseSeconds で飽和した空気なら 0 から 1 に達します。threshold 以下では
+        /// dryingSeconds に乾きやすさの倍率を掛けた時間で乾きます。
+        /// </summary>
+        private float Condense(float amount, float humidity, float threshold, float condenseSeconds,
+            float dryingSeconds, float deltaSeconds)
+        {
+            float h = Mathf.Clamp01(humidity);
+            float t = Mathf.Clamp(threshold, 0f, 0.99f);
+            if (h > t)
+            {
+                float excess = (h - t) / (1f - t);
+                float rate = condenseSeconds <= 0f ? 1f : deltaSeconds / condenseSeconds;
+                return Mathf.Clamp01(amount + excess * rate);
+            }
+
+            return EvaporateAmount(amount, dryingSeconds, deltaSeconds);
+        }
+
+        /// <summary>
         /// 雪が溶ける量。meltSeconds で積雪 1 が溶けきる速さとし、残っている以上は溶けません。
         /// 溶けた分は水として体を濡らします。
         /// </summary>

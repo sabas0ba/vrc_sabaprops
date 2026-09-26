@@ -26,6 +26,12 @@ namespace SabaProps.Liquid
     [UdonBehaviourSyncMode(BehaviourSyncMode.None)]
     public partial class LiquidCanvasPool : UdonSharpBehaviour
     {
+        /// <summary>
+        /// プールの GameObject の名前。Prefab の Source は、プールが設定されていなければ
+        /// この名前でシーンから探します。
+        /// </summary>
+        public const string DefaultName = "Liquid Canvas Pool";
+
         [Tooltip("プレイヤーへの割り当てに使う Canvas。数がそのまま同時に付着を表示できる人数の上限です。")]
         public LiquidBodyCanvas[] canvases;
 
@@ -41,6 +47,9 @@ namespace SabaProps.Liquid
 
         [Tooltip("目の高さ 1.6 m のアバターでの手の球の半径（m）。体格に比例させます。")]
         public float handRadius = 0.07f;
+
+        [Tooltip("雨や雪を遮る傘。天候の Source が、傘の下の相手には降らせません。")]
+        public LiquidUmbrella[] umbrellas;
 
         /// <summary>直前の CastTargets で当たった点。</summary>
         [HideInInspector] public Vector3 lastHitPoint;
@@ -361,6 +370,141 @@ namespace SabaProps.Liquid
             }
 
             return FromPlayerLocal(local, Vector3.zero, player.GetRotation() * Vector3.forward);
+        }
+
+        /// <summary>
+        /// 傘を登録します。Prefab の傘がシーンに置かれたとき、自分から呼びます。登録済みなら何もしません。
+        /// </summary>
+        public void RegisterUmbrella(LiquidUmbrella umbrella)
+        {
+            if (umbrella == null)
+            {
+                return;
+            }
+
+            int count = umbrellas == null ? 0 : umbrellas.Length;
+            for (int i = 0; i < count; i++)
+            {
+                if (umbrellas[i] == umbrella)
+                {
+                    return;
+                }
+            }
+
+            var grown = new LiquidUmbrella[count + 1];
+            for (int i = 0; i < count; i++)
+            {
+                grown[i] = umbrellas[i];
+            }
+
+            grown[count] = umbrella;
+            umbrellas = grown;
+        }
+
+        /// <summary>
+        /// 点が、いずれかの傘の下にあるか。傘の面から下へ depth までの、少し裾広がりの円柱で判定します。
+        /// </summary>
+        public bool IsUnderUmbrella(Vector3 point)
+        {
+            if (umbrellas == null)
+            {
+                return false;
+            }
+
+            for (int i = 0; i < umbrellas.Length; i++)
+            {
+                LiquidUmbrella umbrella = umbrellas[i];
+                if (umbrella == null || umbrella.canopy == null || !umbrella.gameObject.activeInHierarchy)
+                {
+                    continue;
+                }
+
+                if (UnderCanopy(point, umbrella.canopy.position, umbrella.canopy.up, umbrella.radius, umbrella.depth))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// 箱の中にいるターゲットを集めます。箱は box を中心とする大きさ size の直方体です。
+        /// targets にターゲット番号、centres に体の中心、tops に頭頂のすぐ上の点を入れ、数を返します。
+        /// 配列が足りない分は数えません。
+        /// </summary>
+        public int CollectTargetsInBox(Transform box, Vector3 size, bool includePlayers, int[] targets,
+            Vector3[] centres, Vector3[] tops)
+        {
+            int count = 0;
+            Vector3 half = size * 0.5f;
+            int capacity = Mathf.Min(targets.Length, Mathf.Min(centres.Length, tops.Length));
+
+            int mannequinCount = GetMannequinCount();
+            for (int i = 0; i < mannequinCount && count < capacity; i++)
+            {
+                LiquidBodyCanvas canvas = mannequins[i];
+                if (canvas == null || canvas.anchor == null)
+                {
+                    continue;
+                }
+
+                Vector3 bottom = canvas.GetBodyBottom();
+                Vector3 top = canvas.GetBodyTop() + Vector3.up * bodyRadius;
+                Vector3 centre = (bottom + top) * 0.5f;
+                if (!InsideBox(box.InverseTransformPoint(centre), half))
+                {
+                    continue;
+                }
+
+                targets[count] = MannequinTarget(i);
+                centres[count] = centre;
+                tops[count] = top;
+                count++;
+            }
+
+            if (!includePlayers)
+            {
+                return count;
+            }
+
+            int playerCount = VRCPlayerApi.GetPlayerCount();
+            if (_players.Length < playerCount)
+            {
+                _players = new VRCPlayerApi[playerCount];
+            }
+
+            VRCPlayerApi.GetPlayers(_players);
+            for (int i = 0; i < playerCount && count < capacity; i++)
+            {
+                VRCPlayerApi player = _players[i];
+                if (!Utilities.IsValid(player))
+                {
+                    continue;
+                }
+
+                Vector3 feet = player.GetPosition();
+                float height = Mathf.Max(player.GetAvatarEyeHeightAsMeters(), 0.2f);
+                Vector3 top = player.GetBonePosition(HumanBodyBones.Head);
+                if (top == Vector3.zero)
+                {
+                    top = feet + Vector3.up * height;
+                }
+
+                top += Vector3.up * bodyRadius;
+                Vector3 centre = (feet + top) * 0.5f;
+                if (!InsideBox(box.InverseTransformPoint(centre), half))
+                {
+                    continue;
+                }
+
+                targets[count] = player.playerId;
+                centres[count] = centre;
+                tops[count] = top;
+                count++;
+            }
+
+            return count;
         }
 
         public override void OnPlayerLeft(VRCPlayerApi player)

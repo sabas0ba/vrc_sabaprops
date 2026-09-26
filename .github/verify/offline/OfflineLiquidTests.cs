@@ -60,6 +60,8 @@ namespace SabaProps.Liquid
             Run("immersion level follows the body axis", ImmersionLevelFollowsTheBodyAxis);
             Run("the film line drains down and stops at the bottom", FilmLineDrains);
             Run("snow melts at its rate and never below zero", SnowMelts);
+            Run("luminous paint charges in light and fades in the dark", LuminousPaintChargesAndFades);
+            Run("humid air slows drying and condenses above the threshold", HumidAirSlowsDryingAndCondenses);
 
             Run("shader constants agree with the solver", ShaderConstantsAgree);
             Run("degenerate input stays finite", DegenerateInputStaysFinite);
@@ -75,6 +77,9 @@ namespace SabaProps.Liquid
             Run("ground cover builds while it falls and clears after", LiquidWeather.GroundCoverBuildsAndClears);
             Run("melting snow wets the ground, which then dries", LiquidWeather.MeltWetsThenDries);
             Run("the area test and drop origins stay in place", LiquidWeather.AreaAndDropsStayInPlace);
+            Run("umbrellas cover what is below them and nothing else", LiquidCanvasPool.UmbrellasCoverBelow);
+            Run("nozzle settings split into rays and keep the total amount", LiquidNozzle.SettingsSplitIntoRays);
+            Run("nozzle speed sets the delay and the drop, size sets the spread", LiquidNozzle.SpeedAndSizeShapeTheShot);
 
             if (_failures > 0)
             {
@@ -626,6 +631,67 @@ namespace SabaProps.Liquid
             Require(depth < 1e-3f && Mathf.Abs(melted - 1f) < 1e-3f, $"after 40 s, {depth} snow left");
         }
 
+        private static void LuminousPaintChargesAndFades()
+        {
+            var canvas = new LiquidBodyCanvas();
+
+            // 明るい所では蓄え、時定数 6 秒で 1 に近づきます。
+            float charge = 0f;
+            for (int i = 0; i < 60; i++)
+            {
+                charge = canvas.ChargeGlow(charge, 1f, 6f, 60f, 0.1f);
+            }
+
+            Require(Mathf.Abs(charge - (1f - Mathf.Exp(-1f))) < 1e-3f, $"after one time constant the charge is {charge}");
+
+            // 暗くなると時定数 60 秒で減り、明るさが 0 でも急には消えません。
+            float full = 1f;
+            float faded = full;
+            for (int i = 0; i < 600; i++)
+            {
+                faded = canvas.ChargeGlow(faded, 0f, 6f, 60f, 0.1f);
+            }
+
+            Require(Mathf.Abs(faded - Mathf.Exp(-1f)) < 1e-3f, $"after one afterglow time constant {faded} remains");
+
+            // 薄暗い所では、その明るさを下回るまで減りません。
+            Require(Mathf.Abs(canvas.ChargeGlow(0.3f, 0.3f, 6f, 60f, 1f) - 0.3f) < Tolerance, "the charge moved at its own brightness");
+            Require(canvas.ChargeGlow(0.5f, 0.3f, 6f, 60f, 1000f) >= 0.3f, "the charge fell below the surrounding brightness");
+            Require(canvas.ChargeGlow(0.2f, 5f, 6f, 60f, 1000f) <= 1f, "the charge went above one");
+        }
+
+        private static void HumidAirSlowsDryingAndCondenses()
+        {
+            var canvas = new LiquidBodyCanvas();
+
+            Require(canvas.DryingScale(0f, 0.08f) == 1f, "dry air slowed drying");
+            Require(Mathf.Abs(canvas.DryingScale(1f, 0.08f) - 0.08f) < Tolerance, "saturated air did not reach the minimum");
+            float previous = 1f;
+            for (int i = 1; i <= 10; i++)
+            {
+                float scale = canvas.DryingScale(i / 10f, 0.08f);
+                Require(scale <= previous, $"drying sped up as humidity rose to {i / 10f}");
+                previous = scale;
+            }
+
+            // 閾値以下では増えず、乾いていきます。
+            Require(canvas.Condense(0f, 0.7f, 0.75f, 25f, 60f, 1f) == 0f, "condensed below the threshold");
+            Require(canvas.Condense(0.5f, 0.5f, 0.75f, 25f, 60f, 6f) < 0.5f, "condensation did not dry in dry air");
+
+            // 飽和した空気では condenseSeconds で 0 から 1 に達します。
+            float amount = 0f;
+            for (int i = 0; i < 250; i++)
+            {
+                amount = canvas.Condense(amount, 1f, 0.75f, 25f, 60f, 0.1f);
+            }
+
+            Require(Mathf.Abs(amount - 1f) < 1e-3f, $"saturated air reached {amount} in the condense time");
+
+            // 閾値をわずかに超えただけなら、ゆっくり増えます。
+            float slight = canvas.Condense(0f, 0.8f, 0.75f, 25f, 60f, 1f);
+            Require(slight > 0f && slight < 0.04f / 5f + Tolerance, $"slightly humid air condensed {slight} in a second");
+        }
+
         private static bool IsFinite(float value)
         {
             return !float.IsNaN(value) && !float.IsInfinity(value);
@@ -835,6 +901,26 @@ namespace SabaProps.Liquid
             }
         }
 
+        internal static void UmbrellasCoverBelow()
+        {
+            var pool = new LiquidCanvasPool();
+            Vector3 canopy = new Vector3(1f, 2.1f, -1f);
+
+            LiquidBodyCanvas.Check(pool.UnderCanopy(new Vector3(1f, 1.9f, -1f), canopy, Vector3.up, 0.55f, 2.2f), "the head right under the canopy is uncovered");
+            LiquidBodyCanvas.Check(pool.UnderCanopy(new Vector3(1.5f, 1.0f, -1f), canopy, Vector3.up, 0.55f, 2.2f), "the canopy does not widen downwards");
+            LiquidBodyCanvas.Check(!pool.UnderCanopy(new Vector3(1.7f, 1.9f, -1f), canopy, Vector3.up, 0.55f, 2.2f), "a point beside the canopy is covered");
+            LiquidBodyCanvas.Check(!pool.UnderCanopy(new Vector3(1f, 2.6f, -1f), canopy, Vector3.up, 0.55f, 2.2f), "a point above the canopy is covered");
+            LiquidBodyCanvas.Check(!pool.UnderCanopy(new Vector3(1f, -0.5f, -1f), canopy, Vector3.up, 0.55f, 2.2f), "a point below the covered depth is covered");
+
+            // 傾けた傘は、傾いた向きの下を覆います。
+            Vector3 tilted = new Vector3(0.5f, 1f, 0f).normalized;
+            Vector3 along = canopy - tilted * 1f;
+            LiquidBodyCanvas.Check(pool.UnderCanopy(along, canopy, tilted, 0.55f, 2.2f), "a tilted umbrella does not cover along its axis");
+
+            LiquidBodyCanvas.Check(pool.InsideBox(new Vector3(0.9f, -0.9f, 0.9f), Vector3.one), "a point inside the box is outside");
+            LiquidBodyCanvas.Check(!pool.InsideBox(new Vector3(0f, 1.1f, 0f), Vector3.one), "a point above the box is inside");
+        }
+
         private static float DistanceToSegment(Vector3 p, Vector3 a, Vector3 b)
         {
             Vector3 ba = b - a;
@@ -959,6 +1045,74 @@ namespace SabaProps.Liquid
                 float radial = new Vector3(offset.x, 0f, offset.z).magnitude;
                 LiquidBodyCanvas.Check(radial <= 0.35f + 1e-3f, $"drop lands {radial} m from the centre");
             }
+        }
+    }
+
+    /// <summary>
+    /// Checks on the nozzle arithmetic in LiquidNozzleSolver.cs.
+    /// </summary>
+    public partial class LiquidNozzle
+    {
+        private const float Tolerance = 1e-4f;
+
+        internal static void SettingsSplitIntoRays()
+        {
+            var nozzle = new LiquidNozzle();
+
+            LiquidBodyCanvas.Check(nozzle.RaysFor(0f) == 1, "no volume fired no ray");
+            LiquidBodyCanvas.Check(nozzle.RaysFor(0.1f) == 1, "a cupful fired more than one ray");
+            LiquidBodyCanvas.Check(nozzle.RaysFor(1f) == 8, $"a litre fired {nozzle.RaysFor(1f)} rays");
+            LiquidBodyCanvas.Check(nozzle.RaysFor(10f) == MaxRaysPerShot, "a bucketful went over the ray limit");
+
+            // 光線が頭打ちになるまでは、1 本あたりの量は変わりません。
+            LiquidBodyCanvas.Check(Mathf.Abs(nozzle.AmountPerRay(0.5f) - nozzle.AmountPerRay(1f)) < Tolerance,
+                "the amount per ray changed below the ray limit");
+            // 頭打ちの後は 1 本あたりを増やし、量が多いほど多く付きます。
+            float large = nozzle.RaysFor(5f) * nozzle.AmountPerRay(5f);
+            float small = nozzle.RaysFor(1f) * nozzle.AmountPerRay(1f);
+            LiquidBodyCanvas.Check(large > small * 1.8f, $"five litres left {large}, one litre {small}");
+
+            // 刻みと範囲。
+            LiquidBodyCanvas.Check(Mathf.Abs(nozzle.Step(0.5f, 0.1f, 1, 0.1f, 10f) - 0.6f) < Tolerance, "a step up did not add one step");
+            LiquidBodyCanvas.Check(Mathf.Abs(nozzle.Step(0.1f, 0.1f, -1, 0.1f, 10f) - 0.1f) < Tolerance, "a step went below the minimum");
+            LiquidBodyCanvas.Check(Mathf.Abs(nozzle.Step(10f, 1f, 1, 0.1f, 10f) - 10f) < Tolerance, "a step went above the maximum");
+            LiquidBodyCanvas.Check(Mathf.Abs(nozzle.Step(0.3000001f, 0.1f, 1, 0.1f, 10f) - 0.4f) < Tolerance, "rounding drifted off the grid");
+        }
+
+        internal static void SpeedAndSizeShapeTheShot()
+        {
+            var nozzle = new LiquidNozzle();
+
+            LiquidBodyCanvas.Check(Mathf.Abs(nozzle.FlightTime(5f, 10f) - 0.5f) < Tolerance, "5 m at 10 m/s is not half a second of flight");
+            LiquidBodyCanvas.Check(nozzle.FlightTime(5f, 0f) == 0f, "zero speed gave a flight");
+
+            // 放物線。水平に 4 m/s で放つと、1 秒で 4 m 進み 4.905 m 落ちます。
+            Vector3 origin = new Vector3(1f, 2f, 3f);
+            Vector3 p = nozzle.ArcPoint(origin, new Vector3(4f, 0f, 0f), 1f);
+            LiquidBodyCanvas.Check((p - new Vector3(5f, 2f - 4.905f, 3f)).magnitude < 1e-3f, $"the arc point is {p}");
+            LiquidBodyCanvas.Check((nozzle.ArcPoint(origin, Vector3.one, 0f) - origin).magnitude < Tolerance, "the arc does not start at the nozzle");
+
+            // 速さが倍なら、同じ距離での落ち方は 1/4 です。
+            float slow = 2f - nozzle.ArcPoint(new Vector3(0f, 2f, 0f), new Vector3(4f, 0f, 0f), 1f).y;
+            float fast = 2f - nozzle.ArcPoint(new Vector3(0f, 2f, 0f), new Vector3(8f, 0f, 0f), 0.5f).y;
+            LiquidBodyCanvas.Check(Mathf.Abs(fast * 4f - slow) < 1e-3f, "the drop is not inverse square in speed");
+
+            // 上へ放つと、頂点で速さの上向き成分が 0 になります（t = vy / g）。
+            float apexTime = 3f / 9.81f;
+            float before = nozzle.ArcPoint(Vector3.zero, new Vector3(0f, 3f, 0f), apexTime - 0.01f).y;
+            float apex = nozzle.ArcPoint(Vector3.zero, new Vector3(0f, 3f, 0f), apexTime).y;
+            float after = nozzle.ArcPoint(Vector3.zero, new Vector3(0f, 3f, 0f), apexTime + 0.01f).y;
+            LiquidBodyCanvas.Check(apex >= before && apex >= after, "the arc has no apex where it should");
+
+            // 太いほど広がり、遠いほど狭い角度で同じ直径になります。
+            LiquidBodyCanvas.Check(nozzle.ConeAngleFor(0.3f, 4f) > nozzle.ConeAngleFor(0.1f, 4f), "a wider nozzle spread less");
+            LiquidBodyCanvas.Check(nozzle.ConeAngleFor(0.2f, 8f) < nozzle.ConeAngleFor(0.2f, 4f), "the angle grew with range");
+            float angle = nozzle.ConeAngleFor(0.2f, 4f) * Mathf.Deg2Rad;
+            LiquidBodyCanvas.Check(Mathf.Abs(Mathf.Tan(angle) * 4f - 0.1f) < 1e-3f, "the spread does not match the radius at range");
+
+            LiquidBodyCanvas.Check(nozzle.HitRadiusFor(0.2f, 0f) >= 0.1f - Tolerance, "a hit is smaller than the stream");
+            LiquidBodyCanvas.Check(nozzle.HitRadiusFor(0.2f, 5f) > nozzle.HitRadiusFor(0.2f, 1f), "a stream does not widen with distance");
+            LiquidBodyCanvas.Check(nozzle.HitRadiusFor(0f, 0f) >= 0.01f, "a zero nozzle gave a zero hit");
         }
     }
 }
