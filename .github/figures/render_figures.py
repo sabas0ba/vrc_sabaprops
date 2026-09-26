@@ -25,6 +25,8 @@ import sys
 from dataclasses import dataclass
 from typing import Iterable
 
+DEFAULT_PACKAGE = "io.github.sabas0ba.sabaprops.foliage"
+
 # ---------------------------------------------------------------------------
 # Camera
 # ---------------------------------------------------------------------------
@@ -110,6 +112,9 @@ class Tile:
     colors: list[float]
     scalars: list[float]
     triangles: list[int]
+    # Replaces the measured height and triangle count under the label. Set by
+    # figures whose tiles are drawn at a normalised size.
+    note: str | None = None
 
 
 @dataclass
@@ -269,6 +274,8 @@ STYLE = """
     .rule  { stroke: #4a5245; }
   }
 """
+
+SPECIMEN_BACKDROP = "#dfe7ee"
 
 FONT = "system-ui, -apple-system, 'Noto Sans JP', 'Hiragino Sans', Meiryo, sans-serif"
 
@@ -455,11 +462,16 @@ def render(figure: dict) -> str:
             colors=tile["colors"],
             scalars=tile["scalars"],
             triangles=tile["triangles"],
+            note=tile.get("note"),
         )
         for tile in figure["tiles"]
     ]
 
-    columns = min(MAX_COLUMNS, len(tiles))
+    # "Specimens" figures draw each tile at a normalised size, so there is no
+    # shared ground plane or metre to show.
+    specimens = figure.get("layout") == "Specimens"
+
+    columns = min(figure.get("columns", MAX_COLUMNS), len(tiles))
     rows = (len(tiles) + columns - 1) // columns
 
     half_width, low, high = extents(tiles)
@@ -521,10 +533,17 @@ def render(figure: dict) -> str:
         left = grid_left + column * (tile_width + TILE_GAP)
         top = MARGIN + TITLE_HEIGHT + row * (tile_height + LABEL_HEIGHT + TILE_GAP)
 
-        out.extend(draw_tile(tile, left, top, tile_width, tile_height, scale, low, ground))
+        out.extend(
+            draw_tile(
+                tile, left, top, tile_width, tile_height, scale, low,
+                0.0 if specimens else ground,
+                SPECIMEN_BACKDROP if specimens else None,
+            )
+        )
 
     bar = MARGIN + TITLE_HEIGHT + rows * (tile_height + LABEL_HEIGHT) + (rows - 1) * TILE_GAP
-    out.extend(draw_scale_bar(MARGIN, bar, scale))
+    if not specimens:
+        out.extend(draw_scale_bar(MARGIN, bar, scale))
 
     if tiles[0].channel != "Albedo":
         out.extend(draw_ramp_legend(width - MARGIN, bar))
@@ -548,10 +567,15 @@ def draw_tile(
     scale: float,
     low: float,
     ground: float,
+    backdrop: str | None = None,
 ) -> list[str]:
+    # A specimen panel is tinted like a pale sky, so white birds and pale fish
+    # stay visible. Set inline, so the stylesheet shared by every figure (and
+    # the committed plant figures) is unchanged.
+    tint = f' style="fill:{backdrop}"' if backdrop else ""
     out = [
         f'<rect class="panel" x="{number(left)}" y="{number(top)}" '
-        f'width="{number(width)}" height="{number(height)}" rx="6"/>'
+        f'width="{number(width)}" height="{number(height)}" rx="6"{tint}/>'
     ]
 
     # The world origin sits on the tile's baseline, so every tile in a figure
@@ -559,7 +583,8 @@ def draw_tile(
     baseline = top + height - TILE_PADDING + low * scale
     origin = (left + width / 2.0, baseline)
 
-    out.append(ground_ellipse(origin, scale, ground))
+    if ground > 0.0:
+        out.append(ground_ellipse(origin, scale, ground))
 
     for face in triangles_of(tile, scale, origin):
         path = " ".join(
@@ -577,7 +602,7 @@ def draw_tile(
     out.append(
         f'<text class="muted" x="{number(centre)}" y="{number(top + height + 33)}" '
         f'font-size="11" text-anchor="middle">'
-        f'{measured.height:.2f} m ・ {measured.triangles} tris</text>'
+        f'{escape(tile.note) if tile.note else f"{measured.height:.2f} m ・ {measured.triangles} tris"}</text>'
     )
     return out
 
@@ -642,6 +667,11 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--input", required=True, help="geometry dumped by DumpFigures.cs")
     parser.add_argument("--out", required=True, help="directory to write the SVG files into")
+    parser.add_argument(
+        "--package",
+        default=DEFAULT_PACKAGE,
+        help="render only the figures of this package (figures without one belong to the foliage package)",
+    )
     args = parser.parse_args()
 
     with open(args.input, encoding="utf-8") as handle:
@@ -651,6 +681,9 @@ def main() -> int:
 
     written = []
     for figure in document["figures"]:
+        if figure.get("package", DEFAULT_PACKAGE) != args.package:
+            continue
+
         path = os.path.join(args.out, figure["id"] + ".svg")
         with open(path, "w", encoding="utf-8", newline="\n") as handle:
             handle.write(render(figure))

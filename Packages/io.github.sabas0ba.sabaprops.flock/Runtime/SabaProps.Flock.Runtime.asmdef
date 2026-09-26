@@ -1,0 +1,14 @@
+{
+    "name": "SabaProps.Flock.Runtime",
+    "rootNamespace": "SabaProps.Flock",
+    "references": [],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

@@ -2,7 +2,7 @@
 
 VRChat 向けのアセットを **VCC (VRChat Creator Companion) / VPM** で配布するためのリポジトリです。
 
-草木配置の **SabaProps Foliage**、樹木生成の **SabaProps Trees**、水面・雨・霧・水中表現の **SabaProps Water**、PC VRChat 向け接触変形家具の **SabaProps Soft Props**、演者を追うカメラリグの **SabaProps Stage Cam**、Pickup の配置補正を行う **SabaProps Put Items**、ミラーやコライダーを操作するタブレット型 UI の **SabaProps Tablet** を収録しています。
+草木配置の **SabaProps Foliage**、樹木生成の **SabaProps Trees**、水面・雨・霧・水中表現の **SabaProps Water**、PC VRChat 向け接触変形家具の **SabaProps Soft Props**、演者を追うカメラリグの **SabaProps Stage Cam**、Pickup の配置補正を行う **SabaProps Put Items**、ミラーやコライダーを操作するタブレット型 UI の **SabaProps Tablet**、鳥の群れや魚群を中景から遠景に配置する **SabaProps Flock** を収録しています。
 
 ---
 
@@ -32,6 +32,7 @@ https://sabas0ba.github.io/vrc_sabaprops/index.json
 | `io.github.sabas0ba.sabaprops.stagecam` | SabaProps Stage Cam | 特定のプレイヤーの部位を追う Udon カメラリグ。Pickup による構図補正と自動カメラワークに対応。 |
 | `io.github.sabas0ba.sabaprops.putitems` | SabaProps Put Items | Pickup を手放した位置の近くにある机・壁へ位置と姿勢を補正。Object Sync 接続と独自同期向けの計算 API を提供。 |
 | `io.github.sabas0ba.sabaprops.tablet` | SabaProps Tablet | キー・頭上からの取り出し・アイテムの Interact で呼び出すタブレット型 UI。物理ボタンでミラー・コライダー・エフェクトの切り替え、テレポート、任意の Udon イベント呼び出しを行う。 |
+| `io.github.sabas0ba.sabaprops.flock` | SabaProps Flock | 鳥 27 種・魚・水生生物 41 種の群れを、Shader が時刻から計算する固定配置を含む 13 種の群れの動きで配置。Silhouette / Low / High の 3 段階 LOD。 |
 
 各パッケージの詳細は `Packages/<package-id>/README.md` を参照してください。
 
@@ -45,6 +46,8 @@ Hierarchyの`SabaProps > Water`／`SabaProps > Weather`から各propを配置で
 Soft Propsは `Tools > SabaProps > Soft Props > Generate All Prefabs` で4種の家具Prefabと、指／棒／板の接触比較Prefabを生成します。
 
 レビュー用の完成済みsceneは `Tools > SabaProps > Soft Props > Open Demo Scene` から開けます。家具、肌Materialの接触試験台、指・棒・板の自動上下比較3台、形状別の静的比較、照明、床、VRChat Spawnを同梱しています。[デモのレビュー手順](Packages/io.github.sabas0ba.sabaprops.softprops/Documentation~/demo-review.md)と[更新・配布手順](Packages/io.github.sabas0ba.sabaprops.softprops/Documentation~/upgrading.md)を参照してください。
+
+Flock は Hierarchy の `SabaProps > Flock` から群れを追加し、Inspector で種を選びます。全種の一覧は `Tools > SabaProps > Flock > Create Species Gallery Scene` で生成できます。[利用方法](Packages/io.github.sabas0ba.sabaprops.flock/Documentation~/authoring.md)と[収録種](Packages/io.github.sabas0ba.sabaprops.flock/Documentation~/elements.md)を参照してください。
 
 Put Items は `Tools > SabaProps > Put Items > Open Demo Scene` から、食卓と冷蔵庫を含む完成済み Scene を開けます。食器の机への吸着、メモやアクセサリーの冷蔵庫への貼り付け、おぼん・皿・料理の入れ子追従を確認できます。[デモの操作手順](Packages/io.github.sabas0ba.sabaprops.putitems/Documentation~/demo-review.md)と[配置・同期の設定](Packages/io.github.sabas0ba.sabaprops.putitems/Documentation~/authoring.md)を参照してください。
 
@@ -80,11 +83,15 @@ Put Items は `Tools > SabaProps > Put Items > Open Demo Scene` から、食卓�
 │   │   ├── Editor/                 # デモ Scene と Udon program の導入
 │   │   ├── Samples~/KitchenDemo/   # 同梱 Scene と依存アセット
 │   │   └── Documentation~/
-│   └── io.github.sabas0ba.sabaprops.tablet/
-│       ├── Runtime/                # UdonSharp の本体・ボタン・切り替え・召喚トリガ
-│       ├── Authoring/              # Editor 専用の構成データと Theme
-│       ├── Editor/                 # 生成器、Setup Window、サンプルシーン
-│       ├── Samples~/               # Stage Cam 連携の実装例
+│   ├── io.github.sabas0ba.sabaprops.tablet/
+│   │   ├── Runtime/                # UdonSharp の本体・ボタン・切り替え・召喚トリガ
+│   │   ├── Authoring/              # Editor 専用の構成データと Theme
+│   │   ├── Editor/                 # 生成器、Setup Window、サンプルシーン
+│   │   ├── Samples~/               # Stage Cam 連携の実装例
+│   │   └── Documentation~/
+│   └── io.github.sabas0ba.sabaprops.flock/
+│       ├── Runtime/                # 種のプリセット、運動の基準実装、群れのShader
+│       ├── Editor/                 # 個体形状と群れMeshの生成器、ギャラリーScene
 │       └── Documentation~/
 ├── Website/                        # GitHub Pages で公開するリスティングサイト
 ├── source.json                     # VPM リスティングのメタ情報

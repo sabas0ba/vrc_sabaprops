@@ -565,6 +565,17 @@ namespace UnityEngine
             }
         }
 
+        public void Clear()
+        {
+            _uvs.Clear();
+            vertices = new Vector3[0];
+            normals = new Vector3[0];
+            colors = new Color[0];
+            triangles = new int[0];
+            indexFormat = Rendering.IndexFormat.UInt16;
+            bounds = new Bounds(Vector3.zero, Vector3.zero);
+        }
+
         public void SetVertices(List<Vector3> value)
         {
             vertices = value.ToArray();

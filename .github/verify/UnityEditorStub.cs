@@ -273,6 +273,7 @@ namespace UnityEditor
         public static void SetCurrentGroupName(string name) { }
         public static void CollapseUndoOperations(int groupIndex) { }
         public static void SetTransformParent(Transform transform, Transform newParent, string name) { }
+        public static T AddComponent<T>(GameObject gameObject) where T : Component => gameObject.AddComponent<T>();
     }
 
     public static class GameObjectUtility
@@ -331,6 +332,7 @@ namespace UnityEditor
         public static void RepaintAll() { }
         public void Repaint() { }
         public void LookAt(Vector3 point, Quaternion direction, float newSize) { }
+        public void AlignViewToObject(Transform transform) { }
     }
 
     public class SceneAsset : UnityEngine.Object { }
@@ -360,6 +362,7 @@ namespace UnityEditor
         public static event Action update;
         public static double timeSinceStartup => 0d;
         public static bool isPlayingOrWillChangePlaymode => false;
+        public static bool ExecuteMenuItem(string menuItemPath) => true;
     }
 
     public class PreviewRenderUtility

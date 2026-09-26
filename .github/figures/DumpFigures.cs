@@ -14,6 +14,8 @@ using System.Globalization;
 using System.Text;
 using SabaProps.Foliage;
 using SabaProps.Foliage.Editors;
+using SabaProps.Flock;
+using SabaProps.Flock.Editors;
 using UnityEngine;
 
 internal static class DumpFigures
@@ -42,6 +44,21 @@ internal static class DumpFigures
         /// same collapse the GPU performs: lerp(root, vertex, shrink).
         /// </summary>
         public float Shrink = 1f;
+
+        /// <summary>
+        /// When set, every vertex is placed at x * BasisX + y * BasisY +
+        /// z * BasisZ and uniformly scaled by <see cref="Scale"/>. Used to turn
+        /// a flock body towards the figure camera; plant tiles leave it unset
+        /// and are written untouched.
+        /// </summary>
+        public bool Posed;
+        public Vector3 BasisX;
+        public Vector3 BasisY;
+        public Vector3 BasisZ;
+        public float Scale = 1f;
+
+        /// <summary>Second label line. When empty the renderer states the height and triangle count.</summary>
+        public string Note;
     }
 
     private sealed class Figure
@@ -51,7 +68,16 @@ internal static class DumpFigures
         public string Caption;
         public string Layout = "Grid";
         public List<Tile> Tiles = new List<Tile>();
+
+        /// <summary>The package whose Documentation~/images/generated receives the figure.</summary>
+        public string Package = FoliagePackage;
+
+        /// <summary>Tiles per row; 0 keeps the renderer's default.</summary>
+        public int Columns;
     }
+
+    private const string FoliagePackage = "io.github.sabas0ba.sabaprops.foliage";
+    private const string FlockPackage = "io.github.sabas0ba.sabaprops.flock";
 
     private static int Main()
     {
@@ -98,6 +124,11 @@ internal static class DumpFigures
             MeshSeed(),
             DistanceShrink(),
             MeshChannels(),
+
+            FlockSpecimens("flock-birds", "鳥", FlockHabitat.Sky),
+            FlockSpecimens("flock-sea-fish", "海の魚", FlockHabitat.Sea),
+            FlockSpecimens("flock-reef-aquarium-fish", "サンゴ礁と水槽・池の魚", FlockHabitat.Reef, FlockHabitat.Aquarium),
+            FlockDetailTiers(),
         };
 
         Console.Out.Write(Serialise(figures));
@@ -390,6 +421,118 @@ internal static class DumpFigures
     // Per-species figure builders
     // ----------------------------------------------------------------------
 
+    // ----------------------------------------------------------------------
+    // Flock
+    // ----------------------------------------------------------------------
+
+    // The figure camera of render_figures.py (AZIMUTH 26, ELEVATION 13
+    // degrees), reproduced so a body can be turned to face it.
+    private static readonly Vector3 CameraRight = new Vector3(Mathf.Cos(26f * Mathf.Deg2Rad), 0f, -Mathf.Sin(26f * Mathf.Deg2Rad));
+    private static readonly Vector3 CameraForward = new Vector3(
+        Mathf.Sin(26f * Mathf.Deg2Rad) * Mathf.Cos(13f * Mathf.Deg2Rad),
+        -Mathf.Sin(13f * Mathf.Deg2Rad),
+        Mathf.Cos(26f * Mathf.Deg2Rad) * Mathf.Cos(13f * Mathf.Deg2Rad));
+    private static readonly Vector3 CameraUp = Vector3.Cross(CameraForward, CameraRight);
+
+    /// <summary>
+    /// One individual per preset at High detail. Every body is scaled to the
+    /// same drawn size, so the second label line states the real length.
+    /// Birds and rays are turned to show their outline from above, other
+    /// fish to show their flank.
+    /// </summary>
+    private static Figure FlockSpecimens(string id, string title, params FlockHabitat[] habitats)
+    {
+        var figure = new Figure
+        {
+            Id = id,
+            Package = FlockPackage,
+            Layout = "Specimens",
+            Columns = 5,
+            Caption =
+                "生成器の High 段の 1 個体を、大きさを揃えて並べています。"
+                + "下段の値は体長と三角形数です。鳥とエイは上から、それ以外の魚は横から見た形です。",
+        };
+
+        foreach (FlockPreset preset in FlockSpeciesCatalog.All)
+        {
+            if (Array.IndexOf(habitats, preset.Habitat) >= 0)
+            {
+                figure.Tiles.Add(FlockTile(preset.Species, FlockDetail.High, preset.Species.displayName, true));
+            }
+        }
+
+        figure.Title = $"{title} {figure.Tiles.Count} 種";
+        return figure;
+    }
+
+    /// <summary>The same species at each detail tier, drawn at the same size.</summary>
+    private static Figure FlockDetailTiers()
+    {
+        var figure = new Figure
+        {
+            Id = "flock-detail-tiers",
+            Title = "詳細度の 3 段階",
+            Package = FlockPackage,
+            Layout = "Specimens",
+            Columns = 3,
+            Caption =
+                "左から Silhouette、Low、High。LODGroup は群れ全体が画面に占める割合で段階を切り替えます。"
+                + "Silhouette は遠方で空に対する影として読める輪郭だけを残しています。",
+        };
+
+        foreach (string presetId in new[] { "gull", "crane", "sardine", "moorish-idol" })
+        {
+            FlockSpecies species = FlockSpeciesCatalog.Create(presetId);
+            foreach (FlockDetail detail in new[] { FlockDetail.Silhouette, FlockDetail.Low, FlockDetail.High })
+            {
+                figure.Tiles.Add(FlockTile(species, detail, $"{species.displayName} {detail}", false));
+            }
+        }
+
+        return figure;
+    }
+
+    private static Tile FlockTile(FlockSpecies species, FlockDetail detail, string label, bool withLength)
+    {
+        Mesh mesh = FlockSwarmMeshBuilder.Build(species, new FlockSwarmSettings { count = 1 }, detail, species.id);
+
+        float reach = 0f;
+        foreach (Vector3 p in mesh.vertices)
+        {
+            reach = Mathf.Max(reach, p.magnitude);
+        }
+
+        bool fromAbove = species.category == FlockCategory.Bird || species.fishBody == FlockFishBody.Ray;
+        Vector3 up;
+        Vector3 forward;
+        if (fromAbove)
+        {
+            up = (-CameraForward + CameraUp * 0.35f).normalized;
+            forward = CameraUp * 0.5f - CameraRight;
+            forward = (forward - up * Vector3.Dot(forward, up)).normalized;
+        }
+        else
+        {
+            up = CameraUp;
+            forward = -CameraRight;
+        }
+
+        int triangles = mesh.triangles.Length / 3;
+        return new Tile
+        {
+            Label = label,
+            Mesh = mesh,
+            Posed = true,
+            BasisX = Vector3.Cross(up, forward),
+            BasisY = up,
+            BasisZ = forward,
+            Scale = 0.5f / Mathf.Max(reach, 1e-4f),
+            Note = withLength
+                ? $"{species.bodyLength.ToString("0.###", CultureInfo.InvariantCulture)} m ・ {triangles} tris"
+                : $"{triangles} tris",
+        };
+    }
+
     private static Figure GrassFigure<T>(
         string id, string title, string parameter, string caption, T[] values, Action<GrassParams, T> apply)
     {
@@ -512,6 +655,13 @@ internal static class DumpFigures
         AppendString(json, "caption", figure.Caption);
         json.Append(',');
         AppendString(json, "layout", figure.Layout);
+        json.Append(',');
+        AppendString(json, "package", figure.Package);
+        if (figure.Columns > 0)
+        {
+            json.Append(",\"columns\":").Append(figure.Columns.ToString(CultureInfo.InvariantCulture));
+        }
+
         json.Append(",\"tiles\":[");
 
         for (int i = 0; i < figure.Tiles.Count; i++)
@@ -545,6 +695,24 @@ internal static class DumpFigures
         AppendString(json, "label", tile.Label);
         json.Append(',');
         AppendString(json, "channel", tile.Channel.ToString());
+        if (!string.IsNullOrEmpty(tile.Note))
+        {
+            json.Append(',');
+            AppendString(json, "note", tile.Note);
+        }
+
+        if (tile.Posed)
+        {
+            positions = (Vector3[])positions.Clone();
+            normals = (Vector3[])normals.Clone();
+            for (int i = 0; i < positions.Length; i++)
+            {
+                Vector3 p = positions[i];
+                Vector3 n = normals[i];
+                positions[i] = (tile.BasisX * p.x + tile.BasisY * p.y + tile.BasisZ * p.z) * tile.Scale;
+                normals[i] = tile.BasisX * n.x + tile.BasisY * n.y + tile.BasisZ * n.z;
+            }
+        }
 
         json.Append(",\"positions\":[");
         for (int i = 0; i < positions.Length; i++)

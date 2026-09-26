@@ -1,0 +1,224 @@
+using System.IO;
+using SabaProps.Flock.Editors;
+using UnityEditor;
+using UnityEditor.SceneManagement;
+using UnityEngine;
+
+namespace SabaProps.Flock.DocsCapture
+{
+    /// <summary>Captures the bundled sample with the actual Unity shader.</summary>
+    public static class FlockDocsCapture
+    {
+        private const string PackagePath = "Packages/io.github.sabas0ba.sabaprops.flock";
+        private const string OutputFolder = "Documentation~/images/captured";
+        private const int Width = 1600;
+        private const int Height = 900;
+
+        private struct Shot
+        {
+            public string Name;
+            public Vector3 Position;
+            public Vector3 Target;
+            public float FieldOfView;
+        }
+
+        private static readonly Shot[] Shots =
+        {
+            new Shot { Name = "sample-overview", Position = new Vector3(0f, 9f, -34f), Target = new Vector3(0f, 9f, 0f), FieldOfView = 45f },
+            new Shot { Name = "starling", Position = new Vector3(-7f, 18f, -5.8f), Target = new Vector3(-7f, 18f, 0f), FieldOfView = 38f },
+            new Shot { Name = "goose", Position = new Vector3(7f, 18f, -7f), Target = new Vector3(7f, 18f, 0f), FieldOfView = 38f },
+            new Shot { Name = "sardine", Position = new Vector3(-7f, 6f, -4.8f), Target = new Vector3(-7f, 6f, 0f), FieldOfView = 38f },
+            new Shot { Name = "anthias", Position = new Vector3(-7f, 0f, -4.8f), Target = new Vector3(-7f, 0f, 0f), FieldOfView = 38f },
+        };
+
+        private static readonly Shot[] WorldShots =
+        {
+            new Shot { Name = "world-sky", Position = new Vector3(0f, 1.65f, -42f), Target = new Vector3(0f, 15f, 18f), FieldOfView = 60f },
+            new Shot { Name = "world-small-tank", Position = new Vector3(120f, 1.65f, -2.8f), Target = new Vector3(120f, 1.15f, 0.9f), FieldOfView = 60f },
+            new Shot { Name = "world-small-tank-close", Position = new Vector3(120f, 1.2f, -0.55f), Target = new Vector3(120f, 1.15f, 0f), FieldOfView = 60f },
+            new Shot { Name = "world-large-tank", Position = new Vector3(150f, 1.65f, -6.5f), Target = new Vector3(150f, 2.1f, 0f), FieldOfView = 60f },
+            new Shot { Name = "world-river", Position = new Vector3(203f, 1.65f, -4.8f), Target = new Vector3(202f, -0.6f, 0f), FieldOfView = 60f },
+            new Shot { Name = "world-river-bridge", Position = new Vector3(191f, 2.1f, -1f), Target = new Vector3(200f, -0.6f, 0f), FieldOfView = 60f },
+            new Shot { Name = "world-oceanarium", Position = new Vector3(260f, 1.65f, -18f), Target = new Vector3(260f, 5f, 0f), FieldOfView = 60f },
+            new Shot { Name = "world-ground-birds", Position = new Vector3(0f, 1.65f, -5f), Target = new Vector3(0f, 0.3f, -1f), FieldOfView = 60f },
+        };
+
+        [MenuItem("Tools/SabaProps/Flock/Capture Docs Images", false, 200)]
+        public static void Capture()
+        {
+            EditorSceneManager.OpenScene(FlockSampleScene.ScenePath);
+            CaptureShots(Shots, false);
+        }
+
+        [MenuItem("Tools/SabaProps/Flock/Capture World Situations", false, 201)]
+        public static void CaptureWorld()
+        {
+            EditorSceneManager.OpenScene(FlockWorldSample.ScenePath);
+            CaptureShots(WorldShots, true);
+        }
+
+        public static void CaptureExpanded()
+        {
+            Capture();
+            CaptureWorldWithLighting();
+            EditorSceneManager.OpenScene(FlockComparisonScene.ScenePath);
+            FlockLightingPreview.Day();
+            CaptureShots(new[]
+            {
+                new Shot { Name = "compare-swimming", Position = new Vector3(0f, 2f, 34f), Target = new Vector3(0f, 2f, 55f), FieldOfView = 60f },
+                new Shot { Name = "compare-flying", Position = new Vector3(0f, 2f, 59f), Target = new Vector3(0f, 2f, 80f), FieldOfView = 60f },
+            }, false, true);
+            CaptureAdditionalSpecies();
+            CaptureMantaMotion();
+        }
+
+        /// <summary>Render one manta at three times on its normal low-biased swimming path.</summary>
+        public static void CaptureMantaMotion()
+        {
+            EditorSceneManager.OpenScene(FlockWorldSample.ScenePath);
+            FlockLightingPreview.Day();
+            FlockSwarm manta = null;
+            var hidden = new System.Collections.Generic.List<Renderer>();
+            foreach (FlockSwarm swarm in Object.FindObjectsOfType<FlockSwarm>())
+            {
+                if (swarm.presetId == "manta") manta = swarm;
+                foreach (Renderer renderer in swarm.GetComponentsInChildren<Renderer>())
+                {
+                    if (renderer.enabled) hidden.Add(renderer);
+                    renderer.enabled = false;
+                }
+            }
+            if (manta == null) throw new System.InvalidOperationException("The world sample must contain a manta.");
+            var settings = new FlockSwarmSettings { pattern = FlockPattern.FloorGlide, count = 1,
+                seed = manta.settings.seed, area = manta.settings.area, speedScale = manta.settings.speedScale };
+            FlockMotionInput input = FlockSwarmMeshBuilder.MotionInput(manta.species, settings, 0);
+            Mesh mesh = FlockSwarmMeshBuilder.Build(manta.species, settings, FlockDetail.High, "Manta motion capture");
+            Material material = new Material(manta.GetComponentInChildren<MeshRenderer>().sharedMaterial);
+            material.SetFloat(FlockShaderContract.TimeScaleProperty, 0f);
+            var holder = new GameObject("Manta motion capture");
+            holder.transform.position = manta.transform.position;
+            holder.AddComponent<MeshFilter>().sharedMesh = mesh;
+            holder.AddComponent<MeshRenderer>().sharedMaterial = material;
+            try
+            {
+                string[] names = { "manta-swim-01", "manta-swim-02", "manta-swim-03" };
+                float[] times = { 0f, 20f, 40f };
+                var uvs = new System.Collections.Generic.List<Vector4>();
+                mesh.GetUVs(FlockShaderContract.SwarmChannel, uvs);
+                for (int i = 0; i < times.Length; i++)
+                {
+                    float clock = input.TimeOffset + times[i];
+                    for (int v = 0; v < uvs.Count; v++)
+                    {
+                        Vector4 uv = uvs[v]; uv.z = clock; uvs[v] = uv;
+                    }
+                    mesh.SetUVs(FlockShaderContract.SwarmChannel, uvs);
+                    Vector3 target = holder.transform.position + FlockMotion.Position(input, times[i]);
+                    CaptureShots(new[] { new Shot { Name = names[i], Target = target,
+                        Position = target + new Vector3(0f, 1.2f, -7f), FieldOfView = 48f } }, false, true);
+                }
+            }
+            finally
+            {
+                Object.DestroyImmediate(holder); Object.DestroyImmediate(mesh); Object.DestroyImmediate(material);
+                foreach (Renderer renderer in hidden) renderer.enabled = true;
+            }
+        }
+
+        public static void CaptureWorldWithLighting()
+        {
+            EditorSceneManager.OpenScene(FlockWorldSample.ScenePath);
+            FlockLightingPreview.Day(); CaptureShots(WorldShots, false, true);
+            FlockLightingPreview.Evening();
+            CaptureShots(new[] { Rename(WorldShots[0], "world-sky-evening"), Rename(WorldShots[3], "world-tank-evening") }, false, true);
+            FlockLightingPreview.Night();
+            CaptureShots(new[] { Rename(WorldShots[0], "world-sky-night"), Rename(WorldShots[3], "world-tank-night") }, false, true);
+        }
+
+        private static void CaptureAdditionalSpecies()
+        {
+            foreach (string id in new[] { "squid", "jellyfish", "garden-eel", "crab", "eel", "urchin", "anemone", "oyster", "flying-fish", "seahorse", "chicken", "chick",
+                "bluefin-tuna", "yellowtail", "barracuda", "reef-shark" })
+            {
+                foreach (FlockSwarm swarm in Object.FindObjectsOfType<FlockSwarm>())
+                {
+                    if (swarm.presetId != id || swarm.settings.pattern != FlockPattern.Anchored) continue;
+                    var visible = new System.Collections.Generic.List<Renderer>();
+                    foreach (Renderer renderer in Object.FindObjectsOfType<Renderer>())
+                    {
+                        if (!renderer.enabled) continue;
+                        visible.Add(renderer);
+                        renderer.enabled = renderer.GetComponent<MeshFilter>() != null
+                            && renderer.transform.IsChildOf(swarm.transform)
+                            && renderer.sharedMaterial != null
+                            && renderer.sharedMaterial.shader.name == "SabaProps/Flock/Swarm";
+                    }
+                    float length = swarm.species.bodyLength;
+                    Vector3 target = swarm.transform.position + Vector3.up * (swarm.species.grounded ? length * 0.5f : 0f);
+                    CaptureShots(new[] { new Shot { Name = "species-" + id, Target = target,
+                        Position = target + new Vector3(length * 2.4f, length * 0.6f, length), FieldOfView = 38f } }, false, true);
+                    foreach (Renderer renderer in visible) renderer.enabled = true;
+                }
+            }
+        }
+
+        private static Shot Rename(Shot original, string name)
+        {
+            original.Name = name;
+            return original;
+        }
+
+        private static void CaptureShots(Shot[] shots, bool skybox, bool sceneBackground = false)
+        {
+            string destination = Path.Combine(Path.GetFullPath(PackagePath), OutputFolder);
+            Directory.CreateDirectory(destination);
+
+            foreach (Shot shot in shots)
+            {
+                Render(shot, Path.Combine(destination, shot.Name + ".jpg"), skybox, sceneBackground);
+            }
+
+            Debug.Log($"[SabaProps Flock] Captured {shots.Length} docs images in {destination}");
+        }
+
+        private static void Render(Shot shot, string path, bool skybox, bool sceneBackground)
+        {
+            var holder = new GameObject("Flock Docs Capture");
+            Camera camera = holder.AddComponent<Camera>();
+            var target = new RenderTexture(Width, Height, 24, RenderTextureFormat.ARGB32)
+            {
+                antiAliasing = 4,
+            };
+            var image = new Texture2D(Width, Height, TextureFormat.RGB24, false);
+            RenderTexture previous = RenderTexture.active;
+
+            try
+            {
+                camera.transform.position = shot.Position;
+                camera.transform.rotation = Quaternion.LookRotation(shot.Target - shot.Position);
+                camera.fieldOfView = shot.FieldOfView;
+                camera.nearClipPlane = 0.05f;
+                camera.farClipPlane = shot.Name.StartsWith("compare-") ? 30f : 200f;
+                camera.clearFlags = skybox ? CameraClearFlags.Skybox : CameraClearFlags.SolidColor;
+                camera.backgroundColor = sceneBackground ? RenderSettings.ambientLight : new Color(0.08f, 0.12f, 0.18f);
+                camera.allowMSAA = true;
+                camera.targetTexture = target;
+                camera.Render();
+
+                RenderTexture.active = target;
+                image.ReadPixels(new Rect(0f, 0f, Width, Height), 0, 0);
+                image.Apply();
+                File.WriteAllBytes(path, image.EncodeToJPG(90));
+            }
+            finally
+            {
+                RenderTexture.active = previous;
+                camera.targetTexture = null;
+                Object.DestroyImmediate(holder);
+                Object.DestroyImmediate(image);
+                target.Release();
+                Object.DestroyImmediate(target);
+            }
+        }
+    }
+}

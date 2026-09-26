@@ -17,6 +17,7 @@
     "io.github.sabas0ba.sabaprops.softprops",
     "io.github.sabas0ba.sabaprops.stagecam",
     "io.github.sabas0ba.sabaprops.putitems",
-    "io.github.sabas0ba.sabaprops.tablet"
+    "io.github.sabas0ba.sabaprops.tablet",
+    "io.github.sabas0ba.sabaprops.flock"
   ]
 }

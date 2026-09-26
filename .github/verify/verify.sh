@@ -58,6 +58,7 @@ FOLIAGE_PACKAGE="${1:-$REPO/Packages/io.github.sabas0ba.sabaprops.foliage}"
 WATER_PACKAGE="$REPO/Packages/io.github.sabas0ba.sabaprops.water"
 STAGECAM="$REPO/Packages/io.github.sabas0ba.sabaprops.stagecam"
 TREE_PACKAGE="${TREE_PACKAGE:-$REPO/Packages/io.github.sabas0ba.sabaprops.trees}"
+FLOCK_PACKAGE="$REPO/Packages/io.github.sabas0ba.sabaprops.flock"
 TABLET="$REPO/Packages/io.github.sabas0ba.sabaprops.tablet"
 
 WORK="${VERIFY_WORK_DIR:-$REPO/.verify}"
@@ -207,6 +208,21 @@ csc "${COMMON[@]}" "${BCL[@]}" "${UNITY_ARGS[@]}" \
 echo "ok: ${#WATER_RUNTIME_SOURCES[@]} Runtime, ${#WATER_EDITOR_SOURCES[@]} Editor file(s)"
 
 # ---------------------------------------------------------------------------
+log "Compiling Flock assemblies (real UnityEngine references + stub)"
+# ---------------------------------------------------------------------------
+mapfile -t FLOCK_RUNTIME_SOURCES < <(find "$FLOCK_PACKAGE/Runtime" -name '*.cs' | sort)
+mapfile -t FLOCK_EDITOR_SOURCES < <(find "$FLOCK_PACKAGE/Editor" -name '*.cs' | sort)
+[ "${#FLOCK_RUNTIME_SOURCES[@]}" -gt 0 ] || fail "no Runtime sources found under $FLOCK_PACKAGE"
+[ "${#FLOCK_EDITOR_SOURCES[@]}" -gt 0 ] || fail "no Editor sources found under $FLOCK_PACKAGE"
+
+csc "${COMMON[@]}" "${BCL[@]}" "${UNITY_ARGS[@]}" \
+    -out:"$OUT/SabaProps.Flock.Runtime.dll" "${FLOCK_RUNTIME_SOURCES[@]}"
+csc "${COMMON[@]}" "${BCL[@]}" "${UNITY_ARGS[@]}" \
+    -r:"$OUT/SabaProps.Flock.Runtime.dll" -r:"$OUT/UnityEditor.dll" \
+    -out:"$OUT/SabaProps.Flock.Editor.dll" "${FLOCK_EDITOR_SOURCES[@]}"
+echo "ok: ${#FLOCK_RUNTIME_SOURCES[@]} Runtime, ${#FLOCK_EDITOR_SOURCES[@]} Editor file(s)"
+
+# ---------------------------------------------------------------------------
 log "Compiling the documentation capture tool"
 # ---------------------------------------------------------------------------
 # .github/figures/capture/ is not shipped, so nothing else would ever compile
@@ -223,6 +239,16 @@ if [ -f "$CAPTURE" ]; then
     echo "ok"
 else
     echo "skipped: no capture tool"
+fi
+
+FLOCK_CAPTURE="$REPO/.github/figures/capture/flock/FlockDocsCapture.cs"
+if [ -f "$FLOCK_CAPTURE" ]; then
+    csc "${COMMON[@]}" "${BCL[@]}" "${UNITY_ARGS[@]}" \
+        -r:"$OUT/SabaProps.Flock.Runtime.dll" \
+        -r:"$OUT/SabaProps.Flock.Editor.dll" \
+        -r:"$OUT/UnityEditor.dll" \
+        -out:"$OUT/SabaProps.Flock.DocsCapture.dll" "$FLOCK_CAPTURE"
+    echo "ok: Flock capture tool"
 fi
 
 # ---------------------------------------------------------------------------
@@ -259,6 +285,19 @@ if [ -d "$WATER_TEST_DIR" ]; then
             -r:"$OUT/UnityEditor.dll" \
             -out:"$OUT/SabaProps.Water.CITests.dll" "${WATER_TEST_SOURCES[@]}"
         echo "ok: ${#WATER_TEST_SOURCES[@]} Water test file(s)"
+    fi
+fi
+
+FLOCK_TEST_DIR="$HERE/CIProject/Assets/FlockTests"
+if [ -d "$FLOCK_TEST_DIR" ]; then
+    mapfile -t FLOCK_TEST_SOURCES < <(find "$FLOCK_TEST_DIR" -name '*.cs' | sort)
+    if [ "${#FLOCK_TEST_SOURCES[@]}" -gt 0 ]; then
+        csc "${COMMON[@]}" "${BCL[@]}" "${UNITY_ARGS[@]}" \
+            -r:"$OUT/SabaProps.Flock.Runtime.dll" \
+            -r:"$OUT/SabaProps.Flock.Editor.dll" \
+            -r:"$OUT/UnityEditor.dll" \
+            -out:"$OUT/SabaProps.Flock.CITests.dll" "${FLOCK_TEST_SOURCES[@]}"
+        echo "ok: ${#FLOCK_TEST_SOURCES[@]} Flock test file(s)"
     fi
 fi
 
@@ -448,6 +487,38 @@ if [ -f "$SOFT_SHADER" ]; then
     fi
 fi
 
+# The flock shader is a plain vertex/fragment pair rather than a surface
+# shader, so Unity's own includes are replaced by the stubs in unity_stubs/.
+FLOCK_SHADER_DIR="$FLOCK_PACKAGE/Runtime/Shaders"
+"$PYTHON" .github/verify/extract_shader_body.py \
+    "$FLOCK_SHADER_DIR/SabaFlock.shader" "$OUT/flock_shader_body.hlsl" --block 0
+cp "$HERE/flock_shader_harness.hlsl" "$OUT/flock_shader_harness.hlsl"
+flock_shader_check() {
+    glslangValidator -D -e main -S vert --target-env vulkan1.0 \
+        -o "$OUT/flock_shader.spv" \
+        -I"$HERE/unity_stubs" -I"$FLOCK_SHADER_DIR" -I"$OUT" "$@" "$OUT/flock_shader_harness.hlsl"
+}
+if flock_shader_check >/dev/null; then
+    echo "ok: SabaProps/Flock/Swarm"
+else
+    flock_shader_check || true
+    fail "flock shader failed"
+fi
+if flock_shader_check -DVERTEXLIGHT_ON >/dev/null; then
+    echo "ok: SabaProps/Flock/Swarm vertex lights"
+else
+    flock_shader_check -DVERTEXLIGHT_ON || true
+    fail "flock vertex-light shader failed"
+fi
+"$PYTHON" .github/verify/extract_shader_body.py \
+    "$FLOCK_SHADER_DIR/SabaFlock.shader" "$OUT/flock_shader_body.hlsl" --block 1
+if flock_shader_check >/dev/null; then
+    echo "ok: SabaProps/Flock/Swarm ForwardAdd"
+else
+    flock_shader_check || true
+    fail "flock additive shader failed"
+fi
+
 # ---------------------------------------------------------------------------
 log "Running mesh generation (no Unity)"
 # ---------------------------------------------------------------------------
@@ -526,6 +597,35 @@ cp "$OFFLINE_OUT/OfflineMeshTests.runtimeconfig.json" \
    "$OFFLINE_OUT/OfflineStageCamTests.runtimeconfig.json"
 
 dotnet "$OFFLINE_OUT/OfflineStageCamTests.dll" || fail "offline stage camera checks failed"
+
+# ---------------------------------------------------------------------------
+log "Running the flock generators and motion (no Unity)"
+# ---------------------------------------------------------------------------
+# Every file except the MonoBehaviour and the UnityEditor-facing tools. The
+# motion checks run the C# reference that SabaFlockMotion.cginc mirrors; see
+# offline/OfflineFlockTests.cs for what that does and does not prove.
+FLOCK_OFFLINE_SOURCES=()
+for file in "$FLOCK_PACKAGE"/Runtime/*.cs "$FLOCK_PACKAGE"/Editor/*.cs; do
+    case "$(basename "$file")" in
+        FlockSwarm.cs | FlockSwarmEditor.cs | FlockMenu.cs | FlockAssetLibrary.cs | FlockSwarmBuilder.cs | FlockGallery.cs | FlockSampleScene.cs | FlockWorldSample.cs | FlockComparisonScene.cs | FlockLightingPreview.cs) ;;
+        *) FLOCK_OFFLINE_SOURCES+=("$file") ;;
+    esac
+done
+
+csc_exe -out:"$OFFLINE_OUT/OfflineFlockTests.dll" \
+    -r:"$RUNTIME_DIR/System.Text.RegularExpressions.dll" \
+    "$OFFLINE/UnityEngineShim.cs" \
+    "$OFFLINE/OfflineFlockTests.cs" \
+    "${FLOCK_OFFLINE_SOURCES[@]}"
+
+cp "$OFFLINE_OUT/OfflineMeshTests.runtimeconfig.json" \
+   "$OFFLINE_OUT/OfflineFlockTests.runtimeconfig.json"
+
+dotnet "$OFFLINE_OUT/OfflineFlockTests.dll" \
+    "$FLOCK_PACKAGE/Runtime/FlockMotion.cs" \
+    "$FLOCK_PACKAGE/Runtime/Shaders/SabaFlockMotion.cginc" \
+    "$FLOCK_PACKAGE/Documentation~/elements.md" \
+    || fail "offline flock checks failed"
 
 # ---------------------------------------------------------------------------
 log "Running the tablet solvers and generators (no Unity)"

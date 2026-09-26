@@ -24,10 +24,13 @@ set -euo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO="$(cd "$HERE/../.." && pwd)"
-PACKAGE="$REPO/Packages/io.github.sabas0ba.sabaprops.foliage"
+# Each package's figures go to its own Documentation~/images/generated.
+FIGURE_PACKAGES=(
+    io.github.sabas0ba.sabaprops.foliage
+    io.github.sabas0ba.sabaprops.flock
+)
 
 WORK="${VERIFY_WORK_DIR:-$REPO/.verify}/figures"
-COMMITTED="$PACKAGE/Documentation~/images/generated"
 
 MODE="${1:-write}"
 case "$MODE" in
@@ -71,19 +74,25 @@ log "Rendering figures"
 PYTHON="${VERIFY_PYTHON:-$REPO/.github/scripts/run.sh}"
 
 if [ "$MODE" = "--check" ]; then
-    OUT="$WORK/svg"
-    rm -rf "$OUT"
-else
-    OUT="$COMMITTED"
+    rm -rf "$WORK/svg"
 fi
 
-mkdir -p "$OUT"
-"$PYTHON" .github/figures/render_figures.py --input "$WORK/figures.json" --out "$OUT"
-
-if [ "$MODE" = "--check" ]; then
-    if ! diff -ru "$COMMITTED" "$OUT" >/dev/null 2>&1; then
-        diff -ru "$COMMITTED" "$OUT" || true
-        fail "the committed figures are out of date; run .github/figures/render.sh and commit the result"
+for package_id in "${FIGURE_PACKAGES[@]}"; do
+    COMMITTED="$REPO/Packages/$package_id/Documentation~/images/generated"
+    if [ "$MODE" = "--check" ]; then
+        OUT="$WORK/svg/$package_id"
+    else
+        OUT="$COMMITTED"
     fi
-    echo "ok: committed figures match the generators"
-fi
+
+    mkdir -p "$OUT"
+    "$PYTHON" .github/figures/render_figures.py --input "$WORK/figures.json" --out "$OUT" --package "$package_id"
+
+    if [ "$MODE" = "--check" ]; then
+        if ! diff -ru "$COMMITTED" "$OUT" >/dev/null 2>&1; then
+            diff -ru "$COMMITTED" "$OUT" || true
+            fail "the committed figures of $package_id are out of date; run .github/figures/render.sh and commit the result"
+        fi
+        echo "ok: committed figures of $package_id match the generators"
+    fi
+done
