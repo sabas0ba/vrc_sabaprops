@@ -188,6 +188,23 @@ namespace SabaProps.Liquid.WorldTests
             Assert.AreEqual(nameof(LiquidNozzle.Release), relay.useUpEventName);
             Assert.AreEqual(nameof(LiquidNozzle.StopFiring), relay.dropEventName);
             Assert.AreEqual(13, root.layer, root.name + " is not on the pickup layer");
+
+            // Flowing modes must emit on their own while running; one-shot nozzles emit per shot.
+            ParticleSystem stream = nozzle.stream;
+            Assert.IsNotNull(stream, root.name + " has no stream");
+            float rate = stream.emission.rateOverTime.constant;
+            if (mode == LiquidNozzle.ModeHold || mode == LiquidNozzle.ModeContinuous)
+            {
+                Assert.Greater(rate, 0f, root.name + ": the stream emits nothing while running");
+            }
+            else
+            {
+                Assert.AreEqual(0f, rate, root.name + ": a one-shot stream emits on its own");
+            }
+
+            int collides = stream.collision.collidesWith;
+            Assert.AreEqual(0, collides & (1 << 13), root.name + ": its drops stop on the nozzle itself");
+            Assert.AreEqual(0, collides & (1 << 10), root.name + ": its drops stop on the holder");
         }
 
         [Test]

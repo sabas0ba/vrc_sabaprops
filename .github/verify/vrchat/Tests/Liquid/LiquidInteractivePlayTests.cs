@@ -202,6 +202,17 @@ namespace SabaProps.Liquid.WorldTests
             Assert.Greater(bathTorso, 0.6f, "the bathroom torso lost its cloth surface");
             Assert.IsFalse((bool)UdonSharpEditorUtility.GetBackingUdonBehaviour(m[BathroomFirst + 1]).GetProgramVariable("_bareApplied"));
 
+            // A carried nozzle that is running shows its stream.
+            foreach (VRCPickup pickup in GameObject.Find(LiquidInteractiveScene.SprayPlayName).GetComponentsInChildren<VRCPickup>())
+            {
+                LiquidNozzle nozzle = pickup.GetComponentInChildren<LiquidNozzle>();
+                if (nozzle.mode == LiquidNozzle.ModeHold || nozzle.mode == LiquidNozzle.ModeContinuous)
+                {
+                    TestContext.WriteLine(pickup.name + ": " + nozzle.stream.particleCount + " particles");
+                    Assert.Greater(nozzle.stream.particleCount, 0, pickup.name + " is running but shows no stream");
+                }
+            }
+
             Assert.Greater(LiquidDemoPlayTests.Coverage(m[SprayTargetLeft].projectorMaterial), 0f,
                 "the carried nozzles did not reach the left target");
             Assert.Greater(LiquidDemoPlayTests.Coverage(m[SprayTargetRight].projectorMaterial), 0f,

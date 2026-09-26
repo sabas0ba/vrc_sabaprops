@@ -338,6 +338,11 @@ namespace SabaProps.Liquid.Editors
 
             LiquidNozzle nozzle = CreateNozzle(root.transform, "Nozzle", profile, new Vector3(0f, 0f, 0.27f), mode, materialFolder);
             nozzle.fireOnInteract = false;
+
+            // Drops leave the muzzle next to the nozzle's own collider and the holder's hand; they must not
+            // stop there, or nothing is seen leaving the nozzle.
+            ParticleSystem.CollisionModule collision = nozzle.stream.collision;
+            collision.collidesWith = ~((1 << 13) | (1 << 10));
             nozzle.range = 8f;
             nozzle.speed = 10f;
             nozzle.diameter = 0.05f;
@@ -365,8 +370,10 @@ namespace SabaProps.Liquid.Editors
             nozzleObject.transform.SetParent(parent, false);
             nozzleObject.transform.localPosition = localPosition;
 
+            // Modes that flow while running emit on their own; the others emit a burst per shot.
+            bool flowing = mode == LiquidNozzle.ModeContinuous || mode == LiquidNozzle.ModeHold;
             ParticleSystem stream = LiquidParticleBuilder.CreateLiquidStream(nozzleObject.transform, profile, materialFolder,
-                8f, 0.6f, 3f, mode == LiquidNozzle.ModeContinuous ? 300f : 0f);
+                8f, 0.6f, 3f, flowing ? 300f : 0f);
 
             LiquidNozzle nozzle = nozzleObject.AddUdonSharpComponent<LiquidNozzle>();
             nozzle.profile = profile;
