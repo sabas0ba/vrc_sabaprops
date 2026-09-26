@@ -1,5 +1,7 @@
 # サンプルシーンの実写
 
+Foliage と Flock の文書用画像を、実際の Unity Shader で描画するツールです。
+
 `Tools > SabaProps > Foliage > Capture Docs Images` で、サンプルシーンを実際の Unity で描画して
 `Packages/io.github.sabas0ba.sabaprops.foliage/Documentation~/images/captured/` に JPEG を書き出します。
 
@@ -55,3 +57,35 @@ CI では動きません。GameCI の runner には GPU が無く、ライセン
 `Editor/` に置けば全利用者のプロジェクトにコンパイル対象として配られてしまうため、リポジトリ側に置いています。
 代わりに `verify.sh` がこのファイルを実物の UnityEngine 参照アセンブリに対してコンパイルするので、
 放置して壊れることはありません。
+
+## Flock の Sample と画像
+
+Flock の capture tool は `flock/` にあり、Foliage とは別の assembly です。
+追加依存はありません。再生成には Unity 2022.3 の Built-in Render Pipeline を使用します。
+
+1. 空の Unity プロジェクトの `Packages/` に Flock パッケージを配置します。
+2. `FlockSampleScene.GenerateForDistribution` をコマンドラインの `-executeMethod` で実行します。
+   `Assets/SabaProps/FlockSample` が既に存在する場合は生成を止めるため、Sample の再生成には空のプロジェクトを使ってください。
+3. `Assets/SabaProps/FlockSample` の Scene と backdrop Material、および
+   `Assets/SabaProps/Flock` の `Meshes`、`Materials` を、meta を含めて
+   `Packages/io.github.sabas0ba.sabaprops.flock/Samples~/Flock Sample` に配置します。
+4. このリポジトリの `capture/flock/` をプロジェクトの `Assets/` 配下へコピーまたはリンクします。
+5. `Tools > SabaProps > Flock > Capture Docs Images` を実行します。
+   batch mode では `SabaProps.Flock.DocsCapture.FlockDocsCapture.Capture` を `-executeMethod` で実行できます。
+
+Capture は生成済みの `Assets/SabaProps/FlockSample/FlockSample.unity` を開きます。
+現在の Scene は置き換わるため、未保存の変更は先に保存してください。
+
+次の 5 枚を Flock の `Documentation~/images/captured/` に書き出します。
+
+| ファイル | 内容 |
+| --- | --- |
+| `sample-overview.jpg` | 8 種・8 動作を配置した Sample Scene の全景 |
+| `starling.jpg` | ムクドリの近接表示 |
+| `goose.jpg` | マガンの近接表示 |
+| `sardine.jpg` | マイワシの近接表示 |
+| `anthias.jpg` | キンギョハナダイの近接表示 |
+
+配布用 Sample を検証する際は、生成元の assets がない別のプロジェクトで Import します。
+生成元と Sample のコピーは同じ GUID を持つため、同じプロジェクトで両方を Import すると
+Unity が GUID を付け替え、配布時とは異なる参照状態になります。

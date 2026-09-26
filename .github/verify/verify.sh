@@ -236,6 +236,16 @@ else
     echo "skipped: no capture tool"
 fi
 
+FLOCK_CAPTURE="$REPO/.github/figures/capture/flock/FlockDocsCapture.cs"
+if [ -f "$FLOCK_CAPTURE" ]; then
+    csc "${COMMON[@]}" "${BCL[@]}" "${UNITY_ARGS[@]}" \
+        -r:"$OUT/SabaProps.Flock.Runtime.dll" \
+        -r:"$OUT/SabaProps.Flock.Editor.dll" \
+        -r:"$OUT/UnityEditor.dll" \
+        -out:"$OUT/SabaProps.Flock.DocsCapture.dll" "$FLOCK_CAPTURE"
+    echo "ok: Flock capture tool"
+fi
+
 # ---------------------------------------------------------------------------
 log "Compiling CI EditMode tests"
 # ---------------------------------------------------------------------------
@@ -532,7 +542,7 @@ log "Running the flock generators and motion (no Unity)"
 FLOCK_OFFLINE_SOURCES=()
 for file in "$FLOCK_PACKAGE"/Runtime/*.cs "$FLOCK_PACKAGE"/Editor/*.cs; do
     case "$(basename "$file")" in
-        FlockSwarm.cs | FlockSwarmEditor.cs | FlockMenu.cs | FlockAssetLibrary.cs | FlockSwarmBuilder.cs | FlockGallery.cs) ;;
+        FlockSwarm.cs | FlockSwarmEditor.cs | FlockMenu.cs | FlockAssetLibrary.cs | FlockSwarmBuilder.cs | FlockGallery.cs | FlockSampleScene.cs) ;;
         *) FLOCK_OFFLINE_SOURCES+=("$file") ;;
     esac
 done

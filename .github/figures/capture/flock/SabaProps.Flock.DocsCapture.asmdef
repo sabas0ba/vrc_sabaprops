@@ -1,0 +1,12 @@
+{
+  "name": "SabaProps.Flock.DocsCapture",
+  "rootNamespace": "SabaProps.Flock.DocsCapture",
+  "references": [
+    "SabaProps.Flock.Runtime",
+    "SabaProps.Flock.Editor"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "autoReferenced": true
+}

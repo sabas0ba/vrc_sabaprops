@@ -13,6 +13,13 @@
   "documentationUrl": "https://github.com/sabas0ba/vrc_sabaprops/blob/main/Packages/io.github.sabas0ba.sabaprops.flock/README.md",
   "changelogUrl": "https://github.com/sabas0ba/vrc_sabaprops/blob/main/Packages/io.github.sabas0ba.sabaprops.flock/CHANGELOG.md",
   "vpmDependencies": {},
+  "samples": [
+    {
+      "displayName": "Flock Sample",
+      "description": "8 種・8 動作を比較し、群れを複製して調整できる Sample Scene です。",
+      "path": "Samples~/Flock Sample"
+    }
+  ],
   "keywords": [
     "vrchat",
     "world",

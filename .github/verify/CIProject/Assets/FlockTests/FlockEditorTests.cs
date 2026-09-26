@@ -1,10 +1,13 @@
 using System.Collections.Generic;
+using System.IO;
 using NUnit.Framework;
 using SabaProps.Flock;
 using SabaProps.Flock.Editors;
 using UnityEditor;
+using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.Rendering;
+using UnityEngine.SceneManagement;
 
 namespace SabaProps.Flock.CITests
 {
@@ -32,6 +35,55 @@ namespace SabaProps.Flock.CITests
             FlockSwarm swarm = FlockSwarmBuilder.Create(presetId, null, Vector3.zero);
             _created.Add(swarm.gameObject);
             return swarm;
+        }
+
+        [Test]
+        public void BundledSample_ImportsWithEightEditableSwarms()
+        {
+            const string source =
+                "Packages/io.github.sabas0ba.sabaprops.flock/Samples~/Flock Sample";
+            const string destination = "Assets/ImportedFlockSample";
+            Assert.IsTrue(Directory.Exists(source), "bundled sample is missing");
+
+            try
+            {
+                FileUtil.CopyFileOrDirectory(source, destination);
+                AssetDatabase.Refresh();
+                string scenePath = destination + "/FlockSample.unity";
+                Assert.IsNotNull(AssetDatabase.LoadAssetAtPath<SceneAsset>(scenePath));
+                EditorSceneManager.OpenScene(scenePath);
+
+                FlockSwarm[] swarms = Object.FindObjectsOfType<FlockSwarm>();
+                Assert.AreEqual(8, swarms.Length);
+                var patterns = new HashSet<FlockPattern>();
+                foreach (FlockSwarm swarm in swarms)
+                {
+                    patterns.Add(swarm.settings.pattern);
+                    Assert.IsNotNull(swarm.generatedMeshes);
+                    Assert.AreEqual(1, swarm.generatedMeshes.Length);
+                    Assert.IsNotNull(swarm.generatedMeshes[0]);
+                    var renderer = swarm.GetComponentInChildren<MeshRenderer>();
+                    Assert.IsNotNull(renderer);
+                    Assert.IsNotNull(renderer.sharedMaterial);
+                }
+
+                Assert.AreEqual(8, patterns.Count);
+
+                FlockSwarm copy = swarms[0];
+                Mesh bundledMesh = copy.generatedMeshes[0];
+                int bundledVertexCount = bundledMesh.vertexCount;
+                copy.settings.count += 1;
+                FlockSwarmBuilder.Rebuild(copy);
+                Assert.IsFalse(ReferenceEquals(bundledMesh, copy.generatedMeshes[0]));
+                Assert.AreEqual(bundledVertexCount, bundledMesh.vertexCount);
+                Assert.IsTrue(AssetDatabase.GetAssetPath(copy.generatedMeshes[0]).StartsWith(
+                    FlockAssetLibrary.MeshesFolder + "/", System.StringComparison.Ordinal));
+            }
+            finally
+            {
+                EditorSceneManager.NewScene(NewSceneSetup.DefaultGameObjects, NewSceneMode.Single);
+                AssetDatabase.DeleteAsset(destination);
+            }
         }
 
         [Test]

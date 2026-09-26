@@ -145,7 +145,7 @@ namespace SabaProps.Flock.Editors
             bool reusable = existing.Length == count && !shared;
             foreach (Mesh mesh in existing)
             {
-                reusable &= mesh != null && !string.IsNullOrEmpty(AssetDatabase.GetAssetPath(mesh));
+                reusable &= mesh != null && IsGeneratedMeshPath(AssetDatabase.GetAssetPath(mesh));
             }
 
             if (reusable)
@@ -153,9 +153,16 @@ namespace SabaProps.Flock.Editors
                 return existing;
             }
 
-            string path = !shared && existing.Length > 0 && existing[0] != null
+            string path = existing.Length > 0 && existing[0] != null
                 ? AssetDatabase.GetAssetPath(existing[0])
                 : string.Empty;
+            // A copied sample scene keeps references to its bundled mesh assets.
+            // Rebuilding the copy must leave those source assets intact even when
+            // the original scene is closed and no other swarm is loaded.
+            if (shared || !IsGeneratedMeshPath(path))
+            {
+                path = string.Empty;
+            }
             if (!string.IsNullOrEmpty(path))
             {
                 AssetDatabase.DeleteAsset(path);
@@ -180,6 +187,12 @@ namespace SabaProps.Flock.Editors
             }
 
             return meshes;
+        }
+
+        private static bool IsGeneratedMeshPath(string path)
+        {
+            return path.StartsWith(
+                FlockAssetLibrary.MeshesFolder + "/", System.StringComparison.Ordinal);
         }
 
         /// <summary>True when another swarm in the open scenes references any of <paramref name="meshes"/>.</summary>

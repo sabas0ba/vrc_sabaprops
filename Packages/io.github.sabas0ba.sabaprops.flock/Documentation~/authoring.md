@@ -1,5 +1,7 @@
 # 利用方法
 
+編集可能な配置例は [Flock Sample Scene](sample-scene.md) にあります。Unity Package Manager から Import すると、8 種・8 動作の生成済み群れをコピーして試せます。
+
 ## 群れを追加する
 
 Hierarchy の Create menu (`SabaProps > Flock`) から、生息域ごとの代表種で群れを追加します。
