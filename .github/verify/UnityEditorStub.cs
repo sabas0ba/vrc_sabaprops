@@ -315,6 +315,7 @@ namespace UnityEditor
         public static void RepaintAll() { }
         public void Repaint() { }
         public void LookAt(Vector3 point, Quaternion direction, float newSize) { }
+        public void AlignViewToObject(Transform transform) { }
     }
 
     public class SceneAsset : UnityEngine.Object { }
@@ -344,6 +345,7 @@ namespace UnityEditor
         public static event Action update;
         public static double timeSinceStartup => 0d;
         public static bool isPlayingOrWillChangePlaymode => false;
+        public static bool ExecuteMenuItem(string menuItemPath) => true;
     }
 
     public class PreviewRenderUtility

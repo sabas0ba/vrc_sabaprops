@@ -9,7 +9,7 @@ VRChat World 向けに、鳥の群れ、魚群、水槽や池の魚を中景か�
 - 遠方の個体を空に対するシルエット色、または水の色へ寄せる距離処理
 - 外部の model、texture、追加 package は不要。形状と模様はすべてパラメータから生成
 
-![Unity 2022.3 で描画した Flock Sample Scene](Documentation~/images/captured/sample-overview.jpg)
+![地上の目線から見た鳥群の Unity 描画](Documentation~/images/captured/world-sky.jpg)
 
 ![収録している鳥 25 種の High 段の形状](Documentation~/images/generated/flock-birds.svg)
 
@@ -24,7 +24,7 @@ VRChat World 向けに、鳥の群れ、魚群、水槽や池の魚を中景か�
 
 全種を並べて確認する場合は `Tools > SabaProps > Flock > Create Species Gallery Scene` を実行します。生息域ごとの近景の列と、遠景を飛ぶ群れを含む `Assets/SabaProps/Flock/FlockGallery.unity` が作成されます。
 
-コピーして試すには Unity Package Manager の `Samples` から `Flock Sample` を Import し、`FlockSample.unity` を開きます。8 種・8 動作を設定した群れが `Copy These Swarms` にあります。操作と Unity の描画例は [Sample Scene](Documentation~/sample-scene.md) を参照してください。
+配置状況を確認するには Unity Package Manager の `Samples` から `Flock Sample` を Import し、`FlockWorldScenarios.unity` を開きます。空、60 cm 水槽、8 m 水槽、川に実寸の Props と群れを配置しています。`Tools > SabaProps > Flock > Sample View` で視点を切り替え、各区画の群れをコピーして調整できます。8 種・全 8 動作の一覧比較用 `FlockSample.unity` も同梱しています。操作と Unity の描画例は [Sample Scene](Documentation~/sample-scene.md) を参照してください。
 
 ## 仕組み
 

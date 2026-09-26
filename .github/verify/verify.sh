@@ -542,7 +542,7 @@ log "Running the flock generators and motion (no Unity)"
 FLOCK_OFFLINE_SOURCES=()
 for file in "$FLOCK_PACKAGE"/Runtime/*.cs "$FLOCK_PACKAGE"/Editor/*.cs; do
     case "$(basename "$file")" in
-        FlockSwarm.cs | FlockSwarmEditor.cs | FlockMenu.cs | FlockAssetLibrary.cs | FlockSwarmBuilder.cs | FlockGallery.cs | FlockSampleScene.cs) ;;
+        FlockSwarm.cs | FlockSwarmEditor.cs | FlockMenu.cs | FlockAssetLibrary.cs | FlockSwarmBuilder.cs | FlockGallery.cs | FlockSampleScene.cs | FlockWorldSample.cs) ;;
         *) FLOCK_OFFLINE_SOURCES+=("$file") ;;
     esac
 done

@@ -87,6 +87,56 @@ namespace SabaProps.Flock.CITests
         }
 
         [Test]
+        public void WorldSample_ImportsWithRealScaleTanksAndWorkingViewpoints()
+        {
+            const string source = "Packages/io.github.sabas0ba.sabaprops.flock/Samples~/Flock Sample";
+            const string destination = "Assets/ImportedWorldSample";
+            try
+            {
+                FileUtil.CopyFileOrDirectory(source, destination);
+                AssetDatabase.Refresh();
+                EditorSceneManager.OpenScene(destination + "/FlockWorldScenarios.unity");
+                FlockSwarm[] swarms = Object.FindObjectsOfType<FlockSwarm>();
+                Assert.AreEqual(8, swarms.Length);
+                int smallTankCount = 0;
+                int lodCount = 0;
+                foreach (FlockSwarm swarm in swarms)
+                {
+                    Assert.AreEqual(Vector3.one, swarm.transform.lossyScale);
+                    Assert.IsTrue(swarm.generatedMeshes.Length > 0);
+                    foreach (Mesh mesh in swarm.generatedMeshes) Assert.IsNotNull(mesh);
+                    if (swarm.GetComponent<LODGroup>() != null) lodCount++;
+                    if (swarm.presetId == "neon-tetra")
+                    {
+                        smallTankCount++;
+                        Assert.AreEqual(0.03f, swarm.species.bodyLength, 0.0001);
+                        Assert.IsTrue(swarm.settings.area.x + swarm.species.bodyLength < 0.3f);
+                        Assert.IsTrue(swarm.settings.area.y + swarm.species.bodyLength < 0.18f);
+                        Assert.IsTrue(swarm.settings.area.z + swarm.species.bodyLength < 0.15f);
+                    }
+                }
+                Assert.AreEqual(1, smallTankCount);
+                Assert.AreEqual(5, lodCount);
+                Assert.AreEqual(8, Object.FindObjectsOfType<Camera>().Length);
+                FlockWorldSample.SmallView();
+                int enabled = 0;
+                foreach (Camera camera in Object.FindObjectsOfType<Camera>())
+                {
+                    if (!camera.enabled) continue;
+                    enabled++;
+                    Assert.AreEqual("Small tank - standing eye 1.65 m", camera.name);
+                    Assert.AreEqual(1.65f, camera.transform.position.y, 0.0001);
+                }
+                Assert.AreEqual(1, enabled);
+            }
+            finally
+            {
+                EditorSceneManager.NewScene(NewSceneSetup.DefaultGameObjects, NewSceneMode.Single);
+                AssetDatabase.DeleteAsset(destination);
+            }
+        }
+
+        [Test]
         public void Shader_IsFoundAndCompiles()
         {
             Shader shader = Shader.Find(FlockShaderContract.ShaderName);

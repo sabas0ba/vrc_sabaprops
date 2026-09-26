@@ -31,22 +31,44 @@ namespace SabaProps.Flock.DocsCapture
             new Shot { Name = "anthias", Position = new Vector3(-7f, 0f, -4.8f), Target = new Vector3(-7f, 0f, 0f), FieldOfView = 38f },
         };
 
+        private static readonly Shot[] WorldShots =
+        {
+            new Shot { Name = "world-sky", Position = new Vector3(0f, 1.65f, -42f), Target = new Vector3(0f, 15f, 18f), FieldOfView = 60f },
+            new Shot { Name = "world-small-tank", Position = new Vector3(120f, 1.65f, -1.1f), Target = new Vector3(120f, 1.15f, 0f), FieldOfView = 60f },
+            new Shot { Name = "world-small-tank-close", Position = new Vector3(120f, 1.2f, -0.55f), Target = new Vector3(120f, 1.15f, 0f), FieldOfView = 60f },
+            new Shot { Name = "world-large-tank", Position = new Vector3(150f, 1.65f, -6.5f), Target = new Vector3(150f, 2.1f, 0f), FieldOfView = 60f },
+            new Shot { Name = "world-river", Position = new Vector3(203f, 1.65f, -4.8f), Target = new Vector3(202f, -0.6f, 0f), FieldOfView = 60f },
+            new Shot { Name = "world-river-bridge", Position = new Vector3(191f, 2.1f, -1f), Target = new Vector3(200f, -0.6f, 0f), FieldOfView = 60f },
+        };
+
         [MenuItem("Tools/SabaProps/Flock/Capture Docs Images", false, 200)]
         public static void Capture()
         {
             EditorSceneManager.OpenScene(FlockSampleScene.ScenePath);
+            CaptureShots(Shots, false);
+        }
+
+        [MenuItem("Tools/SabaProps/Flock/Capture World Situations", false, 201)]
+        public static void CaptureWorld()
+        {
+            EditorSceneManager.OpenScene(FlockWorldSample.ScenePath);
+            CaptureShots(WorldShots, true);
+        }
+
+        private static void CaptureShots(Shot[] shots, bool skybox)
+        {
             string destination = Path.Combine(Path.GetFullPath(PackagePath), OutputFolder);
             Directory.CreateDirectory(destination);
 
-            foreach (Shot shot in Shots)
+            foreach (Shot shot in shots)
             {
-                Render(shot, Path.Combine(destination, shot.Name + ".jpg"));
+                Render(shot, Path.Combine(destination, shot.Name + ".jpg"), skybox);
             }
 
-            Debug.Log($"[SabaProps Flock] Captured {Shots.Length} docs images in {destination}");
+            Debug.Log($"[SabaProps Flock] Captured {shots.Length} docs images in {destination}");
         }
 
-        private static void Render(Shot shot, string path)
+        private static void Render(Shot shot, string path, bool skybox)
         {
             var holder = new GameObject("Flock Docs Capture");
             Camera camera = holder.AddComponent<Camera>();
@@ -64,7 +86,7 @@ namespace SabaProps.Flock.DocsCapture
                 camera.fieldOfView = shot.FieldOfView;
                 camera.nearClipPlane = 0.05f;
                 camera.farClipPlane = 200f;
-                camera.clearFlags = CameraClearFlags.SolidColor;
+                camera.clearFlags = skybox ? CameraClearFlags.Skybox : CameraClearFlags.SolidColor;
                 camera.backgroundColor = new Color(0.08f, 0.12f, 0.18f);
                 camera.allowMSAA = true;
                 camera.targetTexture = target;

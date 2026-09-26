@@ -89,3 +89,20 @@ Capture は生成済みの `Assets/SabaProps/FlockSample/FlockSample.unity` を�
 配布用 Sample を検証する際は、生成元の assets がない別のプロジェクトで Import します。
 生成元と Sample のコピーは同じ GUID を持つため、同じプロジェクトで両方を Import すると
 Unity が GUID を付け替え、配布時とは異なる参照状態になります。
+
+### World の状況別 Scene
+
+別の空のプロジェクトで `SabaProps.Flock.Editors.FlockWorldSample.GenerateForDistribution` を
+`-executeMethod` で実行します。`FlockWorldScenarios.unity`、`WorldMaterials` とその meta を
+Sample のルートへコピーします。生成された `Flock/Meshes` は `WorldMeshes`、
+`Flock/Materials` は `WorldFlockMaterials` として meta を含めてコピーします。
+既存の比較 Scene の Mesh と Material は保持してください。参照は GUID で維持されます。
+
+`SabaProps.Flock.DocsCapture.FlockDocsCapture.CaptureWorld` を実行すると、
+`world-sky`、`world-small-tank`、`world-small-tank-close`、`world-large-tank`、
+`world-river`、`world-river-bridge` の 6 枚を JPG で出力します。
+空は遠景 Camera、小型水槽は立位と近接、大型水槽は観覧者の目線、川は川岸と橋からの描画です。
+画像は Shader の運動の一時点です。時間経過による密度や画面内への入り方は Play Mode で確認します。
+
+レビュー用プロジェクトでは `FlockWorldSample.OpenForReview` を `-executeMethod` で起動すると、
+生成した Scene と Game view を開けます。この起動には `-batchmode` と `-quit` を付けません。

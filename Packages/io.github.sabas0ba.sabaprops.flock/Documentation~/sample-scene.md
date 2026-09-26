@@ -1,6 +1,55 @@
 # Flock Sample Scene
 
-Unity 2022.3 の Built-in Render Pipeline で描画した Sample Scene です。8 種の群れが 8 種の動きを示します。
+同梱の `FlockWorldScenarios.unity` は、空、小型水槽、大型水槽、川で World Props としての見え方を確認する Scene です。
+1 Unity unit = 1 m とし、魚や鳥の体長はプリセットの実寸を使います。家具、水槽、川岸、橋、樹木を比較対象として配置しています。
+
+![地上の目線から見た広い空の鳥群](images/captured/world-sky.jpg)
+
+## World の状況別 Sample
+
+Package Manager の `Samples > Flock Sample` を Import し、
+`Assets/Samples/SabaProps Flock/0.1.0/Flock Sample/FlockWorldScenarios.unity` を開きます。
+`Tools > SabaProps > Flock > Sample View` から状況を選ぶと、Game view の Camera と Scene view の視点が切り替わります。
+Play Mode では飛翔と遊泳を確認できます。Scene view では自由に移動して距離と角度を変えてください。
+
+| 区画 | 配置 | 確認すること |
+| --- | --- | --- |
+| 01 Open sky | 100 × 100 m の草地、樹木、ベンチ。高さ 15〜35 m の鳥群 | 地上の目線から見た密度、広がり、近距離と遠距離の LOD |
+| 02 Small aquarium | 幅 0.60 × 高さ 0.36 × 奥行 0.30 m の水槽、高さ 0.95 m の家具。体長 3 cm のネオンテトラ 12 匹 | 家具との寸法の関係、小魚の視認性、ガラス越しの配色、壁際の遊泳 |
+| 03 Large aquarium | 幅 8 × 高さ 3 × 奥行 3 m の水槽、ベンチ。マイワシ 80 匹、キンギョハナダイ 24 匹 | 観覧距離での魚群の密度、個体の大きさ、近くでの描画、LOD |
+| 04 River | 幅 8 × 長さ 28 m、川床まで約 1.7 m。川岸、歩道橋、石。錦鯉 12 匹とクロメダカ 32 匹 | 川岸・橋から見下ろした魚の見え方、水面越しの色、浅瀬の小魚の視認性 |
+
+各区画に 2 台ずつ Camera があり、通常の目線と近接・遠景・橋の視点を用意しています。
+メニューは通常の目線を選択します。別の Camera を試すときは、既存 Camera の `Camera` コンポーネントを無効にして、選んだ Camera を有効にしてください。
+空・大型水槽のマイワシ・川の錦鯉は `LodGroup`、小魚とキンギョハナダイは `Single / High` です。
+LOD の距離は群れの中心から測るため、広い群れの近くへ入った場合も確認してください。
+
+各区画の `Flock <種名>` をコピーすれば、その状況に合わせた設定を自作 World に持ち込めます。
+コピー後は `area`、`count`、`clusterRadius`、`speedScale`、`seed` を変更し、`生成 / 更新` を押してください。
+`area` は全幅ではなく各軸の半径です。水槽の内寸と個体の大きさを考慮して設定します。
+Scene の Props は寸法比較用の簡易形状で、衝突回避や水との物理的相互作用はありません。
+ガラスと水面は Standard Shader の半透明 Material です。屈折、波、カースティクスは含みません。
+自作 World の水 Shader と組み合わせた表示、VRChat での負荷は別途確認してください。
+
+### 小型水槽
+
+![家具上の 60 cm 水槽を立位の目線から確認](images/captured/world-small-tank.jpg)
+
+![60 cm 水槽の近接確認](images/captured/world-small-tank-close.jpg)
+
+### 大型水槽
+
+![観覧者の目線から見た幅 8 m の水槽](images/captured/world-large-tank.jpg)
+
+### 川
+
+![川岸から水面越しに見た錦鯉とクロメダカ](images/captured/world-river.jpg)
+
+![歩道橋から見下ろした川の魚](images/captured/world-river-bridge.jpg)
+
+## 種と動作の比較 Scene
+
+`FlockSample.unity` は 8 種・全 8 動作を比較する Scene です。
 背景とラベルは展示用で、群れの GameObject は個別にコピーできます。
 
 ![Flock Sample Scene の全景](images/captured/sample-overview.jpg)

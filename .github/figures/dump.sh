@@ -48,7 +48,7 @@ FLOCK="$REPO/Packages/io.github.sabas0ba.sabaprops.flock"
 FLOCK_SOURCES=()
 for file in "$FLOCK"/Runtime/*.cs "$FLOCK"/Editor/*.cs; do
     case "$(basename "$file")" in
-        FlockSwarm.cs | FlockSwarmEditor.cs | FlockMenu.cs | FlockAssetLibrary.cs | FlockSwarmBuilder.cs | FlockGallery.cs | FlockSampleScene.cs) ;;
+        FlockSwarm.cs | FlockSwarmEditor.cs | FlockMenu.cs | FlockAssetLibrary.cs | FlockSwarmBuilder.cs | FlockGallery.cs | FlockSampleScene.cs | FlockWorldSample.cs) ;;
         *) FLOCK_SOURCES+=("$file") ;;
     esac
 done

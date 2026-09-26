@@ -16,7 +16,7 @@
   "samples": [
     {
       "displayName": "Flock Sample",
-      "description": "8 種・8 動作を比較し、群れを複製して調整できる Sample Scene です。",
+      "description": "空・大小の水槽・川に実寸で配置した Scene と、8 種・8 動作の比較 Scene。群れを複製して調整できます。",
       "path": "Samples~/Flock Sample"
     }
   ],

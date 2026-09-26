@@ -1,5 +1,17 @@
 # Flock Sample
 
+## World の状況で確認する
+
+`FlockWorldScenarios.unity` を開き、`Tools > SabaProps > Flock > Sample View` で視点を切り替えます。
+空、幅 60 cm の小型水槽、幅 8 m の大型水槽、川の 4 区画があります。
+1 Unity unit = 1 m で、周辺 Props と個体の実寸、密度、遊泳範囲を比較できます。
+各区画の `Flock <種名>` をコピーし、Inspector の値を変えて `生成 / 更新` を押してください。
+Play Mode では動きを確認でき、Scene view では観察位置を自由に変えられます。
+区画ごとに 2 台の Camera があり、目線・近接・遠景・橋上の視点を用意しています。
+水とガラスは比較用の簡易 Material です。衝突回避、屈折、波、カースティクスは含みません。
+
+## 種と動作の一覧で確認する
+
 `FlockSample.unity` には 8 種の群れを 1 種ずつ配置し、8 種の群れの動きをそれぞれ設定してあります。
 各群れは生成済みの Mesh と Material を参照するため、Scene を開いてすぐに確認できます。
 
