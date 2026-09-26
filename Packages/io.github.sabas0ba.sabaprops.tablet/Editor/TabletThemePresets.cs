@@ -7,11 +7,14 @@ namespace SabaProps.Tablet.Editors
     public static class TabletThemePresets
     {
         public const string Folder = "Packages/io.github.sabas0ba.sabaprops.tablet/Themes";
-        public static readonly string[] Files = { "SakuraRibbon", "MintCat", "HoneyBear", "LilacStars", "PeachBlossom", "SkyCloud" };
+        public static readonly string[] Files = { "SakuraRibbon", "MintCat", "HoneyBear", "LilacStars", "PeachBlossom", "SkyCloud",
+            "ModernSlate", "AngularGraphite", "SkeletonGlass", "Whiteboard", "MinimalIvory" };
         public static readonly string[] Descriptions =
         {
             "桜色・リボン・丸みのあるボタン", "ミント・猫耳・小さな角丸", "はちみつ色・くま耳・丸いボタン",
             "ラベンダー・星・控えめな角丸", "桃色・花・柔らかい角丸", "水色・雲・丸いボタン",
+            "スレート・モダン・青のアクセント", "グラファイト・直角・橙のアクセント",
+            "半透明の筐体・内部支持フレーム", "白い盤面・木色の縁・濃いインク色の文字", "アイボリー・装飾なし・単純な形状",
         };
 
         public static TabletTheme Load(int index)
@@ -88,7 +91,7 @@ namespace SabaProps.Tablet.Editors
                 }
             }
             EditorGUILayout.EndScrollView();
-            if (GUILayout.Button("6 種の比較シーンを生成")) TabletThemeGallery.CreateAndOpen();
+            if (GUILayout.Button("テーマ展示と World デモを生成")) TabletThemeGallery.CreateAndOpen();
         }
     }
 }

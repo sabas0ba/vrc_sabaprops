@@ -9,6 +9,7 @@ using UnityEngine;
 using UnityEngine.TestTools;
 using UnityEngine.Rendering.PostProcessing;
 using VRC.SDK3.ClientSim;
+using VRC.SDK3.Components;
 using VRC.SDKBase;
 using VRC.Udon;
 
@@ -44,9 +45,33 @@ namespace SabaProps.Tablet.WorldTests
         [UnityTest]
         public IEnumerator Sample_RunsSummonPagesTogglesAndTeleportThroughUdon()
         {
+            return RunWorld(false);
+        }
+
+        [UnityTest]
+        public IEnumerator Gallery_RunsTheWorldAndEveryDisplayThroughUdon()
+        {
+            return RunWorld(true);
+        }
+
+        private IEnumerator RunWorld(bool gallery)
+        {
             restoreOptionsEnabled = EditorSettings.enterPlayModeOptionsEnabled;
             restoreOptions = EditorSettings.enterPlayModeOptions;
-            TabletSampleScene.Create();
+            if (gallery) TabletThemeGallery.Create();
+            else TabletSampleScene.Create();
+            if (gallery)
+            {
+                VRCSceneDescriptor descriptor = Object.FindObjectOfType<VRCSceneDescriptor>();
+                Assert.That(descriptor, Is.Not.Null);
+                Assert.That(descriptor.spawns.Length, Is.GreaterThan(0));
+                Assert.That(descriptor.ReferenceCamera, Is.EqualTo(Camera.main.gameObject));
+                Assert.That(Camera.main.orthographic, Is.False);
+                Assert.That(Camera.main.cullingMask, Is.Not.EqualTo(1 << 23));
+                Assert.That(Object.FindObjectsOfType<TabletKeyTrigger>(true).Length, Is.EqualTo(1));
+                Assert.That(Object.FindObjectsOfType<TabletReachTrigger>(true).Length, Is.EqualTo(1));
+                Assert.That(Object.FindObjectsOfType<TabletController>(true).Length, Is.EqualTo(TabletThemePresets.Files.Length + 1));
+            }
             EditorSettings.enterPlayModeOptionsEnabled = true;
             EditorSettings.enterPlayModeOptions = EnterPlayModeOptions.DisableDomainReload;
             ClientSimRuntimeLoader.BeginUnityTesting(new ClientSimSettings
@@ -81,7 +106,7 @@ namespace SabaProps.Tablet.WorldTests
             }
             LogAssert.ignoreFailingMessages = false;
             UdonBehaviour controller = UdonSharpEditorUtility.GetBackingUdonBehaviour(
-                Object.FindObjectOfType<TabletController>(true));
+                GameObject.Find(TabletSampleScene.TabletName).GetComponent<TabletController>());
             Transform body = (Transform)controller.GetProgramVariable("body");
             Assert.That(body.gameObject.activeSelf, Is.True, "Start did not show the sample tablet");
             Capture(body, "tablet-clientsim.png");
@@ -104,7 +129,9 @@ namespace SabaProps.Tablet.WorldTests
                 {
                     UdonSharpEditorUtility.GetBackingUdonBehaviour(toggle).SendCustomEvent("_TurnOn");
                     Assert.That(toggle.objects[0].activeSelf, Is.True);
-                    Assert.That(GameObject.Find("Mirror HQ"), Is.Null, "HQ mirror remained active");
+                    foreach (TabletToggle peer in toggle.exclusive)
+                        if (peer.objects.Length > 0 && peer.objects[0].name == "Mirror HQ")
+                            Assert.That(peer.objects[0].activeSelf, Is.False, "HQ mirror remained active");
                     toggledMirror = true;
                 }
             }
@@ -179,6 +206,33 @@ namespace SabaProps.Tablet.WorldTests
             Assert.That(body.gameObject.activeSelf, Is.False, "Distant tablet was not automatically stowed");
             controller.SendCustomEvent("_Summon");
             Assert.That(body.gameObject.activeSelf, Is.True);
+            if (gallery)
+            {
+                for (int i = 0; i < TabletThemePresets.Files.Length; i++)
+                {
+                    string name = TabletThemePresets.Load(i).name;
+                    TabletController display = GameObject.Find(TabletThemeGallery.DisplayPrefix + name).GetComponent<TabletController>();
+                    UdonBehaviour runtime = UdonSharpEditorUtility.GetBackingUdonBehaviour(display);
+                    Assert.That(runtime.enabled, Is.True);
+                    runtime.SendCustomEvent("_Stow");
+                    Assert.That(display.body.gameObject.activeSelf, Is.False);
+                    GameObject.Find("Theme Stand - " + name).GetComponent<UdonBehaviour>().SendCustomEvent("_interact");
+                    Assert.That(display.body.gameObject.activeSelf, Is.True, name + " did not summon");
+                    runtime.SendCustomEvent("_NextPage");
+                    Assert.That(display.pages[1].activeSelf, Is.True);
+                    runtime.SetProgramVariable("tabletArgument", System.Array.IndexOf(display.pageTitles, "Bed Mirrors"));
+                    runtime.SendCustomEvent("_ShowPage");
+                    yield return null;
+                    foreach (TabletButton button in display.buttons)
+                    {
+                        if (!(button.target is TabletToggle toggle) || toggle.objects.Length == 0 || toggle.objects[0].name != "Bed Mirror Head") continue;
+                        bool before = toggle.objects[0].activeSelf;
+                        UdonSharpEditorUtility.GetBackingUdonBehaviour(button).SendCustomEvent("_interact");
+                        Assert.That(toggle.objects[0].activeSelf, Is.EqualTo(!before), name + " toggle did not reach the World");
+                    }
+                    runtime.SendCustomEvent("_Stow");
+                }
+            }
         }
 
         private static float Weight(Behaviour volume)

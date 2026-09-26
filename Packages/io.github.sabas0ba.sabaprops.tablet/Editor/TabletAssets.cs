@@ -73,6 +73,17 @@ namespace SabaProps.Tablet.Editors
                 material.SetFloat("_Glossiness", smoothness);
             }
 
+            if (resolved.name == "Standard" && color.a < 1f)
+            {
+                material.SetFloat("_Mode", 3f);
+                material.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.One);
+                material.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+                material.SetInt("_ZWrite", 0);
+                material.EnableKeyword("_ALPHAPREMULTIPLY_ON");
+                material.renderQueue = 3000;
+                material.SetOverrideTag("RenderType", "Transparent");
+            }
+
             return material;
         }
 

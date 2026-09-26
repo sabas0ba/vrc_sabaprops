@@ -98,9 +98,9 @@ Desktop と、VR で指が届かない場合は、ボタンを Interact して�
 
 ## 外観の変更
 
-### 6 種の Theme プリセット
+### 11 種の Theme プリセット
 
-![Unity で描画した 6 種の Theme](Documentation~/images/tablet-theme-gallery.png)
+![Unity で描画した Theme の比較](Documentation~/images/tablet-theme-gallery.png)
 
 `Tools > SabaProps > Tablet > Theme Presets` を開き、対象の Tablet を指定して
 `適用して Build` を押すと切り替わります。Play Mode を終了してから操作してください。
@@ -114,16 +114,30 @@ Desktop と、VR で指が届かない場合は、ボタンを Interact して�
 | Lilac Stars | ラベンダーと白、濃い紫の文字 | 星 |
 | Peach Blossom | 桃色とクリーム、濃い茶の文字 | 花 |
 | Sky Cloud | 水色と白、濃い青の文字 | 雲 |
+| Modern Slate | スレートと青、明るい文字 | モダンな小さい角丸 |
+| Angular Graphite | グラファイトと橙、明るい文字 | 本体・ボタン・取っ手が直角 |
+| Skeleton Glass | 半透明の筐体と画面、青緑のフレーム | 内部の支持フレーム |
+| Whiteboard | 白い盤面、木色の縁、インク色の文字 | ホワイトボード風 |
+| Minimal Ivory | アイボリーと灰緑、濃い文字 | 装飾のないシンプルな形状 |
 
 装飾は通常のメッシュで、Collider はありません。取っ手とボタンの判定領域を保持します。
 プリセットはパッケージの `Themes/` に同梱します。変更する場合は `編集用コピー` で
 `Assets/SabaProps/Tablet/Themes` に複製し、コピーを TabletDefinition の `Theme` に指定してください。
 パッケージ内のプリセットを直接変更すると、パッケージ更新時に失われます。
 
-`Tools > SabaProps > Tablet > Create Theme Gallery` は、同じ Bed Mirrors ページで
-6 種を並べる比較シーン `Assets/SabaProps/Tablet/Samples/TabletThemeGallery.unity` を生成します。
-比較シーンは Editor の静止表示用です。動作確認には TabletDemo で Theme を適用してください。
-生成時に `TestResults/tablet-theme-gallery.png` へ比較画像も保存します。
+`Tools > SabaProps > Tablet > Create Theme Gallery` は、通常の World デモと 11 種の操作可能な
+展示タブレットを含む `Assets/SabaProps/Tablet/Samples/TabletThemeGallery.unity` を生成します。
+ClientSim と VRChat Build & Test を利用できます。
+通常のタブレットは B キー・頭上 Grab・元の台の Interact で召喚します。
+展示タブレットはワールド左側の台に並び、それぞれの台の Interact で召喚・収納できます。
+ページ送り、ミラー・Collider、PostEffect、テレポートも操作でき、取っ手で持ち運べます。
+展示品の自動収納は無効です。Close または台の Interact で収納してください。
+ミラーなどの Toggle は通常のタブレットと同じモジュールを呼び、すべての展示品に状態を反映します。
+生成時に撮影専用の一時カメラで `TestResults/tablet-theme-gallery.png` を保存します。
+撮影後は展示位置とレイヤーを戻し、World Descriptor、Reference Camera、床、Spawn、Udon を保持します。
+
+Skeleton Glass は Standard の透明描画を使います。背景や他の透明物体との重なりによって見え方が変わります。
+筐体を透明にしてもボタンの文字・操作面は不透明に保ちます。
 
 ### 任意の Theme
 

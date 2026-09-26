@@ -8,6 +8,7 @@ namespace SabaProps.Tablet.Editors
     {
         public static void Build(Transform body, TabletTheme theme, string folder)
         {
+            if (theme.skeletonFrame) BuildFrame(body, theme, folder);
             if (theme.decoration == TabletDecoration.None) return;
             var root = new GameObject("Theme Decoration").transform;
             root.SetParent(body, false);
@@ -73,6 +74,32 @@ namespace SabaProps.Tablet.Editors
                                 new Vector3(0.033f, 0.025f, 0.013f), i == 0 ? inner : outer, 0f);
                     break;
             }
+        }
+
+        private static void BuildFrame(Transform body, TabletTheme theme, string folder)
+        {
+            var root = new GameObject("Internal Frame").transform;
+            root.SetParent(body, false);
+            Material material = TabletAssets.CreateOrReplace(TabletAssets.ColorMaterial(theme.shader,
+                theme.frameColor, theme.smoothness, "Frame"), folder + "/Frame.mat");
+            for (int side = -1; side <= 1; side += 2)
+            {
+                FrameRail(root, new Vector3(side * theme.bodySize.x * 0.46f, 0f, 0f),
+                    new Vector3(0.006f, theme.bodySize.y * 0.88f, theme.bodyThickness * 0.7f), material);
+                FrameRail(root, new Vector3(0f, side * theme.bodySize.y * 0.44f, 0f),
+                    new Vector3(theme.bodySize.x * 0.94f, 0.006f, theme.bodyThickness * 0.7f), material);
+            }
+        }
+
+        private static void FrameRail(Transform parent, Vector3 position, Vector3 scale, Material material)
+        {
+            GameObject go = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            go.name = "Support Rail";
+            Object.DestroyImmediate(go.GetComponent<Collider>());
+            go.transform.SetParent(parent, false);
+            go.transform.localPosition = position;
+            go.transform.localScale = scale;
+            go.GetComponent<Renderer>().sharedMaterial = material;
         }
 
         private static void Blob(Transform parent, string name, Vector3 position, Vector3 scale, Material material, float angle)

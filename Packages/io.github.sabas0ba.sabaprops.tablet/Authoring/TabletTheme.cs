@@ -55,6 +55,8 @@ namespace SabaProps.Tablet.Authoring
         [Header("取っ手")]
         public bool handle = true;
         public Vector3 handleSize = new Vector3(0.11f, 0.016f, 0.014f);
+        [Tooltip("負の値では取っ手の高さの半分を使います。0 は直角です。")]
+        public float handleCornerRadius = -1f;
 
         [Header("色")]
         public Color bodyColor = new Color(0.16f, 0.17f, 0.19f, 1f);
@@ -73,6 +75,9 @@ namespace SabaProps.Tablet.Authoring
         public TabletDecoration decoration;
         public Color decorationColor = new Color(0.95f, 0.65f, 0.75f, 1f);
         public Color decorationInnerColor = new Color(1f, 0.90f, 0.94f, 1f);
+        [Tooltip("透明な筐体の内側に支持フレームを生成します。")]
+        public bool skeletonFrame;
+        public Color frameColor = new Color(0.16f, 0.35f, 0.38f, 1f);
 
         [Header("素材の差し替え (任意)")]
         [Tooltip("生成するマテリアルのシェーダー。未設定なら Standard です。色は _Color に設定します。")]

@@ -741,7 +741,8 @@ namespace SabaProps.Tablet.Editors
                 headerMesh = SaveMesh(TabletMeshBuilder.RoundedBox(
                     headerHeight * 1.8f, headerHeight, theme.buttonHeight, theme.buttonCornerRadius, CornerSegments), "HeaderCap");
                 handleMesh = SaveMesh(TabletMeshBuilder.RoundedBox(
-                    theme.handleSize.x, theme.handleSize.y, theme.handleSize.z, theme.handleSize.y * 0.5f, CornerSegments), "Handle");
+                    theme.handleSize.x, theme.handleSize.y, theme.handleSize.z,
+                    theme.handleCornerRadius < 0f ? theme.handleSize.y * 0.5f : theme.handleCornerRadius, CornerSegments), "Handle");
                 iconMesh = SaveMesh(TabletMeshBuilder.RoundedPanel(1f, 1f, 0f, 0), "Icon");
 
                 bodyMaterial = theme.bodyMaterial != null ? theme.bodyMaterial : SaveMaterial(theme.bodyColor, "Body");

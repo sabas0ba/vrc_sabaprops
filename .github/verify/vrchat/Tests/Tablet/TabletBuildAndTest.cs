@@ -10,13 +10,18 @@ namespace SabaProps.Tablet.WorldTests
     /// <summary>Batch entry point for the SDK's local Build &amp; Test workflow.</summary>
     public static class TabletBuildAndTest
     {
-        public static async void Run()
+        public static void Run() { Run(false); }
+
+        public static void RunGallery() { Run(true); }
+
+        private static async void Run(bool gallery)
         {
             try
             {
 #if UDON
                 UdonSharpCompilerV1.CompileSync(new UdonSharpCompileOptions { IsEditorBuild = true });
-                TabletSampleScene.Create();
+                if (gallery) TabletThemeGallery.Create();
+                else TabletSampleScene.Create();
                 EditorWindow.GetWindow<VRCSdkControlPanel>();
                 if (!VRCSdkControlPanel.TryGetBuilder<IVRCSdkWorldBuilderApi>(out var builder))
                 {

@@ -33,9 +33,11 @@ ClientSim テストは実際の Udon を介して召喚、収納、ページ送�
 ベッドの 5 面の向きと Collider の独立切替、PostEffect の 3 スライダーから
 Animator／Volume weight への反映と Volume の ON/OFF も検査します。
 `TestResults/tablet-bed-mirrors.png` と `tablet-post-effects.png` に各ページの表示画像を保存します。
-6 種の Theme について、装飾に Collider がないこと、既存のページとボタンを保持すること、
+11 種の Theme について、装飾に Collider がないこと、既存のページとボタンを保持すること、
 編集用コピーが元のプリセットを変更しないことも検査します。
 セットアップ用ログは `SETUP_LOG` で出力先を指定できます。
+ClientSim で通常のデモに加えて展示 World を実行し、全テーマの召喚・ページ送り・World のミラー操作を検査します。
+展示 World のローカル Build & Test は `SabaProps.Tablet.WorldTests.TabletBuildAndTest.RunGallery` で実行できます。
 
 ローカル VRChat Build & Test は生成済みプロジェクトで次のメソッドを実行します。
 非同期処理完了時に Editor を終了するため、`-quit` は指定しません。

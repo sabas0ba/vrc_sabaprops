@@ -11,6 +11,10 @@
 - 差し替え用 Theme 6 種：Sakura Ribbon、Mint Cat、Honey Bear、Lilac Stars、Peach Blossom、Sky Cloud。
 - Theme Presets ウィンドウ、編集用コピー、6 種を同じ内容で並べる比較シーン。
 - Collider を追加しないリボン・猫耳・くま耳・星・花・雲のメッシュ装飾。
+- Modern Slate、Angular Graphite、Skeleton Glass、Whiteboard、Minimal Ivory の Theme 5 種。
+- 透明な筐体と支持フレーム、取っ手の角丸設定。
+- テーマ展示を操作可能な World デモへ変更。World Descriptor と元の召喚操作を保持し、展示台から個別に召喚。
+- 展示タブレット間で Toggle のモジュールと状態表示を共有。
 
 - キー入力、頭上からの取り出し、ワールド内アイテムの Interact で呼び出すタブレット本体。
 - VR では指先で押し込み、Desktop では Interact で押す物理ボタン。

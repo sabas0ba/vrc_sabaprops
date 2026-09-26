@@ -13,6 +13,11 @@ namespace SabaProps.Tablet.WorldTests
         [TestCase(3)]
         [TestCase(4)]
         [TestCase(5)]
+        [TestCase(6)]
+        [TestCase(7)]
+        [TestCase(8)]
+        [TestCase(9)]
+        [TestCase(10)]
         public void Preset_ChangesAppearanceAndPreservesControls(int index)
         {
             TabletSampleScene.Create();
@@ -22,13 +27,26 @@ namespace SabaProps.Tablet.WorldTests
             int pages = controller.pages.Length;
             TabletTheme preset = TabletThemePresets.Load(index);
             Assert.That(preset, Is.Not.Null);
-            Assert.That(preset.decoration, Is.Not.EqualTo(TabletDecoration.None));
             TabletThemePresets.Apply(definition, preset);
             Assert.That(controller.buttons.Length, Is.EqualTo(buttons));
             Assert.That(controller.pages.Length, Is.EqualTo(pages));
             Transform decoration = controller.body.Find("Theme Decoration");
-            Assert.That(decoration, Is.Not.Null);
-            Assert.That(decoration.GetComponentsInChildren<Collider>().Length, Is.Zero);
+            if (preset.decoration != TabletDecoration.None)
+            {
+                Assert.That(decoration, Is.Not.Null);
+                Assert.That(decoration.GetComponentsInChildren<Collider>().Length, Is.Zero);
+            }
+            else Assert.That(decoration, Is.Null);
+            if (preset.skeletonFrame)
+            {
+                Transform frame = controller.body.Find("Internal Frame");
+                Assert.That(frame, Is.Not.Null);
+                Assert.That(frame.GetComponentsInChildren<Collider>().Length, Is.Zero);
+                Material housing = controller.body.Find("Housing").GetComponent<Renderer>().sharedMaterial;
+                Assert.That(housing.renderQueue, Is.EqualTo(3000));
+                Assert.That(housing.IsKeywordEnabled("_ALPHAPREMULTIPLY_ON"), Is.True);
+                Assert.That(housing.color.a, Is.LessThan(1f));
+            }
             Assert.That(controller.handle, Is.Not.Null);
             Color actual = controller.body.Find("Housing").GetComponent<Renderer>().sharedMaterial.color;
             Assert.That(Vector4.Distance(actual, preset.bodyColor), Is.LessThan(0.00001f));
