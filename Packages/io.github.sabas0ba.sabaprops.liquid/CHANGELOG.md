@@ -64,6 +64,8 @@
 - Prefab：持ち運べる放水具（Liquid Spray Gun）
 - デモ：サウナで体を肌として扱う設定と水着の人型、持ち運べるノズルでかけ合う区画
 - ワールドのテスト：全 UdonBehaviour のシリアライズ済みプログラムが読み込めることを検査
+- サンプルの導入とレビューの文書（`Documentation~/demo.md`）と、ClientSim 実行中に撮ったスクリーンショット
+- 比較シーンを ClientSim で動かし、全マネキンへの付着を検査して確認画像を出すテスト
 - `LiquidResetPanel` と Prefab（Liquid Reset Panel）：自分、マネキン、全員の付着を全クライアントで消す。3 つのシーンのスポーン横に配置
 - アバターが変わったプレイヤーの付着を消す（`LiquidCanvasPool.OnAvatarChanged`）
 - 持ち運べるノズルに中身を示すタンク（液体の色、蛍光と蓄光は発光）。すべての液体のノズルを並べた棚をデモに追加

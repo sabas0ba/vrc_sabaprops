@@ -174,6 +174,72 @@ namespace SabaProps.Liquid.WorldTests
         }
 
         /// <summary>
+        /// Runs the comparison world unattended and writes one review image per
+        /// row: liquids, surfaces, body colours and liquid colours.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator Comparison_PutsLiquidOnEveryMannequinUnattended()
+        {
+            UdonSharpCompilerV1.CompileSync(new UdonSharpCompileOptions { IsEditorBuild = true });
+            LiquidSampleScene.CreateComparison();
+            EditorSceneManager.OpenScene(LiquidSampleScene.ComparisonScenePath);
+
+            _optionsEnabled = EditorSettings.enterPlayModeOptionsEnabled;
+            _options = EditorSettings.enterPlayModeOptions;
+            EditorSettings.enterPlayModeOptionsEnabled = true;
+            EditorSettings.enterPlayModeOptions = EnterPlayModeOptions.DisableDomainReload;
+            ClientSimRuntimeLoader.BeginUnityTesting(new ClientSimSettings
+            {
+                enableClientSim = true,
+                initializationDelay = 0f,
+                spawnPlayer = true,
+                localPlayerIsMaster = true,
+                displayLogs = false,
+            });
+
+            LogAssert.ignoreFailingMessages = true;
+            yield return new EnterPlayMode();
+            for (int i = 0; i < 120; i++)
+            {
+                yield return null;
+            }
+
+            LogAssert.ignoreFailingMessages = false;
+            var menu = Object.FindObjectOfType<ClientSimMenu>(true);
+            if (menu != null)
+            {
+                menu.CloseMenu();
+            }
+
+            float until = Time.time + RunSeconds;
+            while (Time.time < until)
+            {
+                yield return null;
+            }
+
+            LiquidBodyCanvas[] m = Object.FindObjectOfType<LiquidCanvasPool>().mannequins;
+            int liquids = LiquidSourceBuilder.PresetNames.Length;
+            int surfaces = liquids;
+            int bodies = surfaces + LiquidSurfaceBuilder.PresetNames.Length + 1;
+            int colours = bodies + 7;
+            Assert.AreEqual(colours + LiquidSourceBuilder.GreyscalePaintNames.Length + 2, m.Length,
+                "the pool order changed; update the indices");
+
+            CaptureGrid("liquid-comparison-liquids.png", m, 0, liquids);
+            CaptureGrid("liquid-comparison-surfaces.png", m, surfaces, bodies - surfaces);
+            CaptureGrid("liquid-comparison-surfaces-closeup.png", m, surfaces, bodies - surfaces, 1.3f, 1.35f);
+            CaptureGrid("liquid-comparison-body-colours.png", m, bodies, colours - bodies);
+            CaptureGrid("liquid-comparison-liquid-colours.png", m, colours, m.Length - colours);
+            Capture("liquid-comparison-overview.png", new Vector3(0f, 8f, -10f), new Vector3(0f, 0.5f, 10f), 70f);
+
+            foreach (LiquidBodyCanvas mannequin in m)
+            {
+                Assert.Greater(Coverage(mannequin.projectorMaterial), 0f,
+                    mannequin.transform.parent.parent.name + ": nothing has landed after " + RunSeconds + " s");
+            }
+        }
+
+        /// <summary>
         /// How much of the canvas holds pigment or film. The tank and the mud tub
         /// work through immersion, which the canvas does not store, so those two
         /// count their immersion amounts instead.
