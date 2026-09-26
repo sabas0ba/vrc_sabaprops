@@ -88,6 +88,11 @@ namespace SabaProps.Liquid.WorldTests
             CaptureGrid("liquid-demo-sources.png", pool.mannequins, liquids, pool.mannequins.Length - liquids);
             Capture("liquid-demo-overview.png", new Vector3(0f, 7f, -14f), new Vector3(0f, 0.5f, 2f), 60f);
             CaptureGrid("liquid-demo-immersion.png", pool.mannequins, liquids + 1, 2, 1.7f, 0.75f);
+            int surfaces = liquids + 7;
+            CaptureGrid("liquid-demo-surfaces.png", pool.mannequins, surfaces, 7);
+            CaptureGrid("liquid-demo-surfaces-closeup.png", pool.mannequins, surfaces, 7, 1.3f, 1.35f);
+            CaptureGrid("liquid-demo-body-colours.png", pool.mannequins, surfaces + 7, 7);
+            CaptureGrid("liquid-demo-liquid-colours.png", pool.mannequins, surfaces + 14, 7);
             foreach (LiquidBodyCanvas mannequin in pool.mannequins)
             {
                 string bay = mannequin.transform.parent.parent.name;

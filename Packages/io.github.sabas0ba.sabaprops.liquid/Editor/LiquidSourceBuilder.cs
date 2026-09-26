@@ -25,6 +25,18 @@ namespace SabaProps.Liquid.Editors
         public const string MudName = "Mud";
         public const string SlimeName = "Slime";
         public const string SyrupName = "Syrup";
+        public const string YellowPaintName = "Yellow Paint";
+        public const string BlackPaintName = "Black Paint";
+        public const string DarkGreyPaintName = "Dark Grey Paint";
+        public const string GreyPaintName = "Grey Paint";
+        public const string LightGreyPaintName = "Light Grey Paint";
+        public const string WhitePaintName = "White Paint";
+
+        /// <summary>Paint from black to white, for seeing how pigment lightness reads on a body.</summary>
+        public static readonly string[] GreyscalePaintNames =
+        {
+            BlackPaintName, DarkGreyPaintName, GreyPaintName, LightGreyPaintName, WhitePaintName,
+        };
 
         public const string StreamMaterialPath = LiquidAssets.MaterialFolder + "/LiquidStream.mat";
 
@@ -140,6 +152,24 @@ namespace SabaProps.Liquid.Editors
                     return;
                 case BluePaintName:
                     Set(profile, new Color(0.04f, 0.18f, 0.72f), 1f, 0.5f, 0.85f, 0.6f, 240f, 0f, 0.3f);
+                    return;
+                case YellowPaintName:
+                    Set(profile, new Color(0.95f, 0.78f, 0.08f), 1f, 0.5f, 0.85f, 0.6f, 240f, 0f, 0.3f);
+                    return;
+                case BlackPaintName:
+                    Set(profile, new Color(0.03f, 0.03f, 0.03f), 1f, 0.5f, 0.85f, 0.6f, 240f, 0f, 0.3f);
+                    return;
+                case DarkGreyPaintName:
+                    Set(profile, new Color(0.25f, 0.25f, 0.25f), 1f, 0.5f, 0.85f, 0.6f, 240f, 0f, 0.3f);
+                    return;
+                case GreyPaintName:
+                    Set(profile, new Color(0.5f, 0.5f, 0.5f), 1f, 0.5f, 0.85f, 0.6f, 240f, 0f, 0.3f);
+                    return;
+                case LightGreyPaintName:
+                    Set(profile, new Color(0.75f, 0.75f, 0.75f), 1f, 0.5f, 0.85f, 0.6f, 240f, 0f, 0.3f);
+                    return;
+                case WhitePaintName:
+                    Set(profile, new Color(0.96f, 0.96f, 0.95f), 1f, 0.5f, 0.85f, 0.6f, 240f, 0f, 0.3f);
                     return;
                 case MudName:
                     Set(profile, new Color(0.44f, 0.31f, 0.19f), 0.9f, 0.8f, 0.6f, 0.85f, 180f, 0f, 0.35f);

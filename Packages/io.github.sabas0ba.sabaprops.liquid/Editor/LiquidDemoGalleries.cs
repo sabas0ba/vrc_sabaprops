@@ -171,6 +171,169 @@ namespace SabaProps.Liquid.Editors
             }
         }
 
+        public const string SurfaceRowName = "Surface Comparison";
+        public const string BodyColourRowName = "Body Colour Comparison";
+        public const string LiquidColourRowName = "Liquid Colour Comparison";
+
+        /// <summary>Depth of the three rows behind the mirror, facing the spawn.</summary>
+        public const float SurfaceRowZ = 12f;
+        public const float BodyColourRowZ = 16.5f;
+        public const float LiquidColourRowZ = 21f;
+
+        /// <summary>
+        /// The same water and paint on each kind of surface: soft cloth, hard
+        /// cloth, leather, hair, skin, plastic, and a body with avatar regions
+        /// (hair on the head, skin on the face and hands, cloth elsewhere).
+        /// </summary>
+        public static void BuildSurfaceRow(LiquidCanvasPool pool, Material update, List<LiquidBodyCanvas> mannequins)
+        {
+            var row = new GameObject(SurfaceRowName);
+            Material device = Device();
+            LiquidProfile water = LiquidSourceBuilder.GetProfile(LiquidSourceBuilder.WaterName);
+            LiquidProfile paint = LiquidSourceBuilder.GetProfile(LiquidSourceBuilder.RedPaintName);
+
+            string[] names = LiquidSurfaceBuilder.PresetNames;
+            Color[] colours =
+            {
+                new Color(0.46f, 0.48f, 0.52f), new Color(0.24f, 0.3f, 0.44f), new Color(0.2f, 0.12f, 0.07f),
+                new Color(0.13f, 0.1f, 0.08f), new Color(0.86f, 0.68f, 0.58f), new Color(0.86f, 0.86f, 0.85f),
+            };
+            float[] smoothness = { 0.05f, 0.2f, 0.55f, 0.4f, 0.35f, 0.75f };
+
+            for (int i = 0; i < names.Length; i++)
+            {
+                Transform bay = RearBay(row.transform, names[i], i, SurfaceRowZ);
+                mannequins.Add(LiquidMannequinBuilder.Create(bay, "Mannequin", mannequins.Count,
+                    LiquidMannequinBuilder.Skin(names[i], colours[i], smoothness[i]), update, true,
+                    LiquidSurfaceBuilder.GetSurface(names[i]), false, null, null));
+                WaterAndPaint(bay, pool, water, paint, device);
+                Label(bay, names[i], bay.position + new Vector3(0f, 2.5f, -0.9f), bay.rotation);
+            }
+
+            Transform avatar = RearBay(row.transform, "Avatar Regions", names.Length, SurfaceRowZ);
+            mannequins.Add(LiquidMannequinBuilder.Create(avatar, "Mannequin", mannequins.Count,
+                LiquidMannequinBuilder.Skin(LiquidSurfaceBuilder.SoftClothName, colours[0], smoothness[0]), update, true,
+                LiquidSurfaceBuilder.GetSurface(LiquidSurfaceBuilder.SoftClothName), true,
+                LiquidMannequinBuilder.Skin(LiquidSurfaceBuilder.HairName, colours[3], smoothness[3]),
+                LiquidMannequinBuilder.Skin(LiquidSurfaceBuilder.SkinName, colours[4], smoothness[4])));
+            WaterAndPaint(avatar, pool, water, paint, device);
+            Label(avatar, "Avatar regions", avatar.position + new Vector3(0f, 2.5f, -0.9f), avatar.rotation);
+        }
+
+        /// <summary>The same water and mud on bodies of different colours, all soft cloth.</summary>
+        public static void BuildBodyColourRow(LiquidCanvasPool pool, Material update, List<LiquidBodyCanvas> mannequins)
+        {
+            var row = new GameObject(BodyColourRowName);
+            Material device = Device();
+            LiquidProfile water = LiquidSourceBuilder.GetProfile(LiquidSourceBuilder.WaterName);
+            LiquidProfile mud = LiquidSourceBuilder.GetProfile(LiquidSourceBuilder.MudName);
+
+            string[] names = { "White", "Light Grey", "Grey", "Black", "Red", "Blue", "Skin Tone" };
+            Color[] colours =
+            {
+                new Color(0.92f, 0.92f, 0.9f), new Color(0.68f, 0.68f, 0.68f), new Color(0.4f, 0.4f, 0.4f),
+                new Color(0.06f, 0.06f, 0.06f), new Color(0.62f, 0.08f, 0.09f), new Color(0.1f, 0.22f, 0.55f),
+                new Color(0.86f, 0.68f, 0.58f),
+            };
+
+            for (int i = 0; i < names.Length; i++)
+            {
+                Transform bay = RearBay(row.transform, names[i], i, BodyColourRowZ);
+                mannequins.Add(LiquidMannequinBuilder.Create(bay, "Mannequin", mannequins.Count,
+                    LiquidMannequinBuilder.Skin("Colour" + names[i], colours[i], 0.12f), update, true,
+                    LiquidSurfaceBuilder.GetSurface(LiquidSurfaceBuilder.SoftClothName), false, null, null));
+                WaterAndPaint(bay, pool, water, mud, device);
+                Label(bay, names[i] + " body", bay.position + new Vector3(0f, 2.5f, -0.9f), bay.rotation);
+            }
+        }
+
+        /// <summary>
+        /// Paint from black to white on the same pale body, then red, blue, yellow
+        /// and white sprayed together onto a pale body and a black one.
+        /// </summary>
+        public static void BuildLiquidColourRow(LiquidCanvasPool pool, Material update, List<LiquidBodyCanvas> mannequins)
+        {
+            var row = new GameObject(LiquidColourRowName);
+            Material device = Device();
+
+            string[] greys = LiquidSourceBuilder.GreyscalePaintNames;
+            for (int i = 0; i < greys.Length; i++)
+            {
+                Transform bay = RearBay(row.transform, greys[i], i, LiquidColourRowZ);
+                mannequins.Add(LiquidMannequinBuilder.Create(bay, "Mannequin", mannequins.Count,
+                    LiquidMannequinBuilder.LightSkin(), update, true,
+                    LiquidSurfaceBuilder.GetSurface(LiquidSurfaceBuilder.HardClothName), false, null, null));
+                LiquidSprayer spray = LiquidSourceBuilder.CreateSprayer(bay, "Sprayer", pool,
+                    LiquidSourceBuilder.GetProfile(greys[i]),
+                    bay.position + new Vector3(0.9f, 1.5f, -2.4f), bay.position + new Vector3(0f, 1.25f, 0f), device);
+                spray.burstInterval = 1.6f;
+                spray.sweepAngle = 12f;
+                spray.phaseOffset = i * 0.3f;
+                UdonSharpEditorUtility.CopyProxyToUdon(spray);
+                Label(bay, greys[i], bay.position + new Vector3(0f, 2.5f, -0.9f), bay.rotation);
+            }
+
+            string[] mix =
+            {
+                LiquidSourceBuilder.RedPaintName, LiquidSourceBuilder.BluePaintName,
+                LiquidSourceBuilder.YellowPaintName, LiquidSourceBuilder.WhitePaintName,
+            };
+
+            for (int b = 0; b < 2; b++)
+            {
+                bool dark = b == 1;
+                Transform bay = RearBay(row.transform, dark ? "Mixed On Black" : "Mixed", greys.Length + b, LiquidColourRowZ);
+                mannequins.Add(LiquidMannequinBuilder.Create(bay, "Mannequin", mannequins.Count,
+                    dark ? LiquidMannequinBuilder.DarkSkin() : LiquidMannequinBuilder.LightSkin(), update, true,
+                    LiquidSurfaceBuilder.GetSurface(LiquidSurfaceBuilder.HardClothName), false, null, null));
+
+                for (int c = 0; c < mix.Length; c++)
+                {
+                    float angle = (c - 1.5f) * 22f;
+                    Vector3 from = bay.position + Quaternion.Euler(0f, angle, 0f) * new Vector3(0f, 1.2f + c * 0.15f, -2.4f);
+                    LiquidSprayer spray = LiquidSourceBuilder.CreateSprayer(bay, mix[c] + " Sprayer", pool,
+                        LiquidSourceBuilder.GetProfile(mix[c]), from, bay.position + new Vector3(0f, 1.2f, 0f), device);
+                    spray.burstInterval = 2f;
+                    spray.raysPerBurst = 5;
+                    spray.phaseOffset = c * 0.5f;
+                    spray.sweepAngle = 8f;
+                    UdonSharpEditorUtility.CopyProxyToUdon(spray);
+                }
+
+                Label(bay, dark ? "Mixed on black" : "Mixed colours", bay.position + new Vector3(0f, 2.5f, -0.9f), bay.rotation);
+            }
+        }
+
+        /// <summary>Water every 1.2 s from the right and a second liquid every 3 s from the left.</summary>
+        private static void WaterAndPaint(Transform bay, LiquidCanvasPool pool, LiquidProfile water, LiquidProfile second,
+            Material device)
+        {
+            LiquidSprayer spray = LiquidSourceBuilder.CreateSprayer(bay, "Water Sprayer", pool, water,
+                bay.position + new Vector3(0.9f, 1.5f, -2.4f), bay.position + new Vector3(0f, 1.25f, 0f), device);
+            spray.burstInterval = 1.2f;
+            spray.coneAngle = 10f;
+            spray.sweepAngle = 12f;
+            UdonSharpEditorUtility.CopyProxyToUdon(spray);
+
+            LiquidSprayer other = LiquidSourceBuilder.CreateSprayer(bay, "Second Sprayer", pool, second,
+                bay.position + new Vector3(-0.9f, 1.1f, -2.4f), bay.position + new Vector3(0f, 1f, 0f), device);
+            other.burstInterval = 2f;
+            other.raysPerBurst = 5;
+            other.coneAngle = 8f;
+            other.phaseOffset = 0.7f;
+            UdonSharpEditorUtility.CopyProxyToUdon(other);
+        }
+
+        /// <summary>A bay in one of the rows behind the mirror, facing the spawn (-Z).</summary>
+        private static Transform RearBay(Transform row, string name, int index, float z)
+        {
+            var bay = new GameObject(name);
+            bay.transform.SetParent(row, false);
+            bay.transform.position = new Vector3(-9f + index * RowSpacing, 0f, z);
+            bay.transform.rotation = Quaternion.Euler(0f, 180f, 0f);
+            return bay.transform;
+        }
+
         private static Transform Bay(Transform row, string name, int index, Quaternion facing)
         {
             var bay = new GameObject(name);

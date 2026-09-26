@@ -55,6 +55,7 @@ namespace SabaProps.Liquid
 
             Run("stamp falloff is one at the centre and zero at the radius", StampFalloffShape);
             Run("the depth mask keeps nearby surfaces and drops distant ones", DepthMaskSeparatesSurfaces);
+            Run("body regions put hair on the crown, skin on the face and hands", RegionsFollowTheBody);
             Run("evaporation encoding matches the drying time", EvaporationEncodingMatchesDryingTime);
             Run("immersion level follows the body axis", ImmersionLevelFollowsTheBodyAxis);
             Run("the film line drains down and stops at the bottom", FilmLineDrains);
@@ -398,6 +399,46 @@ namespace SabaProps.Liquid
             }
         }
 
+        /// <summary>
+        /// 頭頂と後頭部は髪、顔の正面は肌、手は肌、胴は衣服。重みは非負で和が 1。
+        /// 頭と手を無効（半径 0）にすると全身が衣服になること。
+        /// </summary>
+        private static void RegionsFollowTheBody()
+        {
+            var canvas = new LiquidBodyCanvas();
+            Vector4 head = new Vector4(0f, 1.66f, 0f, 0.13f);
+            Vector3 face = Vector3.forward;
+            Vector3 up = Vector3.up;
+            Vector4 left = new Vector4(-0.34f, 0.78f, 0f, 0.06f);
+            Vector4 right = new Vector4(0.34f, 0.78f, 0f, 0.06f);
+
+            Vector3 crown = canvas.RegionWeights(new Vector3(0f, 1.78f, 0f), head, face, up, left, right);
+            Vector3 back = canvas.RegionWeights(new Vector3(0f, 1.66f, -0.11f), head, face, up, left, right);
+            Vector3 front = canvas.RegionWeights(new Vector3(0f, 1.64f, 0.11f), head, face, up, left, right);
+            Vector3 hand = canvas.RegionWeights(new Vector3(0.34f, 0.8f, 0.03f), head, face, up, left, right);
+            Vector3 chest = canvas.RegionWeights(new Vector3(0f, 1.3f, 0.11f), head, face, up, left, right);
+
+            Require(crown.y > 0.9f, $"the crown is not hair: {crown}");
+            Require(back.y > 0.9f, $"the back of the head is not hair: {back}");
+            Require(front.z > 0.9f, $"the face is not skin: {front}");
+            Require(hand.z > 0.9f, $"the hand is not skin: {hand}");
+            Require(chest.x > 0.99f, $"the chest is not clothing: {chest}");
+
+            var random = new System.Random(29);
+            for (int i = 0; i < 1000; i++)
+            {
+                Vector3 p = new Vector3(
+                    (float)(random.NextDouble() - 0.5), (float)random.NextDouble() * 2f, (float)(random.NextDouble() - 0.5));
+                Vector3 w = canvas.RegionWeights(p, head, face, up, left, right);
+                Require(w.x >= -1e-5f && w.y >= -1e-5f && w.z >= -1e-5f, $"negative weight {w}");
+                Require(Mathf.Abs(w.x + w.y + w.z - 1f) < Tolerance, $"weights {w} do not sum to one");
+            }
+
+            Vector4 none = new Vector4(0f, 0f, 0f, 0f);
+            Vector3 off = canvas.RegionWeights(new Vector3(0f, 1.78f, 0f), none, face, up, none, none);
+            Require(off.x == 1f, $"with regions off the crown is not clothing: {off}");
+        }
+
         private static void EvaporationEncodingMatchesDryingTime()
         {
             var canvas = new LiquidBodyCanvas();
@@ -479,6 +520,18 @@ namespace SabaProps.Liquid
             // 奥行きの重み。DepthMaskSeparatesSurfaces が C# 側を固定し、ここで HLSL 側を固定します。
             string depthMask = "1.0 - smoothstep(tolerance, tolerance * 2.0, abs(surfaceDepth - storedDepth))";
             Require(canvasInclude.Contains(depthMask), "SabaLiquidDepthMask no longer fades between one and two tolerances");
+
+            // 部位の推定。RegionsFollowTheBody が C# 側を固定し、ここで HLSL 側の閾値を固定します。
+            foreach (string rule in new[]
+            {
+                "1.0 - smoothstep(head.w * 0.95, head.w * 1.25, distance)",
+                "smoothstep(0.1, 0.5, dot(direction, face))",
+                "smoothstep(0.35, 0.7, dot(direction, up))",
+                "smoothstep(leftHand.w * 0.9, leftHand.w * 1.4,",
+            })
+            {
+                Require(canvasInclude.Contains(rule), $"SabaLiquidRegionWeights no longer contains '{rule}'");
+            }
         }
 
         private static float DefineValue(string source, string name)

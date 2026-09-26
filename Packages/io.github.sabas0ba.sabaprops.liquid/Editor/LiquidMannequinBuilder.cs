@@ -40,6 +40,13 @@ namespace SabaProps.Liquid.Editors
             return LiquidAssets.CreateOrLoadSurfaceMaterial(LightSkinPath, new Color(0.82f, 0.79f, 0.74f), 0.35f);
         }
 
+        /// <summary>A body material of the given colour, for the colour and surface comparisons.</summary>
+        public static Material Skin(string name, Color colour, float smoothness)
+        {
+            return LiquidAssets.CreateOrLoadSurfaceMaterial(
+                LiquidAssets.MaterialFolder + "/Mannequin_" + name.Replace(" ", "") + ".mat", colour, smoothness);
+        }
+
         /// <summary>A dark, matte cloth. Wet darkening barely shows here; the highlights do.</summary>
         public static Material DarkSkin()
         {
@@ -53,6 +60,19 @@ namespace SabaProps.Liquid.Editors
         /// </summary>
         public static LiquidBodyCanvas Create(Transform parent, string name, int index, Material skin, Material update,
             bool turntable)
+        {
+            return Create(parent, name, index, skin, update, turntable,
+                LiquidSurfaceBuilder.GetSurface(LiquidSurfaceBuilder.SoftClothName), false, null, null);
+        }
+
+        /// <summary>
+        /// The same, with the surface the liquid lands on. With
+        /// <paramref name="regions"/>, the head is hair and the face and hands are
+        /// skin, as on an avatar; the head and hands can then be given their own
+        /// materials so the regions read at a glance.
+        /// </summary>
+        public static LiquidBodyCanvas Create(Transform parent, string name, int index, Material skin, Material update,
+            bool turntable, LiquidSurfaceProfile surface, bool regions, Material headMaterial, Material handMaterial)
         {
             var root = new GameObject(name);
             root.transform.SetParent(parent, false);
@@ -79,6 +99,19 @@ namespace SabaProps.Liquid.Editors
             hips.transform.localPosition = new Vector3(0f, HipHeight, 0f);
 
             BuildFigure(body, skin);
+            Transform head = body.Find("Head");
+            Transform leftHand = body.Find("Left Hand");
+            Transform rightHand = body.Find("Right Hand");
+            if (headMaterial != null)
+            {
+                head.GetComponent<Renderer>().sharedMaterial = headMaterial;
+            }
+
+            if (handMaterial != null)
+            {
+                leftHand.GetComponent<Renderer>().sharedMaterial = handMaterial;
+                rightHand.GetComponent<Renderer>().sharedMaterial = handMaterial;
+            }
 
             // Solid to walk into, on the mannequin layer so it never blocks liquid.
             var solid = new GameObject("Collider");
@@ -111,6 +144,16 @@ namespace SabaProps.Liquid.Editors
             canvas.anchorHeadAbove = 0.78f;
             canvas.anchorBodyRadius = 0.2f;
             canvas.faceResolution = FaceResolution;
+            canvas.bodySurface = surface;
+            canvas.hairSurface = LiquidSurfaceBuilder.GetSurface(LiquidSurfaceBuilder.HairName);
+            canvas.skinSurface = LiquidSurfaceBuilder.GetSurface(LiquidSurfaceBuilder.SkinName);
+            canvas.estimateRegions = regions;
+            canvas.headAnchor = head;
+            canvas.leftHandAnchor = leftHand;
+            canvas.rightHandAnchor = rightHand;
+            // The figure's head is 0.2 m across; the region sphere a little larger.
+            canvas.headRadius = 0.13f;
+            canvas.handRadius = 0.06f;
             UdonSharpEditorUtility.CopyProxyToUdon(canvas);
             EditorUtility.SetDirty(canvas);
             return canvas;

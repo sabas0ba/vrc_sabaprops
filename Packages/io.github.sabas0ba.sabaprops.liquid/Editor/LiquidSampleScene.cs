@@ -63,7 +63,7 @@ namespace SabaProps.Liquid.Editors
         public const float MudFloorY = -0.45f;
         public const float MudSurfaceY = 0f;
 
-        private const float GroundHalfSize = 17f;
+        private const float GroundHalfSize = 25f;
         private const float GroundThickness = 2f;
 
         [MenuItem("Tools/SabaProps/Liquid/Create Sample Scene", false, 1)]
@@ -140,6 +140,9 @@ namespace SabaProps.Liquid.Editors
             var mannequins = new List<LiquidBodyCanvas>();
             LiquidDemoGalleries.BuildLiquidRow(pool, update, mannequins);
             LiquidDemoGalleries.BuildSourceRow(pool, update, mannequins);
+            LiquidDemoGalleries.BuildSurfaceRow(pool, update, mannequins);
+            LiquidDemoGalleries.BuildBodyColourRow(pool, update, mannequins);
+            LiquidDemoGalleries.BuildLiquidColourRow(pool, update, mannequins);
             pool.mannequins = mannequins.ToArray();
             UdonSharpEditorUtility.CopyProxyToUdon(pool);
             EditorUtility.SetDirty(pool);
@@ -433,7 +436,10 @@ namespace SabaProps.Liquid.Editors
             text.AppendLine($"・{WaterGunsName}（左手前）: 持って使用ボタンを押している間、放水します。命中は全員に同期されます。");
             text.AppendLine($"・{LiquidDemoGalleries.LiquidRowName}（左の列）: 同じ設定の Sprayer で、液体ごとの付き方・垂れ方・乾き方を比べます。");
             text.AppendLine($"・{LiquidDemoGalleries.SourceRowName}（右の列）: シャワー、水槽、泥、水流、滴り、体の色の違いを比べます。");
-            text.AppendLine("左右の列はサーバー時刻に合わせて自動で動き、操作しなくても変化が見えます。");
+            text.AppendLine($"・{LiquidDemoGalleries.SurfaceRowName}（鏡の奥 1 列目）: 柔らかい布、硬い布、革、髪、肌、樹脂、アバターの部位推定を比べます。");
+            text.AppendLine($"・{LiquidDemoGalleries.BodyColourRowName}（2 列目）: 体の色による見え方の違いを比べます。");
+            text.AppendLine($"・{LiquidDemoGalleries.LiquidColourRowName}（3 列目）: 黒から白の塗料と、複数色を同時にかけた場合を比べます。");
+            text.AppendLine("比較の列はサーバー時刻に合わせて自動で動き、操作しなくても変化が見えます。");
             return text.ToString();
         }
     }

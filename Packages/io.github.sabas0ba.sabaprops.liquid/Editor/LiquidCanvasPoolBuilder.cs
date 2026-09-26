@@ -95,6 +95,7 @@ namespace SabaProps.Liquid.Editors
             canvas.projectorObject = projectorObject;
             canvas.projectorMaterial = projectorMaterial;
             canvas.updateMaterial = update;
+            LiquidSurfaceBuilder.AssignAvatarDefaults(canvas);
             UdonSharpEditorUtility.CopyProxyToUdon(canvas);
             EditorUtility.SetDirty(canvas);
             return canvas;

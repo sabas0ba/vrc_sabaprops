@@ -94,6 +94,44 @@ float SabaLiquidDepthMask(float surfaceDepth, float storedDepth, float coverage,
     return lerp(1.0, mask, saturate(coverage));
 }
 
+// 受け手の部位の重み。x: 衣服（体）, y: 髪, z: 肌。和は 1 です。
+//
+// Projector は受け手の実際のマテリアルを読めないため、部位は位置から推定します。
+// 頭の球の中は髪、ただし顔の向き側で頭頂でない所は肌、手の球の中は肌、それ以外は衣服です。
+// C# 側の LiquidCanvasSolver.RegionWeights と同じ定義です。
+// head.w と hand の w は半径で、0 なら その部位を使いません。
+float3 SabaLiquidRegionWeights(float3 p, float4 head, float3 face, float3 up, float4 leftHand, float4 rightHand)
+{
+    float hair = 0.0;
+    float skin = 0.0;
+
+    if (head.w > 0.0)
+    {
+        float3 offset = p - head.xyz;
+        float distance = length(offset);
+        float inside = 1.0 - smoothstep(head.w * 0.95, head.w * 1.25, distance);
+        float3 direction = offset / max(distance, 1e-5);
+        float front = smoothstep(0.1, 0.5, dot(direction, face));
+        float crown = smoothstep(0.35, 0.7, dot(direction, up));
+        float faceSkin = front * (1.0 - crown);
+        hair = inside * (1.0 - faceSkin);
+        skin = inside * faceSkin;
+    }
+
+    if (leftHand.w > 0.0)
+    {
+        skin = max(skin, 1.0 - smoothstep(leftHand.w * 0.9, leftHand.w * 1.4, length(p - leftHand.xyz)));
+    }
+
+    if (rightHand.w > 0.0)
+    {
+        skin = max(skin, 1.0 - smoothstep(rightHand.w * 0.9, rightHand.w * 1.4, length(p - rightHand.xyz)));
+    }
+
+    hair = min(hair, 1.0 - skin);
+    return float3(1.0 - hair - skin, hair, skin);
+}
+
 float SabaLiquidStampFalloff(float distance, float radius)
 {
     float t = saturate(1.0 - (distance * distance) / max(radius * radius, 1e-8));
@@ -117,6 +155,55 @@ float SabaLiquidValueNoise(float2 p)
     float c = SabaLiquidHash(cell + float2(0.0, 1.0));
     float d = SabaLiquidHash(cell + float2(1.0, 1.0));
     return lerp(lerp(a, b, s.x), lerp(c, d, s.x), s.y);
+}
+
+float2 SabaLiquidHash2(float2 p)
+{
+    return float2(SabaLiquidHash(p), SabaLiquidHash(p + 19.19));
+}
+
+// 撥水面の水滴。metric は面内の座標（m）、size は水滴の間隔（m）、wet は液量です。
+// x: 水滴の中か（縁を滑らかにした被覆）, y: 水滴の高さ（球の断面）, zw: 水滴の中心から外向きの傾き。
+// 液量が少ないほど水滴は小さく疎らになります。
+float4 SabaLiquidBeads(float2 metric, float size, float wet)
+{
+    float2 position = metric / max(size, 1e-4);
+    float2 cell = floor(position);
+    float2 local = position - cell;
+    float amount = saturate(wet * 1.5);
+    float best = 0.0;
+    float2 slope = 0.0;
+
+    [unroll]
+    for (int y = -1; y <= 1; y++)
+    {
+        [unroll]
+        for (int x = -1; x <= 1; x++)
+        {
+            float2 neighbour = cell + float2(x, y);
+            float2 random = SabaLiquidHash2(neighbour);
+            if (random.y > amount + 0.15)
+            {
+                continue;
+            }
+
+            float2 centre = float2(x, y) + 0.2 + 0.6 * random;
+            float radius = (0.18 + 0.3 * SabaLiquidHash(neighbour + 7.7)) * sqrt(amount);
+            float2 d = local - centre;
+            float r2 = dot(d, d) / max(radius * radius, 1e-5);
+            if (r2 < 1.0)
+            {
+                float height = sqrt(1.0 - r2);
+                if (height > best)
+                {
+                    best = height;
+                    slope = d / max(radius, 1e-4);
+                }
+            }
+        }
+    }
+
+    return float4(saturate(best * 5.0), best, slope);
 }
 
 #endif

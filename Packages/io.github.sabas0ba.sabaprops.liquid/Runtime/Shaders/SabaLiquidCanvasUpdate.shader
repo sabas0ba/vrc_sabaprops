@@ -43,6 +43,8 @@ Shader "Hidden/SabaProps/Liquid/Canvas Update"
     float _DeltaTime;
     float _FlowSpeed;
     float _MaxEvaporationRate;
+    // 受け手の素材の流れにくさ（LiquidSurfaceProfile.friction）。衣服の素材を Canvas 全体に使います。
+    float _Friction;
     // x: 洗う範囲の上端（Canvas 正規化 y）, y: 洗う量, z: 境界の幅
     float4 _Wash;
 
@@ -85,13 +87,14 @@ Shader "Hidden/SabaProps/Liquid/Canvas Update"
     }
 
     // 流れやすさ。液量が多く粘性が低いほど大きく、筋状の揺らぎを持ちます。
+    // 受け手の摩擦が大きいほど、液は表面に留まって流れにくくなります。
     float SabaLiquidMobility(float4 film, CanvasTexel t)
     {
         float2 gravity = SabaLiquidPair(_GravityCanvas.xyz, t.axis);
         float2 across = float2(-gravity.y, gravity.x);
         float streak = lerp(0.35, 1.0,
             SabaLiquidValueNoise(float2(dot(t.metric, across) * 40.0, (float)t.face * 7.0)));
-        return saturate(film.r * (1.0 - film.b) * streak);
+        return saturate(film.r * (1.0 - film.b) * streak * (1.0 - 0.8 * saturate(_Friction)));
     }
 
     // テクセルの高さ（Canvas 正規化 y）。
@@ -170,7 +173,9 @@ Shader "Hidden/SabaProps/Liquid/Canvas Update"
             float wash = saturate(k * _StampFilm[i].x);
             pigment *= 1.0 - wash;
 
-            float cover = saturate(k * _StampNormal[i].w);
+            // 顔料の塊は中心が不透明で、縁だけが薄くなります。液膜と同じ滑らかな減衰のままだと、
+            // 1 回の付着ではどこも不透明にならず、黒や濃い灰色の塗料が半透明に見えます。
+            float cover = saturate(smoothstep(0.0, 0.35, k) * _StampNormal[i].w);
             pigment = pigment * (1.0 - cover) + float4(_StampColor[i].rgb * cover, cover);
         }
 

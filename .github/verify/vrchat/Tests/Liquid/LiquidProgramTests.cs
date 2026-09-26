@@ -146,6 +146,15 @@ namespace SabaProps.Liquid.WorldTests
         }
 
         [Test]
+        public void SurfaceProfile_ExportsItsVectors()
+        {
+            List<string> exported = Exported(Compile<LiquidSurfaceProfile>());
+            AssertExportsMethod(exported, "GetPrimary");
+            AssertExportsMethod(exported, "GetSecondary");
+            AssertSyncMode<LiquidSurfaceProfile>(BehaviourSyncMode.None);
+        }
+
+        [Test]
         public void Lighting_ExportsRefresh()
         {
             List<string> exported = Exported(Compile<LiquidLighting>());

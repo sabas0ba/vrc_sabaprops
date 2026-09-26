@@ -232,6 +232,56 @@ namespace SabaProps.Liquid
             return Mathf.Lerp(1f, mask, Mathf.Clamp01(coverage));
         }
 
+        /// <summary>
+        /// 受け手の部位の重み。x: 衣服（体）, y: 髪, z: 肌。SabaLiquidCanvas.cginc の
+        /// SabaLiquidRegionWeights と同じ定義です。
+        /// <para>
+        /// Projector は受け手のマテリアルを読めないため、部位は位置から推定します。頭の球の中は髪、
+        /// ただし顔の向き側で頭頂でない所は肌、手の球の中は肌、それ以外は衣服です。
+        /// head.w と手の w は半径で、0 ならその部位を使いません。
+        /// </para>
+        /// </summary>
+        private Vector3 RegionWeights(Vector3 p, Vector4 head, Vector3 face, Vector3 up, Vector4 leftHand, Vector4 rightHand)
+        {
+            float hair = 0f;
+            float skin = 0f;
+
+            if (head.w > 0f)
+            {
+                Vector3 offset = p - new Vector3(head.x, head.y, head.z);
+                float distance = offset.magnitude;
+                float inside = 1f - Smoothstep(head.w * 0.95f, head.w * 1.25f, distance);
+                Vector3 direction = offset / Mathf.Max(distance, 1e-5f);
+                float front = Smoothstep(0.1f, 0.5f, Vector3.Dot(direction, face));
+                float crown = Smoothstep(0.35f, 0.7f, Vector3.Dot(direction, up));
+                float faceSkin = front * (1f - crown);
+                hair = inside * (1f - faceSkin);
+                skin = inside * faceSkin;
+            }
+
+            if (leftHand.w > 0f)
+            {
+                float d = (p - new Vector3(leftHand.x, leftHand.y, leftHand.z)).magnitude;
+                skin = Mathf.Max(skin, 1f - Smoothstep(leftHand.w * 0.9f, leftHand.w * 1.4f, d));
+            }
+
+            if (rightHand.w > 0f)
+            {
+                float d = (p - new Vector3(rightHand.x, rightHand.y, rightHand.z)).magnitude;
+                skin = Mathf.Max(skin, 1f - Smoothstep(rightHand.w * 0.9f, rightHand.w * 1.4f, d));
+            }
+
+            hair = Mathf.Min(hair, 1f - skin);
+            return new Vector3(1f - hair - skin, hair, skin);
+        }
+
+        /// <summary>HLSL の smoothstep と同じ定義。</summary>
+        private float Smoothstep(float edge0, float edge1, float x)
+        {
+            float t = Mathf.Clamp01((x - edge0) / (edge1 - edge0));
+            return t * t * (3f - 2f * t);
+        }
+
         /// <summary>DrawOp の中心からの距離に対する付着量の減衰。中心で 1、半径で 0。</summary>
         private float StampFalloff(float distance, float radius)
         {

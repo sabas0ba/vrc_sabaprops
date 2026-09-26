@@ -84,6 +84,34 @@ namespace SabaProps.Liquid
         [Tooltip("命中判定のカプセルの半径（m）。")]
         public float anchorBodyRadius = 0.2f;
 
+        [Tooltip("マネキンの頭の中心。部位の推定に使います。")]
+        public Transform headAnchor;
+
+        [Tooltip("マネキンの左手。")]
+        public Transform leftHandAnchor;
+
+        [Tooltip("マネキンの右手。")]
+        public Transform rightHandAnchor;
+
+        [Header("受け手の素材")]
+        [Tooltip("衣服（体）の素材。未設定ならマテリアルの既定値（柔らかい布）です。")]
+        public LiquidSurfaceProfile bodySurface;
+
+        [Tooltip("髪の素材。")]
+        public LiquidSurfaceProfile hairSurface;
+
+        [Tooltip("肌（顔と手）の素材。")]
+        public LiquidSurfaceProfile skinSurface;
+
+        [Tooltip("頭と手の位置から髪と肌の部位を推定するか。無効にすると全身を衣服の素材で扱います。")]
+        public bool estimateRegions = true;
+
+        [Tooltip("目の高さ 1.6 m のアバターでの頭の半径（m）。")]
+        public float headRadius = 0.12f;
+
+        [Tooltip("目の高さ 1.6 m のアバターでの手の半径（m）。")]
+        public float handRadius = 0.07f;
+
         private VRCPlayerApi _player;
         private int _playerId = -1;
         private bool _active;
@@ -206,11 +234,90 @@ namespace SabaProps.Liquid
 
             BindTextures();
             PushImmersion();
+            PushSurfaces();
 
             if (projectorObject != null)
             {
                 projectorObject.SetActive(true);
             }
+        }
+
+        /// <summary>
+        /// 受け手の素材をシェーダへ渡します。素材を実行中に変えたときは、これを呼ぶと反映されます。
+        /// 未設定の部位はマテリアルの既定値のままにします。
+        /// </summary>
+        public void PushSurfaces()
+        {
+            if (bodySurface != null)
+            {
+                projectorMaterial.SetVector("_SurfaceBodyA", bodySurface.GetPrimary());
+                projectorMaterial.SetVector("_SurfaceBodyB", bodySurface.GetSecondary());
+            }
+
+            if (hairSurface != null)
+            {
+                projectorMaterial.SetVector("_SurfaceHairA", hairSurface.GetPrimary());
+                projectorMaterial.SetVector("_SurfaceHairB", hairSurface.GetSecondary());
+            }
+
+            if (skinSurface != null)
+            {
+                projectorMaterial.SetVector("_SurfaceSkinA", skinSurface.GetPrimary());
+                projectorMaterial.SetVector("_SurfaceSkinB", skinSurface.GetSecondary());
+            }
+        }
+
+        /// <summary>
+        /// 部位の推定に使う頭と手の位置を渡します。プレイヤーはボーン、マネキンは anchor から取ります。
+        /// 半径は体格（目の高さ）に比例させ、位置が取れない部位は半径 0 で無効にします。
+        /// </summary>
+        private void PushRegions()
+        {
+            Vector4 head = Vector4.zero;
+            Vector4 left = Vector4.zero;
+            Vector4 right = Vector4.zero;
+
+            if (estimateRegions)
+            {
+                if (anchor != null)
+                {
+                    head = RegionSphere(headAnchor, headRadius);
+                    left = RegionSphere(leftHandAnchor, handRadius);
+                    right = RegionSphere(rightHandAnchor, handRadius);
+                }
+                else if (Utilities.IsValid(_player))
+                {
+                    float scale = Mathf.Max(_player.GetAvatarEyeHeightAsMeters(), 0.2f) / 1.6f;
+                    head = RegionBone(_player.GetBonePosition(HumanBodyBones.Head), headRadius * scale);
+                    left = RegionBone(_player.GetBonePosition(HumanBodyBones.LeftHand), handRadius * scale);
+                    right = RegionBone(_player.GetBonePosition(HumanBodyBones.RightHand), handRadius * scale);
+                }
+            }
+
+            projectorMaterial.SetVector("_RegionHead", head);
+            projectorMaterial.SetVector("_RegionHandL", left);
+            projectorMaterial.SetVector("_RegionHandR", right);
+        }
+
+        private Vector4 RegionSphere(Transform centre, float radius)
+        {
+            if (centre == null)
+            {
+                return Vector4.zero;
+            }
+
+            Vector3 p = centre.position;
+            return new Vector4(p.x, p.y, p.z, radius);
+        }
+
+        private Vector4 RegionBone(Vector3 position, float radius)
+        {
+            if (IsMissingBone(position))
+            {
+                return Vector4.zero;
+            }
+
+            return new Vector4(position.x, position.y, position.z, radius);
         }
 
         /// <summary>割り当てを外し、表示を止めます。RenderTexture は再利用のため保持します。</summary>
@@ -382,6 +489,7 @@ namespace SabaProps.Liquid
             projectorMaterial.SetVector("_CanvasRowX", CanvasRow(_right, _origin, halfExtents.x));
             projectorMaterial.SetVector("_CanvasRowY", CanvasRow(_up, _origin, halfExtents.y));
             projectorMaterial.SetVector("_CanvasRowZ", CanvasRow(_forward, _origin, halfExtents.z));
+            PushRegions();
 
             float elapsed = Time.time - _lastUpdateTime;
             if (elapsed >= updateInterval)
@@ -448,6 +556,7 @@ namespace SabaProps.Liquid
             updateMaterial.SetFloat("_DeltaTime", dt);
             updateMaterial.SetFloat("_FlowSpeed", flowSpeed);
             updateMaterial.SetFloat("_MaxEvaporationRate", maxEvaporationRate);
+            updateMaterial.SetFloat("_Friction", bodySurface != null ? bodySurface.friction : 0.5f);
             updateMaterial.SetVector("_Wash", new Vector4(_washLevel, _washAmount, immersionEdge, 0f));
 
             RenderTexture pigmentSource = _frontIsA ? _pigmentA : _pigmentB;

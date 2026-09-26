@@ -116,14 +116,19 @@ namespace SabaProps.Liquid.WorldTests
         {
             LiquidCanvasPool pool = Object.FindObjectOfType<LiquidCanvasPool>();
             Assert.IsNotNull(pool.mannequins);
-            Assert.AreEqual(LiquidSourceBuilder.PresetNames.Length + 7, pool.mannequins.Length,
-                "expected one mannequin per liquid and seven in the source row");
+            int expected = LiquidSourceBuilder.PresetNames.Length          // liquid row
+                + 7                                                         // source row
+                + LiquidSurfaceBuilder.PresetNames.Length + 1               // surface row and avatar regions
+                + 7                                                         // body colour row
+                + LiquidSourceBuilder.GreyscalePaintNames.Length + 2;       // liquid colour row and the two mixes
+            Assert.AreEqual(expected, pool.mannequins.Length, "a comparison row is missing mannequins");
 
             var materials = new System.Collections.Generic.HashSet<string>();
             foreach (LiquidBodyCanvas mannequin in pool.mannequins)
             {
                 Assert.IsNotNull(mannequin);
                 Assert.IsNotNull(mannequin.anchor, mannequin.name + " has no anchor, so it would wait for a player");
+                Assert.IsNotNull(mannequin.bodySurface, mannequin.name + " has no surface profile");
                 Assert.IsTrue(materials.Add(AssetDatabase.GetAssetPath(mannequin.projectorMaterial)),
                     "two mannequins share a projector material");
 
@@ -144,9 +149,13 @@ namespace SabaProps.Liquid.WorldTests
                 }
             }
 
-            // Player canvases must not land on mannequins.
+            // Player canvases must not land on mannequins, and carry the avatar surface defaults.
             foreach (LiquidBodyCanvas canvas in pool.canvases)
             {
+                Assert.IsNotNull(canvas.bodySurface, "a player canvas has no clothing surface");
+                Assert.IsNotNull(canvas.hairSurface, "a player canvas has no hair surface");
+                Assert.IsNotNull(canvas.skinSurface, "a player canvas has no skin surface");
+                Assert.IsTrue(canvas.estimateRegions, "player canvases do not estimate hair and skin");
                 Projector projector = canvas.projectorObject.GetComponent<Projector>();
                 Assert.AreNotEqual(0, projector.ignoreLayers & (1 << LiquidMannequinBuilder.MannequinLayer),
                     "player canvases draw on mannequins");
