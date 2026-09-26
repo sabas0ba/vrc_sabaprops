@@ -16,11 +16,16 @@ namespace SabaProps.Liquid
     /// </para>
     /// <para>
     /// 受信側は、送り主がこの水鉄砲の所有者であることを確かめてから付着を積みます。
-    /// 放水中かどうかも同期し、見た目の水流は各クライアントがそれを見て再生します。
+    /// 放水の開始と停止もイベントで送り、見た目の水流は各クライアントがそれを見て再生します。
+    /// </para>
+    /// <para>
+    /// 同期変数は持ちません。使用ボタンのイベントを受けるため、この behaviour は Pickup と
+    /// VRCObjectSync のある GameObject に置く必要があり、そこで Manual sync を使うと
+    /// VRCObjectSync と干渉するためです。途中参加者に放水中の見た目が届かないことは許容します。
     /// </para>
     /// </summary>
     [AddComponentMenu("SabaProps/Liquid/Water Gun")]
-    [UdonBehaviourSyncMode(BehaviourSyncMode.Manual)]
+    [UdonBehaviourSyncMode(BehaviourSyncMode.NoVariableSync)]
     public class LiquidWaterGun : UdonSharpBehaviour
     {
         /// <summary>命中イベントの送信上限（回/秒）。fireInterval の下限と対応させます。</summary>
@@ -60,7 +65,7 @@ namespace SabaProps.Liquid
         [Min(0.01f)]
         public float hitRadius = 0.06f;
 
-        [UdonSynced] private bool _firing;
+        private bool _firing;
 
         private float _nextFire;
         private int _shot;
@@ -90,20 +95,30 @@ namespace SabaProps.Liquid
             SetFiring(false);
         }
 
-        public override void OnDeserialization()
-        {
-            ApplyVisual();
-        }
-
         private void SetFiring(bool firing)
         {
-            if (!Networking.IsOwner(gameObject))
+            if (!Networking.IsOwner(gameObject) || firing == _firing)
             {
                 return;
             }
 
             _firing = firing;
-            RequestSerialization();
+            ApplyVisual();
+            SendCustomNetworkEvent(NetworkEventTarget.Others, nameof(ReceiveFiring), firing);
+        }
+
+        /// <summary>放水の開始と停止を受け取り、見た目の水流を切り替えます。送り主が所有者でない場合は無視します。</summary>
+        [NetworkCallable]
+        public void ReceiveFiring(bool firing)
+        {
+            VRCPlayerApi sender = NetworkCalling.CallingPlayer;
+            VRCPlayerApi owner = Networking.GetOwner(gameObject);
+            if (!Utilities.IsValid(sender) || !Utilities.IsValid(owner) || sender.playerId != owner.playerId)
+            {
+                return;
+            }
+
+            _firing = firing;
             ApplyVisual();
         }
 
@@ -140,29 +155,23 @@ namespace SabaProps.Liquid
             _shot++;
 
             Vector3 direction = pool.SampleCone(muzzle.forward, spread, _shot);
-            int playerId = pool.CastPlayers(muzzle.position, direction, range, false);
-            if (playerId < 0)
+            int target = pool.CastTargets(muzzle.position, direction, range, false);
+            if (target == -1)
             {
                 return;
             }
 
-            VRCPlayerApi target = VRCPlayerApi.GetPlayerById(playerId);
-            if (!Utilities.IsValid(target))
-            {
-                return;
-            }
-
-            Vector3 localPoint = pool.WorldToPlayer(target, pool.lastHitPoint);
-            Vector3 localNormal = pool.WorldToPlayerDirection(target, pool.lastHitNormal);
-            SendCustomNetworkEvent(NetworkEventTarget.All, nameof(ReceiveHit), playerId, localPoint, localNormal, _shot);
+            Vector3 localPoint = pool.WorldToTarget(target, pool.lastHitPoint);
+            Vector3 localNormal = pool.WorldToTargetDirection(target, pool.lastHitNormal);
+            SendCustomNetworkEvent(NetworkEventTarget.All, nameof(ReceiveHit), target, localPoint, localNormal, _shot);
         }
 
         /// <summary>
-        /// 命中を受け取り、対象プレイヤーの Body Canvas へ付着を積みます。
+        /// 命中を受け取り、ターゲット（プレイヤーまたはマネキン）の Body Canvas へ付着を積みます。
         /// 送り主が所有者でない場合は無視します。
         /// </summary>
         [NetworkCallable(MaxHitsPerSecond)]
-        public void ReceiveHit(int playerId, Vector3 localPoint, Vector3 localNormal, int shot)
+        public void ReceiveHit(int target, Vector3 localPoint, Vector3 localNormal, int shot)
         {
             VRCPlayerApi sender = NetworkCalling.CallingPlayer;
             VRCPlayerApi owner = Networking.GetOwner(gameObject);
@@ -176,20 +185,14 @@ namespace SabaProps.Liquid
                 return;
             }
 
-            VRCPlayerApi target = VRCPlayerApi.GetPlayerById(playerId);
-            if (!Utilities.IsValid(target))
-            {
-                return;
-            }
-
-            LiquidBodyCanvas canvas = pool.AcquireCanvas(target);
+            LiquidBodyCanvas canvas = pool.CanvasForTarget(target);
             if (canvas == null)
             {
                 return;
             }
 
-            Vector3 point = pool.PlayerToWorld(target, localPoint);
-            Vector3 normal = pool.PlayerToWorldDirection(target, localNormal);
+            Vector3 point = pool.TargetToWorld(target, localPoint);
+            Vector3 normal = pool.TargetToWorldDirection(target, localNormal);
             canvas.QueueStamp(point, normal, hitRadius, profile, amountPerHit, pool.Random01(shot) * 100f);
         }
     }

@@ -131,7 +131,7 @@ namespace SabaProps.Liquid
 
         private void Update()
         {
-            if (_insideCount == 0 || pool == null || profile == null)
+            if (pool == null || profile == null || (_insideCount == 0 && pool.GetMannequinCount() == 0))
             {
                 _lastEvaluation = Time.time;
                 return;
@@ -159,6 +159,22 @@ namespace SabaProps.Liquid
                 if (canvas != null)
                 {
                     canvas.ApplyImmersion(level, profile, elapsed);
+                }
+            }
+
+            // マネキンはプレイヤーのトリガーイベントを受けないため、足元がトリガーの中にあるかで判定します。
+            if (_trigger == null)
+            {
+                return;
+            }
+
+            int mannequins = pool.GetMannequinCount();
+            for (int i = 0; i < mannequins; i++)
+            {
+                LiquidBodyCanvas mannequin = pool.CanvasForTarget(pool.GetMannequinTarget(i));
+                if (mannequin != null && _trigger.bounds.Contains(mannequin.GetBodyBottom()))
+                {
+                    mannequin.ApplyImmersion(level, profile, elapsed);
                 }
             }
         }

@@ -66,6 +66,15 @@ namespace SabaProps.Liquid
         [Tooltip("Pickup の使用ボタンを押している間だけ放水するか。手に持つシャワーヘッドで使います。")]
         public bool runWhileUsed = false;
 
+        [Header("自動運転")]
+        [Tooltip("自動で放水する秒数。0 で自動運転しません。設定するとサーバー時刻に合わせて放水と停止を繰り返し、操作と同期状態を使いません。")]
+        [Min(0f)]
+        public float autoOnSeconds = 0f;
+
+        [Tooltip("自動運転で止めておく秒数。")]
+        [Min(0f)]
+        public float autoOffSeconds = 0f;
+
         [Header("評価")]
         [Tooltip("放水を評価する間隔（秒）。")]
         [Range(0.05f, 1f)]
@@ -74,6 +83,7 @@ namespace SabaProps.Liquid
         [UdonSynced] private bool _running;
 
         private float _lastEvaluation;
+        private bool _autoRunning;
 
         private void Start()
         {
@@ -95,7 +105,7 @@ namespace SabaProps.Liquid
         /// <summary>放水しているかどうか。</summary>
         public bool IsRunning()
         {
-            return _running;
+            return autoOnSeconds > 0f ? _autoRunning : _running;
         }
 
         /// <summary>放水を切り替えます。所有権を取ってから状態を同期します。</summary>
@@ -106,7 +116,7 @@ namespace SabaProps.Liquid
 
         public override void Interact()
         {
-            if (toggleOnInteract)
+            if (toggleOnInteract && autoOnSeconds <= 0f)
             {
                 Toggle();
             }
@@ -160,11 +170,12 @@ namespace SabaProps.Liquid
                 return;
             }
 
-            if (_running && !stream.isPlaying)
+            bool running = IsRunning();
+            if (running && !stream.isPlaying)
             {
                 stream.Play();
             }
-            else if (!_running && stream.isPlaying)
+            else if (!running && stream.isPlaying)
             {
                 stream.Stop();
             }
@@ -172,7 +183,18 @@ namespace SabaProps.Liquid
 
         private void Update()
         {
-            if (!_running || pool == null || profile == null)
+            if (autoOnSeconds > 0f)
+            {
+                double cycle = autoOnSeconds + Mathf.Max(autoOffSeconds, 0f);
+                bool on = Networking.GetServerTimeInSeconds() % cycle < autoOnSeconds;
+                if (on != _autoRunning)
+                {
+                    _autoRunning = on;
+                    ApplyVisual();
+                }
+            }
+
+            if (!IsRunning() || pool == null || profile == null)
             {
                 _lastEvaluation = Time.time;
                 return;
@@ -195,14 +217,13 @@ namespace SabaProps.Liquid
             {
                 int sample = tick * raysPerEvaluation + r;
                 Vector3 direction = pool.SampleCone(axis, coneAngle, sample);
-                int playerId = pool.CastPlayers(origin, direction, range, true);
-                if (playerId < 0)
+                int target = pool.CastTargets(origin, direction, range, true);
+                if (target == -1)
                 {
                     continue;
                 }
 
-                VRCPlayerApi player = VRCPlayerApi.GetPlayerById(playerId);
-                LiquidBodyCanvas canvas = pool.AcquireCanvas(player);
+                LiquidBodyCanvas canvas = pool.CanvasForTarget(target);
                 if (canvas == null)
                 {
                     continue;

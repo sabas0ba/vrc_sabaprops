@@ -19,7 +19,12 @@ namespace SabaProps.Liquid.Editors
     {
         public const string ProfilesName = "Liquid Profiles";
         public const string WaterName = "Water";
+        public const string JuiceName = "Juice";
+        public const string RedPaintName = "Red Paint";
+        public const string BluePaintName = "Blue Paint";
         public const string MudName = "Mud";
+        public const string SlimeName = "Slime";
+        public const string SyrupName = "Syrup";
 
         public const string StreamMaterialPath = LiquidAssets.MaterialFolder + "/LiquidStream.mat";
 
@@ -101,38 +106,67 @@ namespace SabaProps.Liquid.Editors
             return profile;
         }
 
+        /// <summary>Every built-in preset, in the order the comparison demo lines them up.</summary>
+        public static readonly string[] PresetNames =
+        {
+            WaterName, JuiceName, RedPaintName, BluePaintName, MudName, SlimeName, SyrupName,
+        };
+
         /// <summary>
         /// Preset values for the built-in profiles.
         /// <para>
-        /// Water is film only: it darkens and shines, runs quickly, dries in about
-        /// a minute and a half, and washes pigment away. Mud carries pigment and a
-        /// thick film that barely runs; the film dries and leaves the lighter,
-        /// matte pigment behind, which only water removes.
+        /// The presets vary along the axes the canvas can show: how much pigment
+        /// covers the surface, how thick and glossy the film is, how freely it
+        /// runs, whether it dries, and whether it washes other liquids away.
         /// </para>
+        /// <list type="bullet">
+        /// <item>Water: film only. Darkens and shines, runs quickly, dries in a minute and a half, washes pigment away.</item>
+        /// <item>Juice: water with a thin tint. Runs like water and dries to a faint stain.</item>
+        /// <item>Paint: opaque pigment in a thin, glossy film. Runs a little, dries to a satin finish, stays until scrubbed.</item>
+        /// <item>Mud: dense pigment in a thick film that barely runs; dries lighter and matte.</item>
+        /// <item>Slime: translucent pigment in a thick, very glossy film that never dries and hangs in long drips.</item>
+        /// <item>Syrup: translucent amber, the most viscous and glossy; never dries.</item>
+        /// </list>
         /// </summary>
         public static void ApplyPreset(LiquidProfile profile, string name)
         {
-            if (name == MudName)
+            switch (name)
             {
-                profile.pigmentColor = new Color(0.32f, 0.22f, 0.13f, 1f);
-                profile.pigmentAmount = 0.85f;
-                profile.filmAmount = 0.8f;
-                profile.smoothness = 0.55f;
-                profile.viscosity = 0.85f;
-                profile.dryingSeconds = 180f;
-                profile.washStrength = 0f;
-                profile.edgeIrregularity = 0.35f;
-                return;
+                case JuiceName:
+                    Set(profile, new Color(0.95f, 0.42f, 0.04f), 0.3f, 1f, 0.9f, 0.15f, 120f, 0.2f, 0.6f);
+                    return;
+                case RedPaintName:
+                    Set(profile, new Color(0.72f, 0.04f, 0.05f), 1f, 0.5f, 0.85f, 0.6f, 240f, 0f, 0.3f);
+                    return;
+                case BluePaintName:
+                    Set(profile, new Color(0.04f, 0.18f, 0.72f), 1f, 0.5f, 0.85f, 0.6f, 240f, 0f, 0.3f);
+                    return;
+                case MudName:
+                    Set(profile, new Color(0.44f, 0.31f, 0.19f), 0.9f, 0.8f, 0.6f, 0.85f, 180f, 0f, 0.35f);
+                    return;
+                case SlimeName:
+                    Set(profile, new Color(0.22f, 0.8f, 0.3f), 0.45f, 1f, 1f, 0.92f, 0f, 0f, 0.2f);
+                    return;
+                case SyrupName:
+                    Set(profile, new Color(0.7f, 0.36f, 0.05f), 0.55f, 1f, 1f, 0.97f, 0f, 0f, 0.15f);
+                    return;
+                default:
+                    Set(profile, Color.white, 0f, 1f, 0.92f, 0.1f, 90f, 0.5f, 0.6f);
+                    return;
             }
+        }
 
-            profile.pigmentColor = Color.white;
-            profile.pigmentAmount = 0f;
-            profile.filmAmount = 1f;
-            profile.smoothness = 0.92f;
-            profile.viscosity = 0.1f;
-            profile.dryingSeconds = 90f;
-            profile.washStrength = 0.5f;
-            profile.edgeIrregularity = 0.6f;
+        private static void Set(LiquidProfile profile, Color colour, float pigment, float film, float smoothness,
+            float viscosity, float dryingSeconds, float wash, float irregularity)
+        {
+            profile.pigmentColor = colour;
+            profile.pigmentAmount = pigment;
+            profile.filmAmount = film;
+            profile.smoothness = smoothness;
+            profile.viscosity = viscosity;
+            profile.dryingSeconds = dryingSeconds;
+            profile.washStrength = wash;
+            profile.edgeIrregularity = irregularity;
         }
 
         /// <summary>
@@ -244,6 +278,16 @@ namespace SabaProps.Liquid.Editors
         /// </summary>
         private static ParticleSystem CreateStream(Transform parent, float coneAngle, float speed, float lifetime)
         {
+            return CreateStream(parent, coneAngle, speed, lifetime, new Color(0.85f, 0.93f, 1f, 0.6f), 250f, 0.02f, 1f);
+        }
+
+        /// <summary>
+        /// The stream with a given colour, emission rate and droplet size. A rate
+        /// of zero makes a stream that only emits when a Source calls Emit.
+        /// </summary>
+        public static ParticleSystem CreateStream(Transform parent, float coneAngle, float speed, float lifetime,
+            Color colour, float rate, float size, float gravity)
+        {
             var streamObject = new GameObject("Stream");
             streamObject.transform.SetParent(parent, false);
 
@@ -255,14 +299,14 @@ namespace SabaProps.Liquid.Editors
             main.loop = true;
             main.startLifetime = lifetime;
             main.startSpeed = speed;
-            main.startSize = 0.02f;
-            main.startColor = new Color(0.85f, 0.93f, 1f, 0.6f);
-            main.gravityModifier = 1f;
+            main.startSize = size;
+            main.startColor = colour;
+            main.gravityModifier = gravity;
             main.simulationSpace = ParticleSystemSimulationSpace.World;
             main.maxParticles = 600;
 
             ParticleSystem.EmissionModule emission = stream.emission;
-            emission.rateOverTime = 250f;
+            emission.rateOverTime = rate;
 
             ParticleSystem.ShapeModule shape = stream.shape;
             shape.shapeType = ParticleSystemShapeType.Cone;
@@ -276,13 +320,64 @@ namespace SabaProps.Liquid.Editors
             collision.lifetimeLoss = 0.6f;
 
             var renderer = streamObject.GetComponent<ParticleSystemRenderer>();
-            Material material = LiquidAssets.CreateOrLoadMaterial(StreamMaterialPath, "Particles/Standard Unlit");
+            Material material = LiquidAssets.StreamMaterial(StreamMaterialPath);
             if (material != null)
             {
                 renderer.sharedMaterial = material;
             }
 
             return stream;
+        }
+
+        /// <summary>
+        /// An automatic sprayer on a post, aimed at <paramref name="aimAt"/> (world).
+        /// Its droplets take the liquid's colour, so a row of sprayers reads at a glance.
+        /// </summary>
+        public static LiquidSprayer CreateSprayer(Transform parent, string name, LiquidCanvasPool pool,
+            LiquidProfile profile, Vector3 position, Vector3 aimAt, Material postMaterial)
+        {
+            var root = new GameObject(name);
+            root.transform.SetParent(parent, false);
+            root.transform.position = position;
+
+            GameObject post = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+            post.name = "Post";
+            Object.DestroyImmediate(post.GetComponent<Collider>());
+            post.transform.SetParent(root.transform, false);
+            post.transform.localScale = new Vector3(0.06f, position.y * 0.5f, 0.06f);
+            post.transform.position = new Vector3(position.x, position.y * 0.5f, position.z);
+            post.GetComponent<Renderer>().sharedMaterial = postMaterial;
+
+            var nozzle = new GameObject("Nozzle");
+            nozzle.transform.SetParent(root.transform, false);
+            nozzle.transform.LookAt(aimAt);
+
+            GameObject head = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+            head.name = "Head";
+            Object.DestroyImmediate(head.GetComponent<Collider>());
+            head.transform.SetParent(nozzle.transform, false);
+            head.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
+            head.transform.localScale = new Vector3(0.08f, 0.06f, 0.08f);
+            head.GetComponent<Renderer>().sharedMaterial = postMaterial;
+
+            Color droplet = profile.pigmentAmount > 0f
+                ? new Color(profile.pigmentColor.r, profile.pigmentColor.g, profile.pigmentColor.b, 0.9f)
+                : new Color(0.85f, 0.93f, 1f, 0.6f);
+            float distance = Vector3.Distance(position, aimAt);
+            // Droplets reach the target in about a third of a second. Gravity is
+            // reduced so they arrive near where the rays land rather than short of it.
+            ParticleSystem stream = CreateStream(nozzle.transform, 6f, distance / 0.35f, 0.45f, droplet, 0f,
+                0.012f + profile.viscosity * 0.05f, 0.3f);
+
+            LiquidSprayer sprayer = root.AddUdonSharpComponent<LiquidSprayer>();
+            sprayer.pool = pool;
+            sprayer.profile = profile;
+            sprayer.nozzle = nozzle.transform;
+            sprayer.stream = stream;
+            sprayer.range = distance + 1f;
+            UdonSharpEditorUtility.CopyProxyToUdon(sprayer);
+            EditorUtility.SetDirty(sprayer);
+            return sprayer;
         }
 
         private static void Place(GameObject root, MenuCommand command, string undoName)

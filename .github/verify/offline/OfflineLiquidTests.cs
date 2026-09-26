@@ -67,6 +67,7 @@ namespace SabaProps.Liquid
             Run("cone samples stay inside the cone", LiquidCanvasPool.ConeSamplesStayInsideTheCone);
             Run("the hash is in [0, 1) and repeatable", LiquidCanvasPool.HashIsBoundedAndRepeatable);
             Run("player-relative coordinates round trip and follow the player", LiquidCanvasPool.PlayerLocalRoundTrips);
+            Run("mannequin targets never collide with players or none", LiquidCanvasPool.MannequinTargetsAreDistinct);
 
             if (_failures > 0)
             {
@@ -718,6 +719,27 @@ namespace SabaProps.Liquid
 
             Vector3 degenerate = pool.ToPlayerLocal(world, position, Vector3.up);
             LiquidBodyCanvas.Check(IsFinite(degenerate.x) && IsFinite(degenerate.z), "facing straight up is not finite");
+        }
+
+        /// <summary>
+        /// ターゲット番号は、0 以上がプレイヤー ID、-1 が無し、-2 以下がマネキンです。
+        /// 命中は番号のまま同期されるため、重なると別の相手に付着が付きます。
+        /// </summary>
+        internal static void MannequinTargetsAreDistinct()
+        {
+            var pool = new LiquidCanvasPool();
+            for (int index = 0; index < 1000; index++)
+            {
+                int target = pool.MannequinTarget(index);
+                LiquidBodyCanvas.Check(target <= -2, $"mannequin {index} maps to {target}, which is a player or none");
+                LiquidBodyCanvas.Check(pool.MannequinIndex(target) == index, $"mannequin {index} does not round trip");
+            }
+
+            LiquidBodyCanvas.Check(pool.MannequinIndex(-1) < 0, "none reads as a mannequin");
+            for (int player = 0; player < 1000; player++)
+            {
+                LiquidBodyCanvas.Check(pool.MannequinIndex(player) < 0, $"player {player} reads as a mannequin");
+            }
         }
 
         private static float DistanceToSegment(Vector3 p, Vector3 a, Vector3 b)

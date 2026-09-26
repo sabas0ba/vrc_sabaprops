@@ -58,9 +58,15 @@ namespace SabaProps.Liquid.WorldTests
             LiquidShower[] showers = Object.FindObjectsOfType<LiquidShower>();
             LiquidWaterGun[] guns = Object.FindObjectsOfType<LiquidWaterGun>();
 
-            Assert.AreEqual(2, volumes.Length, "expected the pool and the mud bog");
-            Assert.AreEqual(2, showers.Length, "expected the shower and the faucet");
+            Assert.AreEqual(4, volumes.Length, "expected the pool, the mud bog, the tank and the mud tub");
+            Assert.AreEqual(3, showers.Length, "expected the shower, the faucet and the comparison shower");
             Assert.AreEqual(2, guns.Length, "expected two water guns");
+
+            foreach (LiquidSprayer sprayer in Object.FindObjectsOfType<LiquidSprayer>())
+            {
+                Assert.AreSame(pool, sprayer.pool, sprayer.name);
+                Assert.IsNotNull(sprayer.profile, sprayer.name);
+            }
 
             foreach (LiquidImmersionVolume volume in volumes)
             {
@@ -86,6 +92,7 @@ namespace SabaProps.Liquid.WorldTests
         [Test]
         public void Triggers_ReachFromTheFloorToTheSurface()
         {
+            Physics.SyncTransforms();
             foreach (LiquidImmersionVolume volume in Object.FindObjectsOfType<LiquidImmersionVolume>())
             {
                 var trigger = volume.GetComponent<BoxCollider>();
@@ -96,9 +103,63 @@ namespace SabaProps.Liquid.WorldTests
                 Assert.AreEqual(volume.surface.position.y, bounds.max.y, 0.02f,
                     volume.name + ": the trigger top is not at the liquid surface");
 
-                float floor = volume.name.Contains("Mud") ? LiquidSampleScene.MudFloorY : LiquidSampleScene.PoolFloorY;
-                Assert.Less(bounds.min.y, floor, volume.name + ": a player standing on the floor is outside the trigger");
+                // Whatever a body stands on inside the volume must be within the trigger.
+                Vector3 above = new Vector3(bounds.center.x, bounds.max.y + 1f, bounds.center.z);
+                float floor = Physics.Raycast(above, Vector3.down, out RaycastHit hit, 10f, ~(1 << LiquidMannequinBuilder.MannequinLayer),
+                    QueryTriggerInteraction.Ignore) ? hit.point.y : 0f;
+                Assert.Less(bounds.min.y, floor, volume.name + ": a body standing on the floor is outside the trigger");
             }
+        }
+
+        [Test]
+        public void Mannequins_AreRegisteredAndDrawOnlyOnTheirOwnLayer()
+        {
+            LiquidCanvasPool pool = Object.FindObjectOfType<LiquidCanvasPool>();
+            Assert.IsNotNull(pool.mannequins);
+            Assert.AreEqual(LiquidSourceBuilder.PresetNames.Length + 7, pool.mannequins.Length,
+                "expected one mannequin per liquid and seven in the source row");
+
+            var materials = new System.Collections.Generic.HashSet<string>();
+            foreach (LiquidBodyCanvas mannequin in pool.mannequins)
+            {
+                Assert.IsNotNull(mannequin);
+                Assert.IsNotNull(mannequin.anchor, mannequin.name + " has no anchor, so it would wait for a player");
+                Assert.IsTrue(materials.Add(AssetDatabase.GetAssetPath(mannequin.projectorMaterial)),
+                    "two mannequins share a projector material");
+
+                Projector projector = mannequin.projectorObject.GetComponent<Projector>();
+                Assert.AreEqual(LiquidMannequinBuilder.MannequinLayer, projector.gameObject.layer);
+                Assert.AreEqual(~(1 << LiquidMannequinBuilder.MannequinLayer), projector.ignoreLayers,
+                    "a mannequin projector lands on something other than mannequins");
+
+                foreach (Renderer renderer in mannequin.transform.parent.GetComponentsInChildren<Renderer>())
+                {
+                    if (renderer.name == "Turntable Base")
+                    {
+                        continue;
+                    }
+
+                    Assert.AreEqual(LiquidMannequinBuilder.MannequinLayer, renderer.gameObject.layer,
+                        renderer.name + " is not on the mannequin layer, so the canvas will not draw on it");
+                }
+            }
+
+            // Player canvases must not land on mannequins.
+            foreach (LiquidBodyCanvas canvas in pool.canvases)
+            {
+                Projector projector = canvas.projectorObject.GetComponent<Projector>();
+                Assert.AreNotEqual(0, projector.ignoreLayers & (1 << LiquidMannequinBuilder.MannequinLayer),
+                    "player canvases draw on mannequins");
+            }
+        }
+
+        [Test]
+        public void Lighting_HandsTheSunToTheShader()
+        {
+            LiquidLighting lighting = Object.FindObjectOfType<LiquidLighting>();
+            Assert.IsNotNull(lighting, "no LiquidLighting, so liquid is lit by ambient light only");
+            Assert.IsNotNull(lighting.mainLight);
+            Assert.AreEqual(LightType.Directional, lighting.mainLight.type);
         }
 
         [Test]

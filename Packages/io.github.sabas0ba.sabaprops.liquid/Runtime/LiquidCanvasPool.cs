@@ -5,12 +5,17 @@ using VRC.SDKBase;
 namespace SabaProps.Liquid
 {
     /// <summary>
-    /// Body Canvas をプレイヤーへ割り当てるプール。
+    /// Body Canvas をプレイヤーへ割り当てるプールであり、Source が液体をかける相手（ターゲット）を探す窓口です。
     /// <para>
     /// Canvas は RenderTexture を 6 枚持つため、全員分を常に確保するとメモリが足りません。
     /// 付着の入力を受けたプレイヤーにだけ割り当て、足りなくなったら最も長く入力の無い
     /// Canvas を取り上げます。ローカルプレイヤーの Canvas は取り上げの対象から外します。
     /// 自分の体に付いた液体が他人の都合で消えるのは、見え方として最も不自然なためです。
+    /// </para>
+    /// <para>
+    /// ターゲットはプレイヤーとマネキンです。マネキンは固定の Transform に追従する
+    /// Body Canvas で、割り当ての対象にならず常に有効です。ターゲットは整数で表し、
+    /// 0 以上はプレイヤー ID、-2 以下はマネキンの番号、-1 は無しです。
     /// </para>
     /// <para>
     /// 割り当ては各クライアントが独立に決めます。同じプレイヤーでも、クライアントごとに
@@ -21,8 +26,11 @@ namespace SabaProps.Liquid
     [UdonBehaviourSyncMode(BehaviourSyncMode.None)]
     public partial class LiquidCanvasPool : UdonSharpBehaviour
     {
-        [Tooltip("割り当てに使う Canvas。数がそのまま同時に付着を表示できる人数の上限です。")]
+        [Tooltip("プレイヤーへの割り当てに使う Canvas。数がそのまま同時に付着を表示できる人数の上限です。")]
         public LiquidBodyCanvas[] canvases;
+
+        [Tooltip("マネキンの Canvas。Source の命中判定の対象になります。")]
+        public LiquidBodyCanvas[] mannequins;
 
         [Header("命中判定")]
         [Tooltip("液体を遮る環境のレイヤ。既定は Default と Environment です。プレイヤーのレイヤは含めません。")]
@@ -34,19 +42,26 @@ namespace SabaProps.Liquid
         [Tooltip("目の高さ 1.6 m のアバターでの手の球の半径（m）。体格に比例させます。")]
         public float handRadius = 0.07f;
 
-        /// <summary>直前の CastPlayers で当たった点。</summary>
+        /// <summary>直前の CastTargets で当たった点。</summary>
         [HideInInspector] public Vector3 lastHitPoint;
 
-        /// <summary>直前の CastPlayers で当たった点の外向き法線。</summary>
+        /// <summary>直前の CastTargets で当たった点の外向き法線。</summary>
         [HideInInspector] public Vector3 lastHitNormal;
 
-        /// <summary>直前の CastPlayers で当たった点までの距離。</summary>
+        /// <summary>直前の CastTargets で当たった点までの距離。</summary>
         [HideInInspector] public float lastHitDistance;
 
-        /// <summary>直前の CastPlayers で当たったのが手なら true、体なら false。</summary>
+        /// <summary>直前の CastTargets で当たったのが手なら true、体なら false。</summary>
         [HideInInspector] public bool lastHitHand;
 
         private VRCPlayerApi[] _players = new VRCPlayerApi[100];
+
+        // CastTargets の途中経過。Udon ではメソッドから複数の値を返せないため、フィールドで受け渡します。
+        private int _castTarget;
+        private float _castNearest;
+        private Vector3 _castA;
+        private Vector3 _castB;
+        private bool _castHand;
 
         /// <summary>割り当て済みの Canvas を返します。無ければ null。</summary>
         public LiquidBodyCanvas FindCanvas(VRCPlayerApi player)
@@ -122,26 +137,78 @@ namespace SabaProps.Liquid
             return chosen;
         }
 
+        /// <summary>ターゲットの Canvas。プレイヤーなら割り当て、マネキンならその Canvas を返します。</summary>
+        public LiquidBodyCanvas CanvasForTarget(int target)
+        {
+            if (target >= 0)
+            {
+                VRCPlayerApi player = VRCPlayerApi.GetPlayerById(target);
+                return Utilities.IsValid(player) ? AcquireCanvas(player) : null;
+            }
+
+            int index = MannequinIndex(target);
+            if (mannequins == null || index < 0 || index >= mannequins.Length)
+            {
+                return null;
+            }
+
+            return mannequins[index];
+        }
+
+        /// <summary>マネキンの数。</summary>
+        public int GetMannequinCount()
+        {
+            return mannequins == null ? 0 : mannequins.Length;
+        }
+
+        /// <summary>マネキンのターゲット番号。</summary>
+        public int GetMannequinTarget(int index)
+        {
+            return MannequinTarget(index);
+        }
+
         /// <summary>
-        /// 光線が最初に当たるプレイヤーの ID を返します。当たらない、または環境に遮られた場合は -1。
+        /// 光線が最初に当たるターゲットを返します。当たらない、または環境に遮られた場合は -1。
         /// <para>
         /// プレイヤーの体は足元から頭頂までのカプセルで、手は手首のボーンを中心とする球で近似します。
         /// 手を別に扱うのは、体から離して差し出した手（蛇口の下など）が体のカプセルに入らないためです。
-        /// Collider の構成に依存しないため、ローカルとリモートのプレイヤーを同じ規則で判定できます。
+        /// マネキンは Canvas に設定したカプセルで判定します。
+        /// Collider の構成に依存しないため、ローカルとリモートのプレイヤーとマネキンを同じ規則で判定できます。
         /// 当たった点と法線は lastHitPoint と lastHitNormal に、手かどうかは lastHitHand に入ります。
         /// </para>
         /// </summary>
-        public int CastPlayers(Vector3 origin, Vector3 direction, float maxDistance, bool includeLocal)
+        public int CastTargets(Vector3 origin, Vector3 direction, float maxDistance, bool includeLocal)
         {
             Vector3 dir = direction.normalized;
+            _castTarget = -1;
+            _castNearest = maxDistance;
+            _castHand = false;
+
+            CastAgainstPlayers(origin, dir, includeLocal);
+            CastAgainstMannequins(origin, dir);
+
+            if (_castTarget == -1)
+            {
+                return -1;
+            }
+
+            RaycastHit blocker;
+            if (Physics.Raycast(origin, dir, out blocker, _castNearest, occluderLayers, QueryTriggerInteraction.Ignore))
+            {
+                return -1;
+            }
+
+            lastHitDistance = _castNearest;
+            lastHitPoint = origin + dir * _castNearest;
+            lastHitNormal = CapsuleNormal(lastHitPoint, _castA, _castB);
+            lastHitHand = _castHand;
+            return _castTarget;
+        }
+
+        private void CastAgainstPlayers(Vector3 origin, Vector3 dir, bool includeLocal)
+        {
             int count = VRCPlayerApi.GetPlayerCount();
             VRCPlayerApi.GetPlayers(_players);
-
-            int hitId = -1;
-            float nearest = maxDistance;
-            Vector3 hitA = Vector3.zero;
-            Vector3 hitB = Vector3.zero;
-            bool hitHand = false;
 
             for (int i = 0; i < count && i < _players.Length; i++)
             {
@@ -156,16 +223,7 @@ namespace SabaProps.Liquid
                 float radius = bodyRadius * eye / 1.6f;
                 Vector3 a = feet + Vector3.up * radius;
                 Vector3 b = feet + Vector3.up * Mathf.Max(eye + 0.1f * eye / 1.6f - radius, radius);
-
-                float t = RayCapsule(origin, dir, a, b, radius);
-                if (t >= 0f && t < nearest)
-                {
-                    nearest = t;
-                    hitId = player.playerId;
-                    hitA = a;
-                    hitB = b;
-                    hitHand = false;
-                }
+                ConsiderHit(RayCapsule(origin, dir, a, b, radius), player.playerId, a, b, false);
 
                 // 手。球は長さ 0 のカプセルとして扱い、法線の計算を共通にします。
                 float hand = handRadius * eye / 1.6f;
@@ -173,47 +231,49 @@ namespace SabaProps.Liquid
                 Vector3 right = player.GetBonePosition(HumanBodyBones.RightHand);
                 if (left.sqrMagnitude > 1e-12f)
                 {
-                    float tl = RaySphere(origin, dir, left, hand);
-                    if (tl >= 0f && tl < nearest)
-                    {
-                        nearest = tl;
-                        hitId = player.playerId;
-                        hitA = left;
-                        hitB = left;
-                        hitHand = true;
-                    }
+                    ConsiderHit(RaySphere(origin, dir, left, hand), player.playerId, left, left, true);
                 }
 
                 if (right.sqrMagnitude > 1e-12f)
                 {
-                    float tr = RaySphere(origin, dir, right, hand);
-                    if (tr >= 0f && tr < nearest)
-                    {
-                        nearest = tr;
-                        hitId = player.playerId;
-                        hitA = right;
-                        hitB = right;
-                        hitHand = true;
-                    }
+                    ConsiderHit(RaySphere(origin, dir, right, hand), player.playerId, right, right, true);
                 }
             }
+        }
 
-            if (hitId < 0)
+        private void CastAgainstMannequins(Vector3 origin, Vector3 dir)
+        {
+            if (mannequins == null)
             {
-                return -1;
+                return;
             }
 
-            RaycastHit blocker;
-            if (Physics.Raycast(origin, dir, out blocker, nearest, occluderLayers, QueryTriggerInteraction.Ignore))
+            for (int i = 0; i < mannequins.Length; i++)
             {
-                return -1;
+                LiquidBodyCanvas mannequin = mannequins[i];
+                if (mannequin == null || !mannequin.IsMannequin())
+                {
+                    continue;
+                }
+
+                Vector3 a = mannequin.GetBodyBottom();
+                Vector3 b = mannequin.GetBodyTop();
+                ConsiderHit(RayCapsule(origin, dir, a, b, mannequin.anchorBodyRadius), MannequinTarget(i), a, b, false);
+            }
+        }
+
+        private void ConsiderHit(float distance, int target, Vector3 a, Vector3 b, bool hand)
+        {
+            if (distance < 0f || distance >= _castNearest)
+            {
+                return;
             }
 
-            lastHitDistance = nearest;
-            lastHitPoint = origin + dir * nearest;
-            lastHitNormal = CapsuleNormal(lastHitPoint, hitA, hitB);
-            lastHitHand = hitHand;
-            return hitId;
+            _castNearest = distance;
+            _castTarget = target;
+            _castA = a;
+            _castB = b;
+            _castHand = hand;
         }
 
         /// <summary>円錐内の方向。Source が放出方向のばらつきを作るのに使います。</summary>
@@ -228,27 +288,78 @@ namespace SabaProps.Liquid
             return Hash01(sample);
         }
 
-        /// <summary>ワールドの点をプレイヤー基準の座標へ変換します。命中の同期に使います。</summary>
-        public Vector3 WorldToPlayer(VRCPlayerApi player, Vector3 world)
+        /// <summary>
+        /// ワールドの点をターゲット基準の座標へ変換します。命中の同期に使います。
+        /// プレイヤーは足元と水平の向き、マネキンは anchor が基準です。
+        /// </summary>
+        public Vector3 WorldToTarget(int target, Vector3 world)
         {
+            if (target < 0)
+            {
+                LiquidBodyCanvas mannequin = CanvasForTarget(target);
+                return mannequin != null ? mannequin.anchor.InverseTransformPoint(world) : world;
+            }
+
+            VRCPlayerApi player = VRCPlayerApi.GetPlayerById(target);
+            if (!Utilities.IsValid(player))
+            {
+                return world;
+            }
+
             return ToPlayerLocal(world, player.GetPosition(), player.GetRotation() * Vector3.forward);
         }
 
-        /// <summary>WorldToPlayer の逆変換。</summary>
-        public Vector3 PlayerToWorld(VRCPlayerApi player, Vector3 local)
+        /// <summary>WorldToTarget の逆変換。</summary>
+        public Vector3 TargetToWorld(int target, Vector3 local)
         {
+            if (target < 0)
+            {
+                LiquidBodyCanvas mannequin = CanvasForTarget(target);
+                return mannequin != null ? mannequin.anchor.TransformPoint(local) : local;
+            }
+
+            VRCPlayerApi player = VRCPlayerApi.GetPlayerById(target);
+            if (!Utilities.IsValid(player))
+            {
+                return local;
+            }
+
             return FromPlayerLocal(local, player.GetPosition(), player.GetRotation() * Vector3.forward);
         }
 
-        /// <summary>方向をプレイヤー基準へ変換します。</summary>
-        public Vector3 WorldToPlayerDirection(VRCPlayerApi player, Vector3 world)
+        /// <summary>方向をターゲット基準へ変換します。</summary>
+        public Vector3 WorldToTargetDirection(int target, Vector3 world)
         {
+            if (target < 0)
+            {
+                LiquidBodyCanvas mannequin = CanvasForTarget(target);
+                return mannequin != null ? mannequin.anchor.InverseTransformDirection(world) : world;
+            }
+
+            VRCPlayerApi player = VRCPlayerApi.GetPlayerById(target);
+            if (!Utilities.IsValid(player))
+            {
+                return world;
+            }
+
             return ToPlayerLocal(world, Vector3.zero, player.GetRotation() * Vector3.forward);
         }
 
-        /// <summary>WorldToPlayerDirection の逆変換。</summary>
-        public Vector3 PlayerToWorldDirection(VRCPlayerApi player, Vector3 local)
+        /// <summary>WorldToTargetDirection の逆変換。</summary>
+        public Vector3 TargetToWorldDirection(int target, Vector3 local)
         {
+            if (target < 0)
+            {
+                LiquidBodyCanvas mannequin = CanvasForTarget(target);
+                return mannequin != null ? mannequin.anchor.TransformDirection(local) : local;
+            }
+
+            VRCPlayerApi player = VRCPlayerApi.GetPlayerById(target);
+            if (!Utilities.IsValid(player))
+            {
+                return local;
+            }
+
             return FromPlayerLocal(local, Vector3.zero, player.GetRotation() * Vector3.forward);
         }
 

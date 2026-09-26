@@ -116,7 +116,7 @@ docs.microsoft.com の URL 到達性を検証するもの）ため、終了コ�
 | `SabaProps.SoftProps.WorldTests` | EditMode + Playへの遷移 | Prefab生成、同梱デモのimport・参照・比較台、ClientSimでのCollider接触・復元・自動運動・立位荷重 |
 | `SabaProps.Tablet.WorldTests` | EditMode | 全コンポーネントの Udon コンパイル、サンプルシーンの全ボタンがエクスポート済みのイベントを呼ぶこと、ミラーの排他、テレポート地点の番号、Build の再実行で生成物が重複しないことを検証 |
 | `SabaProps.PutItems.Tests` | EditMode | 吸着対象と Pickup の設定、同梱デモの構成を検証 |
-| `SabaProps.Liquid.WorldTests` | EditMode | 全 Udon behaviour の UdonSharp コンパイルと公開イベント・同期変数、シェーダのコンパイル、生成された Projector と Source の構成、Canvas 更新シェーダの GPU 上での付着・蒸発・洗浄・奥行きの記録、サンプルシーンの構成（トリガーと液面の位置、泥に沈む床、スロープ、鏡）を検証。`TestResults/liquid-preview.png` に代用の体へ Projector で描いた確認画像を、`liquid-preview-pigment.png` と `liquid-preview-film.png` に Canvas のアトラスを出力 |
+| `SabaProps.Liquid.WorldTests` | EditMode | 全 Udon behaviour の UdonSharp コンパイルと公開イベント・同期変数、シェーダのコンパイル、生成された Projector と Source の構成、Canvas 更新シェーダの GPU 上での付着・蒸発・洗浄・奥行きの記録、サンプルシーンの構成（トリガーと液面の位置、泥に沈む床、スロープ、鏡）を検証。`TestResults/liquid-preview.png` に代用の体へ Projector で描いた確認画像を、`liquid-preview-pigment.png` と `liquid-preview-film.png` に Canvas のアトラスを出力。デモを ClientSim で 20 秒動かし、操作なしで全マネキンに付着が付くことを検査して、`liquid-demo-liquids.png`・`liquid-demo-sources.png`・`liquid-demo-immersion.png`・`liquid-demo-overview.png` を出力。同梱サンプルを取り込んで参照が解決することを検査 |
 
 Soft Propsの実行テストは指・棒・板の100 mmおよび0.5 mmの空隙、20 mmの侵入、離脱後の復元、自動上下運動、ローカルプレイヤーのFutonへの接地を検証します。VRChat実clientの手・胴体・リモートプレイヤーの接触を保証するテストではありません。
 
@@ -194,3 +194,17 @@ GameCI のイメージを使えば Unity もコンテナ化できますが、ラ
 （podman machine の既定は小さいことが多いので、`podman machine set --memory` で拡張が必要です）。
 
 Put Items 単体の準備・検証手順は [PUT_ITEMS.md](PUT_ITEMS.md) を参照してください。
+
+## Liquid の同梱サンプルの書き出し
+
+`io.github.sabas0ba.sabaprops.liquid` の `Samples~/LiquidDemo` は生成器の出力です。手で編集せず、
+生成器を変えたら次で書き出し直します。組み立て済みのプロジェクト（`run-tests.sh` を一度実行したもの）が必要です。
+
+```sh
+./.github/verify/vrchat/export-liquid-sample.sh
+```
+
+作業ツリーのパッケージをプロジェクトへ入れ直し、前回の生成物を消してから
+`LiquidSampleScene.CreateForExport` を batch mode で実行し、シーン・マテリアル・
+シーンが参照する Udon のシリアライズ済みプログラムをパッケージへ複製します。
+生成物は書き出すたびに GUID が変わります。

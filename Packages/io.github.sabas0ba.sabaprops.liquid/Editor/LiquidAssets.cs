@@ -119,6 +119,69 @@ namespace SabaProps.Liquid.Editors
             return material;
         }
 
+        public const string DropletTexturePath = MaterialFolder + "/LiquidDroplet.asset";
+
+        /// <summary>
+        /// A soft round droplet for the stream particles. Generated rather than
+        /// taken from the editor's built-in particle texture, which is not an
+        /// asset a scene can carry into a package sample.
+        /// </summary>
+        public static Texture2D CreateOrLoadDropletTexture()
+        {
+            var existing = AssetDatabase.LoadAssetAtPath<Texture2D>(DropletTexturePath);
+            if (existing != null)
+            {
+                return existing;
+            }
+
+            EnsureFolder(MaterialFolder);
+            const int size = 64;
+            var texture = new Texture2D(size, size, TextureFormat.RGBA32, true) { name = "LiquidDroplet" };
+            for (int y = 0; y < size; y++)
+            {
+                for (int x = 0; x < size; x++)
+                {
+                    float dx = (x + 0.5f) / size * 2f - 1f;
+                    float dy = (y + 0.5f) / size * 2f - 1f;
+                    float r = Mathf.Sqrt(dx * dx + dy * dy);
+                    float alpha = Mathf.Clamp01((1f - r) * 3f);
+                    // A brighter spot up and to the left, so a droplet reads as a lit bead.
+                    float highlight = Mathf.Clamp01(1f - Vector2.Distance(new Vector2(dx, dy), new Vector2(-0.35f, 0.35f)) * 2.5f);
+                    float shade = Mathf.Lerp(0.75f, 1f, highlight);
+                    texture.SetPixel(x, y, new Color(shade, shade, shade, alpha));
+                }
+            }
+
+            texture.Apply();
+            AssetDatabase.CreateAsset(texture, DropletTexturePath);
+            return texture;
+        }
+
+        /// <summary>
+        /// The translucent particle material the streams share. Settings are
+        /// applied every time, so an older material from a previous version of
+        /// the generator is brought up to date.
+        /// </summary>
+        public static Material StreamMaterial(string assetPath)
+        {
+            Material material = CreateOrLoadMaterial(assetPath, "Particles/Standard Unlit");
+            if (material == null)
+            {
+                return null;
+            }
+
+            material.mainTexture = CreateOrLoadDropletTexture();
+            // Fade mode, set the way the particle shader's inspector sets it.
+            material.SetFloat("_Mode", 2f);
+            material.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
+            material.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+            material.SetInt("_ZWrite", 0);
+            material.EnableKeyword("_ALPHABLEND_ON");
+            material.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent;
+            EditorUtility.SetDirty(material);
+            return material;
+        }
+
         /// <summary>Loads a material using the given shader, or creates it.</summary>
         public static Material CreateOrLoadMaterial(string assetPath, string shaderName)
         {

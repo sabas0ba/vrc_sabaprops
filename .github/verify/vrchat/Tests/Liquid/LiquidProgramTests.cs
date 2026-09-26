@@ -79,7 +79,7 @@ namespace SabaProps.Liquid.WorldTests
         {
             List<string> exported = Exported(Compile<LiquidCanvasPool>());
 
-            foreach (string method in new[] { "CastPlayers", "SampleCone", "Random01", "WorldToPlayer", "PlayerToWorld" })
+            foreach (string method in new[] { "CastTargets", "CanvasForTarget", "SampleCone", "Random01", "WorldToTarget", "TargetToWorld", "GetMannequinCount" })
             {
                 AssertExportsMethod(exported, method);
             }
@@ -112,7 +112,7 @@ namespace SabaProps.Liquid.WorldTests
         }
 
         [Test]
-        public void WaterGun_ExportsItsHitEventAndSyncsOnlyItsState()
+        public void WaterGun_SendsEventsInsteadOfSyncing()
         {
             IUdonProgram program = Compile<LiquidWaterGun>();
             List<string> exported = Exported(program);
@@ -120,10 +120,37 @@ namespace SabaProps.Liquid.WorldTests
             // Other clients call this over the network. If it stops being exported,
             // hits are sent and silently dropped.
             AssertExportsMethod(exported, "ReceiveHit");
+            AssertExportsMethod(exported, "ReceiveFiring");
             CollectionAssert.Contains(exported, "_onPickupUseDown");
             CollectionAssert.Contains(exported, "_onPickupUseUp");
-            AssertSyncMode<LiquidWaterGun>(BehaviourSyncMode.Manual);
-            AssertSyncedFields(program, "_firing");
+
+            // The gun sits on a GameObject with VRCObjectSync, which Manual sync interferes with.
+            AssertSyncMode<LiquidWaterGun>(BehaviourSyncMode.NoVariableSync);
+            AssertSyncedFields(program);
+        }
+
+        [Test]
+        public void Sprayer_RunsWithoutSyncing()
+        {
+            List<string> exported = Exported(Compile<LiquidSprayer>());
+            CollectionAssert.Contains(exported, "_update");
+            AssertSyncMode<LiquidSprayer>(BehaviourSyncMode.None);
+        }
+
+        [Test]
+        public void Turntable_RunsWithoutSyncing()
+        {
+            List<string> exported = Exported(Compile<LiquidTurntable>());
+            CollectionAssert.Contains(exported, "_update");
+            AssertSyncMode<LiquidTurntable>(BehaviourSyncMode.None);
+        }
+
+        [Test]
+        public void Lighting_ExportsRefresh()
+        {
+            List<string> exported = Exported(Compile<LiquidLighting>());
+            AssertExportsMethod(exported, "Refresh");
+            AssertSyncMode<LiquidLighting>(BehaviourSyncMode.None);
         }
 
         private static void AssertSyncMode<T>(BehaviourSyncMode expected)

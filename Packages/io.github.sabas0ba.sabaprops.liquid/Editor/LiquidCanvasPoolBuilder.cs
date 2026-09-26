@@ -119,7 +119,18 @@ namespace SabaProps.Liquid.Editors
         /// </summary>
         public static void ConfigureProjector(GameObject projectorObject, Vector3 halfExtents, Material material)
         {
-            projectorObject.layer = PlayerLayer;
+            ConfigureProjector(projectorObject, halfExtents, material, PlayerLayer, IgnoreNonAvatarLayers);
+        }
+
+        /// <summary>
+        /// The same, for a projector that lands on another layer than the avatars
+        /// (a mannequin's). The projector object goes on that layer too, so any
+        /// camera that shows the receivers also keeps the projector.
+        /// </summary>
+        public static void ConfigureProjector(GameObject projectorObject, Vector3 halfExtents, Material material,
+            int projectorLayer, int ignoreLayers)
+        {
+            projectorObject.layer = projectorLayer;
             projectorObject.transform.localPosition = new Vector3(0f, 0f, -halfExtents.z);
             projectorObject.transform.localRotation = Quaternion.identity;
 
@@ -134,7 +145,7 @@ namespace SabaProps.Liquid.Editors
             projector.aspectRatio = halfExtents.x / Mathf.Max(halfExtents.y, 1e-4f);
             projector.nearClipPlane = 0.001f;
             projector.farClipPlane = halfExtents.z * 2f;
-            projector.ignoreLayers = IgnoreNonAvatarLayers;
+            projector.ignoreLayers = ignoreLayers;
             projector.material = material;
         }
     }

@@ -15,6 +15,13 @@
   "vpmDependencies": {
     "com.vrchat.worlds": "3.10.x"
   },
+  "samples": [
+    {
+      "displayName": "Liquid Demo World",
+      "description": "プール、泥沼、シャワー、水道、水鉄砲、鏡と、液体と Source を比べるマネキンの列を並べた VRChat World 用のサンプルシーン。左右の列はサーバー時刻に合わせて自動で動き、操作しなくても液体の付き方・垂れ方・乾き方が分かります。",
+      "path": "Samples~/LiquidDemo"
+    }
+  ],
   "keywords": [
     "vrchat",
     "world",

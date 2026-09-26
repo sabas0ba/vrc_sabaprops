@@ -71,8 +71,22 @@ namespace SabaProps.Liquid
         [Tooltip("浸漬の境界の幅（正規化高さ）。")]
         public float immersionEdge = 0.02f;
 
+        [Header("マネキン")]
+        [Tooltip("プレイヤーの代わりに追従する Transform（マネキンの腰）。設定するとプールを介さず常に有効になります。")]
+        public Transform anchor;
+
+        [Tooltip("anchor から足裏までの距離（m）。命中判定のカプセルに使います。")]
+        public float anchorFeetBelow = 0.95f;
+
+        [Tooltip("anchor から頭頂までの距離（m）。")]
+        public float anchorHeadAbove = 0.8f;
+
+        [Tooltip("命中判定のカプセルの半径（m）。")]
+        public float anchorBodyRadius = 0.2f;
+
         private VRCPlayerApi _player;
         private int _playerId = -1;
+        private bool _active;
 
         private RenderTexture _pigmentA;
         private RenderTexture _pigmentB;
@@ -124,6 +138,30 @@ namespace SabaProps.Liquid
             {
                 projectorObject.SetActive(false);
             }
+
+            if (anchor != null)
+            {
+                Activate();
+                UpdateAnchorFrame();
+            }
+        }
+
+        /// <summary>マネキンとして常に有効な Canvas かどうか。</summary>
+        public bool IsMannequin()
+        {
+            return anchor != null;
+        }
+
+        /// <summary>マネキンの命中判定カプセルの下端（ワールド）。</summary>
+        public Vector3 GetBodyBottom()
+        {
+            return anchor.position - anchor.up * Mathf.Max(anchorFeetBelow - anchorBodyRadius, 0f);
+        }
+
+        /// <summary>マネキンの命中判定カプセルの上端（ワールド）。</summary>
+        public Vector3 GetBodyTop()
+        {
+            return anchor.position + anchor.up * Mathf.Max(anchorHeadAbove - anchorBodyRadius, 0f);
         }
 
         /// <summary>割り当て中のプレイヤーの ID。未割り当てなら -1。</summary>
@@ -141,23 +179,31 @@ namespace SabaProps.Liquid
         /// <summary>プレイヤーを割り当て、Canvas を空にして表示を始めます。</summary>
         public void Assign(VRCPlayerApi player)
         {
-            if (!Utilities.IsValid(player))
+            if (!Utilities.IsValid(player) || anchor != null)
             {
                 return;
             }
 
+            _player = player;
+            _playerId = player.playerId;
+            Activate();
+
+            // 割り当てた周期のうちに届いた付着を捨てないよう、座標系をここで確定させます。
+            UpdateFrame();
+        }
+
+        /// <summary>Canvas を空にして表示を始めます。プレイヤーの割り当てとマネキンの開始で共通です。</summary>
+        private void Activate()
+        {
             EnsureTextures();
             ClearTextures();
             ResetImmersion();
 
-            _player = player;
-            _playerId = player.playerId;
+            _active = true;
             _stampCount = 0;
             _lastUpdateTime = Time.time;
             _lastActivityTime = Time.time;
 
-            // 割り当てた周期のうちに届いた付着を捨てないよう、座標系をここで確定させます。
-            UpdateFrame();
             BindTextures();
             PushImmersion();
 
@@ -172,6 +218,7 @@ namespace SabaProps.Liquid
         {
             _player = null;
             _playerId = -1;
+            _active = false;
             _stampCount = 0;
             _frameValid = false;
 
@@ -190,7 +237,7 @@ namespace SabaProps.Liquid
         /// </summary>
         public void QueueStamp(Vector3 worldPoint, Vector3 worldNormal, float radius, LiquidProfile profile, float amount, float seed)
         {
-            if (_playerId < 0 || !_frameValid || profile == null)
+            if (!_active || !_frameValid || profile == null)
             {
                 return;
             }
@@ -203,7 +250,9 @@ namespace SabaProps.Liquid
             Vector3 local = ToCanvasLocalPoint(worldPoint, _origin, _right, _up, _forward);
             Vector3 normal = ToCanvasLocalDirection(worldNormal, _right, _up, _forward).normalized;
             float scale = Mathf.Max(0f, amount);
-            Color color = profile.pigmentColor;
+            // Profile colours are authored in sRGB like any colour field. Arrays reach the shader
+            // unconverted, and VRChat worlds render in linear space, so convert here.
+            Color color = profile.pigmentColor.linear;
 
             int i = _stampCount;
             _stampPos[i] = new Vector4(local.x, local.y, local.z, Mathf.Max(radius, 1e-3f));
@@ -228,7 +277,7 @@ namespace SabaProps.Liquid
         /// </summary>
         public void ApplyImmersion(float surfaceWorldY, LiquidProfile profile, float deltaSeconds)
         {
-            if (_playerId < 0 || !_frameValid || profile == null)
+            if (!_active || !_frameValid || profile == null)
             {
                 return;
             }
@@ -255,7 +304,7 @@ namespace SabaProps.Liquid
             {
                 _immersionPigmentLevel = Mathf.Max(_immersionPigmentLevel, level);
                 _immersionPigmentCover = Mathf.Max(_immersionPigmentCover, profile.pigmentAmount);
-                _immersionColor = profile.pigmentColor;
+                _immersionColor = profile.pigmentColor.linear;
             }
             else if (profile.washStrength > 0f)
             {
@@ -269,7 +318,7 @@ namespace SabaProps.Liquid
         /// </summary>
         public void WashBelow(float worldY, float amount)
         {
-            if (_playerId < 0 || !_frameValid)
+            if (!_active || !_frameValid)
             {
                 return;
             }
@@ -299,7 +348,7 @@ namespace SabaProps.Liquid
         /// <summary>浸漬で付いた顔料を洗います。シャワーなど、体の外から洗う Source が呼びます。</summary>
         public void WashImmersion(float amount)
         {
-            if (_playerId < 0)
+            if (!_active)
             {
                 return;
             }
@@ -310,18 +359,24 @@ namespace SabaProps.Liquid
 
         public override void PostLateUpdate()
         {
-            if (_playerId < 0)
+            if (!_active)
             {
                 return;
             }
 
-            if (!Utilities.IsValid(_player))
+            if (anchor != null)
+            {
+                UpdateAnchorFrame();
+            }
+            else if (!Utilities.IsValid(_player))
             {
                 Release();
                 return;
             }
-
-            UpdateFrame();
+            else
+            {
+                UpdateFrame();
+            }
 
             canvasRoot.SetPositionAndRotation(_origin, Quaternion.LookRotation(_forward, _up));
             projectorMaterial.SetVector("_CanvasRowX", CanvasRow(_right, _origin, halfExtents.x));
@@ -333,6 +388,19 @@ namespace SabaProps.Liquid
             {
                 AdvanceCanvas(elapsed);
             }
+        }
+
+        /// <summary>
+        /// マネキンの座標系。anchor の軸をそのまま使います。マネキンはボーンを持たず、
+        /// 体の向きは anchor の回転で決まるためです。
+        /// </summary>
+        private void UpdateAnchorFrame()
+        {
+            _right = anchor.right;
+            _up = anchor.up;
+            _forward = anchor.forward;
+            _origin = anchor.position + _right * centerOffset.x + _up * centerOffset.y + _forward * centerOffset.z;
+            _frameValid = true;
         }
 
         private void UpdateFrame()
@@ -431,7 +499,8 @@ namespace SabaProps.Liquid
                 _immersionFilmLevel, _immersionPigmentLevel, immersionEdge, enabled ? 1f : 0f));
             projectorMaterial.SetVector("_ImmersionAmounts", new Vector4(
                 _immersionFilmAmount, _immersionPigmentCover, _immersionSmoothness, 0f));
-            projectorMaterial.SetColor("_ImmersionColor", _immersionColor);
+            // Already linear. SetVector, so it is not converted a second time.
+            projectorMaterial.SetVector("_ImmersionColor", new Vector4(_immersionColor.r, _immersionColor.g, _immersionColor.b, 1f));
         }
 
         private void BindTextures()

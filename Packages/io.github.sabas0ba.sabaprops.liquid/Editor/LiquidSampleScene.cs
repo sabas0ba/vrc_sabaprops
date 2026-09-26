@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Text;
 using UdonSharpEditor;
 using UnityEditor;
@@ -62,7 +63,7 @@ namespace SabaProps.Liquid.Editors
         public const float MudFloorY = -0.45f;
         public const float MudSurfaceY = 0f;
 
-        private const float GroundHalfSize = 12f;
+        private const float GroundHalfSize = 17f;
         private const float GroundThickness = 2f;
 
         [MenuItem("Tools/SabaProps/Liquid/Create Sample Scene", false, 1)]
@@ -84,6 +85,24 @@ namespace SabaProps.Liquid.Editors
             {
                 view.LookAt(new Vector3(0f, 0.5f, 1f), Quaternion.Euler(35f, 0f, 0f), 14f);
             }
+        }
+
+        /// <summary>
+        /// Batch mode entry point for regenerating the bundled sample
+        /// (<c>-executeMethod SabaProps.Liquid.Editors.LiquidSampleScene.CreateForExport</c>).
+        /// <para>
+        /// Compiles the UdonSharp programs first, so the scene's behaviours point
+        /// at serialized programs that exist, then generates the scene in edit
+        /// mode. Exporting after a play session would carry the values Udon wrote
+        /// into the material assets at runtime.
+        /// </para>
+        /// </summary>
+        public static void CreateForExport()
+        {
+            UdonSharp.Compiler.UdonSharpCompilerV1.CompileSync(
+                new UdonSharp.Compiler.UdonSharpCompileOptions { IsEditorBuild = true });
+            Create();
+            AssetDatabase.SaveAssets();
         }
 
         /// <summary>
@@ -114,6 +133,17 @@ namespace SabaProps.Liquid.Editors
             BuildFaucet(pool, water, furniture);
             BuildWaterGuns(pool, water, furniture);
             BuildMirror();
+
+            // The unattended rows: mannequins the sprayers, showers and tanks work on by themselves.
+            Material update = LiquidAssets.CreateOrLoadMaterial(
+                LiquidAssets.CanvasUpdateMaterialPath, LiquidAssets.CanvasUpdateShader);
+            var mannequins = new List<LiquidBodyCanvas>();
+            LiquidDemoGalleries.BuildLiquidRow(pool, update, mannequins);
+            LiquidDemoGalleries.BuildSourceRow(pool, update, mannequins);
+            pool.mannequins = mannequins.ToArray();
+            UdonSharpEditorUtility.CopyProxyToUdon(pool);
+            EditorUtility.SetDirty(pool);
+
             BuildWorld();
 
             AssetDatabase.SaveAssets();
@@ -346,10 +376,24 @@ namespace SabaProps.Liquid.Editors
                 light.type = LightType.Directional;
             }
 
-            light.transform.rotation = Quaternion.Euler(48f, 150f, 0f);
+            // Nearly overhead and slightly behind the spawn, so the two comparison rows, which face
+            // +X and -X, are lit alike.
+            light.transform.rotation = Quaternion.Euler(72f, 0f, 0f);
+            // A fixed sky / horizon / ground gradient rather than the skybox, whose ambient
+            // needs a lighting bake a freshly generated scene has not had. The liquid shader
+            // reads the same ambient through ShadeSH9.
+            RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Trilight;
+            RenderSettings.ambientSkyColor = new Color(0.62f, 0.68f, 0.78f);
+            RenderSettings.ambientEquatorColor = new Color(0.5f, 0.5f, 0.48f);
+            RenderSettings.ambientGroundColor = new Color(0.3f, 0.28f, 0.25f);
             light.color = new Color(1f, 0.97f, 0.92f);
             light.intensity = 1.1f;
             light.shadows = LightShadows.Soft;
+
+            // Projector passes get no light constants; this hands the sun to the liquid shader.
+            LiquidLighting lighting = light.gameObject.AddUdonSharpComponent<LiquidLighting>();
+            lighting.mainLight = light;
+            UdonSharpEditorUtility.CopyProxyToUdon(lighting);
 
             Camera camera = Camera.main;
             if (camera != null)
@@ -387,6 +431,9 @@ namespace SabaProps.Liquid.Editors
             text.AppendLine($"・{ShowerName}（奥）: Interact で放水を切り替えます。当たった所から下が濡れ、泥が洗い流されます。");
             text.AppendLine($"・{FaucetName}（右手前）: 手を差し出すと濡れます。Interact で開閉します。");
             text.AppendLine($"・{WaterGunsName}（左手前）: 持って使用ボタンを押している間、放水します。命中は全員に同期されます。");
+            text.AppendLine($"・{LiquidDemoGalleries.LiquidRowName}（左の列）: 同じ設定の Sprayer で、液体ごとの付き方・垂れ方・乾き方を比べます。");
+            text.AppendLine($"・{LiquidDemoGalleries.SourceRowName}（右の列）: シャワー、水槽、泥、水流、滴り、体の色の違いを比べます。");
+            text.AppendLine("左右の列はサーバー時刻に合わせて自動で動き、操作しなくても変化が見えます。");
             return text.ToString();
         }
     }

@@ -10,13 +10,18 @@ Projector で描画します。
 - 対象は PC のみ
 
 現在は開発中です。アバターの全身に付着を描く Body Canvas と、浸漬（プール・泥沼）、
-シャワー・水道、水鉄砲の Source、それらを並べたサンプルシーンを含みます。
+シャワー・水道、水鉄砲、自動散布の Source、液体を受けるマネキン、それらを並べたサンプルを含みます。
 ワールド表面への付着はまだ含みません。
+方針と制約は [設計](Documentation~/design.md) にまとめています。
 
-## サンプルシーン
+## サンプル
 
-`Tools > SabaProps > Liquid > Create Sample Scene` で、`Assets/SabaProps/Liquid/Samples/LiquidDemo.unity` に
-次のワールドを生成します。VRChat Worlds SDK の `VRCSceneDescriptor` とスポーン地点を含み、そのままアップロードできます。
+Package Manager の Samples から **Liquid Demo World** を取り込むと、次のワールドが開けます。
+VRChat Worlds SDK の `VRCSceneDescriptor` とスポーン地点を含み、そのままアップロードできます。
+中身はこのパッケージの生成器が作ったもので、`Tools > SabaProps > Liquid > Create Sample Scene` で
+`Assets/SabaProps/Liquid/Samples/LiquidDemo.unity` に同じものを作り直せます。
+
+中央は自分で試す場所です。
 
 | 場所 | 内容 |
 |---|---|
@@ -26,7 +31,14 @@ Projector で描画します。
 | 右手前 | 水道。手を差し出すと手が濡れます。Interact で開閉します |
 | 左手前 | 水鉄砲 2 丁。持って使用ボタンを押している間放水し、命中は全員に同期されます |
 | 正面奥 | 鏡。自分のアバターへの付着を確認できます |
-方針と制約は [設計](Documentation~/design.md) にまとめています。
+
+左右の列は、回転台の上のマネキンに液体をかけ続けて比べる場所です。サーバー時刻に合わせて
+自動で動くため、操作しなくても変化が見え、全員に同じ様子が見えます。
+
+| 列 | 内容 |
+|---|---|
+| 左（液体の比較） | 水、ジュース、赤と青の塗料、泥、スライム、シロップを、同じ設定の Sprayer でかけます |
+| 右（Source の比較） | 周期的に放水するシャワー、液面が上下する水槽と泥の槽、水流、上からの滴り、明るい体と暗い体の違い |
 
 ---
 
@@ -44,6 +56,9 @@ VCC でこのパッケージを追加すると、依存する VRChat Worlds SDK 
 | `LiquidImmersionVolume` | 浸漬の Source。トリガーに入ったプレイヤーを液面の高さまで濡らす・汚す。波の上下に対応 |
 | `LiquidShower` | 流下の Source。固定シャワー、水道、手に持つシャワーヘッド。着水点より下を濡らして洗う |
 | `LiquidWaterGun` | 遠距離の流下の Source。所有者が命中を判定し、全員へ送る |
+| `LiquidSprayer` | 自動散布の Source。サーバー時刻に合わせて液体を放ち続ける。同期なし |
+| `LiquidTurntable` | サーバー時刻に合わせて回る台 |
+| `LiquidLighting` | ワールドの主光源を付着のシェーダへ渡す。ワールドに 1 つ置く |
 
 Hierarchy の `SabaProps > Liquid` から配置できます。
 

@@ -125,6 +125,21 @@ namespace SabaProps.Liquid
         }
 
         /// <summary>
+        /// マネキンの番号をターゲット番号へ変換します。プレイヤー ID（0 以上）と「無し」（-1）と
+        /// 重ならないよう、-2 以下を使います。
+        /// </summary>
+        private int MannequinTarget(int index)
+        {
+            return -index - 2;
+        }
+
+        /// <summary>MannequinTarget の逆変換。マネキンでないターゲットには負の値を返します。</summary>
+        private int MannequinIndex(int target)
+        {
+            return target <= -2 ? -target - 2 : -1;
+        }
+
+        /// <summary>
         /// ワールドの点を、プレイヤーの足元と水平の向きを基準にした座標へ変換します。
         /// <para>
         /// 命中を同期するときに使います。プレイヤーの位置はクライアントごとに少しずつ
