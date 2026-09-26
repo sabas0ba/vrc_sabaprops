@@ -91,7 +91,8 @@ namespace SabaProps.Flock
             if (input.Pattern == FlockPattern.Float)
                 return FloatDrift(Max(area - Margin(input), 0f), length, input.Speed, r, t);
             if (input.Pattern == FlockPattern.OctopusDrift)
-                return FloatDrift(Max(area - Margin(input), 0f), length, input.Speed * 10f, r, t);
+                return FloatDrift(Max(area - Margin(input), 0f), length, Mathf.Min(input.Speed * 10f, length * 5f), r,
+                    OctopusClock(t, input.AnimationFrequency, r));
             if (input.Pattern == FlockPattern.FloorGlide)
                 return FloorGlide(Max(area - Margin(input), 0f), length, input.Speed, r, t);
 
@@ -214,8 +215,10 @@ namespace SabaProps.Flock
             if (mode > 7.5f)
             {
                 float wave = TwoPi * frequency * t + phase + body.y * 3f;
-                return p * (0.04f * Mathf.Cos(TwoPi * frequency * t + phase))
-                    + amplitude * bodyLength * body.y * new Vector3(Mathf.Sin(wave),
+                float stroke = OctopusStroke(t, frequency, phase);
+                return new Vector3(-0.08f * p.x, 0.12f * p.y, -0.08f * p.z) * stroke
+                    + body.y * new Vector3(-0.42f * p.x, -0.18f * bodyLength, -0.42f * p.z) * stroke
+                    + amplitude * bodyLength * body.y * (1f - stroke) * new Vector3(Mathf.Sin(wave),
                         0.35f * Mathf.Sin(wave * 0.7f), 0.5f * Mathf.Cos(wave));
             }
             if (mode > 6.5f)
@@ -265,13 +268,21 @@ namespace SabaProps.Flock
             position = Position(input, time);
             Vector3 next = Position(input, time + h);
 
-            if (input.Pattern == FlockPattern.Float || input.Pattern == FlockPattern.OctopusDrift)
+            if (input.Pattern == FlockPattern.OctopusDrift)
             {
-                bool octopus = input.Pattern == FlockPattern.OctopusDrift;
-                float yawRate = octopus ? 0.15f : 0.015f;
-                float yawAmplitude = octopus ? 0.65f : 0.15f;
-                float yaw = TwoPi * input.Random.x + yawAmplitude * Mathf.Sin((time + input.TimeOffset)
-                    * Mathf.Min(input.Speed / Mathf.Max(input.BodyLength, 0.01f) * yawRate, 0.6f) + TwoPi * input.Random.z);
+                // The mantle apex is local +Y. Align it with propulsion, including dives.
+                Vector3 travel = next - previous;
+                up = travel.sqrMagnitude > 1e-10f ? travel.normalized : Vector3.up;
+                right = Vector3.Cross(Vector3.up, up);
+                if (right.sqrMagnitude < 1e-8f) right = Vector3.Cross(Vector3.forward, up);
+                right = right.normalized;
+                forward = Vector3.Cross(right, up);
+                return;
+            }
+            if (input.Pattern == FlockPattern.Float)
+            {
+                float yaw = TwoPi * input.Random.x + 0.15f * Mathf.Sin((time + input.TimeOffset)
+                    * Mathf.Min(input.Speed / Mathf.Max(input.BodyLength, 0.01f) * 0.015f, 0.6f) + TwoPi * input.Random.z);
                 forward = new Vector3(Mathf.Sin(yaw), 0f, Mathf.Cos(yaw));
                 up = Vector3.up;
                 right = Vector3.Cross(up, forward);
@@ -292,15 +303,6 @@ namespace SabaProps.Flock
 
             Vector3 acceleration = (next - position * 2f + previous) / (h * h);
             float bank = Mathf.Clamp(Vector3.Dot(acceleration, right) * input.BankGain, -MaxBank, MaxBank);
-            if (input.Pattern == FlockPattern.FloorGlide)
-            {
-                Vector3 room = Max(input.Area - Margin(input), 0f);
-                float angle = FloorGlidePhase(room, input.BodyLength, input.Speed, input.Random, time + input.TimeOffset);
-                Vector3 inward = new Vector3(-position.x / Mathf.Max(room.x, 0.01f), 0f,
-                    -position.z / Mathf.Max(room.z, 0.01f));
-                float side = Vector3.Dot(inward, right) < 0f ? -1f : 1f;
-                bank = side * 1.45f * WallRise(angle);
-            }
             Vector3 bankedUp = up * Mathf.Cos(bank) + right * Mathf.Sin(bank);
             right = Vector3.Cross(bankedUp, forward);
             up = bankedUp;
@@ -440,27 +442,37 @@ namespace SabaProps.Flock
             return t - 0.65f * Mathf.Sin(rate * t + TwoPi * Frac(r.y * 5.13f + r.z * 2.71f)) / rate;
         }
 
-        public static float FloorGlidePhase(Vector3 room, float bodyLength, float speed, Vector3 r, float t)
+        /// <summary>Smooth arm flexion pulse, shared with the propulsion clock.</summary>
+        public static float OctopusStroke(float t, float frequency, float phase)
         {
-            float aspect = Mathf.Min(room.x, room.z) / Mathf.Max(Mathf.Max(room.x, room.z), 0.01f);
-            float rate = Mathf.Min(speed / Mathf.Max(0.5f * (room.x + room.z), Mathf.Max(bodyLength, 0.01f)), 0.35f * aspect);
-            return t * rate * (0.8f + 0.4f * r.y) + TwoPi * r.x;
+            float stroke = 0.5f + 0.5f * Mathf.Cos(TwoPi * frequency * t + phase);
+            return stroke * stroke * stroke * stroke;
         }
 
-        /// <summary>Four smooth climbing episodes at the extremes of the horizontal path.</summary>
-        public static float WallRise(float angle)
+        /// <summary>Integrated response of one propulsion harmonic to drag with a 0.18-cycle time constant.</summary>
+        public static float CoastTerm(float harmonic, float amplitude, float phase, float rate)
         {
-            float c = Mathf.Cos(2f * angle);
-            float square = c * c;
-            return square * square * square * square;
+            float drag = TwoPi * 0.18f * harmonic;
+            float angle = harmonic * phase;
+            return amplitude * (Mathf.Sin(angle) - drag * Mathf.Cos(angle))
+                / (harmonic * rate * (1f + drag * drag));
+        }
+
+        /// <summary>Analytic stroke and coast clock: positive velocity, impulse followed by drag.</summary>
+        public static float OctopusClock(float t, float frequency, Vector3 r)
+        {
+            if (frequency <= 0f) return t;
+            float rate = TwoPi * frequency;
+            float phase = rate * t + TwoPi * Frac(r.y * 5.13f + r.z * 2.71f);
+            return t + CoastTerm(1f, 1.28f, phase, rate) + CoastTerm(2f, 0.64f, phase, rate)
+                + CoastTerm(3f, 0.18285714f, phase, rate) + CoastTerm(4f, 0.02285714f, phase, rate);
         }
 
         public static Vector3 FloorGlide(Vector3 room, float bodyLength, float speed, Vector3 r, float t)
         {
-            float angle = FloorGlidePhase(room, bodyLength, speed, r, t);
-            return new Vector3(room.x * (0.94f + 0.04f * r.x) * Mathf.Cos(angle),
-                room.y * (-0.82f + 1.55f * WallRise(angle)),
-                room.z * (0.94f + 0.04f * r.z) * Mathf.Sin(angle));
+            Vector3 position = Wander(room, speed, r, t);
+            position.y = 0.6f * position.y - 0.3f * room.y;
+            return position;
         }
 
         public static Vector3 DriftPoint(float index, Vector3 r)

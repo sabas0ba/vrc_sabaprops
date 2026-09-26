@@ -54,7 +54,6 @@ namespace SabaProps.Flock.Editors
         public static float MaxPitch(FlockSpecies species)
         {
             if (species.grounded) return 0f;
-            if (species.defaultPattern == FlockPattern.FloorGlide) return 0.9f;
             if (species.category == FlockCategory.Bird)
             {
                 return 0.6f;
@@ -136,7 +135,7 @@ namespace SabaProps.Flock.Editors
                 : Amplitude(species) * species.bodyLength;
             if (species.animation == FlockAnimation.Tentacles) wave *= 1.12f;
             if (species.animation == FlockAnimation.Jet) wave += 0.08f * radius;
-            if (species.animation == FlockAnimation.Octopus) wave = wave * 1.18f + 0.04f * radius;
+            if (species.animation == FlockAnimation.Octopus) wave = wave * 1.18f + 0.12f * radius + 0.18f * species.bodyLength;
             if (species.animation == FlockAnimation.Walk) wave += 0.05f * species.bodyLength;
             return (radius + 2f * shoulder + wave) * (1f + Mathf.Clamp(species.sizeVariance, 0f, 0.5f)) + 0.01f;
         }

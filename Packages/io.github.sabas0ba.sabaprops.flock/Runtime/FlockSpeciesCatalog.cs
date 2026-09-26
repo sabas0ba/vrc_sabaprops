@@ -121,6 +121,7 @@ namespace SabaProps.Flock
             s.primary = C(bodyColor); s.secondary = C(appendageColor); s.accent = C(bodyColor);
             s.detail = C(appendageColor); s.extra = C(appendageColor); s.sizeVariance = 0.04f;
             s.beatFrequency = shape == FlockBodyShape.Jellyfish ? 0.6f : animation == FlockAnimation.Jet ? 0.8f : 1.2f;
+            if (shape == FlockBodyShape.Octopus) s.beatFrequency = 0.65f;
             s.beatAmplitude = animation == FlockAnimation.Static ? 0f : animation == FlockAnimation.Pulse ? 0.15f : 0.06f;
             s.cruiseSpeed = length * 0.5f;
             s.defaultPattern = anchored ? FlockPattern.Anchored : animation == FlockAnimation.Jet ? FlockPattern.Jet

@@ -72,7 +72,7 @@ namespace SabaProps.Flock.DocsCapture
             CaptureMantaMotion();
         }
 
-        /// <summary>Render three exact phases of the real wall-turn shader in the world sample.</summary>
+        /// <summary>Render one manta at three times on its normal low-biased swimming path.</summary>
         public static void CaptureMantaMotion()
         {
             EditorSceneManager.OpenScene(FlockWorldSample.ScenePath);
@@ -92,9 +92,6 @@ namespace SabaProps.Flock.DocsCapture
             var settings = new FlockSwarmSettings { pattern = FlockPattern.FloorGlide, count = 1,
                 seed = manta.settings.seed, area = manta.settings.area, speedScale = manta.settings.speedScale };
             FlockMotionInput input = FlockSwarmMeshBuilder.MotionInput(manta.species, settings, 0);
-            Vector3 room = input.Area - input.BodyMargin;
-            float start = FlockMotion.FloorGlidePhase(room, input.BodyLength, input.Speed, input.Random, 0f);
-            float rate = FlockMotion.FloorGlidePhase(room, input.BodyLength, input.Speed, input.Random, 1f) - start;
             Mesh mesh = FlockSwarmMeshBuilder.Build(manta.species, settings, FlockDetail.High, "Manta motion capture");
             Material material = new Material(manta.GetComponentInChildren<MeshRenderer>().sharedMaterial);
             material.SetFloat(FlockShaderContract.TimeScaleProperty, 0f);
@@ -104,20 +101,19 @@ namespace SabaProps.Flock.DocsCapture
             holder.AddComponent<MeshRenderer>().sharedMaterial = material;
             try
             {
-                string[] names = { "manta-low", "manta-climb", "manta-wall-turn" };
-                float[] phases = { 1.25f, 1.45f, 1.5f };
+                string[] names = { "manta-swim-01", "manta-swim-02", "manta-swim-03" };
+                float[] times = { 0f, 20f, 40f };
                 var uvs = new System.Collections.Generic.List<Vector4>();
                 mesh.GetUVs(FlockShaderContract.SwarmChannel, uvs);
-                for (int i = 0; i < phases.Length; i++)
+                for (int i = 0; i < times.Length; i++)
                 {
-                    float clock = (phases[i] * Mathf.PI - start) / rate;
+                    float clock = input.TimeOffset + times[i];
                     for (int v = 0; v < uvs.Count; v++)
                     {
                         Vector4 uv = uvs[v]; uv.z = clock; uvs[v] = uv;
                     }
                     mesh.SetUVs(FlockShaderContract.SwarmChannel, uvs);
-                    input.TimeOffset = clock;
-                    Vector3 target = holder.transform.position + FlockMotion.Position(input, 0f);
+                    Vector3 target = holder.transform.position + FlockMotion.Position(input, times[i]);
                     CaptureShots(new[] { new Shot { Name = names[i], Target = target,
                         Position = target + new Vector3(0f, 1.2f, -7f), FieldOfView = 48f } }, false, true);
                 }

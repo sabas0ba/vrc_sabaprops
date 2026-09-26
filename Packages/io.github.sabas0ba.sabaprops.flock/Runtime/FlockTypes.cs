@@ -38,9 +38,9 @@ namespace SabaProps.Flock
         Float = 10,
         /// <summary>Independent broad flight paths instead of a shared formation.</summary>
         FreeFlight = 11,
-        /// <summary>Agile three-dimensional drift with independently moving arms.</summary>
+        /// <summary>Three-dimensional stroke and coast swimming with the mantle apex leading.</summary>
         OctopusDrift = 12,
-        /// <summary>Low swimming with a rising, banked turn near the area walls.</summary>
+        /// <summary>Normal wandering with a preference for the lower part of the area.</summary>
         FloorGlide = 13,
     }
 

@@ -56,7 +56,7 @@ internal static class OfflineFlockTests
         "PathAngularSpeed", "PathPoint", "PathFrame", "UnitBallPoint", "Wobble",
         "Wander", "OrbitRate", "DriftSpeed", "Position", "Pose", "Frac", "AppendageOffset",
         "Margin", "JetClock", "DriftPoint", "FloatDrift",
-        "FloorGlidePhase", "WallRise", "FloorGlide",
+        "OctopusStroke", "CoastTerm", "OctopusClock", "FloorGlide",
     };
 
     private static int Main(string[] args)
@@ -93,8 +93,8 @@ internal static class OfflineFlockTests
         Run("large birds occupy broad independent flight paths", BroadBirdFlight);
         Run("jet contraction drives forward pulses", JetPulses);
         Run("jellyfish drift slowly in three dimensions and stay upright", JellyfishDrift);
-        Run("octopus drifts more quickly than jellyfish without fish-like turns", OctopusDrift);
-        Run("manta cruises low and climbs with its belly facing the wall", MantaFloorGlide);
+        Run("octopus leads with its mantle apex and coasts after each stroke", OctopusDrift);
+        Run("manta follows broad fish paths with a lower depth preference", MantaFloorGlide);
 
         if (_failures > 0)
         {
@@ -553,7 +553,9 @@ internal static class OfflineFlockTests
             octopusDistance += (next - p).magnitude;
             jellyDistance += (FlockMotion.Position(jellyClock, t + 0.1f) - FlockMotion.Position(jellyClock, t)).magnitude;
             Require((next - p).magnitude < 0.15f, "octopus drift jumps");
-            Require(Approximately(up, Vector3.up, 1e-6f), "octopus tilts like a fish");
+            Vector3 travel = FlockMotion.Position(input, t + 0.01f) - FlockMotion.Position(input, t - 0.01f);
+            if (travel.sqrMagnitude > 1e-10f)
+                Require(Vector3.Dot(up, travel.normalized) > 0.995f, "octopus mantle apex does not lead movement");
             minY = Mathf.Min(minY, p.y); maxY = Mathf.Max(maxY, p.y);
         }
         Require(octopusDistance > jellyDistance * 5f, "octopus drift is not more agile than jellyfish");
@@ -564,6 +566,26 @@ internal static class OfflineFlockTests
         Vector3 b = FlockMotion.AppendageOffset(root, new Vector4(0f, 0f, 4f, 0f),
             (float)FlockAnimation.Octopus, species.beatFrequency, species.beatAmplitude, 0.7f, 0f, species.bodyLength);
         Require(Approximately(a, b, 1e-6f), "octopus arm root separates from mantle");
+        float phase = FlockMotion.TwoPi * FlockMotion.Frac(input.Random.y * 5.13f + input.Random.z * 2.71f);
+        float period = 1f / species.beatFrequency;
+        float strokePeak = (FlockMotion.TwoPi - phase) / (FlockMotion.TwoPi * species.beatFrequency);
+        float peak = 0f, peakTime = 0f, minimum = float.MaxValue;
+        for (int i = 0; i < 1000; i++)
+        {
+            float t = strokePeak + i * period / 1000f;
+            float velocity = (FlockMotion.OctopusClock(t + 0.001f, species.beatFrequency, input.Random)
+                - FlockMotion.OctopusClock(t - 0.001f, species.beatFrequency, input.Random)) / 0.002f;
+            minimum = Mathf.Min(minimum, velocity);
+            if (velocity > peak) { peak = velocity; peakTime = t; }
+        }
+        Require(minimum > 0.19f && peak > minimum * 3f, "octopus lacks forward stroke and coast pulses");
+        Require(peakTime > strokePeak + 0.03f * period && peakTime < strokePeak + 0.3f * period,
+            "octopus acceleration does not follow arm flexion");
+        float coastTime = strokePeak + period * 0.4f;
+        float coastVelocity = (FlockMotion.OctopusClock(coastTime + 0.001f, species.beatFrequency, input.Random)
+            - FlockMotion.OctopusClock(coastTime - 0.001f, species.beatFrequency, input.Random)) / 0.002f;
+        Require(FlockMotion.OctopusStroke(coastTime, species.beatFrequency, phase) < 0.01f
+            && coastVelocity > 0.4f && coastVelocity < peak, "octopus does not coast after its stroke");
     }
 
     private static void MantaFloorGlide()
@@ -573,30 +595,21 @@ internal static class OfflineFlockTests
         var settings = new FlockSwarmSettings { pattern = FlockPattern.FloorGlide, count = 3, area = new Vector3(11.8f, 4.8f, 5.8f) };
         FlockMotionInput input = FlockSwarmMeshBuilder.MotionInput(species, settings, 0);
         Vector3 room = input.Area - input.BodyMargin;
-        float atZero = FlockMotion.FloorGlidePhase(room, input.BodyLength, input.Speed, input.Random, 0f);
-        float rate = FlockMotion.FloorGlidePhase(room, input.BodyLength, input.Speed, input.Random, 1f) - atZero;
         int low = 0, total = 0;
+        float sumY = 0f, minX = float.MaxValue, maxX = float.MinValue, minZ = float.MaxValue, maxZ = float.MinValue;
         for (float t = 0f; t < 600f; t += 0.2f)
         {
             Vector3 p = FlockMotion.Position(input, t);
-            if (p.y < -0.5f * room.y) low++;
+            Vector3 fish = FlockMotion.Wander(room, input.Speed, input.Random, t + input.TimeOffset);
+            Require(Math.Abs(p.x - fish.x) < 1e-5f && Math.Abs(p.z - fish.z) < 1e-5f, "manta departs from normal fish path");
+            if (p.y < 0f) low++;
             total++;
+            sumY += p.y;
+            minX = Mathf.Min(minX, p.x); maxX = Mathf.Max(maxX, p.x);
+            minZ = Mathf.Min(minZ, p.z); maxZ = Mathf.Max(maxZ, p.z);
         }
-        Require(low > total * 0.6f, "manta spends too little time near the floor");
-        for (int wall = 0; wall < 4; wall++)
-        {
-            float angle = Mathf.PI * 0.5f * wall;
-            float time = (angle - atZero) / rate - input.TimeOffset;
-            FlockMotion.Pose(input, time, out Vector3 p, out _, out Vector3 up, out _);
-            Vector3 outward = new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle));
-            Require(Vector3.Dot(-up, outward) > 0.95f, "manta belly does not face glass at turn");
-            Require(p.y > 0.6f * room.y, "manta does not rise at wall");
-            Vector3 before = FlockMotion.Position(input, time - 0.15f / rate);
-            Require(before.y < p.y, "manta does not climb before turn");
-            Require(Math.Abs(p.x) + input.BodyMargin.x < input.Area.x
-                && Math.Abs(p.y) + input.BodyMargin.y < input.Area.y
-                && Math.Abs(p.z) + input.BodyMargin.z < input.Area.z, "banked manta crosses tank boundary");
-        }
+        Require(low > total * 0.65f && sumY / total < -0.2f * room.y, "manta lacks a lower depth preference");
+        Require(maxX - minX > room.x && maxZ - minZ > room.z, "manta swims in too narrow a range");
     }
 
     private static void JellyfishDrift()
@@ -850,12 +863,14 @@ internal static class OfflineFlockTests
                 for (int i = 0; i < count; i += Math.Max(1, count / 6))
                 {
                     FlockMotionInput input = FlockSwarmMeshBuilder.MotionInput(s, settings, i);
-                    FlockMotion.Pose(input, 0f, out _, out Vector3 previous, out _, out _);
+                    FlockMotion.Pose(input, 0f, out _, out Vector3 previous, out Vector3 previousUp, out _);
+                    if (pattern == FlockPattern.OctopusDrift) previous = previousUp;
                     float worst = 0f;
                     float worstTime = 0f;
                     for (float t = frame; t < 120f; t += frame)
                     {
-                        FlockMotion.Pose(input, t, out _, out Vector3 forward, out _, out _);
+                        FlockMotion.Pose(input, t, out _, out Vector3 forward, out Vector3 up, out _);
+                        if (pattern == FlockPattern.OctopusDrift) forward = up;
                         float turn = Mathf.Acos(Vector3.Dot(previous, forward));
                         if (turn > worst)
                         {
@@ -896,8 +911,11 @@ internal static class OfflineFlockTests
                             $"{where}: frame not unit length");
                         Require(Math.Abs(Vector3.Dot(f, u)) < 1e-3f && Math.Abs(Vector3.Dot(f, r)) < 1e-3f && Math.Abs(Vector3.Dot(u, r)) < 1e-3f,
                             $"{where}: frame not orthogonal");
-                        Require(Math.Abs(f.y) <= input.MaxPitch + 1e-3f, $"{where}: pitch {f.y} beyond {input.MaxPitch}");
-                        Require(u.y > 0f, $"{where}: flying upside down");
+                        if (pattern != FlockPattern.OctopusDrift)
+                        {
+                            Require(Math.Abs(f.y) <= input.MaxPitch + 1e-3f, $"{where}: pitch {f.y} beyond {input.MaxPitch}");
+                            Require(u.y > 0f, $"{where}: flying upside down");
+                        }
                     }
                 }
             }
