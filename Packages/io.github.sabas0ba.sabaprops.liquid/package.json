@@ -1,0 +1,35 @@
+{
+  "name": "io.github.sabas0ba.sabaprops.liquid",
+  "displayName": "SabaProps Liquid",
+  "version": "0.0.1",
+  "unity": "2022.3",
+  "description": "ワールド側から、アバターとワールドの表面へ水・塗料・泥などの液体の付着を Projector で描画する PC 向け Udon パッケージ。現在は開発中です。",
+  "author": {
+    "name": "sabas0ba",
+    "url": "https://github.com/sabas0ba"
+  },
+  "license": "MIT",
+  "licensesUrl": "https://github.com/sabas0ba/vrc_sabaprops/blob/main/LICENSE",
+  "documentationUrl": "https://github.com/sabas0ba/vrc_sabaprops/blob/main/Packages/io.github.sabas0ba.sabaprops.liquid/README.md",
+  "changelogUrl": "https://github.com/sabas0ba/vrc_sabaprops/blob/main/Packages/io.github.sabas0ba.sabaprops.liquid/CHANGELOG.md",
+  "vpmDependencies": {
+    "com.vrchat.worlds": "3.10.x"
+  },
+  "samples": [
+    {
+      "displayName": "Liquid Demo World",
+      "description": "プール、泥沼、シャワー、水道、水鉄砲、鏡と、液体と Source を比べるマネキンの列を並べた VRChat World 用のサンプルシーン。左右の列はサーバー時刻に合わせて自動で動き、操作しなくても液体の付き方・垂れ方・乾き方が分かります。",
+      "path": "Samples~/LiquidDemo"
+    }
+  ],
+  "keywords": [
+    "vrchat",
+    "world",
+    "udon",
+    "udonsharp",
+    "projector",
+    "liquid",
+    "water",
+    "decal"
+  ]
+}

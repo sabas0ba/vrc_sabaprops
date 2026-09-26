@@ -27,6 +27,7 @@ SOFT_PROPS_PACKAGE="$REPO/Packages/io.github.sabas0ba.sabaprops.softprops"
 PUT_ITEMS_PACKAGE="$REPO/Packages/io.github.sabas0ba.sabaprops.putitems"
 TABLET_PACKAGE="$REPO/Packages/io.github.sabas0ba.sabaprops.tablet"
 TREES_PACKAGE="$REPO/Packages/io.github.sabas0ba.sabaprops.trees"
+LIQUID_PACKAGE="$REPO/Packages/io.github.sabas0ba.sabaprops.liquid"
 
 PROJECT="${1:-$REPO/build/WorldProject}"
 VPM="${VPM_DIR:-$REPO/build/vpm}"
@@ -84,6 +85,9 @@ replace "$SOFT_PROPS_PACKAGE" "$PROJECT/Packages/io.github.sabas0ba.sabaprops.so
 replace "$PUT_ITEMS_PACKAGE" "$PROJECT/Packages/io.github.sabas0ba.sabaprops.putitems"
 replace "$TABLET_PACKAGE" "$PROJECT/Packages/io.github.sabas0ba.sabaprops.tablet"
 replace "$TREES_PACKAGE" "$PROJECT/Packages/io.github.sabas0ba.sabaprops.trees"
+
+# The liquid package is Udon as well; see Tests/Liquid for what is checked here.
+replace "$LIQUID_PACKAGE" "$PROJECT/Packages/io.github.sabas0ba.sabaprops.liquid"
 replace "$VPM/com.vrchat.base" "$PROJECT/Packages/com.vrchat.base"
 replace "$VPM/com.vrchat.worlds" "$PROJECT/Packages/com.vrchat.worlds"
 
