@@ -151,6 +151,7 @@ Shader "SabaProps/Liquid/Body Projector"
                 float2 metric;
                 float3 uAxis;
                 float3 vAxis;
+                int axis;
             };
 
             v2f vert(appdata input)
@@ -209,6 +210,7 @@ Shader "SabaProps/Liquid/Body Projector"
                 tile.metric = axis == 0 ? surface.zy : (axis == 1 ? surface.xz : surface.xy);
                 tile.uAxis = CanvasAxis(axis == 0 ? 2 : 0);
                 tile.vAxis = CanvasAxis(axis == 1 ? 2 : 1);
+                tile.axis = axis;
                 return tile;
             }
 
@@ -375,14 +377,20 @@ Shader "SabaProps/Liquid/Body Projector"
                 // 結露は肌のように吸わない面でも水滴（汗や露）になります。
                 float beadWeight = max(repellency, condensation * (1.0 - absorbency)) * (1.0 - saturate(pigment.a * 2.0));
                 // 面内の重力方向。タイルの軸へ投影し、面が水平に近いときは伸ばしません。
-                // 面を下る向き。重力を受け手の面（接平面）へ射影してから、タイルの座標へ移します。
-                // タイルの面へ直接射影すると、頭頂や肩のように上を向いたタイルでは、丸い面の片側で
-                // 上りの向きになるためです。射影した長さが面の傾き（垂直で 1、水平で 0）です。
-                float3 downhill = float3(0.0, -1.0, 0.0) - worldNormal * dot(float3(0.0, -1.0, 0.0), worldNormal);
+                // 面を下る向き。
+                // 滴を並べる向きは、タイル全体で一定の「タイルの面に射影した重力」にします。画素ごとに
+                // 変わる向きで並べると、頭のような丸い面で列がゆがみ、滴が斜めに横切って見えるためです。
+                // 面の傾き（垂直で 1、水平で 0）は受け手の面（接平面）への射影から取り、その向きと
+                // タイルの向きが逆（上り）になる所では伸ばしも垂らしもしません。上を向いたタイル
+                // （頭頂や肩）は、丸い面の片側が必ず上りになるため、伸ばしも垂らしもしません。
+                float3 worldDown = float3(0.0, -1.0, 0.0);
+                float3 downhill = worldDown - worldNormal * dot(worldDown, worldNormal);
                 float steepness = saturate(length(downhill));
-                float2 gravity = float2(dot(downhill, tile.uAxis), dot(downhill, tile.vAxis));
-                float along = length(gravity);
-                gravity = steepness > 0.2 && along > 0.05 ? gravity / along : float2(0.0, 0.0);
+                float2 tileDown = float2(dot(worldDown, tile.uAxis), dot(worldDown, tile.vAxis));
+                float2 surfaceDown = float2(dot(downhill, tile.uAxis), dot(downhill, tile.vAxis));
+                bool coherent = tile.axis != 1 && steepness > 0.2 && dot(tileDown, tileDown) > 0.25
+                    && dot(tileDown, surfaceDown) > 0.0;
+                float2 gravity = coherent ? normalize(tileDown) : float2(0.0, 0.0);
                 float4 beads = beadWeight > 0.01 ? SabaLiquidBeads(tile.metric, beadSize, wet, gravity, steepness, _Time.y) : 0.0;
                 float sheet = wet * (1.0 - beadWeight);
                 float beaded = beads.x * beadWeight * saturate(wet * 3.0);

@@ -74,7 +74,7 @@ namespace SabaProps.Liquid
         [Header("垂れ落ちる水滴")]
         [Tooltip("結露が飽和した体で、1 秒あたりに垂れ始める水滴の数。")]
         [Min(0f)]
-        public float dripsPerSecond = 1.5f;
+        public float dripsPerSecond = 0.4f;
 
         [Tooltip("水滴の半径（m）。")]
         [Min(0.005f)]
@@ -233,7 +233,7 @@ namespace SabaProps.Liquid
         }
 
         /// <summary>
-        /// 結露が半分を超えた体に、ときどき水滴を置きます。体の周りの無作為な向きと高さから
+        /// 結露が 7 割を超えた体に、ときどき水滴を置きます。体の周りの無作為な向きと高さから
         /// 体の軸へ光線を飛ばし、当たった所に小さな水を付けます。付いた水は流下で垂れていきます。
         /// </summary>
         private void Drip(LiquidBodyCanvas canvas, int target, Vector3 centre, Vector3 top, float dt)
@@ -244,12 +244,13 @@ namespace SabaProps.Liquid
             }
 
             float condensation = canvas.GetCondensation();
-            if (condensation <= 0.5f)
+            // 細かい結露がまとまって流れ落ちるのは、表面の水が十分に溜まってからです。
+            if (condensation <= 0.7f)
             {
                 return;
             }
 
-            float expected = dripsPerSecond * (condensation - 0.5f) * 2f * dt;
+            float expected = dripsPerSecond * (condensation - 0.7f) / 0.3f * dt;
             _drip++;
             int sample = (_drip % 100000) * 7 + (target & 1023);
             if (pool.Random01(sample) >= expected)

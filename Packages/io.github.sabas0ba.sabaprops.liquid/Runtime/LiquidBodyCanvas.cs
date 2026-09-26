@@ -60,7 +60,7 @@ namespace SabaProps.Liquid
 
         [Header("液体の振る舞い")]
         [Tooltip("粘性 0 の液膜が重力方向へ流れる速さ（m/s）。")]
-        public float flowSpeed = 0.08f;
+        public float flowSpeed = 0.05f;
 
         [Tooltip("蒸発率の符号化に使う上限（1/s）。これより速い乾燥は表せません。")]
         public float maxEvaporationRate = 0.2f;

@@ -467,7 +467,7 @@ namespace SabaProps.Liquid.Editors
 
             Put(corner.transform, LiquidPrefabBuilder.FaucetName, new Vector3(7f, 0f, -7f), 0f);
             Put(corner.transform, LiquidPrefabBuilder.ShowerName, new Vector3(9f, 0f, -6.5f), 0f);
-            Put(corner.transform, LiquidPrefabBuilder.NozzleStandName, new Vector3(-3f, 0f, -7f), 0f);
+            Put(corner.transform, LiquidPrefabBuilder.NozzleStandName, new Vector3(11.5f, 0f, -9.5f), 0f);
 
             // Steady rain over two mannequins; one has an umbrella held over it.
             Vector3 rain = new Vector3(13f, 0f, -6f);
@@ -573,7 +573,8 @@ namespace SabaProps.Liquid.Editors
                 new Color(0.42f, 0.33f, 0.25f), 0.2f);
             const float spacing = 0.7f;
             float width = spacing * RackLiquids.Length;
-            Vector3 centre = new Vector3(-15f, 0f, -12.5f);
+            // In front of the spawn and to its left, so it is in view on arrival.
+            Vector3 centre = new Vector3(-8f, 0f, -6.3f);
             LiquidSampleScene.Slab(rack.transform, "Shelf", centre.x - width * 0.5f, centre.x + width * 0.5f,
                 centre.z - 0.3f, centre.z + 0.3f, 0.9f, 0.9f, furniture);
 
@@ -589,12 +590,13 @@ namespace SabaProps.Liquid.Editors
                 nozzle.pool = pool;
                 UdonSharpEditorUtility.CopyProxyToUdon(nozzle);
 
-                LiquidDemoGalleries.Label(rack.transform, RackLiquids[i].Replace(" Paint", "\nPaint"),
-                    new Vector3(x, 1.25f, centre.z - 0.2f), Quaternion.Euler(0f, 180f, 0f)).characterSize = 0.025f;
+                // One word per line, so neighbouring names do not run into each other.
+                LiquidDemoGalleries.Label(rack.transform, RackLiquids[i].Replace(" ", "\n"),
+                    new Vector3(x, 1.3f, centre.z - 0.2f), Quaternion.Euler(0f, 180f, 0f)).characterSize = 0.018f;
             }
 
             LiquidDemoGalleries.Label(rack.transform, "Every liquid: pick one up and hold use to spray",
-                centre + new Vector3(0f, 1.7f, -0.2f), Quaternion.Euler(0f, 180f, 0f));
+                centre + new Vector3(0f, 1.75f, -0.2f), Quaternion.Euler(0f, 180f, 0f)).characterSize = 0.025f;
         }
 
         private static void PlaceResetPanel(LiquidCanvasPool pool, Vector3 position)

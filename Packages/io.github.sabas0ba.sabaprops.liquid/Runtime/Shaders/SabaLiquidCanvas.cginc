@@ -246,39 +246,62 @@ float4 SabaLiquidBeadLayer(float2 position, float density, float amount, float2 
 // 面を伝って垂れる水滴。position は水滴の格子単位の座標、down は面内の重力方向（単位ベクトル）、
 // steepness は面の傾き（垂直で 1、水平で 0）、time は秒です。返り値は SabaLiquidBeads と同じ並びです。
 //
-// 重力方向に沿った列ごとに、まれに垂れる水滴を置きます。水滴は列に沿って落ち、通った跡に
-// 細い筋を残します。落ちる速さは面が立っているほど速く、水平な面では垂れません。
+// 重力方向に沿った列を、さらに重力方向に一定の長さの区間に分け、区間ごとに 1 つの滴を扱います。
+// 滴は区間の上で水が溜まって膨らみ、離れると次第に速くなりながら区間の下まで滑り、通った跡に
+// 細い筋を残します。滴が離れるかどうか、どの速さで落ちるかは区間と周期ごとの乱数で決め、
+// 面が立っているほど離れやすく速くなります。液量が十分に溜まるまでは離れません。
 float4 SabaLiquidRunnels(float2 position, float2 down, float steepness, float amount, float time)
 {
     const float width = 2.5;
-    const float period = 7.0;
+    const float period = 9.0;
     float2 across = float2(-down.y, down.x);
     float a = dot(position, down);
     float c = dot(position, across);
 
+    // 滴が離れるには、面に水が十分溜まっている必要があります。
+    float loaded = saturate((amount - 0.55) / 0.45);
     float column = floor(c / width);
     float2 random = SabaLiquidHash2(float2(column, 91.7));
-    float density = saturate((amount - 0.3) * 2.0) * steepness * steepness * 0.55;
-    if (random.x > density)
+    if (random.x > loaded * pow(steepness, 3.0) * 0.6)
     {
         return 0.0;
     }
 
-    // 列の中心は少し揺らし、落ちる途中でわずかに蛇行させます。
-    float centre = (column + 0.5) * width + (random.y - 0.5) * width * 0.4
-        + sin(a * 0.9 + random.y * 6.283) * 0.18;
-    float dx = c - centre;
-
-    // 大きい滴ほど速く落ちます。列ごとに周期をずらし、そろって落ちないようにします。
-    float big = SabaLiquidHash(float2(column, 13.1));
-    float speed = lerp(0.8, 2.6, big) * steepness;
     float phase = SabaLiquidHash(float2(column, 57.3));
     float span = period * (1.0 + phase);
-    float local = frac((a + phase * span) / span) * span;
-    float head = frac(time * speed / span + phase) * span;
+    float shifted = (a + phase * span) / span;
+    float window = floor(shifted);
+    float local = frac(shifted) * span;
+    float2 key = float2(column * 7.13 + window * 13.71, 5.3);
 
-    float radius = 0.28 + 0.22 * big;
+    // 区間ごとの速さ。多くはゆっくり這い、まれに速く落ちます。立った面ほど速くなります。
+    float big = SabaLiquidHash(key + 13.1);
+    float speed = lerp(0.1, 0.8, big * big) * steepness * steepness;
+    float cycles = time * speed / span + SabaLiquidHash(key + 29.9);
+    float cycle = floor(cycles);
+    float progress = frac(cycles);
+
+    // この周期に滴が離れるか。立った面ほど、また溜まった水が多いほど離れやすくなります。
+    float chance = lerp(0.15, 0.8, steepness * steepness) * loaded;
+    if (SabaLiquidHash(key + cycle * 3.71) > chance)
+    {
+        return 0.0;
+    }
+
+    // 初めの 2 割で水が溜まって膨らみ、その後は加速しながら落ちます。
+    float swell = smoothstep(0.0, 0.2, progress);
+    float fall = saturate((progress - 0.2) / 0.8);
+    float head = span * 0.08 + span * 0.9 * fall * fall;
+
+    float centre = (column + 0.5) * width + (random.y - 0.5) * width * 0.4
+        + sin(a * 0.9 + random.y * 6.283) * 0.15;
+    float dx = c - centre;
+    float radius = (0.26 + 0.22 * big) * swell;
     float4 result = 0.0;
+    if (radius <= 1e-3)
+    {
+        return result;
+    }
 
     // 先頭の滴。下側に重みが寄った楕円です。
     float along = local - head;
@@ -292,9 +315,9 @@ float4 SabaLiquidRunnels(float2 position, float2 down, float steepness, float am
     }
 
     // 通った跡。先頭に近いほど太く、上へ行くほど細くなって途切れます。
-    float trail = min(head, 3.2 * (0.6 + big));
+    float trail = min(head - span * 0.08, 3.0 * (0.6 + big));
     float behind = head - local;
-    if (behind > 0.0 && behind < trail)
+    if (trail > 0.0 && behind > 0.0 && behind < trail)
     {
         float halfWidth = radius * 0.32 * (1.0 - behind / trail);
         float t = abs(dx) / max(halfWidth, 1e-4);

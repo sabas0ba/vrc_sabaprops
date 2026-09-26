@@ -208,6 +208,8 @@ namespace SabaProps.Liquid.WorldTests
                 "the carried nozzles did not reach the right target");
             LiquidDemoPlayTests.CaptureGrid("liquid-interactive-spray-targets.png", m, SprayTargetLeft, 2);
             LiquidDemoPlayTests.CaptureGrid("liquid-interactive-sauna-bare.png", m, SaunaFirst, 2, 1.1f, 1.2f);
+            LiquidDemoPlayTests.CaptureGrid("liquid-interactive-sauna-heads.png", m, SaunaFirst, 2, 0.55f, 1.6f);
+            LiquidDemoPlayTests.Capture("liquid-interactive-rack.png", new Vector3(-8f, 1.7f, -9.2f), new Vector3(-8f, 1.0f, -6.3f), 70f);
 
             Assert.Greater(LiquidDemoPlayTests.Coverage(m[InTheRain].projectorMaterial), 0f, "the rain patch did not wet its mannequin");
             Assert.AreEqual(0f, LiquidDemoPlayTests.Coverage(m[UnderUmbrella].projectorMaterial), "rain reached under the umbrella");
