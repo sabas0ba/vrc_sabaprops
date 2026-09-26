@@ -266,12 +266,12 @@ namespace SabaProps.Tablet
             var t = new TabletTeleport();
             var target = new Vector3(2f, 0f, 1f);
             Vector3 forward = Quaternion.AngleAxis(60f, Vector3.up) * (Quaternion.AngleAxis(-40f, Vector3.right) * Vector3.forward);
-            Vector3 arrival = t.FrontOf(target, forward, 1.2f);
+            Vector3 arrival = t.AroundPlayer(target, forward, 1.2f, 0);
             Checks.Near(1.2f, (arrival - target).magnitude, 1e-4f, "distance ignores pitch");
             Checks.Near(0f, arrival.y - target.y, 1e-5f, "same height");
             Vector3 look = t.FacingRotation(arrival, target) * Vector3.forward;
             Checks.Require(Vector3.Dot(look, (target - arrival).normalized) > 0.9999f, "faces the player");
-            Checks.Near(Vector3.forward, t.FrontOf(target, Vector3.up, 1f) - target, 1e-5f, "degenerate forward");
+            Checks.Near(-Vector3.forward, t.AroundPlayer(target, Vector3.up, 1f, 0) - target, 1e-5f, "degenerate forward");
         }
     }
 

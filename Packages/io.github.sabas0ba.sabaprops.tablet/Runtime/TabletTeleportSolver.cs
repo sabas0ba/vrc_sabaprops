@@ -38,8 +38,8 @@ namespace SabaProps.Tablet
             return candidate >= 0 ? candidate : wrap;
         }
 
-        /// <summary>対象の正面 distance の位置。対象の向きの上下成分は無視します。</summary>
-        private Vector3 FrontOf(Vector3 target, Vector3 targetForward, float distance)
+        /// <summary>後方から順に調べる周囲 8 方向の候補。向きの上下成分は無視します。</summary>
+        private Vector3 AroundPlayer(Vector3 target, Vector3 targetForward, float distance, int candidate)
         {
             Vector3 flat = new Vector3(targetForward.x, 0f, targetForward.z);
             if (flat.sqrMagnitude < 1e-8f)
@@ -47,7 +47,15 @@ namespace SabaProps.Tablet
                 flat = Vector3.forward;
             }
 
-            return target + flat.normalized * distance;
+            float angle = 180f;
+            if (candidate == 1) angle = 135f;
+            else if (candidate == 2) angle = 225f;
+            else if (candidate == 3) angle = 90f;
+            else if (candidate == 4) angle = 270f;
+            else if (candidate == 5) angle = 45f;
+            else if (candidate == 6) angle = 315f;
+            else if (candidate == 7) angle = 0f;
+            return target + (Quaternion.AngleAxis(angle, Vector3.up) * flat.normalized) * distance;
         }
 
         /// <summary>from から to を向く水平の回転。同じ位置なら単位回転を返します。</summary>

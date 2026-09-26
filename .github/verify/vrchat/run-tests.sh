@@ -12,6 +12,7 @@
 #
 # Usage:
 #   UNITY=/path/to/Unity ./run-tests.sh [project-directory]
+#   TEST_FILTER=SabaProps.Tablet.WorldTests ./run-tests.sh [project-directory]
 #
 # UNITY may also be a Unity Hub install root, in which case the editor matching
 # ProjectVersion.txt is used.
@@ -20,6 +21,7 @@ set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO="$(cd "$HERE/../../.." && pwd)"
 PROJECT="${1:-$REPO/build/WorldProject}"
+TEST_FILTER="${TEST_FILTER:-SabaProps.Foliage.CITests;SabaProps.Foliage.WorldTests;SabaProps.SoftProps.WorldTests;SabaProps.StageCam.WorldTests;SabaProps.Tablet.WorldTests;SabaProps.PutItems.Tests}"
 
 VERSION="$(sed -n 's/^m_EditorVersion: *//p' "$REPO/.github/verify/CIProject/ProjectSettings/ProjectVersion.txt")"
 [ -n "$VERSION" ] || { echo "error: could not read the editor version from ProjectVersion.txt" >&2; exit 1; }
@@ -57,7 +59,7 @@ rm -f "$RESULTS" "$LOG"
 
 to_native() {
     if command -v cygpath >/dev/null 2>&1; then
-        cygpath -w "$1"
+        cygpath -wa "$1"
     else
         printf '%s' "$1"
     fi
@@ -83,6 +85,39 @@ fi
 
 grep -E "\[SabaProps Foliage\]" "$SETUP_LOG" | head -5 || true
 
+TMP_PACKAGE="$(find "$PROJECT/Library/PackageCache" -name 'TMP Essential Resources.unitypackage' -print -quit)"
+[ -n "$TMP_PACKAGE" ] || { echo "error: TMP Essential Resources package was not found" >&2; exit 1; }
+
+# Extract the official TMP resources before the next editor import.
+TMP_EXTRACT="$PROJECT/TestResults/tmp-essentials"
+mkdir -p "$TMP_EXTRACT"
+tar -xzf "$TMP_PACKAGE" -C "$TMP_EXTRACT"
+while IFS= read -r pathname_file; do
+    asset_path="$(cat "$pathname_file")"
+    case "$asset_path" in
+        "Assets/TextMesh Pro"|"Assets/TextMesh Pro/"*) ;;
+        *) echo "error: unexpected TMP asset path: $asset_path" >&2; exit 1 ;;
+    esac
+    case "$asset_path" in
+        *'/../'*|*'/..') echo "error: unsafe TMP asset path: $asset_path" >&2; exit 1 ;;
+    esac
+
+    asset_dir="$(dirname "$pathname_file")"
+    if [ -f "$asset_dir/asset" ]; then
+        mkdir -p "$PROJECT/$(dirname "$asset_path")"
+        cp "$asset_dir/asset" "$PROJECT/$asset_path"
+        cp "$asset_dir/asset.meta" "$PROJECT/$asset_path.meta"
+    else
+        mkdir -p "$PROJECT/$asset_path"
+        cp "$asset_dir/asset.meta" "$PROJECT/$asset_path.meta"
+    fi
+done < <(find "$TMP_EXTRACT" -name pathname -type f)
+
+[ -f "$PROJECT/Assets/TextMesh Pro/Resources/TMP Settings.asset" ] || {
+    echo "error: TMP Settings asset was not extracted" >&2
+    exit 1
+}
+
 echo "running tests in $PROJECT"
 
 # The SDK ships its own test assemblies, and two of them fail for reasons that
@@ -94,7 +129,7 @@ set +e
     -batchmode \
     -projectPath "$(to_native "$PROJECT")" \
     -runTests -testPlatform EditMode \
-    -testFilter "SabaProps.Foliage.CITests;SabaProps.Foliage.WorldTests;SabaProps.SoftProps.WorldTests;SabaProps.StageCam.WorldTests;SabaProps.Tablet.WorldTests;SabaProps.PutItems.Tests" \
+    -testFilter "$TEST_FILTER" \
     -testResults "$(to_native "$RESULTS")" \
     -logFile "$(to_native "$LOG")"
 set -e

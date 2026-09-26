@@ -6,7 +6,7 @@ using VRC.SDKBase;
 namespace SabaProps.Tablet
 {
     /// <summary>
-    /// 登録した地点、または選択したプレイヤーの正面へ自分をテレポートします。
+    /// 登録した地点、または選択したプレイヤーの周囲の空いた場所へ自分をテレポートします。
     /// 地点のボタンは argument に destinations のインデックスを持ちます。
     /// </summary>
     [UdonBehaviourSyncMode(BehaviourSyncMode.None)]
@@ -19,8 +19,13 @@ namespace SabaProps.Tablet
         [Tooltip("選択中のプレイヤーを表示するラベル。")]
         public TextMeshPro playerLabel;
 
-        [Tooltip("プレイヤーの正面、この距離 (m) の位置へ移動します。")]
+        [Tooltip("プレイヤーの後方を優先して、この距離 (m) の位置へ移動します。")]
         public float playerDistance = 1.2f;
+
+        [Tooltip("移動先の衝突確認に使用するワールドのレイヤー。Player と PlayerLocal は除外します。")]
+        public LayerMask playerCollisionMask = ~(1 << 9 | 1 << 10);
+
+        private Vector3 safePlayerPosition;
 
         [Header("移動後")]
         [Tooltip("移動後にタブレットを収納する場合に指定します。")]
@@ -81,9 +86,41 @@ namespace SabaProps.Tablet
             }
 
             Vector3 origin = target.GetPosition();
-            Vector3 position = FrontOf(origin, target.GetRotation() * Vector3.forward, playerDistance);
-            local.TeleportTo(position, FacingRotation(position, origin));
+            float height = Mathf.Max(1.8f, local.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).position.y - local.GetPosition().y + 0.2f);
+            if (!TryFindPlayerDestination(origin, target.GetRotation() * Vector3.forward, height))
+            {
+                if (playerLabel != null) playerLabel.text = "No safe position";
+                return;
+            }
+
+            local.TeleportTo(safePlayerPosition, FacingRotation(safePlayerPosition, origin));
             AfterTeleport();
+        }
+
+        // 後方、後方斜め、左右、前方斜め、前方の順で、床と身体の空間を確認します。
+        private bool TryFindPlayerDestination(Vector3 origin, Vector3 forward, float height)
+        {
+            const float radius = 0.3f;
+            for (int i = 0; i < 8; i++)
+            {
+                Vector3 candidate = AroundPlayer(origin, forward, Mathf.Max(0.7f, playerDistance), i);
+                RaycastHit floor;
+                if (!Physics.Raycast(candidate + Vector3.up * 0.5f, Vector3.down, out floor,
+                    2f, playerCollisionMask, QueryTriggerInteraction.Ignore)) continue;
+                if (Vector3.Dot(floor.normal, Vector3.up) < 0.7071f) continue;
+
+                Vector3 feet = floor.point + Vector3.up * 0.02f;
+                if (Physics.CheckCapsule(feet + Vector3.up * radius,
+                    feet + Vector3.up * (Mathf.Max(1.8f, height) - radius), radius,
+                    playerCollisionMask, QueryTriggerInteraction.Ignore)) continue;
+                if (Physics.Linecast(origin + Vector3.up * 0.9f, feet + Vector3.up * 0.9f,
+                    playerCollisionMask, QueryTriggerInteraction.Ignore)) continue;
+
+                safePlayerPosition = feet;
+                return true;
+            }
+
+            return false;
         }
 
         public override void OnPlayerLeft(VRCPlayerApi player)

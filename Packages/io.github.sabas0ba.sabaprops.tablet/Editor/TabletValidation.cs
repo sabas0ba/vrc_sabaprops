@@ -97,6 +97,10 @@ namespace SabaProps.Tablet.Editors
         private static void ValidateEntry(TabletDefinition definition, TabletEntry entry, string where,
             Dictionary<GameObject, string> owners, Dictionary<string, bool> groupGlobal, List<TabletIssue> issues)
         {
+            if (entry.customPlacement && (entry.normalizedSize.x <= 0f || entry.normalizedSize.y <= 0f ||
+                Mathf.Abs(entry.normalizedCenter.x) + entry.normalizedSize.x * 0.5f > 0.5f ||
+                Mathf.Abs(entry.normalizedCenter.y) + entry.normalizedSize.y * 0.5f > 0.5f))
+                issues.Add(new TabletIssue(MessageType.Error, where + "配置がボタン領域の外です。"));
             switch (entry.kind)
             {
                 case TabletEntryKind.Toggle:
@@ -150,6 +154,14 @@ namespace SabaProps.Tablet.Editors
                     }
 
                     break;
+
+                case TabletEntryKind.Slider:
+                    if (entry.maximum <= entry.minimum || entry.initialValue < entry.minimum || entry.initialValue > entry.maximum)
+                        issues.Add(new TabletIssue(MessageType.Error, where + "Slider の範囲または初期値が不正です。"));
+                    if (entry.target != null && (entry.target.GetType().GetField("tabletValue") == null ||
+                        entry.target.GetType().GetField("tabletValue").FieldType != typeof(float)))
+                        issues.Add(new TabletIssue(MessageType.Error, where + "呼び出し先に public float tabletValue が必要です。"));
+                    goto case TabletEntryKind.CustomEvent;
 
                 case TabletEntryKind.CustomEvent:
                     if (entry.target == null)

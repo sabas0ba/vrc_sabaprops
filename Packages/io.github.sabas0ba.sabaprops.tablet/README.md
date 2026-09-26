@@ -5,7 +5,9 @@
 - 召喚方法は 3 種類: キー入力 (Desktop)、頭上に手を伸ばして Grab (VR)、ワールド内アイテムの Interact
 - ボタンは VR では指先で押し込み、Desktop では Interact で押します
 - ミラー、コライダー、エフェクト、ライト、ポストエフェクトの Volume などの ON/OFF
-- 登録した地点、または選択したプレイヤーの正面へのテレポート
+- 登録した地点、または選択したプレイヤーの後方へのテレポート
+- ベッドの 5 面のミラーとベッド Collider の切替サンプル
+- 明るさ、色相、Glow の物理スライダーと PostEffect の ON/OFF
 - 任意の UdonSharpBehaviour のイベント呼び出し。既存ギミックの独自 UI もタブレットから操作できます
 - ミラーやコライダーを登録する Setup Window と、外観を差し替える Theme アセット
 
@@ -61,11 +63,19 @@ Desktop と、VR で指が届かない場合は、ボタンを Interact して�
 | 種類 | 動作 | 主な用途 |
 | --- | --- | --- |
 | `Toggle` | GameObject、Collider、Behaviour を ON/OFF します。`Inverted Objects` は逆に切り替えます | ミラー、コライダー、ポストエフェクトの Volume、パーティクル、ライト、動画プレイヤーの画面 |
+| `Slider` | `Minimum` ～ `Maximum` の float 値を呼び出し先の `tabletValue` に書き、指定イベントを呼びます | 明るさ、色相、Glow、任意の連続値 |
 | `Teleport` | `Destination` の位置と向きへ移動します | 会場内の移動 |
 | `CustomEvent` | `Target` の `Event Name` を呼びます | 既存ギミックの操作 |
 | `PageLink` | 別のページを開きます | 目次ページ |
 
-`Include Player Page` を有効にすると、プレイヤーを選んでその正面へ移動するページを追加します。
+`Include Player Page` を有効にすると、プレイヤーを選んでその後方へ移動するページを追加します。
+
+後方を優先し、後方斜め、左右、前方斜め、前方の順に空いた場所を探します。
+床の傾斜は 45 度以下、対象から上に 0.5 m、下に 1.5 m の範囲で確認します。
+半径 0.3 m、高さ 1.8 m 以上の身体の空間と、対象との間の壁を確認し、
+候補がない場合は移動せず `No safe position` を表示します。
+判定は非 Trigger の Collider に依存します。生成後の `TabletTeleport` の
+`Player Collision Mask` で対象レイヤーを指定できます。
 
 ### 排他と同期
 
@@ -106,12 +116,54 @@ Desktop と、VR で指が届かない場合は、ボタンを Interact して�
 | --- | --- |
 | `TabletController` | 召喚と収納、ページ切り替え、指先による押下の判定 |
 | `TabletButton` | 物理ボタン。押されると呼び出し先のイベントを送ります |
+| `TabletSlider` | 指のドラッグ／Interact／増減ボタンで float 値を送り、指定イベントを呼びます |
+| `TabletPostEffects` | Animator の明るさ・色相・Glow と Volume の有効状態をローカルで調整します |
 | `TabletToggle` | ON/OFF の切り替え。ローカルまたは全員で同期 |
 | `TabletTeleport` | 地点とプレイヤーへのテレポート |
 | `TabletKeyTrigger` / `TabletReachTrigger` / `TabletInteractTrigger` | 召喚方法 |
 | `TabletDefinition` | Editor 専用の構成データ。アップロード時に取り除かれます |
 
 設計の判断は [設計](Documentation~/design.md) にまとめています。
+
+## ベッドミラーと PostEffect のサンプル
+
+`Tools > SabaProps > Tablet > Create Sample Scene` は次のページも生成します。
+
+### Bed Mirrors
+
+ベッドの平面図を中央に置き、頭側を上、足側を下、左右をそれぞれ同じ側に配置します。
+天井は `Ceiling` ボタンで切り替えます。床のミラーは生成しません。
+5 面は個別に切り替えられ、初期状態ではすべて OFF です。
+`Bed Collider` はベッドと枕の Collider だけを切り替え、メッシュの表示は保持します。
+各スイッチはローカルです。同時に有効にするミラーが増えるほど描画負荷も増えます。
+
+### Post Effects
+
+| 操作 | 範囲／動作 |
+| --- | --- |
+| `Effects ON / OFF` | 調整用の全 PostProcessVolume を有効／無効にします |
+| `Brightness (EV)` | −2 ～ +2 EV。初期値 0。負の値で暗くします |
+| `Hue (degrees)` | −180 ～ +180 度。初期値 0 |
+| `Glow` | Bloom Volume の weight 0 ～ 1。初期値 0。最大時の Bloom intensity は 8 |
+
+VR では指をスライダーの前面から入れ、横に動かします。指を離すと調整を終了します。
+Desktop ではトラック上の位置を狙って Interact、または両端の `−`／`＋` で範囲の 5% ずつ調整します。
+値と ON/OFF は利用者ごとで、ページを閉じても保持します。
+
+SDK の依存に含まれる Unity Post Processing を使います。Reference Camera に
+PostProcessLayer を付け、その設定がプレイヤーカメラへ引き継がれる構成です。
+調整用 Volume と Animator は別の `Tablet Post Effects` に置きます。
+Volume は User Layer 22 を使用します。既存ワールドへ移す場合は、その用途との重複と
+カメラの `Volume Layer`、既存 Volume の優先度を確認してください。
+Udon から Post Processing の型へ直接アクセスせず、Animator の float パラメーターで
+Volume の weight を動かします。低側・中立・高側の 3 点を使い、中立では両側の weight が 0 になります。
+
+### 配置の変更
+
+各項目の `Custom Placement` を有効にすると、`Normalized Center` と `Normalized Size` で
+ページ内の配置を指定できます。ボタン領域の中央が (0, 0)、外周が ±0.5 です。
+`Bed Diagram` を有効にしたページにはベッドの平面図を追加します。
+変更後は Tablet の `Build` を実行してください。
 
 ## 制限
 

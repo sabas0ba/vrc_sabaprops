@@ -18,6 +18,34 @@ World Contacts、Pickup、家具の変形と復元を確認します。
 
 ここにあるのは、これらを実行するためのプロジェクト組み立て手順です。
 
+**Tablet の検証。** 次の指定でタブレットのテストだけを実行できます。
+
+```sh
+TEST_FILTER=SabaProps.Tablet.WorldTests ./.github/verify/vrchat/run-tests.sh
+```
+
+検証スクリプトは Unity が解決した公式 TextMeshPro パッケージの Essential Resources を
+プロジェクトへ展開します。ClientSim の新 Input System とタブレットの旧キー入力を
+併用するため、セットアップで Active Input Handling を Both にし、別セッションでテストします。
+ClientSim テストは実際の Udon を介して召喚、収納、ページ送り、ミラー切替、登録地点への
+移動を確認し、`TestResults/tablet-clientsim.png` に表示画像を保存します。
+選択プレイヤーへの移動候補は Unity Physics の独立したテストで検証します。
+ベッドの 5 面の向きと Collider の独立切替、PostEffect の 3 スライダーから
+Animator／Volume weight への反映と Volume の ON/OFF も検査します。
+`TestResults/tablet-bed-mirrors.png` と `tablet-post-effects.png` に各ページの表示画像を保存します。
+
+ローカル VRChat Build & Test は生成済みプロジェクトで次のメソッドを実行します。
+非同期処理完了時に Editor を終了するため、`-quit` は指定しません。
+
+```sh
+Unity -batchmode -projectPath /path/to/WorldProject \
+  -executeMethod SabaProps.Tablet.WorldTests.TabletBuildAndTest.Run \
+  -logFile /path/to/WorldProject/tablet-build-test.log
+```
+
+このメソッドはワールドをアップロードしません。VRChat クライアントでの手動操作、
+複数プレイヤー、VR の指先押下と頭上 Grab は別途確認してください。
+
 ## 方針
 
 SDK の取得はコンテナ内で行い、ローカルの VCC / ALCOM のキャッシュには依存しません。

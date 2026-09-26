@@ -213,6 +213,8 @@ namespace SabaProps.Tablet.Editors
                     context.pages.Add(pageObject);
                     context.pageTitles.Add(splitTitle);
 
+                    if (page != null && page.bedDiagram) BuildBedDiagram(context, pageObject.transform);
+
                     int end = Mathf.Min(entries.Count, (split + 1) * cells);
                     for (int e = split * cells; e < end; e++)
                     {
@@ -234,7 +236,15 @@ namespace SabaProps.Tablet.Editors
         {
             TabletTheme theme = context.theme;
             Vector2 center = TabletLayout.CellCenter(cell, context.gridSize, context.gridCenter, theme.columns, theme.rows, theme.spacing);
+            Vector2 size = context.cellSize;
+            if (entry.customPlacement)
+            {
+                center = context.gridCenter + Vector2.Scale(entry.normalizedCenter, context.gridSize);
+                size = Vector2.Scale(entry.normalizedSize, context.gridSize);
+            }
             string label = string.IsNullOrEmpty(entry.label) ? entry.kind.ToString() : entry.label;
+
+            context.entrySize = size;
 
             switch (entry.kind)
             {
@@ -279,7 +289,24 @@ namespace SabaProps.Tablet.Editors
                 }
 
                 case TabletEntryKind.CustomEvent:
-                    CellButton(context, page, label, entry.icon, center, entry.target, entry.eventName, entry.useArgument, entry.argument);
+                {
+                    TabletButton button = CellButton(context, page, label, entry.icon, center, entry.target, entry.eventName, entry.useArgument, entry.argument);
+                    if (entry.target is TabletPostEffects effects && entry.eventName == "_Toggle")
+                    {
+                        var indicators = new List<TabletButton>();
+                        if (effects.buttons != null)
+                            foreach (TabletButton existing in effects.buttons)
+                                if (existing != null) indicators.Add(existing);
+                        indicators.Add(button);
+                        effects.buttons = indicators.ToArray();
+                        UdonSharpEditorUtility.CopyProxyToUdon(effects);
+                        EditorUtility.SetDirty(effects);
+                    }
+                    break;
+                }
+
+                case TabletEntryKind.Slider:
+                    BuildSlider(context, page, label, center, size, entry);
                     break;
 
                 case TabletEntryKind.PageLink:
@@ -320,8 +347,54 @@ namespace SabaProps.Tablet.Editors
         private static TabletButton CellButton(Context context, Transform parent, string label, Texture2D icon, Vector2 center,
             UdonSharpBehaviour target, string eventName, bool useArgument, int argument)
         {
-            return Button(context, parent, label, label, icon, center, context.cellSize, context.capMesh,
+            return Button(context, parent, label, label, icon, center, context.entrySize, context.SizedCap(context.entrySize),
                 context.buttonMaterial, target, eventName, useArgument, argument);
+        }
+
+        private static void BuildBedDiagram(Context context, Transform page)
+        {
+            Vector2 size = Vector2.Scale(context.gridSize, new Vector2(0.24f, 0.62f));
+            GameObject bed = MeshChild(page.gameObject, "Bed diagram", context.SizedCap(size),
+                context.headerMaterial, new Vector3(0f, context.gridCenter.y, context.Surface));
+            Label(context, bed.transform, "Bed", "BED", new Vector3(0f, -size.y * 0.1f, -context.theme.buttonHeight),
+                new Vector2(size.x * 0.9f, size.y * 0.25f), TextAlignmentOptions.Center);
+            MeshChild(bed, "Pillow", context.SizedCap(new Vector2(size.x * 0.75f, size.y * 0.15f)),
+                context.buttonMaterial, new Vector3(0f, size.y * 0.3f, -context.theme.buttonHeight));
+        }
+
+        private static void BuildSlider(Context context, Transform page, string label, Vector2 center, Vector2 size, TabletEntry entry)
+        {
+            GameObject root = Child(page, "Slider - " + label);
+            root.transform.localPosition = new Vector3(center.x, center.y, context.Surface);
+            TabletSlider slider = root.AddUdonSharpComponent<TabletSlider>();
+            slider.target = entry.target;
+            slider.eventName = entry.eventName;
+            slider.minimum = entry.minimum;
+            slider.maximum = entry.maximum;
+            slider.value = entry.initialValue;
+            float width = size.x * 0.56f;
+            float y = -size.y * 0.16f;
+            var zone = root.AddComponent<BoxCollider>();
+            zone.isTrigger = true;
+            zone.center = new Vector3(0f, y, -context.theme.buttonHeight - context.theme.pokeDepth * 0.5f);
+            zone.size = new Vector3(width, size.y * 0.45f, context.theme.pokeDepth);
+            slider.pressZone = zone;
+            MeshChild(root, "Track", context.SizedCap(new Vector2(width, size.y * 0.08f)),
+                context.headerMaterial, new Vector3(0f, y, -context.theme.buttonHeight * 0.5f));
+            slider.thumb = MeshChild(root, "Thumb", context.SizedCap(new Vector2(size.x * 0.035f, size.y * 0.4f)),
+                context.buttonActiveMaterial, new Vector3((Mathf.InverseLerp(entry.minimum, entry.maximum, entry.initialValue) - 0.5f) * width,
+                y, -context.theme.buttonHeight)).transform;
+            Label(context, root.transform, "Caption", label, new Vector3(-size.x * 0.1f, size.y * 0.28f, -context.theme.buttonHeight),
+                new Vector2(size.x * 0.6f, size.y * 0.35f), TextAlignmentOptions.Left);
+            slider.valueLabel = Label(context, root.transform, "Value", entry.initialValue.ToString("0.00"),
+                new Vector3(size.x * 0.32f, size.y * 0.28f, -context.theme.buttonHeight),
+                new Vector2(size.x * 0.2f, size.y * 0.35f), TextAlignmentOptions.Right);
+            Vector2 buttonSize = new Vector2(size.x * 0.1f, size.y * 0.48f);
+            Button(context, root.transform, "Decrease", "-", null, new Vector2(-size.x * 0.4f, y), buttonSize,
+                context.SizedCap(buttonSize), context.buttonMaterial, slider, "_Decrease", false, 0);
+            Button(context, root.transform, "Increase", "+", null, new Vector2(size.x * 0.4f, y), buttonSize,
+                context.SizedCap(buttonSize), context.buttonMaterial, slider, "_Increase", false, 0);
+            context.behaviours.Add(slider);
         }
 
         private static TabletButton Button(Context context, Transform parent, string name, string caption, Texture2D icon,
@@ -562,6 +635,7 @@ namespace SabaProps.Tablet.Editors
             public readonly Vector2 gridSize;
             public readonly Vector2 gridCenter;
             public readonly Vector2 cellSize;
+            public Vector2 entrySize;
             public readonly TMP_FontAsset font;
 
             public TabletController controller;
@@ -594,6 +668,18 @@ namespace SabaProps.Tablet.Editors
             public Material headerMaterial;
 
             private string folder;
+            private readonly Dictionary<Vector2, Mesh> sizedCaps = new Dictionary<Vector2, Mesh>();
+
+            public Mesh SizedCap(Vector2 size)
+            {
+                if (!sizedCaps.TryGetValue(size, out Mesh mesh))
+                {
+                    mesh = SaveMesh(TabletMeshBuilder.RoundedBox(size.x, size.y, theme.buttonHeight,
+                        theme.buttonCornerRadius, CornerSegments), "SizedCap" + sizedCaps.Count);
+                    sizedCaps.Add(size, mesh);
+                }
+                return mesh;
+            }
 
             public Context(TabletDefinition definition, TabletTheme theme)
             {

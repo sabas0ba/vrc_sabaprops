@@ -166,7 +166,7 @@ fi
 log "Compiling UnityEditor stub"
 # ---------------------------------------------------------------------------
 csc "${COMMON[@]}" "${BCL[@]}" "${UNITY_ARGS[@]}" \
-    -out:"$OUT/UnityEditor.dll" "$HERE/UnityEditorStub.cs"
+    -out:"$OUT/UnityEditor.dll" "$HERE/UnityEditorStub.cs" "$HERE/UnityEditorAnimationsStub.cs"
 echo "ok"
 
 # ---------------------------------------------------------------------------
@@ -338,7 +338,7 @@ SDK3_PLUGINS="$VPM/com.vrchat.worlds/Runtime/VRCSDK/Plugins"
 # Framework references the foliage package uses, and mixing those with the
 # netstandard facades this package needs duplicates System.Object.
 csc "${COMMON[@]}" "${NETSTANDARD_ARGS[@]}" "${UNITY_ARGS[@]}" \
-    -out:"$OUT/UnityEditor.NetStandard.dll" "$HERE/UnityEditorStub.cs"
+    -out:"$OUT/UnityEditor.NetStandard.dll" "$HERE/UnityEditorStub.cs" "$HERE/UnityEditorAnimationsStub.cs"
 
 csc "${COMMON[@]}" "${NETSTANDARD_ARGS[@]}" "${UNITY_ARGS[@]}" \
     -r:"$SDK_PLUGINS/VRCSDKBase.dll" -r:"$SDK3_PLUGINS/VRCSDK3.dll" \

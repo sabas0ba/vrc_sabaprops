@@ -5,6 +5,7 @@ using SabaProps.Tablet.Editors;
 using UdonSharp;
 using UdonSharp.Compiler;
 using UdonSharpEditor;
+using TMPro;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -23,6 +24,7 @@ namespace SabaProps.Tablet.WorldTests
         [OneTimeSetUp]
         public void CompilePrograms()
         {
+            Assert.That(TMP_Settings.instance, Is.Not.Null, "TMP Essential Resources were not imported");
             UdonSharpCompilerV1.CompileSync(new UdonSharpCompileOptions { IsEditorBuild = true });
         }
 
@@ -40,9 +42,10 @@ namespace SabaProps.Tablet.WorldTests
                      {
                          typeof(TabletController), typeof(TabletButton), typeof(TabletToggle), typeof(TabletTeleport),
                          typeof(TabletKeyTrigger), typeof(TabletReachTrigger), typeof(TabletInteractTrigger),
+                         typeof(TabletSlider), typeof(TabletPostEffects),
                      })
             {
-                var behaviour = (UdonSharpBehaviour)Object.FindObjectOfType(type);
+                var behaviour = (UdonSharpBehaviour)Object.FindObjectOfType(type, true);
                 Assert.That(behaviour, Is.Not.Null, type.Name + " is missing from the sample");
                 Assert.That(Program(behaviour), Is.Not.Null, type.Name + " did not compile; see the Unity console");
             }
@@ -142,6 +145,39 @@ namespace SabaProps.Tablet.WorldTests
             Assert.That(bodies, Is.EqualTo(1));
             Assert.That(Object.FindObjectsOfType<TabletController>().Length, Is.EqualTo(1));
             Assert.That(Object.FindObjectsOfType<VRCPickup>().Length, Is.EqualTo(1), "only the handle is a pickup");
+        }
+
+        [Test]
+        public void BedMirrors_HaveFiveInwardFacesAndSeparateColliderSwitch()
+        {
+            var definition = Object.FindObjectOfType<TabletDefinition>();
+            TabletPage page = definition.FindOrAddPage("Bed Mirrors");
+            Assert.That(page.bedDiagram, Is.True);
+            Assert.That(page.entries.Count, Is.EqualTo(6));
+            Vector3 eye = new Vector3(6f, 0.8f, 3f);
+            for (int i = 0; i < 5; i++)
+            {
+                GameObject mirror = page.entries[i].objects[0];
+                Assert.That(mirror.GetComponent<VRCMirrorReflection>(), Is.Not.Null);
+                Assert.That(mirror.GetComponent<Renderer>().sharedMaterial.shader.name, Is.EqualTo("FX/MirrorReflection"));
+                Assert.That(Vector3.Dot(-mirror.transform.forward, (eye - mirror.transform.position).normalized), Is.GreaterThan(0.99f));
+                Assert.That(page.entries[i].startOn, Is.False);
+                Assert.That(page.entries[i].exclusiveGroup, Is.Empty, "the bed faces can be enabled independently");
+            }
+            Assert.That(page.entries[5].colliders.Length, Is.EqualTo(2));
+            Assert.That(page.entries[5].objects, Is.Empty, "collider switch must keep the bed visible");
+        }
+
+        [Test]
+        public void PostEffects_HaveThreeSlidersAndVolumesSeparateFromReferenceCamera()
+        {
+            var module = Object.FindObjectOfType<TabletPostEffects>();
+            Assert.That(module, Is.Not.Null);
+            Assert.That(module.animator.runtimeAnimatorController, Is.Not.Null);
+            Assert.That(module.volumes.Length, Is.EqualTo(5));
+            foreach (Behaviour volume in module.volumes)
+                Assert.That(volume.gameObject, Is.Not.EqualTo(Camera.main.gameObject));
+            Assert.That(Object.FindObjectsOfType<TabletSlider>(true).Length, Is.EqualTo(3));
         }
 
         [Test]

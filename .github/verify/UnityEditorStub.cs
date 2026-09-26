@@ -208,6 +208,8 @@ namespace UnityEditor
         public static void CreateAsset(UnityEngine.Object asset, string path) { }
         public static bool DeleteAsset(string path) => false;
         public static T LoadAssetAtPath<T>(string assetPath) where T : UnityEngine.Object => null;
+        public static UnityEngine.Object LoadAssetAtPath(string assetPath, Type type) => null;
+        public static UnityEngine.Object[] LoadAllAssetsAtPath(string assetPath) => new UnityEngine.Object[0];
         public static string GetAssetPath(UnityEngine.Object assetObject) => string.Empty;
         public static string AssetPathToGUID(string path) => string.Empty;
         public static string GUIDToAssetPath(string guid) => string.Empty;
@@ -223,6 +225,20 @@ namespace UnityEditor
         public static void AddObjectToAsset(UnityEngine.Object objectToAdd, UnityEngine.Object assetObject) { }
         public static void RemoveObjectFromAsset(UnityEngine.Object objectToRemove) { }
     }
+
+    public struct EditorCurveBinding
+    {
+        public static EditorCurveBinding FloatCurve(string path, Type type, string propertyName) => new EditorCurveBinding();
+    }
+
+    public static class AnimationUtility
+    {
+        public static void SetEditorCurve(AnimationClip clip, EditorCurveBinding binding, AnimationCurve curve) { }
+        public static AnimationClipSettings GetAnimationClipSettings(AnimationClip clip) => null;
+        public static void SetAnimationClipSettings(AnimationClip clip, AnimationClipSettings settings) { }
+    }
+
+    public class AnimationClipSettings { public bool loopTime; }
 
     public static class FileUtil
     {

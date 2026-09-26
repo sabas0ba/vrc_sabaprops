@@ -20,6 +20,9 @@ namespace SabaProps.Tablet.Authoring
 
         /// <summary>別のページを開きます。</summary>
         PageLink = 3,
+
+        /// <summary>物理スライダーで float tabletValue を渡してイベントを呼びます。</summary>
+        Slider = 4,
     }
 
     /// <summary>タブレットの 1 ボタン分の定義。</summary>
@@ -54,6 +57,17 @@ namespace SabaProps.Tablet.Authoring
 
         [Header("PageLink")]
         public int pageIndex;
+
+        [Header("Slider")]
+        public float minimum;
+        public float maximum = 1f;
+        public float initialValue;
+
+        [Header("配置")]
+        public bool customPlacement;
+        [Tooltip("ボタン領域に対する中心位置。中央が (0, 0)、端が ±0.5 です。")]
+        public Vector2 normalizedCenter;
+        public Vector2 normalizedSize = new Vector2(0.25f, 0.25f);
     }
 
     /// <summary>タブレットの 1 ページ分の定義。ボタン数が 1 画面を超える場合は Build で複数ページに分けます。</summary>
@@ -62,6 +76,8 @@ namespace SabaProps.Tablet.Authoring
     {
         public string title = "";
         public List<TabletEntry> entries = new List<TabletEntry>();
+        [Tooltip("中央にベッドの平面図を表示します。頭側が上です。")]
+        public bool bedDiagram;
     }
 
     /// <summary>
@@ -78,7 +94,7 @@ namespace SabaProps.Tablet.Authoring
         public List<TabletPage> pages = new List<TabletPage>();
 
         [Header("生成するページ")]
-        [Tooltip("プレイヤーを選んでその正面へ移動するページを追加します。")]
+        [Tooltip("プレイヤーを選んでその後方へ移動するページを追加します。")]
         public bool includePlayerPage = true;
 
         [Tooltip("テレポート後にタブレットを収納します。")]
