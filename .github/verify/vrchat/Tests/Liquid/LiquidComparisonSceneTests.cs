@@ -62,6 +62,12 @@ namespace SabaProps.Liquid.WorldTests
         }
 
         [Test]
+        public void EveryUdonBehaviour_LoadsItsProgram()
+        {
+            LiquidSampleSceneTests.AssertEveryProgramLoads();
+        }
+
+        [Test]
         public void EverySprayer_IsWiredToThePoolAndAProfile()
         {
             LiquidCanvasPool pool = Object.FindObjectOfType<LiquidCanvasPool>();

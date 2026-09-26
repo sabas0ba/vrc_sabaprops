@@ -375,9 +375,11 @@ Shader "SabaProps/Liquid/Body Projector"
                 // 結露は肌のように吸わない面でも水滴（汗や露）になります。
                 float beadWeight = max(repellency, condensation * (1.0 - absorbency)) * (1.0 - saturate(pigment.a * 2.0));
                 // 面内の重力方向。タイルの軸へ投影し、面が水平に近いときは伸ばしません。
+                // 投影した重力の長さが面の傾き（垂直で 1、水平で 0）です。
                 float2 gravity = float2(dot(float3(0.0, -1.0, 0.0), tile.uAxis), dot(float3(0.0, -1.0, 0.0), tile.vAxis));
-                gravity = dot(gravity, gravity) > 0.04 ? normalize(gravity) : float2(0.0, 0.0);
-                float4 beads = beadWeight > 0.01 ? SabaLiquidBeads(tile.metric, beadSize, wet, gravity) : 0.0;
+                float steepness = saturate(length(gravity));
+                gravity = steepness > 0.2 ? gravity / steepness : float2(0.0, 0.0);
+                float4 beads = beadWeight > 0.01 ? SabaLiquidBeads(tile.metric, beadSize, wet, gravity, steepness, _Time.y) : 0.0;
                 float sheet = wet * (1.0 - beadWeight);
                 float beaded = beads.x * beadWeight * saturate(wet * 3.0);
                 float wetLook = saturate(sheet + beaded);

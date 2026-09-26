@@ -83,7 +83,8 @@ Shader "SabaProps/Liquid/Weather Surface"
             if (dew > 0.001)
             {
                 float2 across = float2(input.worldPos.x + input.worldPos.z, input.worldPos.y) + ground * 0.3;
-                float4 beads = SabaLiquidBeads(across, 0.004, dew, float2(0.0, -1.0));
+                float steepness = saturate(1.0 - abs(input.worldNormal.y));
+                float4 beads = SabaLiquidBeads(across, 0.004, dew, float2(0.0, -1.0), steepness, _Time.y);
                 albedo = lerp(albedo, albedo * 0.75 + 0.1, dew * 0.5);
                 smoothness = lerp(smoothness, 0.35, dew * 0.6);
                 smoothness = lerp(smoothness, 0.85, beads.x * dew * 0.5);

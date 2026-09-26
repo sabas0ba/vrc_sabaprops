@@ -82,7 +82,7 @@ Shader "SabaProps/Liquid/Fogged Glass"
                 float cleared = inStreak * step(streakWidth, 0.18);
 
                 // 水滴。曇りの上に、光を拾う粒として見えます。
-                float4 beads = SabaLiquidBeads(p * _DropletScale / 160.0, 0.004, fog, float2(0.0, -1.0));
+                float4 beads = SabaLiquidBeads(p * _DropletScale / 160.0, 0.004, fog, float2(0.0, -1.0), 1.0, _Time.y);
                 float bead = beads.x * saturate(fog * 1.5 - 0.3);
 
                 float opacity = saturate(fog * mist) * _MaxOpacity * (1.0 - cleared);

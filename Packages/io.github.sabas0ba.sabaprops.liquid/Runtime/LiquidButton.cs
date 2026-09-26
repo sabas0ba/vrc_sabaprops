@@ -12,6 +12,7 @@ namespace SabaProps.Liquid
     /// <para>
     /// relayPickupUse を有効にすると、Pickup の使用ボタンでも同じイベントを呼びます。使用ボタンの
     /// イベントは Pickup の GameObject にしか届かないため、子に置いた Source へ中継するのに使います。
+    /// 使用ボタンを離したときと手放したときにも、それぞれ別のイベントを中継できます。
     /// VRCObjectSync と同じ GameObject に置けるよう、同期変数を持たない設定にしています。
     /// </para>
     /// </summary>
@@ -28,6 +29,12 @@ namespace SabaProps.Liquid
         [Tooltip("Pickup の使用ボタンでも呼ぶか。")]
         public bool relayPickupUse;
 
+        [Tooltip("Pickup の使用ボタンを離したときに呼ぶイベント。空なら呼びません。")]
+        public string useUpEventName = "";
+
+        [Tooltip("Pickup を手放したときに呼ぶイベント。空なら呼びません。")]
+        public string dropEventName = "";
+
         public override void Interact()
         {
             Send();
@@ -41,11 +48,26 @@ namespace SabaProps.Liquid
             }
         }
 
+        public override void OnPickupUseUp()
+        {
+            SendNamed(useUpEventName);
+        }
+
+        public override void OnDrop()
+        {
+            SendNamed(dropEventName);
+        }
+
         private void Send()
         {
-            if (target != null && !string.IsNullOrEmpty(eventName))
+            SendNamed(eventName);
+        }
+
+        private void SendNamed(string name)
+        {
+            if (target != null && !string.IsNullOrEmpty(name))
             {
-                target.SendCustomEvent(eventName);
+                target.SendCustomEvent(name);
             }
         }
     }

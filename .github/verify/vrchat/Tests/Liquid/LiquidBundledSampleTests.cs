@@ -96,6 +96,9 @@ namespace SabaProps.Liquid.WorldTests
                 Assert.IsNotNull(backing, behaviour.name + " has no backing UdonBehaviour");
                 Assert.IsNotNull(backing.programSource, behaviour.name + " lost its program source");
             }
+
+            // The shipped serialized programs must load, not just be referenced.
+            LiquidSampleSceneTests.AssertEveryProgramLoads();
         }
 
         private static void CopyDirectory(string source, string destination)

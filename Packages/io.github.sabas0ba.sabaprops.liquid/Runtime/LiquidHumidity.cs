@@ -16,6 +16,10 @@ namespace SabaProps.Liquid
     /// 時定数で行き来します。シャワーの状態は同期されているため、湿度自体は同期しません。
     /// 湯気のパーティクル、霧の体積のマテリアル、壁や鏡の曇りのマテリアルも湿度に合わせて更新します。
     /// </para>
+    /// <para>
+    /// assumeBareSkin を有効にすると、範囲内の体の衣服の部位を肌として扱います。アバターの服装は
+    /// 読めないため、部位の推定は服を着た人を仮定しており、裸が自然な場所ではこれで置き換えます。
+    /// </para>
     /// </summary>
     [AddComponentMenu("SabaProps/Liquid/Humidity")]
     [UdonBehaviourSyncMode(BehaviourSyncMode.None)]
@@ -43,6 +47,13 @@ namespace SabaProps.Liquid
         [Tooltip("飽和した空気で、結露が 0 から 1 に達するまでの秒数。")]
         [Min(1f)]
         public float condenseSeconds = 25f;
+
+        [Header("衣服")]
+        [Tooltip("範囲内の体を、衣服を着ていないものとして扱うか。サウナや浴室のように、裸が自然な場所で使います。")]
+        public bool assumeBareSkin;
+
+        [Tooltip("衣服の部位の代わりに使う素材（通常は肌）。")]
+        public LiquidSurfaceProfile bareSkinSurface;
 
         [Header("シャワーとの連動")]
         [Tooltip("連動するシャワー。出ている間は湿度が showerHumidity に向かって上がります。")]
@@ -154,6 +165,11 @@ namespace SabaProps.Liquid
                 }
 
                 canvas.ApplyHumidity(h, condensationThreshold, condenseSeconds);
+                if (assumeBareSkin)
+                {
+                    canvas.ApplyBareSkin(bareSkinSurface);
+                }
+
                 Drip(canvas, _targets[i], _centres[i], _tops[i], dt);
             }
         }

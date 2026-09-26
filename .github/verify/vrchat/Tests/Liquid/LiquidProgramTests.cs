@@ -52,7 +52,7 @@ namespace SabaProps.Liquid.WorldTests
             // event, the canvas never follows the body.
             CollectionAssert.Contains(exported, "_postLateUpdate");
 
-            foreach (string method in new[] { "Assign", "Release", "QueueStamp", "ApplyImmersion", "WashImmersion", "ApplySnow", "ApplyRain", "ApplyHumidity", "ApplyLightEnvironment", "GetCondensation", "GetPlayerId", "GetLastActivityTime" })
+            foreach (string method in new[] { "Assign", "Release", "QueueStamp", "ApplyImmersion", "WashImmersion", "ApplySnow", "ApplyRain", "ApplyHumidity", "ApplyLightEnvironment", "GetCondensation", "ApplyBareSkin", "IsTreatedAsBare", "GetPlayerId", "GetLastActivityTime" })
             {
                 AssertExportsMethod(exported, method);
             }
@@ -154,7 +154,8 @@ namespace SabaProps.Liquid.WorldTests
             CollectionAssert.Contains(exported, "_update");
             CollectionAssert.Contains(exported, "_interact");
             CollectionAssert.Contains(exported, "_onPickupUseDown");
-            foreach (string method in new[] { "Trigger", "Fire", "Toggle", "ReceiveShot", "VolumeUp", "VolumeDown",
+            CollectionAssert.Contains(exported, "_onPickupUseUp");
+            foreach (string method in new[] { "Trigger", "Release", "StartFiring", "StopFiring", "GetShotsReceived", "Fire", "Toggle", "ReceiveShot", "VolumeUp", "VolumeDown",
                 "RangeUp", "RangeDown", "SpeedUp", "SpeedDown", "DiameterUp", "DiameterDown", "IsRunning" })
             {
                 AssertExportsMethod(exported, method);
@@ -194,6 +195,8 @@ namespace SabaProps.Liquid.WorldTests
             List<string> exported = Exported(program);
             CollectionAssert.Contains(exported, "_interact");
             CollectionAssert.Contains(exported, "_onPickupUseDown");
+            CollectionAssert.Contains(exported, "_onPickupUseUp");
+            CollectionAssert.Contains(exported, "_onDrop");
             // It may sit on a pickup with VRCObjectSync.
             AssertSyncMode<LiquidButton>(BehaviourSyncMode.NoVariableSync);
             AssertSyncedFields(program);

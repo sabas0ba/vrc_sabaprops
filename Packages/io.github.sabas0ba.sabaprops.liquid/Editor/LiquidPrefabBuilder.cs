@@ -35,10 +35,11 @@ namespace SabaProps.Liquid.Editors
         public const string UmbrellaName = "Liquid Umbrella";
         public const string WaterGunName = "Liquid Water Gun";
         public const string NozzleStandName = "Liquid Nozzle Stand";
+        public const string SprayGunName = "Liquid Spray Gun";
 
         public static readonly string[] PrefabNames =
         {
-            CupName, BucketName, FaucetName, ShowerName, UmbrellaName, WaterGunName, NozzleStandName,
+            CupName, BucketName, FaucetName, ShowerName, UmbrellaName, WaterGunName, NozzleStandName, SprayGunName,
         };
 
         public static string PrefabPath(string name)
@@ -65,6 +66,7 @@ namespace SabaProps.Liquid.Editors
             Save(BuildUmbrella(), UmbrellaName);
             Save(BuildWaterGun(), WaterGunName);
             Save(BuildNozzleStand(LiquidNozzle.ModeContinuous), NozzleStandName);
+            Save(BuildSprayGun(), SprayGunName);
             AssetDatabase.SaveAssets();
         }
 
@@ -88,6 +90,9 @@ namespace SabaProps.Liquid.Editors
 
         [MenuItem("GameObject/SabaProps/Liquid/Prefabs/Nozzle Stand", false, 46)]
         private static void PlaceNozzleStand(MenuCommand command) { PlaceFromMenu(NozzleStandName, command); }
+
+        [MenuItem("GameObject/SabaProps/Liquid/Prefabs/Spray Gun", false, 47)]
+        private static void PlaceSprayGun(MenuCommand command) { PlaceFromMenu(SprayGunName, command); }
 
         /// <summary>
         /// An instance of the named prefab under <paramref name="parent"/>. The
@@ -275,9 +280,73 @@ namespace SabaProps.Liquid.Editors
             return root;
         }
 
+        /// <summary>A hand-held sprayer of water that fires while the use button is held.</summary>
+        public static GameObject BuildSprayGun()
+        {
+            LiquidProfile water = OwnProfile(null, LiquidSourceBuilder.WaterName);
+            GameObject root = CreatePortableNozzle(SprayGunName, LiquidNozzle.ModeHold, water, new Color(0.15f, 0.55f, 0.85f),
+                MaterialFolder);
+            water.transform.SetParent(root.transform, false);
+            return root;
+        }
+
         // ------------------------------------------------------------------
         // Shared parts, also used by the interactive demo scene
         // ------------------------------------------------------------------
+
+        /// <summary>
+        /// A nozzle to carry: a synced pickup with the nozzle on a child, so its
+        /// Manual-synced firing state does not share a GameObject with
+        /// VRCObjectSync. The pickup's use button, release and drop reach the
+        /// nozzle through a relay on the root; dropping it stops the flow.
+        /// <para>
+        /// The mode picks what the use button does: fire once, start and stop a
+        /// continuous flow, or flow while held. Hits land on players and
+        /// mannequins alike, so people can spray each other.
+        /// </para>
+        /// </summary>
+        public static GameObject CreatePortableNozzle(string name, int mode, LiquidProfile profile, Color bodyColour,
+            string materialFolder)
+        {
+            var root = new GameObject(name);
+            Material body = LiquidAssets.CreateOrLoadSurfaceMaterial(
+                materialFolder + "/Portable" + mode + ".mat", bodyColour, 0.6f);
+            Material metal = LiquidAssets.CreateOrLoadSurfaceMaterial(materialFolder + "/Metal.mat",
+                new Color(0.6f, 0.6f, 0.62f), 0.8f);
+
+            Part(root.transform, "Body", PrimitiveType.Cylinder, new Vector3(0f, 0f, 0.05f), new Vector3(0.07f, 0.14f, 0.07f),
+                Quaternion.Euler(90f, 0f, 0f), body, false);
+            Part(root.transform, "Grip", PrimitiveType.Cube, new Vector3(0f, -0.07f, -0.02f), new Vector3(0.035f, 0.11f, 0.05f),
+                Quaternion.Euler(-12f, 0f, 0f), body, false);
+            Part(root.transform, "Barrel", PrimitiveType.Cylinder, new Vector3(0f, 0f, 0.22f), new Vector3(0.025f, 0.04f, 0.025f),
+                Quaternion.Euler(90f, 0f, 0f), metal, false);
+
+            var collider = root.AddComponent<CapsuleCollider>();
+            collider.direction = 2;
+            collider.center = new Vector3(0f, -0.02f, 0.06f);
+            collider.height = 0.36f;
+            collider.radius = 0.05f;
+
+            LiquidNozzle nozzle = CreateNozzle(root.transform, "Nozzle", profile, new Vector3(0f, 0f, 0.27f), mode, materialFolder);
+            nozzle.fireOnInteract = false;
+            nozzle.range = 8f;
+            nozzle.speed = 10f;
+            nozzle.diameter = 0.05f;
+            nozzle.volume = mode == LiquidNozzle.ModeOneShot ? 1.5f : 0.6f;
+
+            string useText = mode == LiquidNozzle.ModeOneShot ? "Fire" : mode == LiquidNozzle.ModeHold ? "Spray" : "Start / Stop";
+            MakePickup(root, useText, nozzle);
+            nozzle.pickup = root.GetComponent<VRCPickup>();
+            UdonSharpEditorUtility.CopyProxyToUdon(nozzle);
+
+            LiquidButton relay = root.GetComponent<LiquidButton>();
+            relay.useUpEventName = nameof(LiquidNozzle.Release);
+            relay.dropEventName = nameof(LiquidNozzle.StopFiring);
+            UdonSharpEditorUtility.CopyProxyToUdon(relay);
+
+            SetLayer(root, 13);
+            return root;
+        }
 
         /// <summary>A nozzle pointing along the parent's +Z, with a stream in the liquid's look.</summary>
         public static LiquidNozzle CreateNozzle(Transform parent, string name, LiquidProfile profile, Vector3 localPosition,

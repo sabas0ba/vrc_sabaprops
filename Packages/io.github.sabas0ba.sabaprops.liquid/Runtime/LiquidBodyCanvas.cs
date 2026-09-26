@@ -220,6 +220,20 @@ namespace SabaProps.Liquid
         private float _lastLightTime = -1000f;
         private float _glowCharge = 1f;
 
+        // 肌として扱う範囲。範囲の Source が評価周期ごとに伝え、途切れたら元の素材に戻します。
+        private LiquidSurfaceProfile _bareSurface;
+        private float _lastBareTime = -1000f;
+        private bool _bareApplied;
+
+        // 素材を設定していない部位のマテリアルの既定値。肌として扱う間の上書きから戻すために持ちます。
+        private bool _surfaceDefaultsCaptured;
+        private Vector4 _defaultBodyA;
+        private Vector4 _defaultBodyB;
+        private Vector4 _defaultLowerA;
+        private Vector4 _defaultLowerB;
+        private Vector4 _defaultFeetA;
+        private Vector4 _defaultFeetB;
+
         // この周期に洗う範囲。高さは Canvas の正規化 y で、それより下の顔料を洗います。
         private float _washLevel = -2f;
         private float _washAmount;
@@ -303,6 +317,7 @@ namespace SabaProps.Liquid
 
             BindTextures();
             PushImmersion();
+            CaptureSurfaceDefaults();
             PushSurfaces();
 
             if (projectorObject != null)
@@ -565,6 +580,32 @@ namespace SabaProps.Liquid
         }
 
         /// <summary>
+        /// 衣服を着ていないことが自然な場所（サウナ、浴室、浜辺など）で、衣服の部位（上半身、下半身、足）を
+        /// surface（通常は肌）として扱わせます。範囲の Source が評価周期ごとに呼びます。
+        /// <para>
+        /// アバターの実際の服装は読めないため、部位の推定は既定で「服を着た人」を仮定します。
+        /// この呼び出しは、場所の性質からその仮定を置き換えます。髪と、顔や手の肌はそのままです。
+        /// 伝えられなくなると、元の素材に戻します。
+        /// </para>
+        /// </summary>
+        public void ApplyBareSkin(LiquidSurfaceProfile surface)
+        {
+            if (!_active || surface == null)
+            {
+                return;
+            }
+
+            _bareSurface = surface;
+            _lastBareTime = Time.time;
+        }
+
+        /// <summary>衣服の部位を肌として扱っているか。</summary>
+        public bool IsTreatedAsBare()
+        {
+            return _bareApplied;
+        }
+
+        /// <summary>
         /// 周りの光を伝えます。明かりの範囲が評価周期ごとに呼びます。
         /// <para>
         /// 伝えている間は、ワールドの主光源の代わりにこの光と環境光で付着を照らします。
@@ -743,7 +784,8 @@ namespace SabaProps.Liquid
             updateMaterial.SetFloat("_DeltaTime", dt);
             updateMaterial.SetFloat("_FlowSpeed", flowSpeed);
             updateMaterial.SetFloat("_MaxEvaporationRate", maxEvaporationRate * CurrentDryingScale());
-            updateMaterial.SetFloat("_Friction", bodySurface != null ? bodySurface.friction : 0.5f);
+            LiquidSurfaceProfile clothing = _bareApplied ? _bareSurface : bodySurface;
+            updateMaterial.SetFloat("_Friction", clothing != null ? clothing.friction : 0.5f);
             updateMaterial.SetVector("_Wash", new Vector4(_washLevel, _washAmount, immersionEdge, 0f));
 
             RenderTexture pigmentSource = _frontIsA ? _pigmentA : _pigmentB;
@@ -770,6 +812,7 @@ namespace SabaProps.Liquid
             AdvanceSnow(dt);
             AdvanceHumidity(dt);
             AdvanceLight(dt);
+            AdvanceBareSkin();
             BindTextures();
             PushImmersion();
         }
@@ -799,6 +842,59 @@ namespace SabaProps.Liquid
 
             bool visible = _snowDepth > 0f || _surfaceWater > 0f;
             projectorMaterial.SetVector("_Snow", new Vector4(_snowDepth, _surfaceWater, 0f, visible ? 1f : 0f));
+        }
+
+        private void AdvanceBareSkin()
+        {
+            bool bare = _bareSurface != null && Time.time - _lastBareTime <= 0.5f;
+            if (bare == _bareApplied)
+            {
+                return;
+            }
+
+            _bareApplied = bare;
+            if (bare)
+            {
+                Vector4 a = _bareSurface.GetPrimary();
+                Vector4 b = _bareSurface.GetSecondary();
+                projectorMaterial.SetVector("_SurfaceBodyA", a);
+                projectorMaterial.SetVector("_SurfaceBodyB", b);
+                projectorMaterial.SetVector("_SurfaceLowerA", a);
+                projectorMaterial.SetVector("_SurfaceLowerB", b);
+                projectorMaterial.SetVector("_SurfaceFeetA", a);
+                projectorMaterial.SetVector("_SurfaceFeetB", b);
+            }
+            else
+            {
+                RestoreClothingSurfaces();
+            }
+        }
+
+        private void CaptureSurfaceDefaults()
+        {
+            if (_surfaceDefaultsCaptured || projectorMaterial == null)
+            {
+                return;
+            }
+
+            _defaultBodyA = projectorMaterial.GetVector("_SurfaceBodyA");
+            _defaultBodyB = projectorMaterial.GetVector("_SurfaceBodyB");
+            _defaultLowerA = projectorMaterial.GetVector("_SurfaceLowerA");
+            _defaultLowerB = projectorMaterial.GetVector("_SurfaceLowerB");
+            _defaultFeetA = projectorMaterial.GetVector("_SurfaceFeetA");
+            _defaultFeetB = projectorMaterial.GetVector("_SurfaceFeetB");
+            _surfaceDefaultsCaptured = true;
+        }
+
+        /// <summary>衣服の部位を、設定した素材（未設定ならマテリアルの既定値）に戻します。</summary>
+        private void RestoreClothingSurfaces()
+        {
+            projectorMaterial.SetVector("_SurfaceBodyA", bodySurface != null ? bodySurface.GetPrimary() : _defaultBodyA);
+            projectorMaterial.SetVector("_SurfaceBodyB", bodySurface != null ? bodySurface.GetSecondary() : _defaultBodyB);
+            projectorMaterial.SetVector("_SurfaceLowerA", lowerSurface != null ? lowerSurface.GetPrimary() : _defaultLowerA);
+            projectorMaterial.SetVector("_SurfaceLowerB", lowerSurface != null ? lowerSurface.GetSecondary() : _defaultLowerB);
+            projectorMaterial.SetVector("_SurfaceFeetA", feetSurface != null ? feetSurface.GetPrimary() : _defaultFeetA);
+            projectorMaterial.SetVector("_SurfaceFeetB", feetSurface != null ? feetSurface.GetSecondary() : _defaultFeetB);
         }
 
         /// <summary>湿度による今の乾きやすさの倍率。湿度が伝えられていなければ 1 です。</summary>
@@ -856,6 +952,13 @@ namespace SabaProps.Liquid
 
         private void ResetImmersion()
         {
+            _lastBareTime = -1000f;
+            if (_bareApplied && projectorMaterial != null)
+            {
+                _bareApplied = false;
+                RestoreClothingSurfaces();
+            }
+
             _condensation = 0f;
             _lastHumidityTime = -1000f;
             _lastLightTime = -1000f;

@@ -211,6 +211,20 @@ namespace SabaProps.Liquid.Editors
         };
 
         /// <summary>
+        /// Swim shorts and nothing else. The builder still gives the torso a cloth
+        /// surface, as the region estimate does for any avatar; a sauna that
+        /// assumes bare skin is what makes it read as skin.
+        /// </summary>
+        public static readonly Outfit Swimwear = new Outfit
+        {
+            Name = "Swimwear",
+            Top = new Color(0.86f, 0.68f, 0.58f), TopSurface = LiquidSurfaceBuilder.SoftClothName,
+            Bottom = new Color(0.1f, 0.2f, 0.45f), BottomSurface = LiquidSurfaceBuilder.HardClothName,
+            Shoes = new Color(0.86f, 0.68f, 0.58f), ShoesSurface = LiquidSurfaceBuilder.SoftClothName,
+            Hair = new Color(0.2f, 0.14f, 0.1f), ShortSleeves = true, Shorts = true,
+        };
+
+        /// <summary>
         /// A clothed mannequin: skin, hair, a top, trousers and shoes, each part
         /// with the surface its material implies, and avatar regions on so the
         /// canvas treats them the way it treats a player.

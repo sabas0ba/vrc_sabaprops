@@ -5,7 +5,10 @@ using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using UdonSharp;
+using UdonSharpEditor;
 using VRC.SDK3.Components;
+using VRC.Udon;
 
 namespace SabaProps.Liquid.WorldTests
 {
@@ -126,6 +129,33 @@ namespace SabaProps.Liquid.WorldTests
             {
                 StringAssert.DoesNotMatch(@"_1\d\d\.mat$", AssetDatabase.GetAssetPath(mannequin.projectorMaterial),
                     "a demo mannequin uses a projector material numbered for the comparison scene");
+            }
+        }
+
+        [Test]
+        public void EveryUdonBehaviour_LoadsItsProgram()
+        {
+            AssertEveryProgramLoads();
+        }
+
+        /// <summary>
+        /// Every UdonBehaviour in the open scene has a serialized program that
+        /// deserializes. A program asset that exists but cannot be read (a file
+        /// left zero-filled by an interrupted save, for one) passes a null check
+        /// on the reference and only fails in the VRChat client, which then
+        /// skips the behaviour with "Could not load the program".
+        /// </summary>
+        internal static void AssertEveryProgramLoads()
+        {
+            foreach (UdonSharpBehaviour behaviour in Object.FindObjectsOfType<UdonSharpBehaviour>(true))
+            {
+                UdonBehaviour backing = UdonSharpEditorUtility.GetBackingUdonBehaviour(behaviour);
+                Assert.IsNotNull(backing, behaviour.name + " has no backing UdonBehaviour");
+                Assert.IsNotNull(backing.programSource, behaviour.name + " has no program source");
+                Assert.IsNotNull(backing.programSource.SerializedProgramAsset, behaviour.name + " has no serialized program");
+                Assert.IsNotNull(backing.programSource.SerializedProgramAsset.RetrieveProgram(),
+                    behaviour.name + ": the serialized program " + AssetDatabase.GetAssetPath(backing.programSource.SerializedProgramAsset)
+                    + " does not load");
             }
         }
 

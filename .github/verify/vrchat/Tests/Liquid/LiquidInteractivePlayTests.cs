@@ -8,6 +8,7 @@ using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.TestTools;
 using VRC.SDK3.ClientSim;
+using VRC.SDK3.Components;
 using VRC.SDKBase;
 using VRC.Udon;
 
@@ -36,6 +37,8 @@ namespace SabaProps.Liquid.WorldTests
         private const int PrefabTarget = DarkFirst + 4;
         private const int InTheRain = PrefabTarget + 1;
         private const int UnderUmbrella = InTheRain + 1;
+        private const int SprayTargetLeft = UnderUmbrella + 1;
+        private const int SprayTargetRight = SprayTargetLeft + 1;
 
         private bool _optionsEnabled;
         private EnterPlayModeOptions _options;
@@ -106,11 +109,29 @@ namespace SabaProps.Liquid.WorldTests
                 }
             }
 
-            yield return Wait(RunSeconds);
+            // Start the carried nozzles on the rack, as if someone had picked them up and pressed use.
+            foreach (VRCPickup pickup in GameObject.Find(LiquidInteractiveScene.SprayPlayName).GetComponentsInChildren<VRCPickup>())
+            {
+                LiquidNozzle nozzle = pickup.GetComponentInChildren<LiquidNozzle>();
+                UdonSharpEditorUtility.GetBackingUdonBehaviour(nozzle).SendCustomEvent(nameof(LiquidNozzle.Trigger));
+            }
+
+            // A single splash of water runs off and dries within the run; fire the one-shot again
+            // shortly before looking, so the check sees a fresh splash.
+            yield return Wait(RunSeconds - 3f);
+            foreach (LiquidNozzle nozzle in nozzles)
+            {
+                if (nozzle.mode == LiquidNozzle.ModeOneShot)
+                {
+                    UdonSharpEditorUtility.GetBackingUdonBehaviour(nozzle).SendCustomEvent(nameof(LiquidNozzle.Fire));
+                }
+            }
+
+            yield return Wait(3f);
 
             LiquidCanvasPool pool = Object.FindObjectOfType<LiquidCanvasPool>();
             LiquidBodyCanvas[] m = pool.mannequins;
-            Assert.AreEqual(UnderUmbrella + 1, m.Length, "the pool order changed; update the indices");
+            Assert.AreEqual(SprayTargetRight + 1, m.Length, "the pool order changed; update the indices");
 
             LiquidDemoPlayTests.Capture("liquid-interactive-overview.png", new Vector3(0f, 9f, -16f), new Vector3(2f, 0.5f, 5f), 62f);
             LiquidDemoPlayTests.CaptureGrid("liquid-interactive-nozzles.png", m, BenchFirst, 3);
@@ -121,6 +142,28 @@ namespace SabaProps.Liquid.WorldTests
             LiquidDemoPlayTests.Capture("liquid-interactive-rooms.png", new Vector3(-8f, 2f, 7f), new Vector3(-8f, 1.2f, 13f), 70f);
             LiquidDemoPlayTests.CaptureGrid("liquid-interactive-rain.png", m, PrefabTarget, 3);
             LiquidDemoPlayTests.Capture("liquid-interactive-prefabs.png", new Vector3(7f, 2.5f, -11.5f), new Vector3(8f, 0.8f, -5.5f), 70f);
+
+            foreach (LiquidNozzle nozzle in nozzles)
+            {
+                UdonBehaviour backing = UdonSharpEditorUtility.GetBackingUdonBehaviour(nozzle);
+                TestContext.WriteLine(nozzle.transform.parent.name + ": running " + backing.GetProgramVariable("_running")
+                    + ", shots received " + backing.GetProgramVariable("_shotsReceived")
+                    + ", volume " + backing.GetProgramVariable("_volume")
+                    + ", rays cast " + backing.GetProgramVariable("_raysCast")
+                    + ", hit " + backing.GetProgramVariable("_raysHit")
+                    + ", delivered " + backing.GetProgramVariable("_stampsDelivered"));
+                if (nozzle.mode == LiquidNozzle.ModeOneShot)
+                {
+                    Assert.AreEqual(2, (int)backing.GetProgramVariable("_shotsReceived"), "the one-shot events did not all arrive");
+                    Assert.AreEqual(backing.GetProgramVariable("_raysHit"), backing.GetProgramVariable("_stampsDelivered"),
+                        "hits were held but never delivered");
+                }
+            }
+
+            for (int i = BenchFirst; i < BenchFirst + 3; i++)
+            {
+                TestContext.WriteLine(m[i].transform.parent.parent.name + " coverage " + LiquidDemoPlayTests.Coverage(m[i].projectorMaterial));
+            }
 
             for (int i = BenchFirst; i < BenchFirst + 3; i++)
             {
@@ -146,6 +189,25 @@ namespace SabaProps.Liquid.WorldTests
                 "the damp-air mannequin does not feel 70 % humidity");
             Assert.AreEqual(0f, m[DampFirst + 1].projectorMaterial.GetVector("_Condensation").x,
                 "70 % humidity condensed although it is below the threshold");
+
+            // The sauna treats bodies as bare skin: its swimwear mannequin, whose torso the builder
+            // gives a cloth surface, sweats like skin. The bathroom keeps the clothes on.
+            // Runtime state lives in the Udon program, not on the C# proxy.
+            Assert.IsTrue((bool)UdonSharpEditorUtility.GetBackingUdonBehaviour(m[SaunaFirst + 1]).GetProgramVariable("_bareApplied"),
+                "the sauna did not treat its mannequin as bare skin");
+            float saunaTorso = m[SaunaFirst + 1].projectorMaterial.GetVector("_SurfaceBodyA").x;
+            float bathTorso = m[BathroomFirst + 1].projectorMaterial.GetVector("_SurfaceBodyA").x;
+            TestContext.WriteLine("torso absorbency: sauna " + saunaTorso + ", bathroom " + bathTorso);
+            Assert.Less(saunaTorso, 0.4f, "the sauna torso still absorbs like cloth");
+            Assert.Greater(bathTorso, 0.6f, "the bathroom torso lost its cloth surface");
+            Assert.IsFalse((bool)UdonSharpEditorUtility.GetBackingUdonBehaviour(m[BathroomFirst + 1]).GetProgramVariable("_bareApplied"));
+
+            Assert.Greater(LiquidDemoPlayTests.Coverage(m[SprayTargetLeft].projectorMaterial), 0f,
+                "the carried nozzles did not reach the left target");
+            Assert.Greater(LiquidDemoPlayTests.Coverage(m[SprayTargetRight].projectorMaterial), 0f,
+                "the carried nozzles did not reach the right target");
+            LiquidDemoPlayTests.CaptureGrid("liquid-interactive-spray-targets.png", m, SprayTargetLeft, 2);
+            LiquidDemoPlayTests.CaptureGrid("liquid-interactive-sauna-bare.png", m, SaunaFirst, 2, 1.1f, 1.2f);
 
             Assert.Greater(LiquidDemoPlayTests.Coverage(m[InTheRain].projectorMaterial), 0f, "the rain patch did not wet its mannequin");
             Assert.AreEqual(0f, LiquidDemoPlayTests.Coverage(m[UnderUmbrella].projectorMaterial), "rain reached under the umbrella");

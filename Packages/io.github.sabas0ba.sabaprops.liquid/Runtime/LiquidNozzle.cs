@@ -10,10 +10,11 @@ namespace SabaProps.Liquid
     /// <summary>
     /// 液体を放つ汎用のノズル。飛散と流下の Source です。
     /// <para>
-    /// 放ち方は 3 通りです。
+    /// 放ち方は 4 通りです。
     /// 1 回（OneShot）：Interact や使用ボタンで、設定した量を一度に放ちます。コップやバケツもこれです。
     /// 定期（Periodic）：サーバー時刻に合わせて、設定した間隔で放ちます。
     /// 連続（Continuous）：切り替えで出し続け、1 秒あたり設定した量を放ちます。
+    /// 押す間（Hold）：使用ボタンを押している間だけ出し続けます。手に持つ放水具に使います。
     /// </para>
     /// <para>
     /// 量（L）、届く距離（m）、速さ（m/s）、断面の直径（m）を持ち、操作盤から変えられます。
@@ -21,13 +22,18 @@ namespace SabaProps.Liquid
     /// 届くまでの時間も長くなります。断面は付く範囲の広さと、放つ向きのばらつきに効きます。
     /// </para>
     /// <para>
-    /// 同期は設定と連続放出の状態だけです（Manual）。1 回の放出は、放出の番号をイベントで全員へ送り、
+    /// 同期は設定と放出中かどうかだけです（Manual）。1 回の放出は、放出の番号をイベントで全員へ送り、
     /// 各クライアントがその番号を乱数の種として同じ向きに光線を放ちます。定期の放出はサーバー時刻が種です。
     /// 命中の判定は各クライアントで行うため、プレイヤー位置の同期遅延の分だけ当たり方がずれることは許容します。
     /// </para>
     /// <para>
     /// Pickup と同じ GameObject に置く場合は、VRCObjectSync と干渉しないよう、ノズルを子の GameObject に
-    /// 置いてください（Prefab のコップとバケツはそうしています）。
+    /// 置いてください（Prefab のコップとバケツはそうしています）。使用ボタン、離したとき、手放したときの
+    /// イベントは Pickup の GameObject にしか届かないため、LiquidButton で中継します。
+    /// </para>
+    /// <para>
+    /// 持ち運ぶ場合は pickup を設定します。押す間の放出中に手放された（持ち主が退出した場合を含む）ことを
+    /// 所有者が見つけると、放出を止めます。
     /// </para>
     /// </summary>
     [AddComponentMenu("SabaProps/Liquid/Nozzle")]
@@ -37,6 +43,7 @@ namespace SabaProps.Liquid
         public const int ModeOneShot = 0;
         public const int ModePeriodic = 1;
         public const int ModeContinuous = 2;
+        public const int ModeHold = 3;
 
         /// <summary>1 回の放出イベントの送信上限（回/秒）。</summary>
         public const int MaxShotsPerSecond = 5;
@@ -62,9 +69,12 @@ namespace SabaProps.Liquid
         public Text readout;
 
         [Header("放ち方")]
-        [Tooltip("0: 1 回, 1: 定期, 2: 連続。")]
-        [Range(0, 2)]
+        [Tooltip("0: 1 回, 1: 定期, 2: 連続（切り替え）, 3: 押す間。")]
+        [Range(0, 3)]
         public int mode = ModeOneShot;
+
+        [Tooltip("持ち運ぶ場合の Pickup。押す間の放出中に手放されたら止めます。")]
+        public VRC_Pickup pickup;
 
         [Tooltip("定期の間隔（秒）。")]
         [Min(0.2f)]
@@ -123,6 +133,11 @@ namespace SabaProps.Liquid
         private int _lastPeriod = int.MinValue;
         private float _lastEvaluation;
         private float _lastRequest = -10f;
+        private int _shotsReceived;
+        private int _raysCast;
+        private int _raysHit;
+        private int _stampsDelivered;
+        private bool _wasHeld;
 
         private void Start()
         {
@@ -174,7 +189,12 @@ namespace SabaProps.Liquid
             Trigger();
         }
 
-        /// <summary>放ち方に応じて、1 回放つか、連続放出を切り替えます。</summary>
+        public override void OnPickupUseUp()
+        {
+            Release();
+        }
+
+        /// <summary>放ち方に応じて、1 回放つ、連続放出を切り替える、または押す間の放出を始めます。</summary>
         public void Trigger()
         {
             if (mode == ModeContinuous)
@@ -185,6 +205,31 @@ namespace SabaProps.Liquid
             {
                 Fire();
             }
+            else if (mode == ModeHold)
+            {
+                StartFiring();
+            }
+        }
+
+        /// <summary>使用ボタンを離したとき。押す間の放出を止めます。</summary>
+        public void Release()
+        {
+            if (mode == ModeHold)
+            {
+                StopFiring();
+            }
+        }
+
+        /// <summary>出し続けるのを始めます（連続と押す間）。</summary>
+        public void StartFiring()
+        {
+            SetRunning(true);
+        }
+
+        /// <summary>出し続けるのを止めます（連続と押す間）。手放したときにも呼びます。</summary>
+        public void StopFiring()
+        {
+            SetRunning(false);
         }
 
         /// <summary>1 回ぶんを全員の画面で放ちます。</summary>
@@ -203,22 +248,39 @@ namespace SabaProps.Liquid
         [NetworkCallable(MaxShotsPerSecond)]
         public void ReceiveShot(int seed)
         {
+            _shotsReceived++;
             Shoot(_volume, seed, true);
+        }
+
+        /// <summary>このクライアントが受け取った 1 回の放出の数。</summary>
+        public int GetShotsReceived()
+        {
+            return _shotsReceived;
         }
 
         /// <summary>連続放出を切り替えます。</summary>
         public void Toggle()
         {
+            SetRunning(!_running);
+        }
+
+        private void SetRunning(bool running)
+        {
+            if (_running == running)
+            {
+                return;
+            }
+
             TakeOwnership();
-            _running = !_running;
+            _running = running;
             RequestSerialization();
             ApplySettings();
         }
 
-        /// <summary>連続放出しているか。</summary>
+        /// <summary>出し続けているか（連続と押す間）。</summary>
         public bool IsRunning()
         {
-            return mode == ModeContinuous && _running;
+            return (mode == ModeContinuous || mode == ModeHold) && _running;
         }
 
         public void VolumeUp() { ChangeVolume(1); }
@@ -286,7 +348,7 @@ namespace SabaProps.Liquid
                 shape.radius = Mathf.Max(_diameter * 0.5f, 0.005f);
 
                 bool continuous = IsRunning();
-                if (mode == ModeContinuous)
+                if (mode == ModeContinuous || mode == ModeHold)
                 {
                     if (continuous && !stream.isPlaying)
                     {
@@ -301,12 +363,13 @@ namespace SabaProps.Liquid
 
             if (readout != null)
             {
-                string unit = mode == ModeContinuous ? " L/s" : " L";
+                bool flowing = mode == ModeContinuous || mode == ModeHold;
+                string unit = flowing ? " L/s" : " L";
                 readout.text = "Volume " + _volume.ToString("0.0") + unit
                     + "\nRange " + _range.ToString("0.0") + " m"
                     + "\nSpeed " + _speed.ToString("0") + " m/s"
                     + "\nNozzle " + (_diameter * 100f).ToString("0") + " cm"
-                    + (mode == ModeContinuous ? (_running ? "\nRunning" : "\nStopped") : "");
+                    + (flowing ? (_running ? "\nRunning" : "\nStopped") : "");
             }
         }
 
@@ -317,6 +380,7 @@ namespace SabaProps.Liquid
         private void Update()
         {
             DeliverPending();
+            WatchPickup();
 
             if (pool == null || profile == null)
             {
@@ -357,6 +421,27 @@ namespace SabaProps.Liquid
         }
 
         /// <summary>
+        /// 押す間の放出中に、持っていた人が手放したら止めます。所有者だけが見ます。
+        /// 使用ボタンを離したイベントが届かない場合（持ったまま退出したなど）のためです。
+        /// 一度も持たれていないノズルは止めません。
+        /// </summary>
+        private void WatchPickup()
+        {
+            if (pickup == null || mode != ModeHold || !Networking.IsOwner(gameObject))
+            {
+                return;
+            }
+
+            bool held = pickup.IsHeld;
+            if (_wasHeld && !held && _running)
+            {
+                StopFiring();
+            }
+
+            _wasHeld = held;
+        }
+
+        /// <summary>
         /// volume（L）ぶんの光線を放ち、命中を届く時刻まで預けます。
         /// </summary>
         private void Shoot(float amount, int seed, bool emitParticles)
@@ -381,6 +466,7 @@ namespace SabaProps.Liquid
 
             for (int r = 0; r < rays; r++)
             {
+                _raysCast++;
                 int sample = seed * MaxRaysPerShot + r;
                 Vector3 velocity = pool.SampleCone(axis, cone, sample) * _speed;
                 if (!CastArc(origin, velocity, flight))
@@ -450,6 +536,7 @@ namespace SabaProps.Liquid
 
         private void Hold(int target, Vector3 point, Vector3 normal, float radius, float amount, float seed, float due)
         {
+            _raysHit++;
             if (_pendingCount >= MaxPending)
             {
                 DeliverAll();
@@ -505,6 +592,7 @@ namespace SabaProps.Liquid
             Vector3 point = pool.TargetToWorld(target, _pendingPoint[i]);
             Vector3 normal = pool.TargetToWorldDirection(target, _pendingNormal[i]);
             canvas.QueueStamp(point, normal, _pendingRadius[i], profile, _pendingAmount[i], _pendingSeed[i]);
+            _stampsDelivered++;
         }
 
         private void RemovePending(int i)

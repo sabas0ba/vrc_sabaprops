@@ -103,6 +103,73 @@ namespace SabaProps.Liquid.WorldTests
         }
 
         [Test]
+        public void EveryUdonBehaviour_LoadsItsProgram()
+        {
+            LiquidSampleSceneTests.AssertEveryProgramLoads();
+        }
+
+        [Test]
+        public void PortableNozzles_RelayUseReleaseAndDrop()
+        {
+            var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(LiquidPrefabBuilder.PrefabPath(LiquidPrefabBuilder.SprayGunName));
+            AssertPortable(prefab, LiquidNozzle.ModeHold);
+
+            GameObject area = GameObject.Find(LiquidInteractiveScene.SprayPlayName);
+            Assert.IsNotNull(area);
+            var modes = new System.Collections.Generic.List<int>();
+            foreach (VRCPickup pickup in area.GetComponentsInChildren<VRCPickup>())
+            {
+                LiquidNozzle nozzle = pickup.GetComponentInChildren<LiquidNozzle>();
+                AssertPortable(pickup.gameObject, nozzle.mode);
+                Assert.IsNotNull(nozzle.pool, pickup.name + " is not wired to the scene's pool");
+                Assert.IsNotNull(nozzle.readout, pickup.name + " has no panel on its dock");
+                modes.Add(nozzle.mode);
+            }
+
+            CollectionAssert.AreEquivalent(
+                new[] { LiquidNozzle.ModeHold, LiquidNozzle.ModeOneShot, LiquidNozzle.ModeContinuous }, modes);
+        }
+
+        /// <summary>
+        /// A carried nozzle: synced pickup on the root, the Manual-synced nozzle on
+        /// a child, and a relay that brings use, release and drop to it.
+        /// </summary>
+        private static void AssertPortable(GameObject root, int mode)
+        {
+            Assert.IsNotNull(root.GetComponent<VRCPickup>(), root.name + " cannot be picked up");
+            Assert.IsNotNull(root.GetComponent<VRCObjectSync>(), root.name + " is not synced");
+            LiquidNozzle nozzle = root.GetComponentInChildren<LiquidNozzle>();
+            Assert.IsNotNull(nozzle, root.name + " has no nozzle");
+            Assert.AreNotSame(root, nozzle.gameObject, root.name + ": a Manual-synced nozzle sits next to VRCObjectSync");
+            Assert.AreEqual(mode, nozzle.mode);
+            Assert.AreSame(root.GetComponent<VRCPickup>(), nozzle.pickup, root.name + ": the nozzle does not watch its pickup");
+            Assert.IsFalse(nozzle.fireOnInteract, root.name + " fires on Interact, which a pickup never gets");
+
+            LiquidButton relay = root.GetComponent<LiquidButton>();
+            Assert.IsNotNull(relay, root.name + " has no relay");
+            Assert.AreSame(nozzle, relay.target);
+            Assert.IsTrue(relay.relayPickupUse);
+            Assert.AreEqual(nameof(LiquidNozzle.Trigger), relay.eventName);
+            Assert.AreEqual(nameof(LiquidNozzle.Release), relay.useUpEventName);
+            Assert.AreEqual(nameof(LiquidNozzle.StopFiring), relay.dropEventName);
+            Assert.AreEqual(13, root.layer, root.name + " is not on the pickup layer");
+        }
+
+        [Test]
+        public void Sauna_TreatsBodiesAsBareSkin()
+        {
+            GameObject sauna = GameObject.Find(LiquidInteractiveScene.SaunaName);
+            LiquidHumidity humidity = sauna.GetComponentInChildren<LiquidHumidity>();
+            Assert.IsTrue(humidity.assumeBareSkin);
+            Assert.IsNotNull(humidity.bareSkinSurface);
+            Assert.AreEqual(LiquidSurfaceBuilder.SkinName, humidity.bareSkinSurface.name);
+
+            GameObject bathroom = GameObject.Find(LiquidInteractiveScene.BathroomName);
+            Assert.IsFalse(bathroom.GetComponentInChildren<LiquidHumidity>().assumeBareSkin,
+                "the bathroom keeps clothes, so the two rooms show both behaviours");
+        }
+
+        [Test]
         public void Scene_IsAWorldWithEveryMannequinRegistered()
         {
             Assert.IsNotNull(Object.FindObjectOfType<VRCSceneDescriptor>());
@@ -111,7 +178,8 @@ namespace SabaProps.Liquid.WorldTests
                 + LiquidInteractiveScene.ViscosityPresets.Length               // viscosity row
                 + 2 + 2 + 2                                                    // sauna, bathroom, damp air
                 + LiquidInteractiveScene.DarkRoomPaints.Length                 // dark room
-                + 1 + 2;                                                       // prefab target, rain patch
+                + 1 + 2                                                        // prefab target, rain patch
+                + 2;                                                           // spray each other
             Assert.AreEqual(expected, pool.mannequins.Length);
 
             LiquidSampleSceneTests.AssertMannequinsDrawOnTheirOwnLayer(pool);
