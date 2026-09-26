@@ -35,6 +35,7 @@ internal static class OfflineFlockTests
         FlockPattern.BaitBall,
         FlockPattern.Tornado,
         FlockPattern.Wander,
+        FlockPattern.Anchored,
     };
 
     private static string _csharpMotionPath;
@@ -48,7 +49,7 @@ internal static class OfflineFlockTests
     private static readonly string[] PortedFunctions =
     {
         "PathAngularSpeed", "PathPoint", "PathFrame", "UnitBallPoint", "Wobble",
-        "Wander", "OrbitRate", "DriftSpeed", "Position", "Pose", "Frac",
+        "Wander", "OrbitRate", "DriftSpeed", "Position", "Pose", "Frac", "AppendageOffset",
     };
 
     private static int Main(string[] args)
@@ -73,6 +74,7 @@ internal static class OfflineFlockTests
         Run("large swarms switch to 32-bit indices", LargeSwarmsUse32BitIndices);
         Run("every pattern keeps every individual inside its area", PatternsStayInsideTheArea);
         Run("every preset's default swarm stays inside its bounds", DefaultSwarmsStayInsideBounds);
+        Run("anchored animals stay fixed and walking birds stay on their plane", AnchoredAndGroundedMotion);
         Run("headings turn smoothly from frame to frame", HeadingsAreContinuous);
         Run("the pose frame stays orthonormal", PoseFrameIsOrthonormal);
         Run("V formations keep the leader ahead", VFormationKeepsTheLeaderAhead);
@@ -295,12 +297,13 @@ internal static class OfflineFlockTests
             Require(s.cruiseSpeed > 0f, $"{s.id}: no cruise speed");
             Require(s.beatFrequency > 0f, $"{s.id}: no beat frequency");
             Require(s.defaultCount >= 1 && s.defaultCount <= 1000, $"{s.id}: default count {s.defaultCount}");
-            Require(Math.Min(s.defaultArea.x, Math.Min(s.defaultArea.y, s.defaultArea.z)) > s.bodyLength,
+            Require(Math.Min(s.defaultArea.x, Math.Min(s.grounded ? s.defaultArea.x : s.defaultArea.y, s.defaultArea.z)) > s.bodyLength,
                 $"{s.id}: default area is smaller than one body");
 
             bool bird = s.category == FlockCategory.Bird;
             Require(bird == (preset.Habitat == FlockHabitat.Sky), $"{s.id}: habitat does not match category");
-            Require(bird == (s.animation == FlockAnimation.Flap), $"{s.id}: animation does not match category");
+            Require(bird == (s.animation == FlockAnimation.Flap || s.animation == FlockAnimation.Walk), $"{s.id}: animation does not match category");
+            Require(!s.grounded || (s.defaultArea.y <= 0.001f && s.animation == FlockAnimation.Walk), $"{s.id}: invalid ground movement");
 
             FlockSpecies copy = FlockSpeciesCatalog.Create(s.id);
             Require(copy != null && !ReferenceEquals(copy, s), $"{s.id}: Create did not return a copy");
@@ -609,6 +612,32 @@ internal static class OfflineFlockTests
                 {
                     Fail($"{label}: individual {i} at t={t} is at {p}, outside area {area}");
                     return;
+                }
+            }
+        }
+    }
+
+    private static void AnchoredAndGroundedMotion()
+    {
+        foreach (string id in new[] { "garden-eel", "urchin", "anemone", "oyster", "chicken", "chick" })
+        {
+            FlockSpecies species = FlockSpeciesCatalog.Create(id);
+            var settings = new FlockSwarmSettings { pattern = species.defaultPattern, count = 8, area = species.defaultArea };
+            for (int i = 0; i < settings.count; i++)
+            {
+                FlockMotionInput input = FlockSwarmMeshBuilder.MotionInput(species, settings, i);
+                Vector3 initial = FlockMotion.Position(input, 0f);
+                for (float t = 0f; t < 60f; t += 0.7f)
+                {
+                    FlockMotion.Pose(input, t, out Vector3 position, out Vector3 forward, out Vector3 up, out _);
+                    if (species.grounded)
+                    {
+                        Require(Math.Abs(position.y) < 1e-6f && Math.Abs(forward.y) < 1e-6f && Approximately(up, Vector3.up, 1e-5f), id + ": walking bird left its plane");
+                    }
+                    else Require(Approximately(position, initial, 1e-6f), id + ": anchored animal moved");
+                    Vector3 rootOffset = FlockMotion.AppendageOffset(Vector3.zero, new Vector4(0f, 0f, 4f, 0f),
+                        (float)species.animation, species.beatFrequency, species.beatAmplitude, t, 0f, species.bodyLength);
+                    Require(Approximately(rootOffset, Vector3.zero, 1e-6f), id + ": appendage root detached");
                 }
             }
         }

@@ -71,6 +71,12 @@ namespace SabaProps.Flock
             float length = Mathf.Max(input.BodyLength, 0f);
             Vector3 r = input.Random;
 
+            if (input.Pattern == FlockPattern.Anchored)
+            {
+                return input.Count < 1.5f ? Vector3.zero
+                    : Scale(r * 2f - Vector3.one, Max(area - Vector3.one * length, 0f));
+            }
+
             if (input.Pattern == FlockPattern.Wander)
             {
                 return Wander(area, length, input.Speed, r, t);
@@ -185,6 +191,34 @@ namespace SabaProps.Flock
             }
 
             return centre + offset;
+        }
+
+        /// <summary>Reference displacement for walking, tentacles and bell pulsation.</summary>
+        public static Vector3 AppendageOffset(Vector3 p, Vector4 body, float mode,
+            float frequency, float amplitude, float t, float phase, float bodyLength)
+        {
+            float beat = Mathf.Sin(TwoPi * frequency * t + phase);
+            if (mode < 3.5f)
+            {
+                if (Mathf.Abs(body.z - 4f) < 0.5f)
+                {
+                    float step = Mathf.Sin(TwoPi * frequency * t + phase + (p.x < 0f ? 3.1415927f : 0f));
+                    return new Vector3(0f, Mathf.Max(step, 0f) * 0.05f * bodyLength * body.y, step * amplitude * bodyLength * body.y);
+                }
+                return new Vector3(0f, Mathf.Abs(beat) * 0.015f * bodyLength, 0f);
+            }
+            if (mode < 4.5f)
+            {
+                float wave = TwoPi * frequency * t + phase + body.y * 3f;
+                return new Vector3(amplitude * bodyLength * body.y * Mathf.Sin(wave), 0f,
+                    0.5f * amplitude * bodyLength * body.y * Mathf.Cos(wave));
+            }
+            if (mode < 5.5f)
+            {
+                float scale = amplitude * body.y * beat;
+                return new Vector3(p.x * scale, -0.03f * bodyLength * body.y * beat, p.z * scale);
+            }
+            return Vector3.zero;
         }
 
         /// <summary>

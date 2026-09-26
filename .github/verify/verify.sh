@@ -440,18 +440,32 @@ fi
 # shader, so Unity's own includes are replaced by the stubs in unity_stubs/.
 FLOCK_SHADER_DIR="$FLOCK_PACKAGE/Runtime/Shaders"
 "$PYTHON" .github/verify/extract_shader_body.py \
-    "$FLOCK_SHADER_DIR/SabaFlock.shader" "$OUT/flock_shader_body.hlsl"
+    "$FLOCK_SHADER_DIR/SabaFlock.shader" "$OUT/flock_shader_body.hlsl" --block 0
 cp "$HERE/flock_shader_harness.hlsl" "$OUT/flock_shader_harness.hlsl"
 flock_shader_check() {
     glslangValidator -D -e main -S vert --target-env vulkan1.0 \
         -o "$OUT/flock_shader.spv" \
-        -I"$HERE/unity_stubs" -I"$FLOCK_SHADER_DIR" -I"$OUT" "$OUT/flock_shader_harness.hlsl"
+        -I"$HERE/unity_stubs" -I"$FLOCK_SHADER_DIR" -I"$OUT" "$@" "$OUT/flock_shader_harness.hlsl"
 }
 if flock_shader_check >/dev/null; then
     echo "ok: SabaProps/Flock/Swarm"
 else
     flock_shader_check || true
     fail "flock shader failed"
+fi
+if flock_shader_check -DVERTEXLIGHT_ON >/dev/null; then
+    echo "ok: SabaProps/Flock/Swarm vertex lights"
+else
+    flock_shader_check -DVERTEXLIGHT_ON || true
+    fail "flock vertex-light shader failed"
+fi
+"$PYTHON" .github/verify/extract_shader_body.py \
+    "$FLOCK_SHADER_DIR/SabaFlock.shader" "$OUT/flock_shader_body.hlsl" --block 1
+if flock_shader_check >/dev/null; then
+    echo "ok: SabaProps/Flock/Swarm ForwardAdd"
+else
+    flock_shader_check || true
+    fail "flock additive shader failed"
 fi
 
 # ---------------------------------------------------------------------------
@@ -542,7 +556,7 @@ log "Running the flock generators and motion (no Unity)"
 FLOCK_OFFLINE_SOURCES=()
 for file in "$FLOCK_PACKAGE"/Runtime/*.cs "$FLOCK_PACKAGE"/Editor/*.cs; do
     case "$(basename "$file")" in
-        FlockSwarm.cs | FlockSwarmEditor.cs | FlockMenu.cs | FlockAssetLibrary.cs | FlockSwarmBuilder.cs | FlockGallery.cs | FlockSampleScene.cs | FlockWorldSample.cs) ;;
+        FlockSwarm.cs | FlockSwarmEditor.cs | FlockMenu.cs | FlockAssetLibrary.cs | FlockSwarmBuilder.cs | FlockGallery.cs | FlockSampleScene.cs | FlockWorldSample.cs | FlockComparisonScene.cs | FlockLightingPreview.cs) ;;
         *) FLOCK_OFFLINE_SOURCES+=("$file") ;;
     esac
 done

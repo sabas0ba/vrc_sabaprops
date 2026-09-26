@@ -23,7 +23,11 @@ namespace SabaProps.Flock.Editors
         public static FlockMeshBuffer Build(FlockSpecies species, FlockDetail detail)
         {
             var buffer = new FlockMeshBuffer();
-            if (species.category == FlockCategory.Bird)
+            if (species.bodyShape != FlockBodyShape.Default && species.bodyShape != FlockBodyShape.FlyingFish)
+            {
+                BuildSpecialBody(buffer, species, detail);
+            }
+            else if (species.category == FlockCategory.Bird)
             {
                 BuildBird(buffer, species, detail);
             }

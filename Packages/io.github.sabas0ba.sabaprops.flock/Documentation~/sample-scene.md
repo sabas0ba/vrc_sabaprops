@@ -49,6 +49,25 @@ Scene の Props は寸法比較用の簡易形状で、衝突回避や水との�
 
 ## 種と動作の比較 Scene
 
+`FlockComparisons.unity` は全 69 種を実寸で 1 個体ずつ並べた Scene です。Hierarchy の `01 All species` から標本を選び、Scene view の `F` で注目してください。追加したイカ、タコ、クラゲ、チンアナゴ、カニ、ウナギ、ウニ、イソギンチャク、カキ、トビウオ、タツノオトシゴ、ニワトリ、ヒヨコも含みます。マグロ、サバ、タイ、クマノミと、ペリカン、スズメ、カラス、ハト、ハクチョウは既存プリセットを利用できます。
+
+`02 Swimming comparison` はマイワシ 24 匹の Stream / BaitBall / Tornado / Wander、`03 Flying comparison` はムクドリ 24 羽の Cruise / Murmuration / VFormation / Thermal を並べています。種・個体数・seed・範囲・速度倍率を共通にし、群れの動きだけを変えています。`Sample View > Compare swimming` / `Compare flying` で Camera を切り替え、Play Mode で比較できます。標本と比較用の群れはコピーして再生成できます。
+
+![同じマイワシで泳ぎ方を比較](images/captured/compare-swimming.jpg)
+
+![同じムクドリで飛び方を比較](images/captured/compare-flying.jpg)
+
+### 昼・夕方・夜
+
+`Tools > SabaProps > Flock > Sample Lighting > Day / Evening / Night` は Sample の主光源、環境光、Camera 背景色を変更します。空の鳥と水槽の魚が夕方や夜の照明に馴染むか確認してください。大型水槽には Point Light を配置し、追加光源も確認できます。これは照明条件の切り替え例であり、時間帯の自動進行や Light Probe の bake は行いません。
+
+| 状況 | 夕方 | 夜 |
+| --- | --- | --- |
+| 空 | ![夕方の鳥群](images/captured/world-sky-evening.jpg) | ![夜の鳥群](images/captured/world-sky-night.jpg) |
+| 大型水槽 | ![夕方の大型水槽](images/captured/world-tank-evening.jpg) | ![夜の大型水槽](images/captured/world-tank-night.jpg) |
+
+標準 Light / Light Probe に対応し、遠景のシルエット色・水の色にも照明を適用します。個体は影を受けますが、影は落としません。Probe は群れの Renderer 単位です。広い群れを異なる照明領域へ置く場合は分割してください。
+
 `FlockSample.unity` は 8 種・全 8 動作を比較する Scene です。
 背景とラベルは展示用で、群れの GameObject は個別にコピーできます。
 
@@ -77,7 +96,7 @@ LOD の切り替えを試す場合は `lodMode` を `LodGroup` に変更して�
 | Sea schools | マイワシ、マサバ | BaitBall、Stream |
 | Reef and aquarium | キンギョハナダイ、ネオンテトラ | Tornado、Wander |
 
-全 56 種は Inspector のプリセットから選べます。種ごとの形状比較は[要素別リファレンス](elements.md)を参照してください。
+全 69 種は Inspector のプリセットから選べます。種ごとの形状比較は[要素別リファレンス](elements.md)を参照してください。
 
 ## Unity の描画例
 

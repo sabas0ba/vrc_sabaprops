@@ -16,6 +16,14 @@ namespace SabaProps.Flock.Editors
         public const string OutputRoot = "Assets/SabaProps/FlockSample";
         public const string ScenePath = OutputRoot + "/FlockSample.unity";
 
+        /// <summary>Refreshes all distributed scenes together in a clean project.</summary>
+        public static void GenerateAllForDistribution()
+        {
+            GenerateForDistribution();
+            FlockWorldSample.GenerateForDistribution();
+            FlockComparisonScene.GenerateForDistribution();
+        }
+
         private struct Example
         {
             public string Preset;

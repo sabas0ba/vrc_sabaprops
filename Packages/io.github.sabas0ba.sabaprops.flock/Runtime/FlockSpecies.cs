@@ -22,6 +22,9 @@ namespace SabaProps.Flock
         public string id = "custom";
         public string displayName = "Custom";
         public FlockCategory category = FlockCategory.Bird;
+        public FlockBodyShape bodyShape = FlockBodyShape.Default;
+        [Tooltip("地上・底面を移動する種。上下の移動と旋回時の傾きを抑える。")]
+        public bool grounded;
 
         [Header("Size")]
         [Tooltip("体長 (m)。鳥は嘴から尾まで、魚は吻端から尾鰭の付け根まで。")]

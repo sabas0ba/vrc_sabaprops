@@ -20,6 +20,7 @@
 #define FLOCK_PATTERN_BAITBALL 5
 #define FLOCK_PATTERN_TORNADO 6
 #define FLOCK_PATTERN_WANDER 7
+#define FLOCK_PATTERN_ANCHORED 8
 
 #define FLOCK_PART_WING 1
 
@@ -125,6 +126,12 @@ float3 FlockPosition(FlockMotionInput input, float time)
     float radius = max(input.clusterRadius, 0.0);
     float bodyLength = max(input.bodyLength, 0.0);
     float3 r = input.random;
+
+    if (input.pattern == FLOCK_PATTERN_ANCHORED)
+    {
+        return input.count < 1.5 ? float3(0.0, 0.0, 0.0)
+            : (r * 2.0 - 1.0) * max(area - bodyLength, 0.0);
+    }
     int pattern = (int)round(input.pattern);
 
     if (pattern == FLOCK_PATTERN_WANDER)
@@ -248,6 +255,33 @@ void FlockPose(FlockMotionInput input, float time,
     up = bankedUp;
 }
 
+float3 FlockAppendageOffset(float3 p, float4 body, float mode,
+    float frequency, float amplitude, float t, float phase, float bodyLength)
+{
+    float beat = sin(FLOCK_TWO_PI * frequency * t + phase);
+    if (mode < 3.5)
+    {
+        if (abs(body.z - 4.0) < 0.5)
+        {
+            float step = sin(FLOCK_TWO_PI * frequency * t + phase + (p.x < 0.0 ? 3.1415927 : 0.0));
+            return float3(0.0, max(step, 0.0) * 0.05 * bodyLength * body.y, step * amplitude * bodyLength * body.y);
+        }
+        return float3(0.0, abs(beat) * 0.015 * bodyLength, 0.0);
+    }
+    if (mode < 4.5)
+    {
+        float wave = FLOCK_TWO_PI * frequency * t + phase + body.y * 3.0;
+        return float3(amplitude * bodyLength * body.y * sin(wave), 0.0,
+            0.5 * amplitude * bodyLength * body.y * cos(wave));
+    }
+    if (mode < 5.5)
+    {
+        float scale = amplitude * body.y * beat;
+        return float3(p.x * scale, -0.03 * bodyLength * body.y * beat, p.z * scale);
+    }
+    return float3(0.0, 0.0, 0.0);
+}
+
 // Body animation in body-local space. body = UV0 (span, axial, part,
 // shoulder), animation = UV4 (mode, frequency, amplitude, glide).
 void FlockAnimate(inout float3 p, inout float3 n, float4 body, float4 animation,
@@ -259,6 +293,12 @@ void FlockAnimate(inout float3 p, inout float3 n, float4 body, float4 animation,
     float glide = animation.w;
     float phase = FLOCK_TWO_PI * FlockFrac(random.y * 5.13 + random.z * 2.71);
     bool wing = abs(body.z - FLOCK_PART_WING) < 0.5;
+
+    if (mode >= 2.5)
+    {
+        p += FlockAppendageOffset(p, body, mode, frequency, amplitude, t, phase, bodyLength);
+        return;
+    }
 
     if (mode < 0.5)
     {

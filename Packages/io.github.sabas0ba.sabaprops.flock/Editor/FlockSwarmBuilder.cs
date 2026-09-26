@@ -230,7 +230,7 @@ namespace SabaProps.Flock.Editors
             var renderer = go.AddComponent<MeshRenderer>();
             renderer.sharedMaterial = material;
             renderer.shadowCastingMode = ShadowCastingMode.Off;
-            renderer.receiveShadows = false;
+            renderer.receiveShadows = true;
             renderer.motionVectorGenerationMode = MotionVectorGenerationMode.ForceNoMotion;
             renderer.lightProbeUsage = LightProbeUsage.BlendProbes;
             renderer.reflectionProbeUsage = ReflectionProbeUsage.Off;

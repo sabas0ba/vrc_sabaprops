@@ -17,6 +17,10 @@ Play Mode では動きを確認でき、Scene view では観察位置を自由�
 
 ## 使い方
 
+`FlockComparisons.unity` には全 69 種の実寸標本と、同じマイワシ・ムクドリで動きだけを変えた比較を配置しています。小さな標本は選択後に Scene view の `F` で注目します。`Sample View > Compare swimming / Compare flying` で比較用 Camera を選べます。
+
+`Sample Lighting > Day / Evening / Night` で標準 Light と環境光を切り替えられます。大型水槽には Point Light もあります。照明領域が異なる場合の Light Probe 補間は群れ単位です。
+
 1. `FlockSample.unity` を開きます。
 2. Hierarchy の `SabaProps Flock Sample > Copy These Swarms` から群れを選びます。
 3. 対象 Scene に GameObject をコピーし、位置を調整します。`Presentation Only` は展示用の背景とラベルなので、コピーする必要はありません。
@@ -24,7 +28,7 @@ Play Mode では動きを確認でき、Scene view では観察位置を自由�
 
 コピーした群れを再生成すると、Sample に同梱された Mesh は保持され、新しい Mesh が
 `Assets/SabaProps/Flock/Meshes` に作成されます。別の種へ変更したい場合は Inspector の
-`プリセット` を選んでください。全 56 種を利用できます。
+`プリセット` を選んでください。全 69 種を利用できます。
 
 このパッケージは Particle System を使用しません。個体の運動は Mesh と Shader で表現しています。
 

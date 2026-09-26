@@ -64,14 +64,16 @@ Flock の capture tool は `flock/` にあり、Foliage とは別の assembly �
 追加依存はありません。再生成には Unity 2022.3 の Built-in Render Pipeline を使用します。
 
 1. 空の Unity プロジェクトの `Packages/` に Flock パッケージを配置します。
-2. `FlockSampleScene.GenerateForDistribution` をコマンドラインの `-executeMethod` で実行します。
+2. `SabaProps.Flock.Editors.FlockSampleScene.GenerateAllForDistribution` をコマンドラインの `-executeMethod` で実行します。
    `Assets/SabaProps/FlockSample` が既に存在する場合は生成を止めるため、Sample の再生成には空のプロジェクトを使ってください。
-3. `Assets/SabaProps/FlockSample` の Scene と backdrop Material、および
+3. `Assets/SabaProps/FlockSample` と `Assets/SabaProps/FlockComparisons` の Scene と backdrop / World Material、および
    `Assets/SabaProps/Flock` の `Meshes`、`Materials` を、meta を含めて
    `Packages/io.github.sabas0ba.sabaprops.flock/Samples~/Flock Sample` に配置します。
 4. このリポジトリの `capture/flock/` をプロジェクトの `Assets/` 配下へコピーまたはリンクします。
 5. `Tools > SabaProps > Flock > Capture Docs Images` を実行します。
-   batch mode では `SabaProps.Flock.DocsCapture.FlockDocsCapture.Capture` を `-executeMethod` で実行できます。
+   batch mode では `SabaProps.Flock.DocsCapture.FlockDocsCapture.CaptureExpanded` を `-executeMethod` で実行できます。
+
+`CaptureExpanded` は 3 つの Scene を開き、従来の 5 枚、World の 6 枚、夕方・夜の空と水槽 4 枚、泳ぎ方・飛び方の比較 2 枚、追加種 13 枚を描画します。全 Scene の共有 Mesh と Material は一度だけコピーします。各種の撮影では対象以外の Renderer を一時的に非表示にします。Shader のコンパイルエラーがないことと実画像を確認してから文書へ反映してください。
 
 Capture は生成済みの `Assets/SabaProps/FlockSample/FlockSample.unity` を開きます。
 現在の Scene は置き換わるため、未保存の変更は先に保存してください。

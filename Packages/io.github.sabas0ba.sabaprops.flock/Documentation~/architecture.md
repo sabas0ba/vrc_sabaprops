@@ -9,11 +9,25 @@
 | `Runtime/FlockMotion.cs` | 群れの運動の C# 版。Shader の運動の基準 |
 | `Runtime/FlockShaderContract.cs` | 頂点チャンネルの割り当て |
 | `Runtime/Shaders/SabaFlockMotion.cginc` | 群れの運動と体の動作の HLSL 版 |
-| `Runtime/Shaders/SabaFlock.shader` | `SabaProps/Flock/Swarm`。ForwardBase の 1 pass |
+| `Runtime/Shaders/SabaFlock.shader` | `SabaProps/Flock/Swarm`。ForwardBase と ForwardAdd |
+| `Runtime/Shaders/SabaFlockRendering.cginc` | 両 pass 共通の頂点変形、照明、距離色、fog |
 | `Runtime/FlockSwarm.cs` | 群れの authoring コンポーネント。ビルドには含まれない |
 | `Editor/FlockBodyBuilder.cs`, `FlockBirdBody.cs`, `FlockFishBody.cs` | 1 個体の形状の生成 |
+| `Editor/FlockSpecialBody.cs` | 触腕、傘、殻、棘、歩行鳥などの形状の生成 |
 | `Editor/FlockSwarmMeshBuilder.cs` | 個体数分の複製と頂点チャンネルの書き込み |
 | `Editor/FlockSwarmBuilder.cs` | Mesh asset、Renderer、LODGroup の生成 |
+
+## VRChat World の実行構成
+
+`FlockSwarm` は Inspector から Mesh を生成するための authoring component です。`HideFlags.DontSaveInBuild` を設定し、ビルド後の prefab には MeshFilter、MeshRenderer、LODGroup と Mesh / Material が残ります。移動と体の動作は Shader が計算するため、独自 MonoBehaviour を VRChat クライアントで実行する必要はありません。[Unity の DontSaveInBuild](https://docs.unity3d.com/2022.3/Documentation/ScriptReference/HideFlags.DontSaveInBuild.html)、[VRChat の許可された World component](https://creators.vrchat.com/worlds/whitelisted-world-components/) を参照してください。
+
+Unity EditMode の実 AssetBundle 検査では、保存した群れの prefab を Windows 向けにビルドし、ロードした prefab に MonoBehaviour と Missing Script がなく、Mesh、Material、LODGroup の参照が残ることを確認します。VRChat SDK での World upload、クライアント上の描画と負荷は別途確認が必要です。Sample は配置例であり、アップロード用の Scene Descriptor は含みません。
+
+## 照明
+
+ForwardBase は主光源、Light Probe / 環境光の SH、vertex light を計算します。ForwardAdd は追加の pixel light を加算します。Directional / Point / Spot Light の減衰、cookie、受ける影の座標は、頂点 Shader で移動した後の位置から計算します。ShadowCaster pass はなく、個体自身は影を落としません。
+
+遠景の Silhouette Color と Medium Color にも照明を掛けるため、暗い World で距離色だけが発光することを防ぎます。Light Probe は Renderer 単位の SH を使うため、広い群れの各個体で異なる Probe を補間する機能はありません。照明領域をまたぐ場合は群れを分割してください。VRChat Light Volumes への対応は含みません。
 
 ## 頂点チャンネル
 

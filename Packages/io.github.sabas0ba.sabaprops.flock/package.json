@@ -3,7 +3,7 @@
   "displayName": "SabaProps Flock",
   "version": "0.1.0",
   "unity": "2022.3",
-  "description": "VRChat World向けの鳥の群れ、魚群、水槽の魚を中景から遠景に配置するShaderとEditorツールです。個体の移動はShaderが時刻から計算し、Udonやruntime scriptを使用しません。鳥25種、魚31種のプリセットを収録しています。",
+  "description": "VRChat World向けの鳥の群れ、魚群、水槽の魚を中景から遠景に配置するShaderとEditorツールです。個体の移動はShaderが時刻から計算し、Udonやruntime scriptを使用しません。鳥27種、魚・水生生物42種のプリセットを収録しています。",
   "author": {
     "name": "sabas0ba",
     "url": "https://github.com/sabas0ba"
@@ -16,7 +16,7 @@
   "samples": [
     {
       "displayName": "Flock Sample",
-      "description": "空・大小の水槽・川に実寸で配置した Scene と、8 種・8 動作の比較 Scene。群れを複製して調整できます。",
+      "description": "空・大小の水槽・川の実寸 Scene、全69種と同種の泳ぎ方・飛び方の比較、昼・夕方・夜の照明例。群れを複製して調整できます。",
       "path": "Samples~/Flock Sample"
     }
   ],

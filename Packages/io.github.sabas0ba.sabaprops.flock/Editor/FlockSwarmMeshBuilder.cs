@@ -47,11 +47,13 @@ namespace SabaProps.Flock.Editors
 
         public static float BankGain(FlockSpecies species)
         {
+            if (species.grounded) return 0f;
             return species.category == FlockCategory.Bird ? 0.06f : 0.02f;
         }
 
         public static float MaxPitch(FlockSpecies species)
         {
+            if (species.grounded) return 0f;
             if (species.category == FlockCategory.Bird)
             {
                 return 0.6f;
@@ -129,6 +131,8 @@ namespace SabaProps.Flock.Editors
             float wave = species.animation == FlockAnimation.Flap
                 ? 0.04f * species.bodyLength
                 : Amplitude(species) * species.bodyLength;
+            if (species.animation == FlockAnimation.Tentacles) wave *= 1.12f;
+            if (species.animation == FlockAnimation.Walk) wave += 0.05f * species.bodyLength;
             return (radius + 2f * shoulder + wave) * (1f + Mathf.Clamp(species.sizeVariance, 0f, 0.5f)) + 0.01f;
         }
 

@@ -23,10 +23,13 @@
 #define UNITY_FOG_COORDS(idx) float fogCoord : TEXCOORD##idx;
 #define UNITY_TRANSFER_FOG(o, outpos) o.fogCoord = (outpos).z
 #define UNITY_APPLY_FOG(coord, col) col.rgb = lerp(col.rgb, float3(0.5, 0.5, 0.5), saturate(coord))
+#define UNITY_APPLY_FOG_COLOR(coord, col, fog) col.rgb = lerp(col.rgb, (fog).rgb, saturate(coord))
 
 float4   _Time;
 float3   _WorldSpaceCameraPos;
 float4   _WorldSpaceLightPos0;
+float4 unity_4LightPosX0, unity_4LightPosY0, unity_4LightPosZ0, unity_4LightAtten0;
+float4 unity_LightColor[4];
 float4x4 unity_ObjectToWorld;
 float4x4 unity_WorldToObject;
 float4x4 unity_MatrixVP;
@@ -49,6 +52,12 @@ float3 UnityWorldSpaceLightDir(float3 worldPos)
 float3 ShadeSH9(float4 normal)
 {
     return max(normal.xyz * 0.1 + 0.2, 0.0);
+}
+
+float3 Shade4PointLights(float4 x, float4 y, float4 z, float3 c0, float3 c1,
+    float3 c2, float3 c3, float4 attenuation, float3 position, float3 normal)
+{
+    return (c0 + c1 + c2 + c3) * saturate(normal.y);
 }
 
 #endif

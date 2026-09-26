@@ -67,6 +67,15 @@ namespace SabaProps.Flock.Editors
             Swarm(large, "anthias", new Vector3(-1.8f, 1.65f, 0f), new Vector3(1.3f, 0.6f, 1f), 24, FlockPattern.Tornado, false, 302);
             View(large, "Large tank - visitor eye 1.65 m", new Vector3(0f, 1.65f, -6.5f), new Vector3(0f, 2.1f, 0f));
             View(large, "Large tank - near glass", new Vector3(1.2f, 1.65f, -2.2f), new Vector3(0f, 2.3f, 0f));
+            var lamp = new GameObject("Aquarium lamp - standard point light");
+            lamp.transform.SetParent(large, false);
+            lamp.transform.localPosition = new Vector3(0f, 3.2f, -0.5f);
+            Light aquariumLight = lamp.AddComponent<Light>();
+            aquariumLight.type = LightType.Point;
+            aquariumLight.color = new Color(0.55f, 0.75f, 1f);
+            aquariumLight.intensity = 1.5f;
+            aquariumLight.range = 5f;
+            aquariumLight.renderMode = LightRenderMode.ForcePixel;
 
             Transform river = Section("04 River fish through water", new Vector3(200f, 0f, 0f));
             Box(river, "River bed", new Vector3(0f, -1.8f, 0f), new Vector3(28f, 0.2f, 8f), sand);

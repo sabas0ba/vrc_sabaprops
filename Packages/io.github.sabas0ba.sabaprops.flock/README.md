@@ -3,15 +3,17 @@
 VRChat World 向けに、鳥の群れ、魚群、水槽や池の魚を中景から遠景に配置するパッケージです。個体の移動と羽ばたき・泳ぎの動作は Shader が時刻から計算するため、Udon、Animator、Particle System、runtime script は使いません。
 
 - Built-in Render Pipeline / Unity 2022.3、PC 向け
-- 鳥 25 種、魚 31 種 (海 14、サンゴ礁 7、水槽・池 10) のプリセット
+- 鳥 27 種、魚・水生生物 42 種 (海 24、サンゴ礁 7、水槽・池 11) のプリセット
 - 群れの動き 8 種: 巡航、マーマレーション、V 字編隊、上昇気流での旋回、回遊列、ベイトボール、トルネード、水槽内の遊泳
+- 固定配置 `Anchored`、触腕の揺れ、クラゲの収縮、ニワトリ・ヒヨコの歩行動作
+- 標準 Light / Light Probe と受ける影に対応。昼・夕方・夜の確認メニューを同梱
 - 形状は Silhouette / Low / High の 3 段階で、LODGroup により切り替え
 - 遠方の個体を空に対するシルエット色、または水の色へ寄せる距離処理
 - 外部の model、texture、追加 package は不要。形状と模様はすべてパラメータから生成
 
 ![地上の目線から見た鳥群の Unity 描画](Documentation~/images/captured/world-sky.jpg)
 
-![収録している鳥 25 種の High 段の形状](Documentation~/images/generated/flock-birds.svg)
+![収録している鳥 27 種の High 段の形状](Documentation~/images/generated/flock-birds.svg)
 
 魚の一覧と各種の既定値は [要素別リファレンス](Documentation~/elements.md) を参照してください。
 
@@ -32,12 +34,14 @@ VRChat World 向けに、鳥の群れ、魚群、水槽や池の魚を中景か�
 
 - GameObject を移動・回転・拡大すると、群れ全体がそれに従います。Animator や Udon で GameObject を動かせば、群れを移動させられます。
 - すべてのパラメータが Mesh に入っているため、Material は生息域ごとの 1 つを全群れで共有できます。
-- 動きは時刻の関数なので、全プレイヤーに同じ動きが表示されます。同期処理は不要です。
+- 各クライアントの Shader 時刻で動きます。装飾用途では同期処理は不要ですが、プレイヤー間で個体の位置や位相が一致する保証はありません。
 - 個体同士の衝突回避や、プレイヤーを避ける動作はありません。
 
 詳細は [設計詳細](Documentation~/architecture.md) を参照してください。
 
 ## 文書
+
+`FlockComparisons.unity` には全 69 種の実寸標本と、同じ種・個体数・seed・範囲で動作だけを変えた魚と鳥の比較を配置しています。小さい種は Hierarchy から選択して `F` で注目してください。`Tools > SabaProps > Flock > Sample Lighting` から昼・夕方・夜を切り替えられます。
 
 - [利用方法](Documentation~/authoring.md): 範囲、個体数、群れの動き、LOD、Material の設定
 - [Sample Scene](Documentation~/sample-scene.md): Import、群れのコピー、実描画画像
@@ -47,6 +51,6 @@ VRChat World 向けに、鳥の群れ、魚群、水槽や池の魚を中景か�
 
 ## 制約
 
-- 影を落とさず、影を受けません。遠景用途で影の描画負荷を避けるためです。
+- 影を落としません。Directional / Point / Spot Light と、その影を受けます。
 - 生成された Renderer を Batching Static にしないでください。静的 batching は頂点を world 空間に変換するため、Shader の運動が成立しなくなります。生成時に Static flag は外されます。
 - 個体の運動は周期関数の組み合わせです。群れの形は時間とともに変化しますが、実際の群れの相互作用を模擬するものではありません。

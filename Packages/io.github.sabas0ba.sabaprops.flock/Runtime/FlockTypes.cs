@@ -30,6 +30,8 @@ namespace SabaProps.Flock
         Tornado = 6,
         /// <summary>Each individual follows its own path inside the area, as in an aquarium tank.</summary>
         Wander = 7,
+        /// <summary>Fixed positions for sessile animals; appendages may still move.</summary>
+        Anchored = 8,
     }
 
     /// <summary>Mesh detail tier.</summary>
@@ -64,6 +66,19 @@ namespace SabaProps.Flock
         Undulate = 1,
         /// <summary>Pectoral fins travel a wave from front to back, as in rays.</summary>
         RayWave = 2,
+        Walk = 3,
+        Tentacles = 4,
+        Pulse = 5,
+        Static = 6,
+    }
+
+    /// <summary>Special anatomy beyond the ordinary bird and fish layouts.</summary>
+    public enum FlockBodyShape
+    {
+        Default = 0,
+        Squid = 1, Octopus = 2, Jellyfish = 3, GardenEel = 4, Crab = 5,
+        Eel = 6, Urchin = 7, Anemone = 8, Oyster = 9, FlyingFish = 10,
+        Seahorse = 11, Chicken = 12, Chick = 13,
     }
 
     public enum FlockWingShape

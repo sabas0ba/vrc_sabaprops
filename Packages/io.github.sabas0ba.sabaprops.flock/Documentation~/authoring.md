@@ -46,6 +46,8 @@ Hierarchy の Create menu (`SabaProps > Flock`) から、生息域ごとの代�
 
 ## Material
 
+`Anchored` は個体の中心を固定します。1 個体では GameObject の原点、複数では範囲内に seed に基づいて配置します。チンアナゴ、イソギンチャク、ウニ、カキなどを置く場合に使用します。触腕や傘の動作は固定配置でも継続します。ニワトリとヒヨコは平らな地面に原点を置き、既定の Wander を使用してください。
+
 群れは生息域ごとの共有 Material を使います。初回生成時に `Assets/SabaProps/Flock/Materials` に作成されます。
 
 | Material | 用途 | 距離処理 |
@@ -65,6 +67,8 @@ Hierarchy の Create menu (`SabaProps > Flock`) から、生息域ごとの代�
 | Time Scale | 群れ全体の時間の進み方 |
 
 ## 群れを移動させる
+
+標準の Directional / Point / Spot Light、Light Probe / 環境光と受ける影に対応します。個体の移動後の座標を照明に使用します。Light Probe の SH は群れの Renderer 単位で共通です。照明が異なる領域をまたぐ広い群れは、複数に分割してください。影は落としません。VRChat Light Volumes は未対応です。
 
 GameObject の Transform を動かすと群れ全体が移動します。Animator や Udon で GameObject を動かせば、群れを横切らせるような演出ができます。Mesh の bounds は範囲全体を覆うため、GameObject が画面外にあっても範囲が画面に入っていれば描画されます。
 

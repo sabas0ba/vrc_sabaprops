@@ -42,6 +42,7 @@ namespace SabaProps.Flock
                     AddSeaFish(_presets);
                     AddReefFish(_presets);
                     AddAquariumFish(_presets);
+                    AddAdditionalSpecies(_presets);
                 }
 
                 return _presets;
@@ -74,6 +75,59 @@ namespace SabaProps.Flock
         private static void Add(List<FlockPreset> list, FlockHabitat habitat, FlockSpecies species)
         {
             list.Add(new FlockPreset { Habitat = habitat, Species = species });
+        }
+
+        private static void AddAdditionalSpecies(List<FlockPreset> list)
+        {
+            AddMarine(list, "squid", "イカ", 0.4f, FlockBodyShape.Squid, FlockAnimation.Tentacles, 0xd5c4b9, 0x886f64);
+            AddMarine(list, "octopus", "タコ", 0.6f, FlockBodyShape.Octopus, FlockAnimation.Tentacles, 0xaa6251, 0xcf927a);
+            AddMarine(list, "jellyfish", "クラゲ", 0.3f, FlockBodyShape.Jellyfish, FlockAnimation.Pulse, 0xc4d9e0, 0x849dbb);
+            AddMarine(list, "garden-eel", "チンアナゴ", 0.35f, FlockBodyShape.GardenEel, FlockAnimation.Tentacles, 0xdfd5b8, 0x504b3d, true);
+            AddMarine(list, "crab", "カニ", 0.16f, FlockBodyShape.Crab, FlockAnimation.Tentacles, 0xa95e3c, 0xd88c5e, true);
+            AddMarine(list, "eel", "ウナギ", 0.8f, FlockBodyShape.Eel, FlockAnimation.Undulate, 0x3c4636, 0xa3aa87, false, FlockHabitat.Aquarium);
+            AddMarine(list, "urchin", "ウニ", 0.1f, FlockBodyShape.Urchin, FlockAnimation.Static, 0x332337, 0x281a2d, true);
+            AddMarine(list, "anemone", "イソギンチャク", 0.18f, FlockBodyShape.Anemone, FlockAnimation.Tentacles, 0x9a7158, 0xc0a880, true);
+            AddMarine(list, "oyster", "カキ", 0.15f, FlockBodyShape.Oyster, FlockAnimation.Static, 0x797767, 0xb8b29f, true);
+            AddMarine(list, "seahorse", "タツノオトシゴ", 0.15f, FlockBodyShape.Seahorse, FlockAnimation.Undulate, 0xb39a52, 0x867343);
+
+            FlockSpecies s = Fish("flying-fish", "トビウオ", 0.25f, FlockFishBody.Fusiform, 0.18f, 0.12f, FlockCaudalFin.Forked, 0.3f);
+            s.bodyShape = FlockBodyShape.FlyingFish; s.pectoralSize = 0.65f;
+            s.primary = C(0x397482); s.secondary = C(0xc4d8d7); s.detail = C(0x8dadae); s.extra = C(0x7c9695);
+            s.cruiseSpeed = 1.2f; s.beatFrequency = 4f; s.beatAmplitude = 0.05f;
+            s.defaultPattern = FlockPattern.Stream; s.defaultCount = 16; s.defaultArea = new Vector3(12f, 2f, 12f);
+            Add(list, FlockHabitat.Sea, s);
+
+            s = Bird("chicken", "ニワトリ", 0.45f, 0.35f, FlockWingShape.Rounded, FlockTailShape.Fan, 0.35f);
+            s.bodyShape = FlockBodyShape.Chicken; s.grounded = true; s.animation = FlockAnimation.Walk;
+            s.primary = C(0xe2d7bc); s.secondary = C(0x796f57); s.accent = C(0xe9ddc3); s.detail = C(0xb83429); s.extra = C(0xc69a49);
+            s.cruiseSpeed = 0.35f; s.beatFrequency = 2f; s.beatAmplitude = 0.12f;
+            s.defaultPattern = FlockPattern.Wander; s.defaultCount = 4; s.defaultArea = new Vector3(3f, 0.001f, 3f);
+            Add(list, FlockHabitat.Sky, s);
+
+            s = Bird("chick", "ヒヨコ", 0.08f, 0.08f, FlockWingShape.Rounded, FlockTailShape.Short, 0.1f);
+            s.bodyShape = FlockBodyShape.Chick; s.grounded = true; s.animation = FlockAnimation.Walk;
+            s.primary = C(0xe9cf69); s.secondary = C(0xd4b852); s.accent = C(0xf4dc7d); s.detail = C(0x8c6f36); s.extra = C(0xd5a04b);
+            s.cruiseSpeed = 0.15f; s.beatFrequency = 3f; s.beatAmplitude = 0.12f;
+            s.defaultPattern = FlockPattern.Wander; s.defaultCount = 8; s.defaultArea = new Vector3(1f, 0.001f, 1f);
+            Add(list, FlockHabitat.Sky, s);
+        }
+
+        private static void AddMarine(List<FlockPreset> list, string id, string name, float length,
+            FlockBodyShape shape, FlockAnimation animation, int bodyColor, int appendageColor,
+            bool anchored = false, FlockHabitat habitat = FlockHabitat.Sea)
+        {
+            FlockSpecies s = Fish(id, name, length, FlockFishBody.Fusiform, 0.3f, 0.3f, FlockCaudalFin.Rounded, 0.15f);
+            s.bodyShape = shape; s.animation = animation;
+            s.primary = C(bodyColor); s.secondary = C(appendageColor); s.accent = C(bodyColor);
+            s.detail = C(appendageColor); s.extra = C(appendageColor); s.sizeVariance = 0.04f;
+            s.beatFrequency = shape == FlockBodyShape.Jellyfish ? 0.6f : 1.2f;
+            s.beatAmplitude = animation == FlockAnimation.Static ? 0f : animation == FlockAnimation.Pulse ? 0.15f : 0.06f;
+            s.cruiseSpeed = length * 0.5f;
+            s.defaultPattern = anchored ? FlockPattern.Anchored : FlockPattern.Wander;
+            s.defaultCount = anchored ? 1 : 5;
+            float horizontal = Mathf.Max(12f * length, 2f);
+            s.defaultArea = new Vector3(horizontal, Mathf.Max(2f * length, 0.5f), horizontal);
+            Add(list, habitat, s);
         }
 
         // ------------------------------------------------------------------

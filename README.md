@@ -31,7 +31,7 @@ https://sabas0ba.github.io/vrc_sabaprops/index.json
 | `io.github.sabas0ba.sabaprops.softprops` | SabaProps Soft Props | World Contactsでユーザーの接触を検知し、ふとん、ベッド、ソファー、クッションを最大8点で変形するPC向けprop集。 |
 | `io.github.sabas0ba.sabaprops.stagecam` | SabaProps Stage Cam | 特定のプレイヤーの部位を追う Udon カメラリグ。Pickup による構図補正と自動カメラワークに対応。 |
 | `io.github.sabas0ba.sabaprops.putitems` | SabaProps Put Items | Pickup を手放した位置の近くにある机・壁へ位置と姿勢を補正。Object Sync 接続と独自同期向けの計算 API を提供。 |
-| `io.github.sabas0ba.sabaprops.flock` | SabaProps Flock | 鳥 25 種・魚 31 種の群れを、Shader が時刻から計算する 8 種の群れの動きで配置。Silhouette / Low / High の 3 段階 LOD。 |
+| `io.github.sabas0ba.sabaprops.flock` | SabaProps Flock | 鳥 27 種・魚・水生生物 42 種の群れを、Shader が時刻から計算する 8 種の群れの動きと固定配置で配置。Silhouette / Low / High の 3 段階 LOD。 |
 
 各パッケージの詳細は `Packages/<package-id>/README.md` を参照してください。
 

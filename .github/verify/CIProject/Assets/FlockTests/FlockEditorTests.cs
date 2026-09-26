@@ -137,6 +137,46 @@ namespace SabaProps.Flock.CITests
         }
 
         [Test]
+        public void BundledComparisons_ContainsAllSpeciesAndControlledSwimmingExamples()
+        {
+            const string source = "Packages/io.github.sabas0ba.sabaprops.flock/Samples~/Flock Sample";
+            const string destination = "Assets/ImportedFlockComparisons";
+            try
+            {
+                FileUtil.CopyFileOrDirectory(source, destination); AssetDatabase.Refresh();
+                EditorSceneManager.OpenScene(destination + "/FlockComparisons.unity");
+                var ids = new HashSet<string>(); var patterns = new HashSet<FlockPattern>();
+                int specimens = 0;
+                foreach (FlockSwarm swarm in Object.FindObjectsOfType<FlockSwarm>())
+                {
+                    Assert.IsNotNull(swarm.generatedMeshes[0]);
+                    Assert.IsNotNull(swarm.GetComponentInChildren<MeshRenderer>().sharedMaterial);
+                    if (swarm.transform.parent.name.StartsWith("01 ", System.StringComparison.Ordinal))
+                    {
+                        specimens++; ids.Add(swarm.presetId);
+                        Assert.AreEqual(1, swarm.settings.count);
+                        Assert.AreEqual(Vector3.one, swarm.transform.localScale);
+                        Assert.AreEqual(FlockPattern.Anchored, swarm.settings.pattern);
+                    }
+                    if (swarm.transform.parent.name.StartsWith("02 ", System.StringComparison.Ordinal))
+                    {
+                        Assert.AreEqual("sardine", swarm.presetId); Assert.AreEqual(24, swarm.settings.count);
+                        Assert.AreEqual(42, swarm.settings.seed); Assert.AreEqual(new Vector3(2f, 1f, 2f), swarm.settings.area);
+                        patterns.Add(swarm.settings.pattern);
+                    }
+                }
+                Assert.AreEqual(FlockSpeciesCatalog.All.Count, specimens);
+                Assert.AreEqual(FlockSpeciesCatalog.All.Count, ids.Count);
+                Assert.AreEqual(4, patterns.Count);
+            }
+            finally
+            {
+                EditorSceneManager.NewScene(NewSceneSetup.DefaultGameObjects, NewSceneMode.Single);
+                AssetDatabase.DeleteAsset(destination);
+            }
+        }
+
+        [Test]
         public void Shader_IsFoundAndCompiles()
         {
             Shader shader = Shader.Find(FlockShaderContract.ShaderName);
@@ -174,6 +214,7 @@ namespace SabaProps.Flock.CITests
                 Assert.AreEqual(1, lod.renderers.Length);
                 Renderer renderer = lod.renderers[0];
                 Assert.AreEqual(ShadowCastingMode.Off, renderer.shadowCastingMode);
+                Assert.IsTrue(renderer.receiveShadows);
                 Assert.AreEqual((StaticEditorFlags)0, GameObjectUtility.GetStaticEditorFlags(renderer.gameObject),
                     "a flock renderer must not be static: batching would break the shader motion");
                 material = material ?? renderer.sharedMaterial;

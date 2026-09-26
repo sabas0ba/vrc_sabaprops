@@ -55,20 +55,66 @@ namespace SabaProps.Flock.DocsCapture
             CaptureShots(WorldShots, true);
         }
 
-        private static void CaptureShots(Shot[] shots, bool skybox)
+        public static void CaptureExpanded()
+        {
+            Capture();
+            EditorSceneManager.OpenScene(FlockWorldSample.ScenePath);
+            FlockLightingPreview.Day(); CaptureShots(WorldShots, false, true);
+            FlockLightingPreview.Evening();
+            CaptureShots(new[] { Rename(WorldShots[0], "world-sky-evening"), Rename(WorldShots[3], "world-tank-evening") }, false, true);
+            FlockLightingPreview.Night();
+            CaptureShots(new[] { Rename(WorldShots[0], "world-sky-night"), Rename(WorldShots[3], "world-tank-night") }, false, true);
+            EditorSceneManager.OpenScene(FlockComparisonScene.ScenePath);
+            FlockLightingPreview.Day();
+            CaptureShots(new[]
+            {
+                new Shot { Name = "compare-swimming", Position = new Vector3(0f, 2f, 34f), Target = new Vector3(0f, 2f, 55f), FieldOfView = 60f },
+                new Shot { Name = "compare-flying", Position = new Vector3(0f, 2f, 59f), Target = new Vector3(0f, 2f, 80f), FieldOfView = 60f },
+            }, false, true);
+            foreach (string id in new[] { "squid", "octopus", "jellyfish", "garden-eel", "crab", "eel", "urchin", "anemone", "oyster", "flying-fish", "seahorse", "chicken", "chick" })
+            {
+                foreach (FlockSwarm swarm in Object.FindObjectsOfType<FlockSwarm>())
+                {
+                    if (swarm.presetId != id || swarm.settings.pattern != FlockPattern.Anchored) continue;
+                    var visible = new System.Collections.Generic.List<Renderer>();
+                    foreach (Renderer renderer in Object.FindObjectsOfType<Renderer>())
+                    {
+                        if (!renderer.enabled) continue;
+                        visible.Add(renderer);
+                        renderer.enabled = renderer.GetComponent<MeshFilter>() != null
+                            && renderer.transform.IsChildOf(swarm.transform)
+                            && renderer.sharedMaterial != null
+                            && renderer.sharedMaterial.shader.name == "SabaProps/Flock/Swarm";
+                    }
+                    float length = swarm.species.bodyLength;
+                    Vector3 target = swarm.transform.position + Vector3.up * (swarm.species.grounded ? length * 0.5f : 0f);
+                    CaptureShots(new[] { new Shot { Name = "species-" + id, Target = target,
+                        Position = target + new Vector3(length * 2.4f, length * 0.6f, length), FieldOfView = 38f } }, false, true);
+                    foreach (Renderer renderer in visible) renderer.enabled = true;
+                }
+            }
+        }
+
+        private static Shot Rename(Shot original, string name)
+        {
+            original.Name = name;
+            return original;
+        }
+
+        private static void CaptureShots(Shot[] shots, bool skybox, bool sceneBackground = false)
         {
             string destination = Path.Combine(Path.GetFullPath(PackagePath), OutputFolder);
             Directory.CreateDirectory(destination);
 
             foreach (Shot shot in shots)
             {
-                Render(shot, Path.Combine(destination, shot.Name + ".jpg"), skybox);
+                Render(shot, Path.Combine(destination, shot.Name + ".jpg"), skybox, sceneBackground);
             }
 
             Debug.Log($"[SabaProps Flock] Captured {shots.Length} docs images in {destination}");
         }
 
-        private static void Render(Shot shot, string path, bool skybox)
+        private static void Render(Shot shot, string path, bool skybox, bool sceneBackground)
         {
             var holder = new GameObject("Flock Docs Capture");
             Camera camera = holder.AddComponent<Camera>();
@@ -85,9 +131,9 @@ namespace SabaProps.Flock.DocsCapture
                 camera.transform.rotation = Quaternion.LookRotation(shot.Target - shot.Position);
                 camera.fieldOfView = shot.FieldOfView;
                 camera.nearClipPlane = 0.05f;
-                camera.farClipPlane = 200f;
+                camera.farClipPlane = shot.Name.StartsWith("compare-") ? 30f : 200f;
                 camera.clearFlags = skybox ? CameraClearFlags.Skybox : CameraClearFlags.SolidColor;
-                camera.backgroundColor = new Color(0.08f, 0.12f, 0.18f);
+                camera.backgroundColor = sceneBackground ? RenderSettings.ambientLight : new Color(0.08f, 0.12f, 0.18f);
                 camera.allowMSAA = true;
                 camera.targetTexture = target;
                 camera.Render();
