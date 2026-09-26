@@ -1,0 +1,34 @@
+# Changelog
+
+このパッケージの変更点をまとめています。
+フォーマットは [Keep a Changelog](https://keepachangelog.com/ja/1.1.0/) に、
+バージョニングは [Semantic Versioning](https://semver.org/lang/ja/) に従います。
+
+## [0.1.0] - 2026-09-26
+
+### Added
+
+- 差し替え用 Theme 6 種：Sakura Ribbon、Mint Cat、Honey Bear、Lilac Stars、Peach Blossom、Sky Cloud。
+- Theme Presets ウィンドウ、編集用コピー、6 種を同じ内容で並べる比較シーン。
+- Collider を追加しないリボン・猫耳・くま耳・星・花・雲のメッシュ装飾。
+- Modern Slate、Angular Graphite、Skeleton Glass、Whiteboard、Minimal Ivory の Theme 5 種。
+- 透明な筐体と支持フレーム、取っ手の角丸設定。
+- テーマ展示を操作可能な World デモへ変更。World Descriptor と元の召喚操作を保持し、展示台から個別に召喚。
+- 展示タブレット間で Toggle のモジュールと状態表示を共有。
+- ベッドミラーを一辺 3 m の立方体の 4 側面と天井に配置し、隙間なく接する構成へ変更。
+- 各操作ページ、World、ベッドミラー配置、Setup Window、Inspector、テーマのスクリーンショット付きガイド。
+
+- キー入力、頭上からの取り出し、ワールド内アイテムの Interact で呼び出すタブレット本体。
+- VR では指先で押し込み、Desktop では Interact で押す物理ボタン。
+- GameObject、Collider、Behaviour を切り替える Toggle。排他グループと Global 同期に対応。
+- 登録した地点と、選択したプレイヤーの後方へのテレポート。
+- 任意の UdonSharpBehaviour のイベントを呼ぶ項目と、ページへのリンク。
+- ミラー、Collider、テレポート地点、任意のイベントを登録する Setup Window。
+- 外観を差し替える Tablet Theme と、角丸の本体とボタンのメッシュ生成。
+- 生成後のページに表示を加える `TabletBuilder.Built`。
+- ミラー、Collider、エフェクト、ライト、テレポート地点を含むサンプルシーン。
+- Stage Cam の操作パネルをタブレットから操作するサンプル。
+- ベッドの頭側・足側・左右・天井のミラーと、ベッド Collider を図に合わせて切り替えるサンプル。
+- VR の指によるドラッグ、Desktop の Interact と増減ボタンで調整する物理スライダー。
+- Reference Camera の Post Processing 設定と、明るさ・色相・Glow・有効状態をローカルで調整するモジュール。
+- ページ内の項目を位置とサイズで配置する Custom Placement とベッドの平面図。

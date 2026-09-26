@@ -18,6 +18,10 @@
 #     pickup round trip, frame rate independence of the smoothing, the deadzone
 #     contract, bone fallback, framing, and the continuity of the automatic
 #     camera move. See offline/OfflineStageCamTests.cs.
+#   * the tablet Runtime, Authoring and Editor assemblies compile against the
+#     same pinned SDK, and its solvers RUN: summon pose, finger press state
+#     machine, page wrapping, reach anchor, player cycling, the button grid and
+#     the rounded meshes. See offline/OfflineTabletTests.cs.
 #   * the documentation figures still match what the generators produce, and
 #     the site renders, with no raw Markdown left in the text, no broken
 #     internal links and no missing images
@@ -55,6 +59,7 @@ WATER_PACKAGE="$REPO/Packages/io.github.sabas0ba.sabaprops.water"
 STAGECAM="$REPO/Packages/io.github.sabas0ba.sabaprops.stagecam"
 TREE_PACKAGE="${TREE_PACKAGE:-$REPO/Packages/io.github.sabas0ba.sabaprops.trees}"
 FLOCK_PACKAGE="$REPO/Packages/io.github.sabas0ba.sabaprops.flock"
+TABLET="$REPO/Packages/io.github.sabas0ba.sabaprops.tablet"
 
 WORK="${VERIFY_WORK_DIR:-$REPO/.verify}"
 REFS="$WORK/refs"
@@ -162,7 +167,7 @@ fi
 log "Compiling UnityEditor stub"
 # ---------------------------------------------------------------------------
 csc "${COMMON[@]}" "${BCL[@]}" "${UNITY_ARGS[@]}" \
-    -out:"$OUT/UnityEditor.dll" "$HERE/UnityEditorStub.cs"
+    -out:"$OUT/UnityEditor.dll" "$HERE/UnityEditorStub.cs" "$HERE/UnityEditorAnimationsStub.cs"
 echo "ok"
 
 # ---------------------------------------------------------------------------
@@ -322,8 +327,12 @@ log "Compiling UdonSharp stub"
 # ---------------------------------------------------------------------------
 # The stub's event signatures name VRCPlayerApi, so it is built against the
 # real SDK too: a rename there fails here rather than in Unity.
+# VRC.Udon.Common carries UdonInputEventArgs, which the InputGrab event names.
+UDON_COMMON="$VPM/com.vrchat.worlds/Runtime/Udon/External/VRC.Udon.Common.dll"
+[ -f "$UDON_COMMON" ] || fail "VRC.Udon.Common.dll missing from the fetched SDK"
+
 csc "${COMMON[@]}" "${NETSTANDARD_ARGS[@]}" "${UNITY_ARGS[@]}" \
-    -r:"$SDK_PLUGINS/VRCSDKBase.dll" \
+    -r:"$SDK_PLUGINS/VRCSDKBase.dll" -r:"$UDON_COMMON" \
     -out:"$OUT/UdonSharp.Runtime.dll" "$HERE/UdonSharpStub.cs"
 echo "ok"
 
@@ -368,7 +377,7 @@ SDK3_PLUGINS="$VPM/com.vrchat.worlds/Runtime/VRCSDK/Plugins"
 # Framework references the foliage package uses, and mixing those with the
 # netstandard facades this package needs duplicates System.Object.
 csc "${COMMON[@]}" "${NETSTANDARD_ARGS[@]}" "${UNITY_ARGS[@]}" \
-    -out:"$OUT/UnityEditor.NetStandard.dll" "$HERE/UnityEditorStub.cs"
+    -out:"$OUT/UnityEditor.NetStandard.dll" "$HERE/UnityEditorStub.cs" "$HERE/UnityEditorAnimationsStub.cs"
 
 csc "${COMMON[@]}" "${NETSTANDARD_ARGS[@]}" "${UNITY_ARGS[@]}" \
     -r:"$SDK_PLUGINS/VRCSDKBase.dll" -r:"$SDK3_PLUGINS/VRCSDK3.dll" \
@@ -377,6 +386,48 @@ csc "${COMMON[@]}" "${NETSTANDARD_ARGS[@]}" "${UNITY_ARGS[@]}" \
     -r:"$OUT/UnityEngine.UI.dll" \
     -out:"$OUT/SabaProps.StageCam.Editor.dll" "${STAGECAM_EDITOR_SOURCES[@]}"
 echo "ok: ${#STAGECAM_EDITOR_SOURCES[@]} file(s)"
+
+# ---------------------------------------------------------------------------
+log "Compiling tablet assemblies (real VRChat SDK references + stubs)"
+# ---------------------------------------------------------------------------
+# Runtime is Udon, Authoring holds the editor-only definition component and the
+# theme, Editor builds the tablet from them. TextMeshPro is source inside a
+# Unity package, so like uGUI it is a hand-written stub; everything from VRChat
+# is the real SDK. The StageCam integration sample is compiled against the stage
+# camera Runtime built above, since that is the package it drives.
+csc "${COMMON[@]}" "${NETSTANDARD_ARGS[@]}" "${UNITY_ARGS[@]}" \
+    -out:"$OUT/Unity.TextMeshPro.dll" "$HERE/TextMeshProStub.cs"
+
+mapfile -t TABLET_RUNTIME_SOURCES < <(find "$TABLET/Runtime" -name '*.cs' | sort)
+mapfile -t TABLET_AUTHORING_SOURCES < <(find "$TABLET/Authoring" -name '*.cs' | sort)
+mapfile -t TABLET_EDITOR_SOURCES < <(find "$TABLET/Editor" -name '*.cs' | sort)
+[ "${#TABLET_RUNTIME_SOURCES[@]}" -gt 0 ] || fail "no Runtime sources found under $TABLET"
+
+TABLET_REFS=(-r:"$SDK_PLUGINS/VRCSDKBase.dll" -r:"$UDON_COMMON" -r:"$OUT/UdonSharp.Runtime.dll" -r:"$OUT/Unity.TextMeshPro.dll")
+
+csc "${COMMON[@]}" "${NETSTANDARD_ARGS[@]}" "${UNITY_ARGS[@]}" "${TABLET_REFS[@]}" \
+    -out:"$OUT/SabaProps.Tablet.Runtime.dll" "${TABLET_RUNTIME_SOURCES[@]}"
+csc "${COMMON[@]}" "${NETSTANDARD_ARGS[@]}" "${UNITY_ARGS[@]}" "${TABLET_REFS[@]}" \
+    -out:"$OUT/SabaProps.Tablet.Authoring.dll" "${TABLET_AUTHORING_SOURCES[@]}"
+csc "${COMMON[@]}" "${NETSTANDARD_ARGS[@]}" "${UNITY_ARGS[@]}" "${TABLET_REFS[@]}" \
+    -r:"$SDK3_PLUGINS/VRCSDK3.dll" -r:"$OUT/UdonSharp.Editor.dll" -r:"$OUT/UnityEditor.NetStandard.dll" \
+    -r:"$OUT/SabaProps.Tablet.Runtime.dll" -r:"$OUT/SabaProps.Tablet.Authoring.dll" \
+    -out:"$OUT/SabaProps.Tablet.Editor.dll" "${TABLET_EDITOR_SOURCES[@]}"
+echo "ok: ${#TABLET_RUNTIME_SOURCES[@]} Runtime, ${#TABLET_AUTHORING_SOURCES[@]} Authoring, ${#TABLET_EDITOR_SOURCES[@]} Editor file(s)"
+
+TABLET_STAGECAM_SAMPLE="$TABLET/Samples~/StageCamIntegration"
+mapfile -t TABLET_SAMPLE_RUNTIME < <(find "$TABLET_STAGECAM_SAMPLE" -name '*.cs' -not -path '*/Editor/*' | sort)
+mapfile -t TABLET_SAMPLE_EDITOR < <(find "$TABLET_STAGECAM_SAMPLE" -name '*.cs' -path '*/Editor/*' | sort)
+csc "${COMMON[@]}" "${NETSTANDARD_ARGS[@]}" "${UNITY_ARGS[@]}" "${TABLET_REFS[@]}" \
+    -r:"$OUT/SabaProps.Tablet.Runtime.dll" -r:"$OUT/SabaProps.StageCam.Runtime.dll" -r:"$OUT/UnityEngine.UI.dll" \
+    -out:"$OUT/SabaProps.Tablet.StageCamSample.dll" "${TABLET_SAMPLE_RUNTIME[@]}"
+csc "${COMMON[@]}" "${NETSTANDARD_ARGS[@]}" "${UNITY_ARGS[@]}" "${TABLET_REFS[@]}" \
+    -r:"$SDK3_PLUGINS/VRCSDK3.dll" -r:"$OUT/UdonSharp.Editor.dll" -r:"$OUT/UnityEditor.NetStandard.dll" \
+    -r:"$OUT/SabaProps.Tablet.Runtime.dll" -r:"$OUT/SabaProps.Tablet.Authoring.dll" -r:"$OUT/SabaProps.Tablet.Editor.dll" \
+    -r:"$OUT/SabaProps.StageCam.Runtime.dll" -r:"$OUT/SabaProps.StageCam.Editor.dll" -r:"$OUT/UnityEngine.UI.dll" \
+    -r:"$OUT/SabaProps.Tablet.StageCamSample.dll" \
+    -out:"$OUT/SabaProps.Tablet.StageCamSample.Editor.dll" "${TABLET_SAMPLE_EDITOR[@]}"
+echo "ok: ${#TABLET_SAMPLE_RUNTIME[@]} sample Runtime, ${#TABLET_SAMPLE_EDITOR[@]} sample Editor file(s)"
 
 # ---------------------------------------------------------------------------
 log "Type-checking shader HLSL"
@@ -575,6 +626,26 @@ dotnet "$OFFLINE_OUT/OfflineFlockTests.dll" \
     "$FLOCK_PACKAGE/Runtime/Shaders/SabaFlockMotion.cginc" \
     "$FLOCK_PACKAGE/Documentation~/elements.md" \
     || fail "offline flock checks failed"
+
+# ---------------------------------------------------------------------------
+log "Running the tablet solvers and generators (no Unity)"
+# ---------------------------------------------------------------------------
+# The same partial-class arrangement as the stage camera: each *Solver.cs file
+# is a partial of its behaviour with no base type and no VRChat references.
+# The layout and the mesh builder are plain C# over UnityEngine value types.
+csc_exe -out:"$OFFLINE_OUT/OfflineTabletTests.dll" \
+    "$OFFLINE/UnityEngineShim.cs" \
+    "$OFFLINE/OfflineTabletTests.cs" \
+    "$TABLET/Runtime/TabletControllerSolver.cs" \
+    "$TABLET/Runtime/TabletTeleportSolver.cs" \
+    "$TABLET/Runtime/TabletReachTriggerSolver.cs" \
+    "$TABLET/Authoring/TabletLayout.cs" \
+    "$TABLET/Editor/TabletMeshBuilder.cs"
+
+cp "$OFFLINE_OUT/OfflineMeshTests.runtimeconfig.json" \
+   "$OFFLINE_OUT/OfflineTabletTests.runtimeconfig.json"
+
+dotnet "$OFFLINE_OUT/OfflineTabletTests.dll" || fail "offline tablet checks failed"
 
 # ---------------------------------------------------------------------------
 log "Checking the documentation figures"

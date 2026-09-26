@@ -1,0 +1,51 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5d516835dd2344de94b15701125dd584, type: 3}
+  m_Name: Modern Slate
+  m_EditorClassIdentifier:
+  bodySize: {x: 0.3, y: 0.21}
+  bodyThickness: 0.012
+  cornerRadius: 0.014
+  bezel: 0.011
+  headerHeight: 0.03
+  columns: 4
+  rows: 3
+  spacing: 0.006
+  buttonHeight: 0.005
+  buttonCornerRadius: 0.005
+  pressTravel: 0.003
+  pokeDepth: 0.025
+  handle: 1
+  handleSize: {x: 0.11, y: 0.016, z: 0.014}
+  handleCornerRadius: 0.006
+  smoothness: 0.15
+  decoration: 0
+  skeletonFrame: 0
+  frameColor: {r: 0.219608, g: 0.415686, b: 0.450980, a: 1}
+  bodyColor: {r: 0.149020, g: 0.196078, b: 0.250980, a: 1}
+  screenColor: {r: 0.062745, g: 0.098039, b: 0.137255, a: 1}
+  buttonColor: {r: 0.203922, g: 0.258824, b: 0.321569, a: 1}
+  buttonActiveColor: {r: 0.211765, g: 0.490196, b: 0.725490, a: 1}
+  buttonPressedColor: {r: 0.388235, g: 0.654902, b: 0.850980, a: 1}
+  headerButtonColor: {r: 0.149020, g: 0.203922, b: 0.266667, a: 1}
+  labelColor: {r: 0.783538, g: 0.846873, b: 0.913099, a: 1}
+  decorationColor: {r: 1, g: 1, b: 1, a: 1}
+  decorationInnerColor: {r: 1, g: 1, b: 1, a: 1}
+  shader: {fileID: 0}
+  bodyMaterial: {fileID: 0}
+  screenMaterial: {fileID: 0}
+  buttonMaterial: {fileID: 0}
+  buttonActiveMaterial: {fileID: 0}
+  buttonPressedMaterial: {fileID: 0}
+  bodyMesh: {fileID: 0}
+  buttonMesh: {fileID: 0}
+  font: {fileID: 0}
