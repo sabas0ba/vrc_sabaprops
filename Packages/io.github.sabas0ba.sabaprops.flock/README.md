@@ -41,6 +41,8 @@ VRChat World 向けに、鳥の群れ、魚群、水槽や池の魚を中景か�
 
 ## 文書
 
+最初に開く `FlockWorldScenarios.unity` にも全 69 種を配置しています。小型水槽は種ごとの 9 台、大型種は 24 m の水槽に分け、地上の鳥を含めて確認できます。
+
 `FlockComparisons.unity` には全 69 種の実寸標本と、同じ種・個体数・seed・範囲で動作だけを変えた魚と鳥の比較を配置しています。小さい種は Hierarchy から選択して `F` で注目してください。`Tools > SabaProps > Flock > Sample Lighting` から昼・夕方・夜を切り替えられます。
 
 - [利用方法](Documentation~/authoring.md): 範囲、個体数、群れの動き、LOD、Material の設定

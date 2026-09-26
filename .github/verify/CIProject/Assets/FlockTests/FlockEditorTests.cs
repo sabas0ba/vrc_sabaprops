@@ -97,7 +97,10 @@ namespace SabaProps.Flock.CITests
                 AssetDatabase.Refresh();
                 EditorSceneManager.OpenScene(destination + "/FlockWorldScenarios.unity");
                 FlockSwarm[] swarms = Object.FindObjectsOfType<FlockSwarm>();
-                Assert.AreEqual(8, swarms.Length);
+                var speciesIds = new HashSet<string>();
+                foreach (FlockSwarm swarm in swarms) speciesIds.Add(swarm.presetId);
+                Assert.AreEqual(FlockSpeciesCatalog.All.Count, speciesIds.Count, "world scenarios must include all species");
+                foreach (FlockPreset preset in FlockSpeciesCatalog.All) Assert.IsTrue(speciesIds.Contains(preset.Species.id));
                 int smallTankCount = 0;
                 int lodCount = 0;
                 foreach (FlockSwarm swarm in swarms)
@@ -116,8 +119,8 @@ namespace SabaProps.Flock.CITests
                     }
                 }
                 Assert.AreEqual(1, smallTankCount);
-                Assert.AreEqual(5, lodCount);
-                Assert.AreEqual(8, Object.FindObjectsOfType<Camera>().Length);
+                Assert.GreaterOrEqual(lodCount, 27);
+                Assert.AreEqual(11, Object.FindObjectsOfType<Camera>().Length);
                 FlockWorldSample.SmallView();
                 int enabled = 0;
                 foreach (Camera camera in Object.FindObjectsOfType<Camera>())

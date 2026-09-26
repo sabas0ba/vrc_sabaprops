@@ -34,11 +34,13 @@ namespace SabaProps.Flock.DocsCapture
         private static readonly Shot[] WorldShots =
         {
             new Shot { Name = "world-sky", Position = new Vector3(0f, 1.65f, -42f), Target = new Vector3(0f, 15f, 18f), FieldOfView = 60f },
-            new Shot { Name = "world-small-tank", Position = new Vector3(120f, 1.65f, -1.1f), Target = new Vector3(120f, 1.15f, 0f), FieldOfView = 60f },
+            new Shot { Name = "world-small-tank", Position = new Vector3(120f, 1.65f, -2.8f), Target = new Vector3(120f, 1.15f, 0.9f), FieldOfView = 60f },
             new Shot { Name = "world-small-tank-close", Position = new Vector3(120f, 1.2f, -0.55f), Target = new Vector3(120f, 1.15f, 0f), FieldOfView = 60f },
             new Shot { Name = "world-large-tank", Position = new Vector3(150f, 1.65f, -6.5f), Target = new Vector3(150f, 2.1f, 0f), FieldOfView = 60f },
             new Shot { Name = "world-river", Position = new Vector3(203f, 1.65f, -4.8f), Target = new Vector3(202f, -0.6f, 0f), FieldOfView = 60f },
             new Shot { Name = "world-river-bridge", Position = new Vector3(191f, 2.1f, -1f), Target = new Vector3(200f, -0.6f, 0f), FieldOfView = 60f },
+            new Shot { Name = "world-oceanarium", Position = new Vector3(260f, 1.65f, -18f), Target = new Vector3(260f, 5f, 0f), FieldOfView = 60f },
+            new Shot { Name = "world-ground-birds", Position = new Vector3(0f, 1.65f, -5f), Target = new Vector3(0f, 0.3f, -1f), FieldOfView = 60f },
         };
 
         [MenuItem("Tools/SabaProps/Flock/Capture Docs Images", false, 200)]
@@ -58,12 +60,7 @@ namespace SabaProps.Flock.DocsCapture
         public static void CaptureExpanded()
         {
             Capture();
-            EditorSceneManager.OpenScene(FlockWorldSample.ScenePath);
-            FlockLightingPreview.Day(); CaptureShots(WorldShots, false, true);
-            FlockLightingPreview.Evening();
-            CaptureShots(new[] { Rename(WorldShots[0], "world-sky-evening"), Rename(WorldShots[3], "world-tank-evening") }, false, true);
-            FlockLightingPreview.Night();
-            CaptureShots(new[] { Rename(WorldShots[0], "world-sky-night"), Rename(WorldShots[3], "world-tank-night") }, false, true);
+            CaptureWorldWithLighting();
             EditorSceneManager.OpenScene(FlockComparisonScene.ScenePath);
             FlockLightingPreview.Day();
             CaptureShots(new[]
@@ -71,6 +68,21 @@ namespace SabaProps.Flock.DocsCapture
                 new Shot { Name = "compare-swimming", Position = new Vector3(0f, 2f, 34f), Target = new Vector3(0f, 2f, 55f), FieldOfView = 60f },
                 new Shot { Name = "compare-flying", Position = new Vector3(0f, 2f, 59f), Target = new Vector3(0f, 2f, 80f), FieldOfView = 60f },
             }, false, true);
+            CaptureAdditionalSpecies();
+        }
+
+        public static void CaptureWorldWithLighting()
+        {
+            EditorSceneManager.OpenScene(FlockWorldSample.ScenePath);
+            FlockLightingPreview.Day(); CaptureShots(WorldShots, false, true);
+            FlockLightingPreview.Evening();
+            CaptureShots(new[] { Rename(WorldShots[0], "world-sky-evening"), Rename(WorldShots[3], "world-tank-evening") }, false, true);
+            FlockLightingPreview.Night();
+            CaptureShots(new[] { Rename(WorldShots[0], "world-sky-night"), Rename(WorldShots[3], "world-tank-night") }, false, true);
+        }
+
+        private static void CaptureAdditionalSpecies()
+        {
             foreach (string id in new[] { "squid", "octopus", "jellyfish", "garden-eel", "crab", "eel", "urchin", "anemone", "oyster", "flying-fish", "seahorse", "chicken", "chick" })
             {
                 foreach (FlockSwarm swarm in Object.FindObjectsOfType<FlockSwarm>())

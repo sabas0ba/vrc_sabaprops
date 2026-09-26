@@ -73,7 +73,7 @@ Flock の capture tool は `flock/` にあり、Foliage とは別の assembly �
 5. `Tools > SabaProps > Flock > Capture Docs Images` を実行します。
    batch mode では `SabaProps.Flock.DocsCapture.FlockDocsCapture.CaptureExpanded` を `-executeMethod` で実行できます。
 
-`CaptureExpanded` は 3 つの Scene を開き、従来の 5 枚、World の 6 枚、夕方・夜の空と水槽 4 枚、泳ぎ方・飛び方の比較 2 枚、追加種 13 枚を描画します。全 Scene の共有 Mesh と Material は一度だけコピーします。各種の撮影では対象以外の Renderer を一時的に非表示にします。Shader のコンパイルエラーがないことと実画像を確認してから文書へ反映してください。
+`CaptureExpanded` は 3 つの Scene を開き、従来の 5 枚、World の 8 枚、夕方・夜の空と水槽 4 枚、泳ぎ方・飛び方の比較 2 枚、追加種 13 枚を描画します。全 Scene の共有 Mesh と Material は一度だけコピーします。各種の撮影では対象以外の Renderer を一時的に非表示にします。Shader のコンパイルエラーがないことと実画像を確認してから文書へ反映してください。
 
 Capture は生成済みの `Assets/SabaProps/FlockSample/FlockSample.unity` を開きます。
 現在の Scene は置き換わるため、未保存の変更は先に保存してください。
@@ -93,6 +93,8 @@ Capture は生成済みの `Assets/SabaProps/FlockSample/FlockSample.unity` を�
 Unity が GUID を付け替え、配布時とは異なる参照状態になります。
 
 ### World の状況別 Scene
+
+World のみを更新する場合は、生成用プロジェクトをリポジトリの `Temp/` に置き、`python3 .github/figures/capture/flock/copy_world_sample.py --project Temp/<project>` を実行します。この処理は既存の比較 Scene とその共有 Material / Mesh、および World Scene の GUID を保持し、World の Mesh を `WorldMeshes` へ配置します。画像は `SabaProps.Flock.DocsCapture.FlockDocsCapture.CaptureWorldWithLighting` で昼・夕方・夜を生成できます。
 
 別の空のプロジェクトで `SabaProps.Flock.Editors.FlockWorldSample.GenerateForDistribution` を
 `-executeMethod` で実行します。`FlockWorldScenarios.unity`、`WorldMaterials` とその meta を
