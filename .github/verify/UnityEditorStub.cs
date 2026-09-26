@@ -256,6 +256,7 @@ namespace UnityEditor
         public static void SetCurrentGroupName(string name) { }
         public static void CollapseUndoOperations(int groupIndex) { }
         public static void SetTransformParent(Transform transform, Transform newParent, string name) { }
+        public static T AddComponent<T>(GameObject gameObject) where T : Component => gameObject.AddComponent<T>();
     }
 
     public static class GameObjectUtility

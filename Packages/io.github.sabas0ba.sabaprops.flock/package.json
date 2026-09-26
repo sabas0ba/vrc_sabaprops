@@ -1,0 +1,26 @@
+{
+  "name": "io.github.sabas0ba.sabaprops.flock",
+  "displayName": "SabaProps Flock",
+  "version": "0.1.0",
+  "unity": "2022.3",
+  "description": "VRChat World向けの鳥の群れ、魚群、水槽の魚を中景から遠景に配置するShaderとEditorツールです。個体の移動はShaderが時刻から計算し、Udonやruntime scriptを使用しません。鳥25種、魚31種のプリセットを収録しています。",
+  "author": {
+    "name": "sabas0ba",
+    "url": "https://github.com/sabas0ba"
+  },
+  "license": "MIT",
+  "licensesUrl": "https://github.com/sabas0ba/vrc_sabaprops/blob/main/Packages/io.github.sabas0ba.sabaprops.flock/LICENSE.md",
+  "documentationUrl": "https://github.com/sabas0ba/vrc_sabaprops/blob/main/Packages/io.github.sabas0ba.sabaprops.flock/README.md",
+  "changelogUrl": "https://github.com/sabas0ba/vrc_sabaprops/blob/main/Packages/io.github.sabas0ba.sabaprops.flock/CHANGELOG.md",
+  "vpmDependencies": {},
+  "keywords": [
+    "vrchat",
+    "world",
+    "flock",
+    "bird",
+    "fish",
+    "school",
+    "aquarium",
+    "particle"
+  ]
+}
