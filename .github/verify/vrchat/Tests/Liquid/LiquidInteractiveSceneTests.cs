@@ -109,6 +109,41 @@ namespace SabaProps.Liquid.WorldTests
         }
 
         [Test]
+        public void ResetPanel_IsBesideTheSpawn()
+        {
+            LiquidSampleSceneTests.AssertResetPanel(LiquidInteractiveScene.SpawnPosition);
+        }
+
+        [Test]
+        public void NozzleRack_HoldsEveryLiquidWithATankThatShowsIt()
+        {
+            GameObject rack = GameObject.Find(LiquidInteractiveScene.NozzleRackName);
+            Assert.IsNotNull(rack);
+            var liquids = new System.Collections.Generic.List<string>();
+            foreach (VRCPickup pickup in rack.GetComponentsInChildren<VRCPickup>())
+            {
+                LiquidNozzle nozzle = pickup.GetComponentInChildren<LiquidNozzle>();
+                AssertPortable(pickup.gameObject, LiquidNozzle.ModeHold);
+                Assert.IsNotNull(nozzle.pool, pickup.name);
+                liquids.Add(nozzle.profile.name);
+
+                Material tank = pickup.transform.Find("Tank").GetComponent<Renderer>().sharedMaterial;
+                if (nozzle.profile.pigmentAmount > 0f)
+                {
+                    Color expected = nozzle.profile.pigmentColor;
+                    Assert.AreEqual(expected.r, tank.color.r, 0.01f, pickup.name + ": the tank is not the liquid's colour");
+                    Assert.AreEqual(expected.g, tank.color.g, 0.01f, pickup.name + ": the tank is not the liquid's colour");
+                    Assert.AreEqual(expected.b, tank.color.b, 0.01f, pickup.name + ": the tank is not the liquid's colour");
+                }
+
+                bool glows = nozzle.profile.fluorescence > 0f || nozzle.profile.luminescence > 0f;
+                Assert.AreEqual(glows, tank.IsKeywordEnabled("_EMISSION"), pickup.name + ": the tank's glow does not match the liquid");
+            }
+
+            CollectionAssert.AreEquivalent(LiquidInteractiveScene.RackLiquids, liquids);
+        }
+
+        [Test]
         public void PortableNozzles_RelayUseReleaseAndDrop()
         {
             var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(LiquidPrefabBuilder.PrefabPath(LiquidPrefabBuilder.SprayGunName));
@@ -273,6 +308,12 @@ namespace SabaProps.Liquid.WorldTests
             GameObject corner = GameObject.Find(LiquidInteractiveScene.PrefabCornerName);
             foreach (string name in LiquidPrefabBuilder.PrefabNames)
             {
+                if (name == LiquidPrefabBuilder.ResetPanelName)
+                {
+                    // Placed beside the spawn; checked by ResetPanel_IsBesideTheSpawn.
+                    continue;
+                }
+
                 bool placed = false;
                 foreach (Transform child in corner.transform)
                 {

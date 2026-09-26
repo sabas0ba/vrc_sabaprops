@@ -431,6 +431,26 @@ namespace SabaProps.Liquid
             return new Vector4(position.x, position.y, position.z, radius);
         }
 
+        /// <summary>
+        /// 付着をすべて消します。割り当てと表示はそのままで、Canvas を空に戻し、浸漬、雪、湿度、光の状態も
+        /// 初期に戻します。リセットのボタンと、アバターが変わったときに使います。
+        /// </summary>
+        public void Clear()
+        {
+            if (!_active)
+            {
+                return;
+            }
+
+            ClearTextures();
+            ResetImmersion();
+            _stampCount = 0;
+            _washLevel = -2f;
+            _washAmount = 0f;
+            BindTextures();
+            PushImmersion();
+        }
+
         /// <summary>割り当てを外し、表示を止めます。RenderTexture は再利用のため保持します。</summary>
         public void Release()
         {

@@ -239,6 +239,13 @@ namespace SabaProps.Liquid.WorldTests
             Assert.AreEqual(0f, glow.x, "ultraviolet remains with the blacklight off");
             Assert.Greater(glow.y, 0.5f, "luminous paint lost its charge within two seconds");
             LiquidDemoPlayTests.CaptureGrid("liquid-interactive-dark.png", m, DarkFirst, 4, 1.8f, 1.1f);
+
+            // The reset panel: clearing the mannequins empties a canvas nothing is spraying any more.
+            Assert.Greater(LiquidDemoPlayTests.Coverage(m[BenchFirst].projectorMaterial), 0f);
+            LiquidResetPanel reset = Object.FindObjectOfType<LiquidResetPanel>();
+            UdonSharpEditorUtility.GetBackingUdonBehaviour(reset).SendCustomEvent(nameof(LiquidResetPanel.ClearMannequins));
+            yield return Wait(0.5f);
+            Assert.AreEqual(0f, LiquidDemoPlayTests.Coverage(m[BenchFirst].projectorMaterial), "clearing left liquid on the mannequin");
         }
 
         private static void SetLight(UdonBehaviour zone, bool lamp, bool blacklight)

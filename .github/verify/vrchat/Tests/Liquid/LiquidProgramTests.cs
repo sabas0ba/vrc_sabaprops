@@ -52,7 +52,7 @@ namespace SabaProps.Liquid.WorldTests
             // event, the canvas never follows the body.
             CollectionAssert.Contains(exported, "_postLateUpdate");
 
-            foreach (string method in new[] { "Assign", "Release", "QueueStamp", "ApplyImmersion", "WashImmersion", "ApplySnow", "ApplyRain", "ApplyHumidity", "ApplyLightEnvironment", "GetCondensation", "ApplyBareSkin", "IsTreatedAsBare", "GetPlayerId", "GetLastActivityTime" })
+            foreach (string method in new[] { "Assign", "Release", "QueueStamp", "ApplyImmersion", "WashImmersion", "ApplySnow", "ApplyRain", "ApplyHumidity", "ApplyLightEnvironment", "GetCondensation", "ApplyBareSkin", "IsTreatedAsBare", "Clear", "GetPlayerId", "GetLastActivityTime" })
             {
                 AssertExportsMethod(exported, method);
             }
@@ -209,6 +209,32 @@ namespace SabaProps.Liquid.WorldTests
             CollectionAssert.Contains(exported, "_start");
             AssertSyncMode<LiquidUmbrella>(BehaviourSyncMode.None);
             AssertExportsMethod(Exported(Compile<LiquidCanvasPool>()), "RegisterUmbrella");
+        }
+
+        [Test]
+        public void ResetPanel_SendsClearsAsEventsWithoutSyncing()
+        {
+            IUdonProgram program = Compile<LiquidResetPanel>();
+            List<string> exported = Exported(program);
+            foreach (string method in new[] { "ClearMine", "ClearMannequins", "ClearEveryone",
+                "ReceiveClearPlayer", "ReceiveClearMannequins", "ReceiveClearEveryone" })
+            {
+                AssertExportsMethod(exported, method);
+            }
+
+            AssertSyncMode<LiquidResetPanel>(BehaviourSyncMode.NoVariableSync);
+            AssertSyncedFields(program);
+        }
+
+        [Test]
+        public void CanvasPool_ClearsOnAvatarChange()
+        {
+            List<string> exported = Exported(Compile<LiquidCanvasPool>());
+            CollectionAssert.Contains(exported, "_onAvatarChanged");
+            foreach (string method in new[] { "ClearPlayer", "ClearMannequins", "ClearEveryone" })
+            {
+                AssertExportsMethod(exported, method);
+            }
         }
 
         [Test]

@@ -29,6 +29,17 @@ namespace SabaProps.Liquid.Editors
         public const string DarkRoomName = "Dark Room";
         public const string PrefabCornerName = "Prefab Corner";
         public const string SprayPlayName = "Spray Each Other";
+        public const string NozzleRackName = "Nozzle Rack";
+
+        /// <summary>One carried nozzle for each of these liquids on the rack, thin to thick, then glowing paint.</summary>
+        public static readonly string[] RackLiquids =
+        {
+            LiquidSourceBuilder.WaterName, LiquidSourceBuilder.JuiceName, LiquidSourceBuilder.RedPaintName,
+            LiquidSourceBuilder.BluePaintName, LiquidSourceBuilder.YellowPaintName, LiquidSourceBuilder.BlackPaintName,
+            LiquidSourceBuilder.WhitePaintName, LiquidSourceBuilder.MudName, LiquidSourceBuilder.SlimeName,
+            LiquidSourceBuilder.SyrupName, LiquidSourceBuilder.FluorescentPinkName, LiquidSourceBuilder.FluorescentGreenName,
+            LiquidSourceBuilder.LuminousPaintName,
+        };
 
         public const string SaunaWallMaterialPath = LiquidSampleScene.SampleFolder + "/SaunaWall.mat";
         public const string BathroomWallMaterialPath = LiquidSampleScene.SampleFolder + "/BathroomWall.mat";
@@ -79,6 +90,7 @@ namespace SabaProps.Liquid.Editors
         public static Scene Create()
         {
             LiquidAssets.EnsureFolder(LiquidSampleScene.SampleFolder);
+            LiquidSampleScene.EnsurePrefabs();
             Scene scene = EditorSceneManager.NewScene(NewSceneSetup.DefaultGameObjects, NewSceneMode.Single);
             LiquidSampleScene.ConfigureLight();
             // A dimmer sky than the other scenes, so the closed rooms are dark inside
@@ -106,6 +118,8 @@ namespace SabaProps.Liquid.Editors
             BuildDarkRoom(pool, update, mannequins);
             BuildPrefabCorner(pool, update, mannequins);
             BuildSprayPlay(pool, update, mannequins);
+            BuildNozzleRack(pool);
+            PlaceResetPanel(pool, SpawnPosition + new Vector3(-2.2f, 0f, 1.2f));
 
             LiquidSampleScene.AssignMannequins(pool, mannequins);
             LiquidSampleScene.BuildWorld(SpawnPosition);
@@ -542,6 +556,51 @@ namespace SabaProps.Liquid.Editors
 
             LiquidDemoGalleries.Label(area.transform, "Pick one up and spray each other", rack + new Vector3(0f, 2.2f, -0.45f),
                 Quaternion.Euler(0f, 180f, 0f));
+        }
+
+        // ------------------------------------------------------------------
+        // Nozzle rack
+        // ------------------------------------------------------------------
+
+        /// <summary>
+        /// A carried nozzle for every liquid, fired while the use button is held.
+        /// The tank on each shows its liquid; the glowing paints glow.
+        /// </summary>
+        private static void BuildNozzleRack(LiquidCanvasPool pool)
+        {
+            var rack = new GameObject(NozzleRackName);
+            Material furniture = LiquidAssets.CreateOrLoadSurfaceMaterial(LiquidSampleScene.FurnitureMaterialPath,
+                new Color(0.42f, 0.33f, 0.25f), 0.2f);
+            const float spacing = 0.7f;
+            float width = spacing * RackLiquids.Length;
+            Vector3 centre = new Vector3(-15f, 0f, -12.5f);
+            LiquidSampleScene.Slab(rack.transform, "Shelf", centre.x - width * 0.5f, centre.x + width * 0.5f,
+                centre.z - 0.3f, centre.z + 0.3f, 0.9f, 0.9f, furniture);
+
+            for (int i = 0; i < RackLiquids.Length; i++)
+            {
+                LiquidProfile profile = LiquidSourceBuilder.GetProfile(RackLiquids[i]);
+                float x = centre.x - width * 0.5f + spacing * (i + 0.5f);
+                GameObject carried = LiquidPrefabBuilder.CreatePortableNozzle(RackLiquids[i] + " Sprayer", LiquidNozzle.ModeHold,
+                    profile, new Color(0.22f, 0.24f, 0.27f), LiquidAssets.MaterialFolder);
+                carried.transform.SetParent(rack.transform, false);
+                carried.transform.SetPositionAndRotation(new Vector3(x, 0.99f, centre.z), Quaternion.identity);
+                LiquidNozzle nozzle = carried.GetComponentInChildren<LiquidNozzle>();
+                nozzle.pool = pool;
+                UdonSharpEditorUtility.CopyProxyToUdon(nozzle);
+
+                LiquidDemoGalleries.Label(rack.transform, RackLiquids[i].Replace(" Paint", "\nPaint"),
+                    new Vector3(x, 1.25f, centre.z - 0.2f), Quaternion.Euler(0f, 180f, 0f)).characterSize = 0.025f;
+            }
+
+            LiquidDemoGalleries.Label(rack.transform, "Every liquid: pick one up and hold use to spray",
+                centre + new Vector3(0f, 1.7f, -0.2f), Quaternion.Euler(0f, 180f, 0f));
+        }
+
+        private static void PlaceResetPanel(LiquidCanvasPool pool, Vector3 position)
+        {
+            GameObject panel = LiquidPrefabBuilder.Place(LiquidPrefabBuilder.ResetPanelName, null);
+            panel.transform.SetPositionAndRotation(position, Quaternion.identity);
         }
 
         // ------------------------------------------------------------------

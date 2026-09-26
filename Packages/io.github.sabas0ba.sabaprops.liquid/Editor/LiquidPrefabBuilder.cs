@@ -36,10 +36,12 @@ namespace SabaProps.Liquid.Editors
         public const string WaterGunName = "Liquid Water Gun";
         public const string NozzleStandName = "Liquid Nozzle Stand";
         public const string SprayGunName = "Liquid Spray Gun";
+        public const string ResetPanelName = "Liquid Reset Panel";
 
         public static readonly string[] PrefabNames =
         {
             CupName, BucketName, FaucetName, ShowerName, UmbrellaName, WaterGunName, NozzleStandName, SprayGunName,
+            ResetPanelName,
         };
 
         public static string PrefabPath(string name)
@@ -67,6 +69,7 @@ namespace SabaProps.Liquid.Editors
             Save(BuildWaterGun(), WaterGunName);
             Save(BuildNozzleStand(LiquidNozzle.ModeContinuous), NozzleStandName);
             Save(BuildSprayGun(), SprayGunName);
+            Save(CreateResetPanel(null, null, MaterialFolder), ResetPanelName);
             AssetDatabase.SaveAssets();
         }
 
@@ -93,6 +96,9 @@ namespace SabaProps.Liquid.Editors
 
         [MenuItem("GameObject/SabaProps/Liquid/Prefabs/Spray Gun", false, 47)]
         private static void PlaceSprayGun(MenuCommand command) { PlaceFromMenu(SprayGunName, command); }
+
+        [MenuItem("GameObject/SabaProps/Liquid/Prefabs/Reset Panel", false, 48)]
+        private static void PlaceResetPanel(MenuCommand command) { PlaceFromMenu(ResetPanelName, command); }
 
         /// <summary>
         /// An instance of the named prefab under <paramref name="parent"/>. The
@@ -320,6 +326,9 @@ namespace SabaProps.Liquid.Editors
                 Quaternion.Euler(-12f, 0f, 0f), body, false);
             Part(root.transform, "Barrel", PrimitiveType.Cylinder, new Vector3(0f, 0f, 0.22f), new Vector3(0.025f, 0.04f, 0.025f),
                 Quaternion.Euler(90f, 0f, 0f), metal, false);
+            // The tank on top shows what it holds: the liquid's colour, glowing for fluorescent and luminous paint.
+            Part(root.transform, "Tank", PrimitiveType.Sphere, new Vector3(0f, 0.065f, 0.02f), new Vector3(0.09f, 0.08f, 0.13f),
+                Quaternion.identity, TankMaterial(profile, materialFolder), false);
 
             var collider = root.AddComponent<CapsuleCollider>();
             collider.direction = 2;
@@ -367,6 +376,81 @@ namespace SabaProps.Liquid.Editors
             UdonSharpEditorUtility.CopyProxyToUdon(nozzle);
             EditorUtility.SetDirty(nozzle);
             return nozzle;
+        }
+
+        /// <summary>
+        /// The material of a carried nozzle's tank, in the colour of its liquid.
+        /// Clear liquids are translucent, fluorescent paint glows brightly and
+        /// luminous paint glows faintly, so each nozzle can be told apart at a glance
+        /// and in the dark.
+        /// </summary>
+        public static Material TankMaterial(LiquidProfile profile, string materialFolder)
+        {
+            string name = profile != null ? profile.gameObject.name.Replace(" ", "") : "Water";
+            string path = materialFolder + "/Tank_" + name + ".mat";
+            bool pigmented = profile != null && profile.pigmentAmount > 0f;
+            Color colour = pigmented ? profile.pigmentColor : new Color(0.55f, 0.78f, 0.95f);
+            bool translucent = profile == null || profile.pigmentAmount < 0.7f;
+
+            Material material = translucent
+                ? LiquidAssets.CreateOrLoadTransparentMaterial(path, new Color(colour.r, colour.g, colour.b, 0.55f), 0.95f)
+                : LiquidAssets.CreateOrLoadSurfaceMaterial(path, colour, 0.8f);
+
+            float glow = profile == null ? 0f : Mathf.Max(profile.fluorescence * 1.6f, profile.luminescence * 0.6f);
+            if (glow > 0f)
+            {
+                material.EnableKeyword("_EMISSION");
+                material.SetColor("_EmissionColor", colour.linear * glow);
+                material.globalIlluminationFlags = MaterialGlobalIlluminationFlags.None;
+            }
+            else
+            {
+                material.DisableKeyword("_EMISSION");
+                material.SetColor("_EmissionColor", Color.black);
+            }
+
+            EditorUtility.SetDirty(material);
+            return material;
+        }
+
+        /// <summary>
+        /// A panel to clear liquid: yourself, the mannequins, or everyone. Each
+        /// button reaches everyone's client, so what is cleared is cleared for all.
+        /// Stands on a post, facing -Z.
+        /// </summary>
+        public static GameObject CreateResetPanel(Transform parent, LiquidCanvasPool pool, string materialFolder)
+        {
+            var root = new GameObject(ResetPanelName);
+            if (parent != null)
+            {
+                root.transform.SetParent(parent, false);
+            }
+
+            Material board = LiquidAssets.CreateOrLoadSurfaceMaterial(materialFolder + "/PanelBoard.mat", new Color(0.12f, 0.13f, 0.15f), 0.4f);
+            Material key = LiquidAssets.CreateOrLoadSurfaceMaterial(materialFolder + "/PanelKey.mat", new Color(0.75f, 0.77f, 0.8f), 0.5f);
+            Material clear = LiquidAssets.CreateOrLoadSurfaceMaterial(materialFolder + "/PanelClear.mat", new Color(0.25f, 0.6f, 0.9f), 0.5f);
+            Part(root.transform, "Post", PrimitiveType.Cylinder, new Vector3(0f, 0.55f, 0.03f), new Vector3(0.05f, 0.55f, 0.05f),
+                Quaternion.identity, board, true);
+            Part(root.transform, "Board", PrimitiveType.Cube, new Vector3(0f, 1.25f, 0.03f), new Vector3(0.5f, 0.3f, 0.02f),
+                Quaternion.identity, board, false);
+
+            LiquidResetPanel panel = root.AddUdonSharpComponent<LiquidResetPanel>();
+            panel.pool = pool;
+            UdonSharpEditorUtility.CopyProxyToUdon(panel);
+
+            GameObject mine = Button(root.transform, "Clear Me", "Clear me", new Vector3(-0.15f, 1.22f, 0f), clear, panel,
+                nameof(LiquidResetPanel.ClearMine));
+            GameObject mannequins = Button(root.transform, "Clear Mannequins", "Mannequins", new Vector3(0f, 1.22f, 0f), key, panel,
+                nameof(LiquidResetPanel.ClearMannequins));
+            GameObject everyone = Button(root.transform, "Clear Everyone", "Everyone", new Vector3(0.15f, 1.22f, 0f), key, panel,
+                nameof(LiquidResetPanel.ClearEveryone));
+            foreach (GameObject button in new[] { mine, mannequins, everyone })
+            {
+                button.transform.localScale = new Vector3(0.12f, 0.08f, 0.03f);
+            }
+
+            Caption(root.transform, "Title", "Clear liquid", new Vector3(0f, 1.34f, -0.02f), 0.01f, TextAnchor.MiddleCenter);
+            return root;
         }
 
         /// <summary>
@@ -429,7 +513,8 @@ namespace SabaProps.Liquid.Editors
             UdonSharpEditorUtility.GetBackingUdonBehaviour(relay).interactText = caption == "+" || caption == "-" ? name : caption;
 
             // The caption sits in front of the key, unscaled.
-            var label = Caption(parent, name + " Label", caption, position + new Vector3(0f, 0f, -0.02f), 0.012f, TextAnchor.MiddleCenter);
+            var label = Caption(parent, name + " Label", caption, position + new Vector3(0f, 0f, -0.02f),
+                caption.Length > 3 ? 0.008f : 0.012f, TextAnchor.MiddleCenter);
             label.color = new Color(0.05f, 0.05f, 0.05f);
             return button;
         }

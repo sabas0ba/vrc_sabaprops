@@ -68,6 +68,12 @@ namespace SabaProps.Liquid.WorldTests
         }
 
         [Test]
+        public void ResetPanel_IsBesideTheSpawn()
+        {
+            LiquidSampleSceneTests.AssertResetPanel(LiquidSampleScene.SpawnPosition);
+        }
+
+        [Test]
         public void EverySprayer_IsWiredToThePoolAndAProfile()
         {
             LiquidCanvasPool pool = Object.FindObjectOfType<LiquidCanvasPool>();

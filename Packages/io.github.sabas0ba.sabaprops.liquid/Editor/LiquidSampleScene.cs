@@ -146,6 +146,7 @@ namespace SabaProps.Liquid.Editors
         public static Scene Create()
         {
             LiquidAssets.EnsureFolder(SampleFolder);
+            EnsurePrefabs();
 
             Scene scene = EditorSceneManager.NewScene(NewSceneSetup.DefaultGameObjects, NewSceneMode.Single);
             ConfigureLight();
@@ -174,6 +175,7 @@ namespace SabaProps.Liquid.Editors
             LiquidDemoGalleries.BuildSourceRow(pool, update, mannequins);
             LiquidDemoWeather.BuildWeatherYards(pool, update, mannequins);
             AssignMannequins(pool, mannequins);
+            PlaceResetPanel();
 
             BuildWorld(SpawnPosition);
 
@@ -191,6 +193,7 @@ namespace SabaProps.Liquid.Editors
         public static Scene CreateComparison()
         {
             LiquidAssets.EnsureFolder(SampleFolder);
+            EnsurePrefabs();
 
             Scene scene = EditorSceneManager.NewScene(NewSceneSetup.DefaultGameObjects, NewSceneMode.Single);
             ConfigureLight();
@@ -208,6 +211,7 @@ namespace SabaProps.Liquid.Editors
             LiquidDemoGalleries.BuildBodyColourRow(pool, update, mannequins);
             LiquidDemoGalleries.BuildLiquidColourRow(pool, update, mannequins);
             AssignMannequins(pool, mannequins);
+            PlaceResetPanel();
 
             BuildWorld(SpawnPosition);
 
@@ -216,6 +220,29 @@ namespace SabaProps.Liquid.Editors
 
             Debug.Log(SummariseComparison());
             return scene;
+        }
+
+        /// <summary>Builds the package prefabs when they are missing, as in a fresh checkout.</summary>
+        internal static void EnsurePrefabs()
+        {
+            foreach (string name in LiquidPrefabBuilder.PrefabNames)
+            {
+                if (AssetDatabase.LoadAssetAtPath<GameObject>(LiquidPrefabBuilder.PrefabPath(name)) == null)
+                {
+                    LiquidPrefabBuilder.BuildAll();
+                    return;
+                }
+            }
+        }
+
+        /// <summary>The reset panel prefab, beside the spawn and facing it.</summary>
+        private static void PlaceResetPanel()
+        {
+            GameObject panel = LiquidPrefabBuilder.Place(LiquidPrefabBuilder.ResetPanelName, null);
+            if (panel != null)
+            {
+                panel.transform.SetPositionAndRotation(SpawnPosition + new Vector3(-2.2f, 0f, 1.2f), Quaternion.identity);
+            }
         }
 
         internal static Material CanvasUpdateMaterial()

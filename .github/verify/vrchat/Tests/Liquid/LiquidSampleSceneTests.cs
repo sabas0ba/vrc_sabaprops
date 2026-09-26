@@ -138,6 +138,32 @@ namespace SabaProps.Liquid.WorldTests
             AssertEveryProgramLoads();
         }
 
+        [Test]
+        public void ResetPanel_IsBesideTheSpawn()
+        {
+            AssertResetPanel(LiquidSampleScene.SpawnPosition);
+        }
+
+        /// <summary>
+        /// The scene has a reset panel near the spawn, and each of its three
+        /// buttons calls an existing method on it.
+        /// </summary>
+        internal static void AssertResetPanel(Vector3 spawn)
+        {
+            LiquidResetPanel[] panels = Object.FindObjectsOfType<LiquidResetPanel>();
+            Assert.AreEqual(1, panels.Length, "expected one reset panel");
+            Assert.Less(Vector3.Distance(panels[0].transform.position, spawn), 5f, "the reset panel is far from the spawn");
+
+            LiquidButton[] buttons = panels[0].GetComponentsInChildren<LiquidButton>();
+            CollectionAssert.AreEquivalent(
+                new[] { nameof(LiquidResetPanel.ClearMine), nameof(LiquidResetPanel.ClearMannequins), nameof(LiquidResetPanel.ClearEveryone) },
+                System.Array.ConvertAll(buttons, b => b.eventName));
+            foreach (LiquidButton button in buttons)
+            {
+                Assert.AreSame(panels[0], button.target, button.name);
+            }
+        }
+
         /// <summary>
         /// Every UdonBehaviour in the open scene has a serialized program that
         /// deserializes. A program asset that exists but cannot be read (a file

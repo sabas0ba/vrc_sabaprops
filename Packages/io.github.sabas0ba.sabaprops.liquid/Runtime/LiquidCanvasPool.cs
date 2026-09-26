@@ -507,6 +507,59 @@ namespace SabaProps.Liquid
             return count;
         }
 
+        /// <summary>プレイヤーの付着を消します。Canvas が割り当たっていなければ何もしません。</summary>
+        public void ClearPlayer(int playerId)
+        {
+            LiquidBodyCanvas canvas = FindCanvas(VRCPlayerApi.GetPlayerById(playerId));
+            if (canvas != null)
+            {
+                canvas.Clear();
+            }
+        }
+
+        /// <summary>マネキンの付着を消します。</summary>
+        public void ClearMannequins()
+        {
+            int count = GetMannequinCount();
+            for (int i = 0; i < count; i++)
+            {
+                if (mannequins[i] != null)
+                {
+                    mannequins[i].Clear();
+                }
+            }
+        }
+
+        /// <summary>全員とマネキンの付着を消します。</summary>
+        public void ClearEveryone()
+        {
+            if (canvases != null)
+            {
+                for (int i = 0; i < canvases.Length; i++)
+                {
+                    if (canvases[i] != null)
+                    {
+                        canvases[i].Clear();
+                    }
+                }
+            }
+
+            ClearMannequins();
+        }
+
+        /// <summary>
+        /// アバターが変わったら、そのプレイヤーの付着を消します。付着は前のアバターの形に沿って付いており、
+        /// 新しいアバターでは体から浮いた位置に描かれるためです。各クライアントで同じ事象を受けるため、同期しません。
+        /// </summary>
+        public override void OnAvatarChanged(VRCPlayerApi player)
+        {
+            LiquidBodyCanvas canvas = FindCanvas(player);
+            if (canvas != null)
+            {
+                canvas.Clear();
+            }
+        }
+
         public override void OnPlayerLeft(VRCPlayerApi player)
         {
             LiquidBodyCanvas canvas = FindCanvas(player);
