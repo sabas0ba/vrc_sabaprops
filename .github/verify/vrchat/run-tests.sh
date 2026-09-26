@@ -69,7 +69,7 @@ to_native() {
 # only takes effect on the next launch, and the tests need the VRChat layer
 # list and collision matrix in place to be testing VRChat's physics rather than
 # Unity's defaults. Idempotent, so re-running costs one editor start.
-SETUP_LOG="$PROJECT/unity-setup.log"
+SETUP_LOG="${SETUP_LOG:-$PROJECT/unity-setup.log}"
 rm -f "$SETUP_LOG"
 echo "configuring $PROJECT for VRChat"
 

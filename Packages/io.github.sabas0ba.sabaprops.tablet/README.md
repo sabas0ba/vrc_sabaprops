@@ -98,6 +98,35 @@ Desktop と、VR で指が届かない場合は、ボタンを Interact して�
 
 ## 外観の変更
 
+### 6 種の Theme プリセット
+
+![Unity で描画した 6 種の Theme](Documentation~/images/tablet-theme-gallery.png)
+
+`Tools > SabaProps > Tablet > Theme Presets` を開き、対象の Tablet を指定して
+`適用して Build` を押すと切り替わります。Play Mode を終了してから操作してください。
+同じ寸法・配置・操作内容を保持し、配色、角丸、上部の装飾を差し替えます。
+
+| Theme | 配色 | 装飾 |
+| --- | --- | --- |
+| Sakura Ribbon | 桜色と白、濃い赤紫の文字 | リボン |
+| Mint Cat | ミントとクリーム、濃い緑の文字 | 猫耳 |
+| Honey Bear | はちみつ色と茶、濃い茶の文字 | くま耳 |
+| Lilac Stars | ラベンダーと白、濃い紫の文字 | 星 |
+| Peach Blossom | 桃色とクリーム、濃い茶の文字 | 花 |
+| Sky Cloud | 水色と白、濃い青の文字 | 雲 |
+
+装飾は通常のメッシュで、Collider はありません。取っ手とボタンの判定領域を保持します。
+プリセットはパッケージの `Themes/` に同梱します。変更する場合は `編集用コピー` で
+`Assets/SabaProps/Tablet/Themes` に複製し、コピーを TabletDefinition の `Theme` に指定してください。
+パッケージ内のプリセットを直接変更すると、パッケージ更新時に失われます。
+
+`Tools > SabaProps > Tablet > Create Theme Gallery` は、同じ Bed Mirrors ページで
+6 種を並べる比較シーン `Assets/SabaProps/Tablet/Samples/TabletThemeGallery.unity` を生成します。
+比較シーンは Editor の静止表示用です。動作確認には TabletDemo で Theme を適用してください。
+生成時に `TestResults/tablet-theme-gallery.png` へ比較画像も保存します。
+
+### 任意の Theme
+
 外観は `Tablet Theme` アセットで決まります。`Assets > Create > SabaProps > Tablet Theme` で作成し、`Tablet Definition` の `Theme` に指定して Build し直すと反映されます。
 
 | 分類 | 項目 |

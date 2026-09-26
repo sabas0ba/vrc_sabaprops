@@ -82,6 +82,7 @@ namespace SabaProps.Tablet.Editors
             MeshChild(body, "Housing", context.bodyMesh, context.bodyMaterial, Vector3.zero);
             MeshChild(body, "Screen", context.screenMesh, context.screenMaterial,
                 new Vector3(0f, 0f, context.Front - Layer));
+            TabletThemeDecorations.Build(body.transform, theme, definition.generatedFolder);
 
             BuildHeader(context);
             BuildPages(context);
@@ -672,6 +673,7 @@ namespace SabaProps.Tablet.Editors
 
             public Mesh SizedCap(Vector2 size)
             {
+                if (size == cellSize && capMesh != null) return capMesh;
                 if (!sizedCaps.TryGetValue(size, out Mesh mesh))
                 {
                     mesh = SaveMesh(TabletMeshBuilder.RoundedBox(size.x, size.y, theme.buttonHeight,

@@ -3,6 +3,17 @@ using UnityEngine;
 
 namespace SabaProps.Tablet.Authoring
 {
+    public enum TabletDecoration
+    {
+        None = 0,
+        Ribbon = 1,
+        CatEars = 2,
+        BearEars = 3,
+        Stars = 4,
+        Flower = 5,
+        Clouds = 6,
+    }
+
     /// <summary>
     /// タブレットの外観。Build 時にメッシュとマテリアルへ変換して焼き込みます。
     /// Udon はこのアセットを実行時に参照しません。Theme を差し替えて Build し直すと外観が変わります。
@@ -56,6 +67,12 @@ namespace SabaProps.Tablet.Authoring
 
         [Range(0f, 1f)]
         public float smoothness = 0.35f;
+
+        [Header("装飾")]
+        [Tooltip("本体上部の装飾。操作面と取っ手の Collider には影響しません。")]
+        public TabletDecoration decoration;
+        public Color decorationColor = new Color(0.95f, 0.65f, 0.75f, 1f);
+        public Color decorationInnerColor = new Color(1f, 0.90f, 0.94f, 1f);
 
         [Header("素材の差し替え (任意)")]
         [Tooltip("生成するマテリアルのシェーダー。未設定なら Standard です。色は _Color に設定します。")]

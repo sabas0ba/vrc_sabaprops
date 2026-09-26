@@ -14,6 +14,7 @@ namespace SabaProps.Tablet.WorldTests
         {
             try
             {
+#if UDON
                 UdonSharpCompilerV1.CompileSync(new UdonSharpCompileOptions { IsEditorBuild = true });
                 TabletSampleScene.Create();
                 EditorWindow.GetWindow<VRCSdkControlPanel>();
@@ -32,6 +33,9 @@ namespace SabaProps.Tablet.WorldTests
                 await builder.BuildAndTest();
                 Debug.Log("[SabaProps Tablet] Build & Test completed.");
                 EditorApplication.Exit(0);
+#else
+                throw new InvalidOperationException("The Worlds SDK has not initialized its UDON define. Restart the editor after import.");
+#endif
             }
             catch (Exception exception)
             {

@@ -8,6 +8,10 @@
 
 ### Added
 
+- 差し替え用 Theme 6 種：Sakura Ribbon、Mint Cat、Honey Bear、Lilac Stars、Peach Blossom、Sky Cloud。
+- Theme Presets ウィンドウ、編集用コピー、6 種を同じ内容で並べる比較シーン。
+- Collider を追加しないリボン・猫耳・くま耳・星・花・雲のメッシュ装飾。
+
 - キー入力、頭上からの取り出し、ワールド内アイテムの Interact で呼び出すタブレット本体。
 - VR では指先で押し込み、Desktop では Interact で押す物理ボタン。
 - GameObject、Collider、Behaviour を切り替える Toggle。排他グループと Global 同期に対応。
