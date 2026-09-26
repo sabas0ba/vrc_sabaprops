@@ -38,8 +38,6 @@ namespace SabaProps.Flock
         Float = 10,
         /// <summary>Independent broad flight paths instead of a shared formation.</summary>
         FreeFlight = 11,
-        /// <summary>Three-dimensional stroke and coast swimming with the mantle apex leading.</summary>
-        OctopusDrift = 12,
         /// <summary>Normal wandering with a preference for the lower part of the area.</summary>
         FloorGlide = 13,
     }
@@ -81,15 +79,13 @@ namespace SabaProps.Flock
         Pulse = 5,
         Static = 6,
         Jet = 7,
-        /// <summary>Mantle breathing and three-dimensional arm motion.</summary>
-        Octopus = 8,
     }
 
     /// <summary>Special anatomy beyond the ordinary bird and fish layouts.</summary>
     public enum FlockBodyShape
     {
         Default = 0,
-        Squid = 1, Octopus = 2, Jellyfish = 3, GardenEel = 4, Crab = 5,
+        Squid = 1, Jellyfish = 3, GardenEel = 4, Crab = 5,
         Eel = 6, Urchin = 7, Anemone = 8, Oyster = 9, FlyingFish = 10,
         Seahorse = 11, Chicken = 12, Chick = 13,
     }

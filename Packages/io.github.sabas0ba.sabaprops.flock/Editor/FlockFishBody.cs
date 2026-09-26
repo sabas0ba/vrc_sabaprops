@@ -89,8 +89,16 @@ namespace SabaProps.Flock.Editors
             }
 
             public float Z(float a) => 0.5f * Length - a * Length;
-            public float HalfHeight(float a) => 0.5f * Depth * Length * ProfileAt(Profile, a);
-            public float HalfWidth(float a) => 0.5f * Width * Length * ProfileAt(Profile, a);
+            private float Outline(float a)
+            {
+                float depth = ProfileAt(Profile, a);
+                if (Species.fishBody == FlockFishBody.Torpedo || Species.fishBody == FlockFishBody.Fusiform
+                    || Species.fishBody == FlockFishBody.Elongated)
+                    depth *= Mathf.Lerp(0.55f, 1f, SmoothStep(0f, 0.23f, a));
+                return depth;
+            }
+            public float HalfHeight(float a) => 0.5f * Depth * Length * Outline(a);
+            public float HalfWidth(float a) => 0.5f * Width * Length * Outline(a);
         }
 
         private static void BuildFish(FlockMeshBuffer buffer, FlockSpecies s, FlockDetail detail)
@@ -105,6 +113,7 @@ namespace SabaProps.Flock.Editors
             else
             {
                 AddFishBody(buffer, shape, detail);
+                if (!ray) AddFishHead(buffer, shape, detail);
             }
 
             AddCaudalFin(buffer, shape);
@@ -132,6 +141,81 @@ namespace SabaProps.Flock.Editors
                 {
                     AddPectoralFin(buffer, shape, 1f);
                     AddPectoralFin(buffer, shape, -1f);
+                }
+            }
+        }
+
+        /// <summary>Eyes, jaw line and gill covers that distinguish the head from the trunk.</summary>
+        private static void AddFishHead(FlockMeshBuffer buffer, FishShape shape, FlockDetail detail)
+        {
+            float length = shape.Length;
+            Color dark = new Color(0.025f, 0.03f, 0.035f, 0f);
+            // Follow the actual triangulated hull so markings do not disappear below its surface.
+            var hull = new List<Vector3>(buffer.Positions);
+            var indices = new List<int>(buffer.Triangles);
+            float Surface(float y, float z)
+            {
+                float x = 0f;
+                for (int i = 0; i < indices.Count; i += 3)
+                {
+                    Vector3 a = hull[indices[i]], b = hull[indices[i + 1]], c = hull[indices[i + 2]];
+                    float det = (b.y - a.y) * (c.z - a.z) - (c.y - a.y) * (b.z - a.z);
+                    if (Mathf.Abs(det) < 1e-10f) continue;
+                    float u = ((y - a.y) * (c.z - a.z) - (c.y - a.y) * (z - a.z)) / det;
+                    float v = ((b.y - a.y) * (z - a.z) - (y - a.y) * (b.z - a.z)) / det;
+                    if (u >= -0.0001f && v >= -0.0001f && u + v <= 1.0001f)
+                        x = Mathf.Max(x, a.x + u * (b.x - a.x) + v * (c.x - a.x));
+                }
+                return x + 0.001f * length;
+            }
+            int Vertex(float side, float y, float z, Color color)
+            {
+                return buffer.AddVertex(new Vector3(side * Surface(y, z), y, z),
+                    new Vector3(side, 0f, 0f), color,
+                    new Vector4(0f, (0.5f * length - z) / length, (float)FlockBodyPart.Body, 0f));
+            }
+            void Triangle(float side, int a, int b, int c)
+            {
+                if (side > 0f) buffer.AddTriangle(a, b, c);
+                else buffer.AddTriangle(a, c, b);
+            }
+            void Line(float side, Vector2 a, Vector2 b, float width)
+            {
+                Vector2 delta = b - a;
+                float magnitude = Mathf.Sqrt(delta.x * delta.x + delta.y * delta.y);
+                Vector2 d = delta * (1f / Mathf.Max(magnitude, 1e-10f));
+                Vector2 n = new Vector2(-d.y, d.x) * width;
+                int i0 = Vertex(side, a.x - n.x, a.y - n.y, dark);
+                int i1 = Vertex(side, b.x - n.x, b.y - n.y, dark);
+                int i2 = Vertex(side, b.x + n.x, b.y + n.y, dark);
+                int i3 = Vertex(side, a.x + n.x, a.y + n.y, dark);
+                Triangle(side, i0, i1, i2); Triangle(side, i0, i2, i3);
+            }
+            for (float side = -1f; side <= 1f; side += 2f)
+            {
+                float eyeY = shape.HalfHeight(0.15f) * 0.3f;
+                float eyeZ = shape.Z(0.15f);
+                float radius = Mathf.Min(0.016f * length, shape.HalfHeight(0.15f) * 0.18f);
+                int centre = Vertex(side, eyeY, eyeZ, dark);
+                int segments = detail == FlockDetail.High ? 8 : 6;
+                for (int k = 0; k < segments; k++)
+                {
+                    float a = FlockMotion.TwoPi * k / segments;
+                    float b = FlockMotion.TwoPi * (k + 1) / segments;
+                    int v0 = Vertex(side, eyeY + radius * Mathf.Cos(a), eyeZ + radius * Mathf.Sin(a), dark);
+                    int v1 = Vertex(side, eyeY + radius * Mathf.Cos(b), eyeZ + radius * Mathf.Sin(b), dark);
+                    Triangle(side, centre, v0, v1);
+                }
+                // The mouth follows the lower jaw; the curved gill cover ends ahead of the pectoral fin.
+                Line(side, new Vector2(-0.02f * shape.Depth * length, shape.Z(0.025f)),
+                    new Vector2(-0.2f * shape.HalfHeight(0.16f), shape.Z(0.17f)), 0.002f * length);
+                for (int k = 0; k < 3; k++)
+                {
+                    float y0 = Mathf.Lerp(-0.65f, 0.65f, k / 3f);
+                    float y1 = Mathf.Lerp(-0.65f, 0.65f, (k + 1) / 3f);
+                    Vector2 Gill(float y) => new Vector2(y * shape.HalfHeight(0.28f),
+                        shape.Z(0.28f + 0.035f * (1f - y * y)));
+                    Line(side, Gill(y0), Gill(y1), 0.002f * length);
                 }
             }
         }

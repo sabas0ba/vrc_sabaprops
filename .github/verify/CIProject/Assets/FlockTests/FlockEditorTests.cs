@@ -121,11 +121,6 @@ namespace SabaProps.Flock.CITests
                         Assert.AreEqual(FlockAnimation.Jet, swarm.species.animation);
                     }
                     if (swarm.presetId == "jellyfish") Assert.AreEqual(FlockPattern.Float, swarm.settings.pattern);
-                    if (swarm.presetId == "octopus")
-                    {
-                        Assert.AreEqual(FlockPattern.OctopusDrift, swarm.settings.pattern);
-                        Assert.AreEqual(FlockAnimation.Octopus, swarm.species.animation);
-                    }
                     if (swarm.presetId == "manta") Assert.AreEqual(FlockPattern.FloorGlide, swarm.settings.pattern);
                     if (swarm.GetComponent<LODGroup>() != null) lodCount++;
                     if (swarm.presetId == "neon-tetra")

@@ -24,7 +24,6 @@
 #define FLOCK_PATTERN_JET 9
 #define FLOCK_PATTERN_FLOAT 10
 #define FLOCK_PATTERN_FREEFLIGHT 11
-#define FLOCK_PATTERN_OCTOPUSDRIFT 12
 #define FLOCK_PATTERN_FLOORGLIDE 13
 
 #define FLOCK_PART_WING 1
@@ -150,28 +149,6 @@ float3 FlockFloatDrift(float3 room, float bodyLength, float speed, float3 r, flo
     return waypoint / 6.0 * room;
 }
 
-float FlockOctopusStroke(float t, float frequency, float phase)
-{
-    float stroke = 0.5 + 0.5 * cos(FLOCK_TWO_PI * frequency * t + phase);
-    return stroke * stroke * stroke * stroke;
-}
-
-float FlockCoastTerm(float harmonic, float amplitude, float phase, float rate)
-{
-    float drag = FLOCK_TWO_PI * 0.18 * harmonic;
-    float angle = harmonic * phase;
-    return amplitude * (sin(angle) - drag * cos(angle)) / (harmonic * rate * (1.0 + drag * drag));
-}
-
-float FlockOctopusClock(float t, float frequency, float3 r)
-{
-    if (frequency <= 0.0) return t;
-    float rate = FLOCK_TWO_PI * frequency;
-    float phase = rate * t + FLOCK_TWO_PI * FlockFrac(r.y * 5.13 + r.z * 2.71);
-    return t + FlockCoastTerm(1.0, 1.28, phase, rate) + FlockCoastTerm(2.0, 0.64, phase, rate)
-        + FlockCoastTerm(3.0, 0.18285714, phase, rate) + FlockCoastTerm(4.0, 0.02285714, phase, rate);
-}
-
 float3 FlockFloorGlide(float3 room, float bodyLength, float speed, float3 r, float t)
 {
     float3 position = FlockWander(room, speed, r, t);
@@ -209,9 +186,6 @@ float3 FlockPosition(FlockMotionInput input, float time)
         return FlockWander(max(area - FlockMargin(input), 0.0), input.speed, r, FlockJetClock(t, input.animationFrequency, r));
     if (input.pattern == FLOCK_PATTERN_FLOAT)
         return FlockFloatDrift(max(area - FlockMargin(input), 0.0), bodyLength, input.speed, r, t);
-    if (input.pattern == FLOCK_PATTERN_OCTOPUSDRIFT)
-        return FlockFloatDrift(max(area - FlockMargin(input), 0.0), bodyLength, min(input.speed * 10.0, bodyLength * 5.0), r,
-            FlockOctopusClock(t, input.animationFrequency, r));
     if (input.pattern == FLOCK_PATTERN_FLOORGLIDE)
         return FlockFloorGlide(max(area - FlockMargin(input), 0.0), bodyLength, input.speed, r, t);
 
@@ -314,16 +288,6 @@ void FlockPose(FlockMotionInput input, float time,
     position = FlockPosition(input, time);
     float3 next = FlockPosition(input, time + h);
 
-    if (input.pattern == FLOCK_PATTERN_OCTOPUSDRIFT)
-    {
-        float3 travel = next - previous;
-        up = dot(travel, travel) > 1e-10 ? normalize(travel) : float3(0.0, 1.0, 0.0);
-        right = cross(float3(0.0, 1.0, 0.0), up);
-        if (dot(right, right) < 1e-8) right = cross(float3(0.0, 0.0, 1.0), up);
-        right = normalize(right);
-        forward = cross(right, up);
-        return;
-    }
     if (input.pattern == FLOCK_PATTERN_FLOAT)
     {
         float yaw = FLOCK_TWO_PI * input.random.x + 0.15 * sin((time + input.timeOffset)
@@ -355,14 +319,6 @@ float3 FlockAppendageOffset(float3 p, float4 body, float mode,
     float frequency, float amplitude, float t, float phase, float bodyLength)
 {
     float beat = sin(FLOCK_TWO_PI * frequency * t + phase);
-    if (mode > 7.5)
-    {
-        float wave = FLOCK_TWO_PI * frequency * t + phase + body.y * 3.0;
-        float stroke = FlockOctopusStroke(t, frequency, phase);
-        return float3(-0.08 * p.x, 0.12 * p.y, -0.08 * p.z) * stroke
-            + body.y * float3(-0.42 * p.x, -0.18 * bodyLength, -0.42 * p.z) * stroke
-            + amplitude * bodyLength * body.y * (1.0 - stroke) * float3(sin(wave), 0.35 * sin(wave * 0.7), 0.5 * cos(wave));
-    }
     if (mode > 6.5)
     {
         float contraction = cos(FLOCK_TWO_PI * frequency * t + phase);

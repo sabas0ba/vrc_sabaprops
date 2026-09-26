@@ -137,7 +137,8 @@ namespace SabaProps.Flock.DocsCapture
 
         private static void CaptureAdditionalSpecies()
         {
-            foreach (string id in new[] { "squid", "octopus", "jellyfish", "garden-eel", "crab", "eel", "urchin", "anemone", "oyster", "flying-fish", "seahorse", "chicken", "chick" })
+            foreach (string id in new[] { "squid", "jellyfish", "garden-eel", "crab", "eel", "urchin", "anemone", "oyster", "flying-fish", "seahorse", "chicken", "chick",
+                "bluefin-tuna", "yellowtail", "barracuda", "reef-shark" })
             {
                 foreach (FlockSwarm swarm in Object.FindObjectsOfType<FlockSwarm>())
                 {

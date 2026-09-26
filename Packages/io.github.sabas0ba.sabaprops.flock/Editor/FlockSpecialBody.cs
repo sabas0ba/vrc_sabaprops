@@ -90,12 +90,12 @@ namespace SabaProps.Flock.Editors
                     if (squid) return new Vector3(radial.x * (0.08f + 0.12f * u), radial.z * 0.08f, -0.12f - u * (i < 2 ? 0.55f : 0.38f)) * l;
                     return radial * ((0.12f + 0.42f * u) * l) + Vector3.up * ((-0.1f + 0.04f * Mathf.Sin(u * 4f)) * l);
                 });
-                SpecialTube(b, path, (jelly ? 0.008f : 0.024f) * l, s.detail, detail, 1f);
+                SpecialTube(b, path, (jelly ? 0.008f : 0.024f) * l, squid ? s.primary : s.detail, detail, 1f);
             }
             if (squid && detail == FlockDetail.High)
                 for (int side = -1; side <= 1; side += 2)
                     SpecialEllipsoid(b, new Vector3(side * 0.12f, 0f, 0.3f) * l,
-                        new Vector3(0.25f, 0.025f, 0.3f) * l, s.secondary, detail);
+                        new Vector3(0.25f, 0.025f, 0.3f) * l, s.primary, detail);
         }
 
         private static Vector3[] Curve(FlockDetail detail, System.Func<float, Vector3> point)

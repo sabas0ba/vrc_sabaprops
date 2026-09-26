@@ -20,7 +20,6 @@
 | Jet | 9 | 外套の収縮に合わせて加速し、膨張中は減速する | イカ |
 | Float | 10 | 長周期の seed 付き経由点を滑らかにつなぎ、上下にも漂う。姿勢は直立 | クラゲ |
 | FreeFlight | 11 | 独立した広い旋回軌道。半径、中心、速度、高度がゆっくり変化する | まばらに飛ぶ鳥 |
-| OctopusDrift | 12 | 頭頂部を進行方向へ向け、屈伸と惰性で三次元の経路を巡る | タコ |
 | FloorGlide | 13 | 通常の魚と同じ遊泳経路を使い、高さを底寄りに偏らせる | マンタ |
 
 ## 空
@@ -57,7 +56,7 @@
 
 ## 海
 
-![海の魚・水生生物 24 種の High 段の形状](images/generated/flock-sea-fish.svg)
+![海の魚・水生生物 23 種の High 段の形状](images/generated/flock-sea-fish.svg)
 
 | 名前 | ID | 体長 | 既定の動き | 既定の個体数 | 形状と配色の要点 |
 | --- | --- | --- | --- | --- | --- |
@@ -116,7 +115,6 @@
 | 名前 | ID | 体長 | 既定の動き | 既定の個体数 | 形状と配色の要点 |
 | --- | --- | --- | --- | --- | --- |
 | イカ | `squid` | 0.40 m | Jet | 5 | 外套、10 本の腕、側鰭、収縮と加速 |
-| タコ | `octopus` | 0.60 m | OctopusDrift | 5 | 外套と 8 本の腕、頭頂部を先頭にした屈伸と惰性 |
 | クラゲ | `jellyfish` | 0.30 m | Float | 5 | 傘と触手、周期的な脈動と長周期の浮遊 |
 | チンアナゴ | `garden-eel` | 0.35 m | Anchored | 1 | 直立した細い体、根元を固定した揺れ |
 | カニ | `crab` | 0.16 m | Anchored | 1 | 甲羅、8 本の歩脚と 2 本の鋏脚 |
@@ -138,9 +136,9 @@
 
 Unity 2022.3.22f1 の標準照明で High の Mesh を描画した画像です。Scene の標本は実寸ですが、以下の撮影は各個体の体長に合わせて Camera の距離を変えています。
 
-| イカ | タコ | クラゲ |
-| --- | --- | --- |
-| ![イカ](images/captured/species-squid.jpg) | ![タコ](images/captured/species-octopus.jpg) | ![クラゲ](images/captured/species-jellyfish.jpg) |
+| イカ | クラゲ |
+| --- | --- |
+| ![イカ](images/captured/species-squid.jpg) | ![クラゲ](images/captured/species-jellyfish.jpg) |
 
 | チンアナゴ | カニ | ウナギ |
 | --- | --- | --- |
@@ -155,6 +153,16 @@ Unity 2022.3.22f1 の標準照明で High の Mesh を描画した画像です�
 | ![トビウオ](images/captured/species-flying-fish.jpg) | ![タツノオトシゴ](images/captured/species-seahorse.jpg) | ![ニワトリ](images/captured/species-chicken.jpg) | ![ヒヨコ](images/captured/species-chick.jpg) |
 
 ## パラメータの編集
+
+通常の魚の Low / High には、左右の目、口線、鰓蓋を生成します。マグロ・ブリ・カマス・サメなどの頭部は鼻先を細くし、胴体と区別できる形状にしています。Silhouette は従来どおり遠景用の輪郭です。イカの足と耳は胴体と同じ色を使用します。
+
+| クロマグロ | ブリ |
+| --- | --- |
+| ![クロマグロの頭部](images/captured/species-bluefin-tuna.jpg) | ![ブリの頭部](images/captured/species-yellowtail.jpg) |
+
+| オオカマス | ツマグロ |
+| --- | --- |
+| ![オオカマスの頭部](images/captured/species-barracuda.jpg) | ![ツマグロの頭部](images/captured/species-reef-shark.jpg) |
 
 Inspector の「種のパラメータ」から、プリセットをもとに独自の種を作れます。主なパラメータは次のとおりです。
 
