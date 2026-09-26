@@ -2,7 +2,7 @@
 
 VRChat 向けのアセットを **VCC (VRChat Creator Companion) / VPM** で配布するためのリポジトリです。
 
-草木配置の **SabaProps Foliage**、樹木生成の **SabaProps Trees**、水面・雨・霧・水中表現の **SabaProps Water**、PC VRChat 向け接触変形家具の **SabaProps Soft Props**、演者を追うカメラリグの **SabaProps Stage Cam**、Pickup の配置補正を行う **SabaProps Put Items** を収録しています。
+草木配置の **SabaProps Foliage**、樹木生成の **SabaProps Trees**、水面・雨・霧・水中表現の **SabaProps Water**、PC VRChat 向け接触変形家具の **SabaProps Soft Props**、演者を追うカメラリグの **SabaProps Stage Cam**、Pickup の配置補正を行う **SabaProps Put Items**、ミラーやコライダーを操作するタブレット型 UI の **SabaProps Tablet** を収録しています。
 
 ---
 
@@ -31,6 +31,7 @@ https://sabas0ba.github.io/vrc_sabaprops/index.json
 | `io.github.sabas0ba.sabaprops.softprops` | SabaProps Soft Props | World Contactsでユーザーの接触を検知し、ふとん、ベッド、ソファー、クッションを最大8点で変形するPC向けprop集。 |
 | `io.github.sabas0ba.sabaprops.stagecam` | SabaProps Stage Cam | 特定のプレイヤーの部位を追う Udon カメラリグ。Pickup による構図補正と自動カメラワークに対応。 |
 | `io.github.sabas0ba.sabaprops.putitems` | SabaProps Put Items | Pickup を手放した位置の近くにある机・壁へ位置と姿勢を補正。Object Sync 接続と独自同期向けの計算 API を提供。 |
+| `io.github.sabas0ba.sabaprops.tablet` | SabaProps Tablet | キー・頭上からの取り出し・アイテムの Interact で呼び出すタブレット型 UI。物理ボタンでミラー・コライダー・エフェクトの切り替え、テレポート、任意の Udon イベント呼び出しを行う。 |
 
 各パッケージの詳細は `Packages/<package-id>/README.md` を参照してください。
 
@@ -74,10 +75,16 @@ Put Items は `Tools > SabaProps > Put Items > Open Demo Scene` から、食卓�
 │   │   ├── Runtime/                # UdonSharp のカメラリグと幾何ソルバ
 │   │   ├── Editor/                 # リグとサンプルシーンの生成器
 │   │   └── Samples~/              # VRChat World のサンプル
-│   └── io.github.sabas0ba.sabaprops.putitems/
-│       ├── Runtime/                # 吸着計算・Object Sync 接続・追従状態
-│       ├── Editor/                 # デモ Scene と Udon program の導入
-│       ├── Samples~/KitchenDemo/   # 同梱 Scene と依存アセット
+│   ├── io.github.sabas0ba.sabaprops.putitems/
+│   │   ├── Runtime/                # 吸着計算・Object Sync 接続・追従状態
+│   │   ├── Editor/                 # デモ Scene と Udon program の導入
+│   │   ├── Samples~/KitchenDemo/   # 同梱 Scene と依存アセット
+│   │   └── Documentation~/
+│   └── io.github.sabas0ba.sabaprops.tablet/
+│       ├── Runtime/                # UdonSharp の本体・ボタン・切り替え・召喚トリガ
+│       ├── Authoring/              # Editor 専用の構成データと Theme
+│       ├── Editor/                 # 生成器、Setup Window、サンプルシーン
+│       ├── Samples~/               # Stage Cam 連携の実装例
 │       └── Documentation~/
 ├── Website/                        # GitHub Pages で公開するリスティングサイト
 ├── source.json                     # VPM リスティングのメタ情報
@@ -99,7 +106,7 @@ Put Items は `Tools > SabaProps > Put Items > Open Demo Scene` から、食卓�
 `Packages/` 配下に、このリポジトリの `Packages/<package-id>` をシンボリックリンク（または
 クローンごと配置）してください。編集するパッケージの分だけ張ります。
 
-`io.github.sabas0ba.sabaprops.stagecam` は Udon を使うため、リンク先のプロジェクトには
+`io.github.sabas0ba.sabaprops.stagecam` と `io.github.sabas0ba.sabaprops.tablet` は Udon を使うため、リンク先のプロジェクトには
 VRChat Worlds SDK が入っている必要があります。`io.github.sabas0ba.sabaprops.foliage` の方は
 SDK が無くても動きます。
 
@@ -222,6 +229,8 @@ Markdown 変換は `build_listing.py` と同じ方針で自前実装です。CI 
 | **メッシュ生成** | **実際に実行**して形状を検査（下記） |
 | Stage Cam の Runtime | **実物の VRChat SDK アセンブリ**（`packages.lock` が固定した `VRCSDKBase.dll`）に対してコンパイル |
 | **Stage Cam の追従計算** | **実際に実行**して幾何の性質を検査（下記） |
+| Tablet の Runtime / Authoring / Editor | 実物の VRChat SDK アセンブリ（`VRCSDKBase.dll`、`VRCSDK3.dll`、`VRC.Udon.Common.dll`）に対してコンパイル。TextMeshPro は手書きのスタブ |
+| **Tablet の判定と生成** | 召喚位置、指先の押下の状態遷移、取り出し位置、プレイヤー選択、ボタン配置、角丸メッシュの閉包性と面の向きを**実際に実行**して検査 |
 | **ドキュメントの図** | 生成器を実行し直し、committed の図と一致するかを検査 |
 | ドキュメント | サイトの生成、未変換の記法・壊れたリンク・存在しない画像の検出 |
 | マニフェスト | `package.json` の必須項目、フォルダ名との一致、CHANGELOG のバージョン記載、`source.json` への登録、`.meta` の欠落 |

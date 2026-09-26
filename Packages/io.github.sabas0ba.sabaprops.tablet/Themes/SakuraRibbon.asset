@@ -1,0 +1,48 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5d516835dd2344de94b15701125dd584, type: 3}
+  m_Name: Sakura Ribbon
+  m_EditorClassIdentifier:
+  bodySize: {x: 0.3, y: 0.21}
+  bodyThickness: 0.012
+  cornerRadius: 0.030
+  bezel: 0.011
+  headerHeight: 0.03
+  columns: 4
+  rows: 3
+  spacing: 0.006
+  buttonHeight: 0.005
+  buttonCornerRadius: 0.014
+  pressTravel: 0.003
+  pokeDepth: 0.025
+  handle: 1
+  handleSize: {x: 0.11, y: 0.016, z: 0.014}
+  smoothness: 0.30
+  decoration: 1
+  bodyColor: {r: 0.956863, g: 0.745098, b: 0.823529, a: 1}
+  screenColor: {r: 1, g: 0.968627, b: 0.980392, a: 1}
+  buttonColor: {r: 1, g: 0.878431, b: 0.921569, a: 1}
+  buttonActiveColor: {r: 0.952941, g: 0.603922, b: 0.733333, a: 1}
+  buttonPressedColor: {r: 0.905882, g: 0.494118, b: 0.647059, a: 1}
+  headerButtonColor: {r: 0.968627, g: 0.8, b: 0.862745, a: 1}
+  labelColor: {r: 0.093059, g: 0.023153, b: 0.056128, a: 1}
+  decorationColor: {r: 0.85098, g: 0.470588, b: 0.662745, a: 1}
+  decorationInnerColor: {r: 1, g: 0.941176, b: 0.960784, a: 1}
+  shader: {fileID: 0}
+  bodyMaterial: {fileID: 0}
+  screenMaterial: {fileID: 0}
+  buttonMaterial: {fileID: 0}
+  buttonActiveMaterial: {fileID: 0}
+  buttonPressedMaterial: {fileID: 0}
+  bodyMesh: {fileID: 0}
+  buttonMesh: {fileID: 0}
+  font: {fileID: 0}

@@ -18,6 +18,46 @@ World Contacts、Pickup、家具の変形と復元を確認します。
 
 ここにあるのは、これらを実行するためのプロジェクト組み立て手順です。
 
+**Tablet の検証。** 次の指定でタブレットのテストだけを実行できます。
+
+```sh
+TEST_FILTER=SabaProps.Tablet.WorldTests ./.github/verify/vrchat/run-tests.sh
+```
+
+検証スクリプトは Unity が解決した公式 TextMeshPro パッケージの Essential Resources を
+プロジェクトへ展開します。ClientSim の新 Input System とタブレットの旧キー入力を
+併用するため、セットアップで Active Input Handling を Both にし、別セッションでテストします。
+ClientSim テストは実際の Udon を介して召喚、収納、ページ送り、ミラー切替、登録地点への
+移動を確認し、`TestResults/tablet-clientsim.png` に表示画像を保存します。
+選択プレイヤーへの移動候補は Unity Physics の独立したテストで検証します。
+ベッドの 5 面の向きと Collider の独立切替、PostEffect の 3 スライダーから
+Animator／Volume weight への反映と Volume の ON/OFF も検査します。
+`TestResults/tablet-bed-mirrors.png` と `tablet-post-effects.png` に各ページの表示画像を保存します。
+11 種の Theme について、装飾に Collider がないこと、既存のページとボタンを保持すること、
+編集用コピーが元のプリセットを変更しないことも検査します。
+セットアップ用ログは `SETUP_LOG` で出力先を指定できます。
+ClientSim で通常のデモに加えて展示 World を実行し、全テーマの召喚・ページ送り・World のミラー操作を検査します。
+展示 World のローカル Build & Test は `SabaProps.Tablet.WorldTests.TabletBuildAndTest.RunGallery` で実行できます。
+
+文書の画像は、Windows で組み立て済みの専用プロジェクトを GUI で起動し、
+`-executeMethod SabaProps.Tablet.WorldTests.TabletDocumentationCapture.Run` を指定して再撮影できます。
+`-batchmode` は指定しません。操作ページ・World の画像と、Setup Window・Theme Presets・Inspector GUI を
+`TestResults/Documentation/` に保存し、撮影後に Editor を終了します。
+開始時にサンプルシーンを生成するため、作業中のプロジェクトではなく独立した検証プロジェクトを使ってください。
+画像を確認してからパッケージの `Documentation~/images/` に取り込みます。
+
+ローカル VRChat Build & Test は生成済みプロジェクトで次のメソッドを実行します。
+非同期処理完了時に Editor を終了するため、`-quit` は指定しません。
+
+```sh
+Unity -batchmode -projectPath /path/to/WorldProject \
+  -executeMethod SabaProps.Tablet.WorldTests.TabletBuildAndTest.Run \
+  -logFile /path/to/WorldProject/tablet-build-test.log
+```
+
+このメソッドはワールドをアップロードしません。VRChat クライアントでの手動操作、
+複数プレイヤー、VR の指先押下と頭上 Grab は別途確認してください。
+
 ## 方針
 
 SDK の取得はコンテナ内で行い、ローカルの VCC / ALCOM のキャッシュには依存しません。
@@ -61,7 +101,7 @@ Unity は Unity Hub の既定の場所から `ProjectVersion.txt` に一致す�
 初回は SDK が要求する UPM パッケージ（burst、collections、cinemachine 等）を
 Unity がレジストリから取得するため、数分かかります。
 
-テストは `SabaProps.Foliage.CITests`、`SabaProps.Foliage.WorldTests`、`SabaProps.SoftProps.WorldTests`、`SabaProps.StageCam.WorldTests`、`SabaProps.PutItems.Tests` に絞って実行します。
+テストは `SabaProps.Foliage.CITests`、`SabaProps.Foliage.WorldTests`、`SabaProps.SoftProps.WorldTests`、`SabaProps.StageCam.WorldTests`、`SabaProps.Tablet.WorldTests`、`SabaProps.PutItems.Tests` に絞って実行します。
 SDK 自身のテストアセンブリも同じプロジェクトに存在しますが、
 本パッケージとは無関係な理由で 2 件失敗する（ランダム生成の JSON ファズケースと、
 docs.microsoft.com の URL 到達性を検証するもの）ため、終了コードを意味のあるものにするためです。
@@ -74,6 +114,7 @@ docs.microsoft.com の URL 到達性を検証するもの）ため、終了コ�
 | `SabaProps.Foliage.WorldTests` | PlayMode | ClientSim でワールドとして実行し、プレイヤーが Spawn するか |
 | `SabaProps.StageCam.WorldTests` | EditMode | リグと操作パネルの Udon コンパイル、保存後の UI イベント接続、カメラ設定の独立性、サンプル構成を検証。`TestResults/stagecam-panel.png` にレイアウト確認画像を出力 |
 | `SabaProps.SoftProps.WorldTests` | EditMode + Playへの遷移 | Prefab生成、同梱デモのimport・参照・比較台、ClientSimでのCollider接触・復元・自動運動・立位荷重 |
+| `SabaProps.Tablet.WorldTests` | EditMode | 全コンポーネントの Udon コンパイル、サンプルシーンの全ボタンがエクスポート済みのイベントを呼ぶこと、ミラーの排他、テレポート地点の番号、Build の再実行で生成物が重複しないことを検証 |
 | `SabaProps.PutItems.Tests` | EditMode | 吸着対象と Pickup の設定、同梱デモの構成を検証 |
 
 Soft Propsの実行テストは指・棒・板の100 mmおよび0.5 mmの空隙、20 mmの侵入、離脱後の復元、自動上下運動、ローカルプレイヤーのFutonへの接地を検証します。VRChat実clientの手・胴体・リモートプレイヤーの接触を保証するテストではありません。

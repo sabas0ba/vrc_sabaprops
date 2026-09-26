@@ -52,10 +52,16 @@ namespace SabaProps.Foliage.WorldSetup
                 applied.Add("input axes");
             }
 
-            if (!ClientSimProjectSettingsSetup.IsUsingCorrectInputTypeSettings())
+            // ClientSim needs the new Input System; tablet key triggers use the
+            // legacy Input Manager. SDK 3.10.4's helper also accepts legacy-only.
+            var settings = new SerializedObject(
+                AssetDatabase.LoadAssetAtPath<Object>("ProjectSettings/ProjectSettings.asset"));
+            SerializedProperty inputHandler = settings.FindProperty("activeInputHandler");
+            if (inputHandler.intValue != 2)
             {
-                ClientSimProjectSettingsSetup.SetInputTypeSettings();
-                applied.Add("input handling");
+                inputHandler.intValue = 2;
+                settings.ApplyModifiedPropertiesWithoutUndo();
+                applied.Add("input handling (both)");
             }
 
             if (!ClientSimProjectSettingsSetup.IsUsingCorrectAudioSettings())

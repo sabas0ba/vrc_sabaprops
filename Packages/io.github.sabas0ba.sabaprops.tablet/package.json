@@ -1,0 +1,36 @@
+{
+  "name": "io.github.sabas0ba.sabaprops.tablet",
+  "displayName": "SabaProps Tablet",
+  "version": "0.1.0",
+  "unity": "2022.3",
+  "description": "キー入力、頭上からの取り出し、ワールド内アイテムの Interact で呼び出す Udon のタブレット型 UI。Canvas を使わない物理ボタンを VR では指先で、Desktop では Interact で押し、ミラー・コライダー・エフェクトの切り替え、テレポート、任意の UdonSharpBehaviour のイベント呼び出しを行います。構成は Editor のウィンドウで登録し、外観は Theme アセットで差し替えます。",
+  "author": {
+    "name": "sabas0ba",
+    "url": "https://github.com/sabas0ba"
+  },
+  "license": "MIT",
+  "licensesUrl": "https://github.com/sabas0ba/vrc_sabaprops/blob/main/LICENSE",
+  "documentationUrl": "https://github.com/sabas0ba/vrc_sabaprops/blob/main/Packages/io.github.sabas0ba.sabaprops.tablet/README.md",
+  "changelogUrl": "https://github.com/sabas0ba/vrc_sabaprops/blob/main/Packages/io.github.sabas0ba.sabaprops.tablet/CHANGELOG.md",
+  "vpmDependencies": {
+    "com.vrchat.worlds": "3.10.x"
+  },
+  "samples": [
+    {
+      "displayName": "Stage Cam Integration",
+      "description": "SabaProps Stage Cam の操作パネルをタブレットから操作するページの実装例。io.github.sabas0ba.sabaprops.stagecam が必要です。",
+      "path": "Samples~/StageCamIntegration"
+    }
+  ],
+  "keywords": [
+    "vrchat",
+    "world",
+    "udon",
+    "udonsharp",
+    "ui",
+    "menu",
+    "tablet",
+    "mirror",
+    "teleport"
+  ]
+}

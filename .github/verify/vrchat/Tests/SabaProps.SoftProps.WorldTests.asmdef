@@ -1,0 +1,24 @@
+{
+    "name": "SabaProps.SoftProps.WorldTests",
+    "rootNamespace": "SabaProps.SoftProps.WorldTests",
+    "references": [
+        "SabaProps.Water.Runtime",
+        "SabaProps.Water.Editor",
+        "VRC.ClientSim",
+        "UnityEngine.TestRunner",
+        "UnityEditor.TestRunner"
+    ],
+    "includePlatforms": ["Editor"],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": true,
+    "precompiledReferences": [
+        "nunit.framework.dll",
+        "VRCSDKBase.dll",
+        "VRCSDK3.dll"
+    ],
+    "autoReferenced": false,
+    "defineConstraints": ["UNITY_INCLUDE_TESTS"],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
