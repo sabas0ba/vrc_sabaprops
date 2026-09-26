@@ -38,6 +38,10 @@ namespace SabaProps.Flock
         Float = 10,
         /// <summary>Independent broad flight paths instead of a shared formation.</summary>
         FreeFlight = 11,
+        /// <summary>Agile three-dimensional drift with independently moving arms.</summary>
+        OctopusDrift = 12,
+        /// <summary>Low swimming with a rising, banked turn near the area walls.</summary>
+        FloorGlide = 13,
     }
 
     /// <summary>Mesh detail tier.</summary>
@@ -77,6 +81,8 @@ namespace SabaProps.Flock
         Pulse = 5,
         Static = 6,
         Jet = 7,
+        /// <summary>Mantle breathing and three-dimensional arm motion.</summary>
+        Octopus = 8,
     }
 
     /// <summary>Special anatomy beyond the ordinary bird and fish layouts.</summary>

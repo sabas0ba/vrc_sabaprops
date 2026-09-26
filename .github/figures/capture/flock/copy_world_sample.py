@@ -22,10 +22,58 @@ def references(text):
     return set(re.findall(r"guid: ([0-9a-f]{32})", text))
 
 
+def mesh_sections(text):
+    blocks = re.split(r"(?=^--- !u!43 &)", text, flags=re.MULTILINE)
+    objects = {}
+    for block in blocks[1:]:
+        identifier = re.match(r"--- !u!43 &(-?\d+)", block).group(1)
+        name = re.search(r"^  m_Name: (.+)$", block, re.MULTILINE).group(1)
+        if name in objects:
+            raise ValueError(f"Duplicate mesh name: {name}")
+        objects[name] = (identifier, block)
+    return blocks[0], objects
+
+
+def retain_mesh_layout(text, old_objects, ids):
+    header, new_objects = mesh_sections(text)
+    names = list(old_objects) + [name for name in new_objects if name not in old_objects]
+    blocks = [header]
+    for name in names:
+        if name not in new_objects:
+            continue
+        identifier, block = new_objects[name]
+        stable_id = ids.get(identifier, identifier)
+        block = re.sub(r"(^--- !u!43 &)-?\d+", lambda m: m.group(1) + stable_id, block, flags=re.MULTILINE)
+        blocks.append(block)
+    return "".join(blocks)
+
+
 def copy_all(sample, generated):
-    """Refresh all meshes when their vertex contract changes; keep Scene GUIDs."""
+    """Refresh all meshes, retaining GUIDs for existing assets at the same path."""
     scene_names = ("FlockSample", "FlockWorldScenarios", "FlockComparisons")
     scene_meta = {name: read(sample / (name + ".unity.meta")) for name in scene_names}
+    guid_map = {}
+    mesh_ids = {}
+    mesh_layouts = {}
+    for folder in ("Flock/Meshes", "Flock/Materials", "FlockSample/WorldMaterials"):
+        source = generated / folder
+        for meta in source.rglob("*.meta"):
+            target = sample / source.name / meta.relative_to(source)
+            if target.exists():
+                guid_map[guid(meta)] = guid(target)
+                if meta.name.endswith(".asset.meta"):
+                    _, old_objects = mesh_sections(read(target.with_suffix("")))
+                    _, new_objects = mesh_sections(read(meta.with_suffix("")))
+                    ids = {identifier: old_objects[name][0] for name, (identifier, _) in new_objects.items() if name in old_objects}
+                    mesh_ids[guid(meta)] = ids
+                    mesh_layouts[target.with_suffix("")] = (old_objects, ids)
+        target = sample / (source.name + ".meta")
+        if target.exists():
+            guid_map[guid(Path(str(source) + ".meta"))] = guid(target)
+    for meta in (generated / "FlockSample").glob("Backdrop*.mat.meta"):
+        target = sample / meta.name
+        if target.exists():
+            guid_map[guid(meta)] = guid(target)
     for name in ("Meshes", "WorldMeshes", "Materials", "Backdrop", "WorldMaterials"):
         target = (sample / name).resolve()
         if target.parent != sample.resolve():
@@ -49,8 +97,16 @@ def copy_all(sample, generated):
         (sample / (name + ".unity.meta")).write_text(scene_meta[name], encoding="utf-8", newline="\n")
     for path in sample.rglob("*"):
         if path.is_file() and path.suffix in (".asset", ".mat", ".meta", ".unity"):
-            path.write_text(re.sub(r"[ \t]+$", "", read(path), flags=re.MULTILINE), encoding="utf-8", newline="\n")
-    print("Updated all three scenes and their meshes; preserved Scene GUIDs.")
+            text = read(path)
+            if path in mesh_layouts:
+                old_objects, ids = mesh_layouts[path]
+                text = retain_mesh_layout(text, old_objects, ids)
+            # Unity references subassets by both GUID and fileID; retain both.
+            text = re.sub(r"fileID: (-?\d+), guid: ([0-9a-f]{32})", lambda m: "fileID: "
+                + mesh_ids.get(m.group(2), {}).get(m.group(1), m.group(1)) + ", guid: " + m.group(2), text)
+            text = re.sub(r"guid: ([0-9a-f]{32})", lambda m: "guid: " + guid_map.get(m.group(1), m.group(1)), text)
+            path.write_text(re.sub(r"[ \t]+$", "", text, flags=re.MULTILINE), encoding="utf-8", newline="\n")
+    print("Updated all three scenes and meshes; preserved GUIDs of existing assets.")
 
 
 def main():

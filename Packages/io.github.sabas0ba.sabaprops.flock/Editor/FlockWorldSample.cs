@@ -158,7 +158,8 @@ namespace SabaProps.Flock.Editors
                     if (species.bodyLength > 0.8f)
                     {
                         Swarm(ocean, id, new Vector3(0f, 5f, 0f),
-                            new Vector3(11.8f, 4.8f, 5.8f), Mathf.Min(species.defaultCount, 3), FlockPattern.Wander, true, 501 + giant++);
+                            new Vector3(11.8f, 4.8f, 5.8f), Mathf.Min(species.defaultCount, 3),
+                            species.defaultPattern == FlockPattern.FloorGlide ? FlockPattern.FloorGlide : FlockPattern.Wander, true, 501 + giant++);
                     }
                     else
                     {
@@ -170,7 +171,8 @@ namespace SabaProps.Flock.Editors
                         Vector3 position = new Vector3((marine % 6 - 2.5f) * 1.1f, anchored ? 0.825f + floorOffset : 1.65f + marine / 6 * 0.45f,
                             anchored ? -0.4f : 0.35f);
                         float length = species.bodyLength;
-                        bool special = species.defaultPattern == FlockPattern.Jet || species.defaultPattern == FlockPattern.Float;
+                        bool special = species.defaultPattern == FlockPattern.Jet || species.defaultPattern == FlockPattern.Float
+                            || species.defaultPattern == FlockPattern.OctopusDrift;
                         if (special) position = new Vector3(0f, 2.3f, 0f);
                         Swarm(large, id, position, anchored ? Vector3.one * length : special ? new Vector3(3.6f, 1.3f, 1.3f) : new Vector3(length + 0.6f, length + 0.1f, length + 0.3f),
                             anchored ? 1 : Mathf.Min(species.defaultCount, length < 0.15f ? 6 : 3),

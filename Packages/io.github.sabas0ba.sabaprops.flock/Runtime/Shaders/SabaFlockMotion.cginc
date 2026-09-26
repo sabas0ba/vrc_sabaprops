@@ -24,6 +24,8 @@
 #define FLOCK_PATTERN_JET 9
 #define FLOCK_PATTERN_FLOAT 10
 #define FLOCK_PATTERN_FREEFLIGHT 11
+#define FLOCK_PATTERN_OCTOPUSDRIFT 12
+#define FLOCK_PATTERN_FLOORGLIDE 13
 
 #define FLOCK_PART_WING 1
 
@@ -148,6 +150,28 @@ float3 FlockFloatDrift(float3 room, float bodyLength, float speed, float3 r, flo
     return waypoint / 6.0 * room;
 }
 
+float FlockFloorGlidePhase(float3 room, float bodyLength, float speed, float3 r, float t)
+{
+    float aspect = min(room.x, room.z) / max(max(room.x, room.z), 0.01);
+    float rate = min(speed / max(0.5 * (room.x + room.z), max(bodyLength, 0.01)), 0.35 * aspect);
+    return t * rate * (0.8 + 0.4 * r.y) + FLOCK_TWO_PI * r.x;
+}
+
+float FlockWallRise(float angle)
+{
+    float c = cos(2.0 * angle);
+    float square = c * c;
+    return square * square * square * square;
+}
+
+float3 FlockFloorGlide(float3 room, float bodyLength, float speed, float3 r, float t)
+{
+    float angle = FlockFloorGlidePhase(room, bodyLength, speed, r, t);
+    return float3(room.x * (0.94 + 0.04 * r.x) * cos(angle),
+        room.y * (-0.82 + 1.55 * FlockWallRise(angle)),
+        room.z * (0.94 + 0.04 * r.z) * sin(angle));
+}
+
 float FlockDriftSpeed(float speed, float radius)
 {
     return 0.3 * min(speed, FLOCK_MAX_ORBIT_RATE * 0.16 * radius);
@@ -178,6 +202,10 @@ float3 FlockPosition(FlockMotionInput input, float time)
         return FlockWander(max(area - FlockMargin(input), 0.0), input.speed, r, FlockJetClock(t, input.animationFrequency, r));
     if (input.pattern == FLOCK_PATTERN_FLOAT)
         return FlockFloatDrift(max(area - FlockMargin(input), 0.0), bodyLength, input.speed, r, t);
+    if (input.pattern == FLOCK_PATTERN_OCTOPUSDRIFT)
+        return FlockFloatDrift(max(area - FlockMargin(input), 0.0), bodyLength, input.speed * 10.0, r, t);
+    if (input.pattern == FLOCK_PATTERN_FLOORGLIDE)
+        return FlockFloorGlide(max(area - FlockMargin(input), 0.0), bodyLength, input.speed, r, t);
 
     float3 centreAmplitude = max(area - (radius + bodyLength), 0.0);
     float angularSpeed = FlockPathAngularSpeed(centreAmplitude, input.speed);
@@ -278,10 +306,13 @@ void FlockPose(FlockMotionInput input, float time,
     position = FlockPosition(input, time);
     float3 next = FlockPosition(input, time + h);
 
-    if (input.pattern == FLOCK_PATTERN_FLOAT)
+    if (input.pattern == FLOCK_PATTERN_FLOAT || input.pattern == FLOCK_PATTERN_OCTOPUSDRIFT)
     {
-        float yaw = FLOCK_TWO_PI * input.random.x + 0.15 * sin((time + input.timeOffset)
-            * input.speed / max(input.bodyLength, 0.01) * 0.015 + FLOCK_TWO_PI * input.random.z);
+        bool octopus = input.pattern == FLOCK_PATTERN_OCTOPUSDRIFT;
+        float yawRate = octopus ? 0.15 : 0.015;
+        float yawAmplitude = octopus ? 0.65 : 0.15;
+        float yaw = FLOCK_TWO_PI * input.random.x + yawAmplitude * sin((time + input.timeOffset)
+            * min(input.speed / max(input.bodyLength, 0.01) * yawRate, 0.6) + FLOCK_TWO_PI * input.random.z);
         forward = float3(sin(yaw), 0.0, cos(yaw));
         up = float3(0.0, 1.0, 0.0);
         right = cross(up, forward);
@@ -300,6 +331,14 @@ void FlockPose(FlockMotionInput input, float time,
 
     float3 acceleration = (next - position * 2.0 + previous) / (h * h);
     float bank = clamp(dot(acceleration, right) * input.bankGain, -FLOCK_MAX_BANK, FLOCK_MAX_BANK);
+    if (input.pattern == FLOCK_PATTERN_FLOORGLIDE)
+    {
+        float3 room = max(input.area - FlockMargin(input), 0.0);
+        float angle = FlockFloorGlidePhase(room, input.bodyLength, input.speed, input.random, time + input.timeOffset);
+        float3 inward = float3(-position.x / max(room.x, 0.01), 0.0, -position.z / max(room.z, 0.01));
+        float side = dot(inward, right) < 0.0 ? -1.0 : 1.0;
+        bank = side * 1.45 * FlockWallRise(angle);
+    }
     float3 bankedUp = up * cos(bank) + right * sin(bank);
     right = cross(bankedUp, forward);
     up = bankedUp;
@@ -309,6 +348,12 @@ float3 FlockAppendageOffset(float3 p, float4 body, float mode,
     float frequency, float amplitude, float t, float phase, float bodyLength)
 {
     float beat = sin(FLOCK_TWO_PI * frequency * t + phase);
+    if (mode > 7.5)
+    {
+        float wave = FLOCK_TWO_PI * frequency * t + phase + body.y * 3.0;
+        return p * (0.04 * cos(FLOCK_TWO_PI * frequency * t + phase))
+            + amplitude * bodyLength * body.y * float3(sin(wave), 0.35 * sin(wave * 0.7), 0.5 * cos(wave));
+    }
     if (mode > 6.5)
     {
         float contraction = cos(FLOCK_TWO_PI * frequency * t + phase);

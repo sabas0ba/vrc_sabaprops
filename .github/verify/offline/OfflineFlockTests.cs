@@ -39,6 +39,8 @@ internal static class OfflineFlockTests
         FlockPattern.Jet,
         FlockPattern.Float,
         FlockPattern.FreeFlight,
+        FlockPattern.OctopusDrift,
+        FlockPattern.FloorGlide,
     };
 
     private static string _csharpMotionPath;
@@ -54,6 +56,7 @@ internal static class OfflineFlockTests
         "PathAngularSpeed", "PathPoint", "PathFrame", "UnitBallPoint", "Wobble",
         "Wander", "OrbitRate", "DriftSpeed", "Position", "Pose", "Frac", "AppendageOffset",
         "Margin", "JetClock", "DriftPoint", "FloatDrift",
+        "FloorGlidePhase", "WallRise", "FloorGlide",
     };
 
     private static int Main(string[] args)
@@ -90,6 +93,8 @@ internal static class OfflineFlockTests
         Run("large birds occupy broad independent flight paths", BroadBirdFlight);
         Run("jet contraction drives forward pulses", JetPulses);
         Run("jellyfish drift slowly in three dimensions and stay upright", JellyfishDrift);
+        Run("octopus drifts more quickly than jellyfish without fish-like turns", OctopusDrift);
+        Run("manta cruises low and climbs with its belly facing the wall", MantaFloorGlide);
 
         if (_failures > 0)
         {
@@ -524,10 +529,73 @@ internal static class OfflineFlockTests
             Require(Math.Abs(rate - (1f - 0.65f * deformation.x / 0.08f)) < 0.015f, "jet pulse is out of phase with contraction");
         }
         Require(min > 0.3f && max / min > 4f, "jet must pulse without reversing");
-        foreach (string id in new[] { "squid", "octopus" })
+        foreach (string id in new[] { "squid" })
         {
             FlockSpecies species = FlockSpeciesCatalog.Create(id);
             Require(species.defaultPattern == FlockPattern.Jet && species.animation == FlockAnimation.Jet, id + ": wrong motion");
+        }
+    }
+
+    private static void OctopusDrift()
+    {
+        FlockSpecies species = FlockSpeciesCatalog.Create("octopus");
+        Require(species.defaultPattern == FlockPattern.OctopusDrift && species.animation == FlockAnimation.Octopus,
+            "octopus must have its own movement and arm animation");
+        var settings = new FlockSwarmSettings { pattern = FlockPattern.OctopusDrift, count = 3, area = new Vector3(3.6f, 1.3f, 1.3f) };
+        FlockMotionInput input = FlockSwarmMeshBuilder.MotionInput(species, settings, 0);
+        FlockMotionInput jellyClock = input; jellyClock.Pattern = FlockPattern.Float;
+        float octopusDistance = 0f, jellyDistance = 0f;
+        float minY = float.MaxValue, maxY = float.MinValue;
+        for (float t = 0f; t < 600f; t += 0.1f)
+        {
+            FlockMotion.Pose(input, t, out Vector3 p, out _, out Vector3 up, out _);
+            Vector3 next = FlockMotion.Position(input, t + 0.1f);
+            octopusDistance += (next - p).magnitude;
+            jellyDistance += (FlockMotion.Position(jellyClock, t + 0.1f) - FlockMotion.Position(jellyClock, t)).magnitude;
+            Require((next - p).magnitude < 0.15f, "octopus drift jumps");
+            Require(Approximately(up, Vector3.up, 1e-6f), "octopus tilts like a fish");
+            minY = Mathf.Min(minY, p.y); maxY = Mathf.Max(maxY, p.y);
+        }
+        Require(octopusDistance > jellyDistance * 5f, "octopus drift is not more agile than jellyfish");
+        Require(maxY - minY > 0.3f, "octopus lacks vertical movement");
+        Vector3 root = new Vector3(0.01f, 0f, -0.05f);
+        Vector3 a = FlockMotion.AppendageOffset(root, new Vector4(0f, 0f, 0f, 0f),
+            (float)FlockAnimation.Octopus, species.beatFrequency, species.beatAmplitude, 0.7f, 0f, species.bodyLength);
+        Vector3 b = FlockMotion.AppendageOffset(root, new Vector4(0f, 0f, 4f, 0f),
+            (float)FlockAnimation.Octopus, species.beatFrequency, species.beatAmplitude, 0.7f, 0f, species.bodyLength);
+        Require(Approximately(a, b, 1e-6f), "octopus arm root separates from mantle");
+    }
+
+    private static void MantaFloorGlide()
+    {
+        FlockSpecies species = FlockSpeciesCatalog.Create("manta");
+        Require(species.defaultPattern == FlockPattern.FloorGlide, "manta must use low swimming");
+        var settings = new FlockSwarmSettings { pattern = FlockPattern.FloorGlide, count = 3, area = new Vector3(11.8f, 4.8f, 5.8f) };
+        FlockMotionInput input = FlockSwarmMeshBuilder.MotionInput(species, settings, 0);
+        Vector3 room = input.Area - input.BodyMargin;
+        float atZero = FlockMotion.FloorGlidePhase(room, input.BodyLength, input.Speed, input.Random, 0f);
+        float rate = FlockMotion.FloorGlidePhase(room, input.BodyLength, input.Speed, input.Random, 1f) - atZero;
+        int low = 0, total = 0;
+        for (float t = 0f; t < 600f; t += 0.2f)
+        {
+            Vector3 p = FlockMotion.Position(input, t);
+            if (p.y < -0.5f * room.y) low++;
+            total++;
+        }
+        Require(low > total * 0.6f, "manta spends too little time near the floor");
+        for (int wall = 0; wall < 4; wall++)
+        {
+            float angle = Mathf.PI * 0.5f * wall;
+            float time = (angle - atZero) / rate - input.TimeOffset;
+            FlockMotion.Pose(input, time, out Vector3 p, out _, out Vector3 up, out _);
+            Vector3 outward = new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle));
+            Require(Vector3.Dot(-up, outward) > 0.95f, "manta belly does not face glass at turn");
+            Require(p.y > 0.6f * room.y, "manta does not rise at wall");
+            Vector3 before = FlockMotion.Position(input, time - 0.15f / rate);
+            Require(before.y < p.y, "manta does not climb before turn");
+            Require(Math.Abs(p.x) + input.BodyMargin.x < input.Area.x
+                && Math.Abs(p.y) + input.BodyMargin.y < input.Area.y
+                && Math.Abs(p.z) + input.BodyMargin.z < input.Area.z, "banked manta crosses tank boundary");
         }
     }
 
@@ -724,6 +792,7 @@ internal static class OfflineFlockTests
 
                 Vector3 margin = settings.pattern == FlockPattern.Wander || settings.pattern == FlockPattern.FreeFlight
                     || settings.pattern == FlockPattern.Jet || settings.pattern == FlockPattern.Float
+                    || settings.pattern == FlockPattern.OctopusDrift || settings.pattern == FlockPattern.FloorGlide
                     ? input.BodyMargin : Vector3.one * s.bodyLength;
                 bool inside = Math.Abs(p.x) <= area.x - margin.x + tolerance
                     && Math.Abs(p.y) <= area.y - margin.y + tolerance

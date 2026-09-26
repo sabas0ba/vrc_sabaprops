@@ -69,6 +69,64 @@ namespace SabaProps.Flock.DocsCapture
                 new Shot { Name = "compare-flying", Position = new Vector3(0f, 2f, 59f), Target = new Vector3(0f, 2f, 80f), FieldOfView = 60f },
             }, false, true);
             CaptureAdditionalSpecies();
+            CaptureMantaMotion();
+        }
+
+        /// <summary>Render three exact phases of the real wall-turn shader in the world sample.</summary>
+        public static void CaptureMantaMotion()
+        {
+            EditorSceneManager.OpenScene(FlockWorldSample.ScenePath);
+            FlockLightingPreview.Day();
+            FlockSwarm manta = null;
+            var hidden = new System.Collections.Generic.List<Renderer>();
+            foreach (FlockSwarm swarm in Object.FindObjectsOfType<FlockSwarm>())
+            {
+                if (swarm.presetId == "manta") manta = swarm;
+                foreach (Renderer renderer in swarm.GetComponentsInChildren<Renderer>())
+                {
+                    if (renderer.enabled) hidden.Add(renderer);
+                    renderer.enabled = false;
+                }
+            }
+            if (manta == null) throw new System.InvalidOperationException("The world sample must contain a manta.");
+            var settings = new FlockSwarmSettings { pattern = FlockPattern.FloorGlide, count = 1,
+                seed = manta.settings.seed, area = manta.settings.area, speedScale = manta.settings.speedScale };
+            FlockMotionInput input = FlockSwarmMeshBuilder.MotionInput(manta.species, settings, 0);
+            Vector3 room = input.Area - input.BodyMargin;
+            float start = FlockMotion.FloorGlidePhase(room, input.BodyLength, input.Speed, input.Random, 0f);
+            float rate = FlockMotion.FloorGlidePhase(room, input.BodyLength, input.Speed, input.Random, 1f) - start;
+            Mesh mesh = FlockSwarmMeshBuilder.Build(manta.species, settings, FlockDetail.High, "Manta motion capture");
+            Material material = new Material(manta.GetComponentInChildren<MeshRenderer>().sharedMaterial);
+            material.SetFloat(FlockShaderContract.TimeScaleProperty, 0f);
+            var holder = new GameObject("Manta motion capture");
+            holder.transform.position = manta.transform.position;
+            holder.AddComponent<MeshFilter>().sharedMesh = mesh;
+            holder.AddComponent<MeshRenderer>().sharedMaterial = material;
+            try
+            {
+                string[] names = { "manta-low", "manta-climb", "manta-wall-turn" };
+                float[] phases = { 1.25f, 1.45f, 1.5f };
+                var uvs = new System.Collections.Generic.List<Vector4>();
+                mesh.GetUVs(FlockShaderContract.SwarmChannel, uvs);
+                for (int i = 0; i < phases.Length; i++)
+                {
+                    float clock = (phases[i] * Mathf.PI - start) / rate;
+                    for (int v = 0; v < uvs.Count; v++)
+                    {
+                        Vector4 uv = uvs[v]; uv.z = clock; uvs[v] = uv;
+                    }
+                    mesh.SetUVs(FlockShaderContract.SwarmChannel, uvs);
+                    input.TimeOffset = clock;
+                    Vector3 target = holder.transform.position + FlockMotion.Position(input, 0f);
+                    CaptureShots(new[] { new Shot { Name = names[i], Target = target,
+                        Position = target + new Vector3(0f, 1.2f, -7f), FieldOfView = 48f } }, false, true);
+                }
+            }
+            finally
+            {
+                Object.DestroyImmediate(holder); Object.DestroyImmediate(mesh); Object.DestroyImmediate(material);
+                foreach (Renderer renderer in hidden) renderer.enabled = true;
+            }
         }
 
         public static void CaptureWorldWithLighting()
