@@ -54,6 +54,7 @@ namespace SabaProps.Liquid
             Run("face weights are non-negative and sum to one", FaceWeightsSumToOne);
 
             Run("stamp falloff is one at the centre and zero at the radius", StampFalloffShape);
+            Run("the depth mask keeps nearby surfaces and drops distant ones", DepthMaskSeparatesSurfaces);
             Run("evaporation encoding matches the drying time", EvaporationEncodingMatchesDryingTime);
             Run("immersion level follows the body axis", ImmersionLevelFollowsTheBodyAxis);
             Run("the film line drains down and stops at the bottom", FilmLineDrains);
@@ -370,6 +371,32 @@ namespace SabaProps.Liquid
             Require(IsFinite(canvas.StampFalloff(0f, 0f)), "a zero radius is not finite");
         }
 
+        /// <summary>
+        /// 胴の側面（x = 0.275）と腕の外側（x = 0.49）が同じ +X タイルを共有するとき、
+        /// 腕に付けた付着が胴に描かれないこと。腕の丸み（0.07 m 程度）の中では描かれること。
+        /// </summary>
+        private static void DepthMaskSeparatesSurfaces()
+        {
+            var canvas = new LiquidBodyCanvas();
+            const float tolerance = 0.08f;
+            const float arm = 0.49f;
+
+            Require(canvas.DepthMask(arm, arm, 1f, tolerance) == 1f, "the surface the stamp landed on is masked");
+            Require(canvas.DepthMask(arm - 0.07f, arm, 1f, tolerance) == 1f, "the curve of the arm is masked");
+            Require(canvas.DepthMask(0.275f, arm, 1f, tolerance) == 0f, "the torso side shows paint put on the arm");
+            Require(canvas.DepthMask(-0.35f, arm, 1f, tolerance) == 0f, "the other arm shows paint put on this arm");
+            Require(canvas.DepthMask(0.275f, arm, 0f, tolerance) == 1f, "a texel with no recorded depth is masked");
+
+            float previous = 2f;
+            for (int i = 0; i <= 40; i++)
+            {
+                float value = canvas.DepthMask(arm - i * 0.005f, arm, 1f, tolerance);
+                Require(value >= 0f && value <= 1f, $"mask {value} out of range");
+                Require(value <= previous + 1e-6f, "the mask grows with distance");
+                previous = value;
+            }
+        }
+
         private static void EvaporationEncodingMatchesDryingTime()
         {
             var canvas = new LiquidBodyCanvas();
@@ -447,6 +474,10 @@ namespace SabaProps.Liquid
             // 面内の軸の対応。TileAxesFollowTheMapping が C# 側を固定し、ここで HLSL 側を固定します。
             string mapping = "axis == 0 ? q.zy : (axis == 1 ? q.xz : q.xy)";
             Require(canvasInclude.Contains(mapping), "SabaLiquidTileUv no longer uses the (z, y) / (x, z) / (x, y) mapping");
+
+            // 奥行きの重み。DepthMaskSeparatesSurfaces が C# 側を固定し、ここで HLSL 側を固定します。
+            string depthMask = "1.0 - smoothstep(tolerance, tolerance * 2.0, abs(surfaceDepth - storedDepth))";
+            Require(canvasInclude.Contains(depthMask), "SabaLiquidDepthMask no longer fades between one and two tolerances");
         }
 
         private static float DefineValue(string source, string name)

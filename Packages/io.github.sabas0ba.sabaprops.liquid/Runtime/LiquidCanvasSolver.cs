@@ -217,6 +217,21 @@ namespace SabaProps.Liquid
             return c2 * c2 / sum;
         }
 
+        /// <summary>
+        /// 付着した面の奥行きによる表示の重み。SabaLiquidCanvas.cginc の SabaLiquidDepthMask と同じ定義です。
+        /// <para>
+        /// 1 枚のタイルは、同じ向きを向いた表面のうち面内の座標が同じものを区別できません。
+        /// 付着時に記録した面の奥行きと受け手の奥行きを比べ、tolerance 以内なら描き、
+        /// その 2 倍を超えれば描きません。記録の無いテクセル（coverage 0）は制限しません。
+        /// </para>
+        /// </summary>
+        private float DepthMask(float surfaceDepth, float storedDepth, float coverage, float tolerance)
+        {
+            float t = Mathf.Clamp01((Mathf.Abs(surfaceDepth - storedDepth) - tolerance) / Mathf.Max(tolerance, 1e-6f));
+            float mask = 1f - t * t * (3f - 2f * t);
+            return Mathf.Lerp(1f, mask, Mathf.Clamp01(coverage));
+        }
+
         /// <summary>DrawOp の中心からの距離に対する付着量の減衰。中心で 1、半径で 0。</summary>
         private float StampFalloff(float distance, float radius)
         {

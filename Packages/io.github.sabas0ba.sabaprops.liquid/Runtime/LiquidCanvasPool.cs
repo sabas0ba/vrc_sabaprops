@@ -7,7 +7,7 @@ namespace SabaProps.Liquid
     /// <summary>
     /// Body Canvas をプレイヤーへ割り当てるプール。
     /// <para>
-    /// Canvas は RenderTexture を 4 枚持つため、全員分を常に確保するとメモリが足りません。
+    /// Canvas は RenderTexture を 6 枚持つため、全員分を常に確保するとメモリが足りません。
     /// 付着の入力を受けたプレイヤーにだけ割り当て、足りなくなったら最も長く入力の無い
     /// Canvas を取り上げます。ローカルプレイヤーの Canvas は取り上げの対象から外します。
     /// 自分の体に付いた液体が他人の都合で消えるのは、見え方として最も不自然なためです。
@@ -31,6 +31,9 @@ namespace SabaProps.Liquid
         [Tooltip("目の高さ 1.6 m のアバターでの体のカプセル半径（m）。体格に比例させます。")]
         public float bodyRadius = 0.2f;
 
+        [Tooltip("目の高さ 1.6 m のアバターでの手の球の半径（m）。体格に比例させます。")]
+        public float handRadius = 0.07f;
+
         /// <summary>直前の CastPlayers で当たった点。</summary>
         [HideInInspector] public Vector3 lastHitPoint;
 
@@ -39,6 +42,9 @@ namespace SabaProps.Liquid
 
         /// <summary>直前の CastPlayers で当たった点までの距離。</summary>
         [HideInInspector] public float lastHitDistance;
+
+        /// <summary>直前の CastPlayers で当たったのが手なら true、体なら false。</summary>
+        [HideInInspector] public bool lastHitHand;
 
         private VRCPlayerApi[] _players = new VRCPlayerApi[100];
 
@@ -119,9 +125,10 @@ namespace SabaProps.Liquid
         /// <summary>
         /// 光線が最初に当たるプレイヤーの ID を返します。当たらない、または環境に遮られた場合は -1。
         /// <para>
-        /// プレイヤーの体は足元から頭頂までのカプセルで近似します。Collider の構成に依存しないため、
-        /// ローカルとリモートのプレイヤーを同じ規則で判定できます。当たった点と法線は
-        /// lastHitPoint と lastHitNormal に入ります。
+        /// プレイヤーの体は足元から頭頂までのカプセルで、手は手首のボーンを中心とする球で近似します。
+        /// 手を別に扱うのは、体から離して差し出した手（蛇口の下など）が体のカプセルに入らないためです。
+        /// Collider の構成に依存しないため、ローカルとリモートのプレイヤーを同じ規則で判定できます。
+        /// 当たった点と法線は lastHitPoint と lastHitNormal に、手かどうかは lastHitHand に入ります。
         /// </para>
         /// </summary>
         public int CastPlayers(Vector3 origin, Vector3 direction, float maxDistance, bool includeLocal)
@@ -134,6 +141,7 @@ namespace SabaProps.Liquid
             float nearest = maxDistance;
             Vector3 hitA = Vector3.zero;
             Vector3 hitB = Vector3.zero;
+            bool hitHand = false;
 
             for (int i = 0; i < count && i < _players.Length; i++)
             {
@@ -156,6 +164,37 @@ namespace SabaProps.Liquid
                     hitId = player.playerId;
                     hitA = a;
                     hitB = b;
+                    hitHand = false;
+                }
+
+                // 手。球は長さ 0 のカプセルとして扱い、法線の計算を共通にします。
+                float hand = handRadius * eye / 1.6f;
+                Vector3 left = player.GetBonePosition(HumanBodyBones.LeftHand);
+                Vector3 right = player.GetBonePosition(HumanBodyBones.RightHand);
+                if (left.sqrMagnitude > 1e-12f)
+                {
+                    float tl = RaySphere(origin, dir, left, hand);
+                    if (tl >= 0f && tl < nearest)
+                    {
+                        nearest = tl;
+                        hitId = player.playerId;
+                        hitA = left;
+                        hitB = left;
+                        hitHand = true;
+                    }
+                }
+
+                if (right.sqrMagnitude > 1e-12f)
+                {
+                    float tr = RaySphere(origin, dir, right, hand);
+                    if (tr >= 0f && tr < nearest)
+                    {
+                        nearest = tr;
+                        hitId = player.playerId;
+                        hitA = right;
+                        hitB = right;
+                        hitHand = true;
+                    }
                 }
             }
 
@@ -173,6 +212,7 @@ namespace SabaProps.Liquid
             lastHitDistance = nearest;
             lastHitPoint = origin + dir * nearest;
             lastHitNormal = CapsuleNormal(lastHitPoint, hitA, hitB);
+            lastHitHand = hitHand;
             return hitId;
         }
 

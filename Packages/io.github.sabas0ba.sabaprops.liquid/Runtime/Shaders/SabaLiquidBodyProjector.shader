@@ -14,6 +14,8 @@ Shader "SabaProps/Liquid/Body Projector"
     {
         [NoScaleOffset] _PigmentTex ("Pigment Canvas", 2D) = "black" {}
         [NoScaleOffset] _FilmTex ("Film Canvas", 2D) = "black" {}
+        [NoScaleOffset] _DepthTex ("Depth Canvas", 2D) = "black" {}
+        _DepthTolerance ("Surface Depth Tolerance (m)", Range(0.01, 0.3)) = 0.08
         _WetDarken ("Wet Darkening", Range(0, 1)) = 0.35
         _WetReflection ("Wet Reflection", Range(0, 2)) = 1
         _DryLighten ("Dry Pigment Lightening", Range(1, 1.5)) = 1.12
@@ -42,6 +44,8 @@ Shader "SabaProps/Liquid/Body Projector"
 
             sampler2D _PigmentTex;
             sampler2D _FilmTex;
+            sampler2D _DepthTex;
+            float _DepthTolerance;
             float4 _CanvasRowX;
             float4 _CanvasRowY;
             float4 _CanvasRowZ;
@@ -104,6 +108,11 @@ Shader "SabaProps/Liquid/Body Projector"
             void SampleCanvas(float3 q, float3 n, out float4 pigment, out float4 film)
             {
                 float3 weights = SabaLiquidAxisWeights(n);
+                // 半径は行ベクトルの長さの逆数です。受け手の奥行きをメートルに戻すのに使います。
+                float3 halfExtents = float3(1.0 / max(length(_CanvasRowX.xyz), 1e-4),
+                                            1.0 / max(length(_CanvasRowY.xyz), 1e-4),
+                                            1.0 / max(length(_CanvasRowZ.xyz), 1e-4));
+                float3 surface = q * halfExtents;
                 pigment = 0.0;
                 film = 0.0;
 
@@ -114,6 +123,11 @@ Shader "SabaProps/Liquid/Body Projector"
                     float weight = axis == 0 ? weights.x : (axis == 1 ? weights.y : weights.z);
                     int face = SabaLiquidFace(axis, component);
                     float2 uv = SabaLiquidAtlasUv(face, SabaLiquidTileUv(q, axis), _CanvasInset);
+
+                    float2 depth = tex2D(_DepthTex, uv).rg;
+                    float surfaceDepth = axis == 0 ? surface.x : (axis == 1 ? surface.y : surface.z);
+                    weight *= SabaLiquidDepthMask(surfaceDepth, depth.r, depth.g, _DepthTolerance);
+
                     pigment += tex2D(_PigmentTex, uv) * weight;
                     film += tex2D(_FilmTex, uv) * weight;
                 }

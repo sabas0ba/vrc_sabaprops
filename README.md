@@ -52,6 +52,8 @@ Flock は Hierarchy の `SabaProps > Flock` から群れを追加し、Inspector
 
 Put Items は `Tools > SabaProps > Put Items > Open Demo Scene` から、食卓と冷蔵庫を含む完成済み Scene を開けます。食器の机への吸着、メモやアクセサリーの冷蔵庫への貼り付け、おぼん・皿・料理の入れ子追従を確認できます。[デモの操作手順](Packages/io.github.sabas0ba.sabaprops.putitems/Documentation~/demo-review.md)と[配置・同期の設定](Packages/io.github.sabas0ba.sabaprops.putitems/Documentation~/authoring.md)を参照してください。
 
+Liquid は `Tools > SabaProps > Liquid > Create Sample Scene` で、プール・泥沼・シャワー・水道・水鉄砲・鏡を並べたワールドを生成します。鏡の前で、自分のアバターが濡れる・泥が付く・洗い流される様子を確認できます。[パッケージの説明](Packages/io.github.sabas0ba.sabaprops.liquid/README.md)を参照してください。
+
 ---
 
 ## リポジトリ構成

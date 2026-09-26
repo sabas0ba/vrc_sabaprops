@@ -3,6 +3,7 @@
 // Pass 0: 顔料（premultiplied RGB と被覆率 A）
 // Pass 1: 液膜（R: 液量, G: 平滑度, B: 粘性, A: 蒸発率）
 // Pass 2: 消去
+// Pass 3: 奥行き（R: 付着した面の奥行き（m）, G: 記録の確かさ）
 //
 // 1 回の Blit で、重力方向への流下、DrawOp の適用、蒸発をまとめて行います。
 // 流下と蒸発は液膜の状態で決まり、顔料は液膜に運ばれるだけです。
@@ -210,6 +211,51 @@ Shader "Hidden/SabaProps/Liquid/Canvas Update"
         return float4(amount, properties);
     }
 
+    // 付着した面の奥行きを記録します。SabaLiquidDepthMask の説明を参照してください。
+    // 流下で運ばれた液は上流の奥行きを引き継ぎ、新しい付着はその面の奥行きで上書きします。
+    // 洗浄だけの DrawOp は奥行きを変えません。
+    float4 fragDepth(v2f_blit input) : SV_Target
+    {
+        CanvasTexel t = SabaLiquidTexel(input.uv);
+        float2 upstreamUv = SabaLiquidUpstreamUv(input.uv, t);
+
+        float2 depth = tex2D(_MainTex, input.uv).rg;
+        float2 upstream = tex2D(_MainTex, upstreamUv).rg;
+        float arrive = SabaLiquidMobility(tex2D(_FilmTex, upstreamUv), t) * upstream.g;
+        if (arrive > 0.0)
+        {
+            depth.r = lerp(depth.r, upstream.r, depth.g > 0.0 ? arrive * 0.5 : 1.0);
+            depth.g = max(depth.g, arrive);
+        }
+
+        int count = (int)_StampCount;
+        for (int i = 0; i < SABA_LIQUID_MAX_STAMPS; i++)
+        {
+            if (i >= count)
+            {
+                break;
+            }
+
+            if (_StampNormal[i].w + _StampColor[i].a <= 0.0)
+            {
+                continue;
+            }
+
+            float share = saturate(SabaLiquidStampAt(i, t) * 4.0);
+            if (share <= 0.0)
+            {
+                continue;
+            }
+
+            float3 centre = _StampPos[i].xyz;
+            float stampDepth = t.axis == 0 ? centre.x : (t.axis == 1 ? centre.y : centre.z);
+            depth.r = lerp(depth.r, stampDepth, depth.g > 0.0 ? share : 1.0);
+            depth.g = max(depth.g, share);
+        }
+
+        return float4(depth, 0.0, 0.0);
+    }
+
     float4 fragClear(v2f_blit input) : SV_Target
     {
         return float4(0.0, 0.0, 0.0, 0.0);
@@ -249,6 +295,16 @@ Shader "Hidden/SabaProps/Liquid/Canvas Update"
             #pragma target 3.5
             #pragma vertex vert
             #pragma fragment fragClear
+            ENDCG
+        }
+
+        Pass
+        {
+            Name "Depth"
+            CGPROGRAM
+            #pragma target 3.5
+            #pragma vertex vert
+            #pragma fragment fragDepth
             ENDCG
         }
     }

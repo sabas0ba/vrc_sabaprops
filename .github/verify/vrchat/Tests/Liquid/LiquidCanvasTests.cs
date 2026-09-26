@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using NUnit.Framework;
 using SabaProps.Liquid.Editors;
+using UdonSharp.Compiler;
 using UnityEditor;
 using UnityEngine;
 
@@ -25,6 +26,17 @@ namespace SabaProps.Liquid.WorldTests
         private static readonly Vector3 HalfExtents = new Vector3(0.9f, 1.1f, 0.55f);
 
         private readonly List<Object> _created = new List<Object>();
+
+        /// <summary>
+        /// The builders add UdonSharp behaviours, which serialise through the
+        /// compiled programs. Batch mode does not necessarily compile before the
+        /// first test, so this class must not depend on another having run.
+        /// </summary>
+        [OneTimeSetUp]
+        public void CompileUdonSharpPrograms()
+        {
+            UdonSharpCompilerV1.CompileSync(new UdonSharpCompileOptions { IsEditorBuild = true });
+        }
 
         [TearDown]
         public void TearDown()
@@ -68,8 +80,8 @@ namespace SabaProps.Liquid.WorldTests
                 Assert.Fail($"shader '{shaderName}' failed to compile:\n" + string.Join("\n", details));
             }
 
-            // LiquidBodyCanvas blits with passes 0, 1 and 2 by index.
-            Assert.AreEqual(3, Shader.Find(LiquidAssets.CanvasUpdateShader).passCount);
+            // LiquidBodyCanvas blits with passes 0 to 3 by index.
+            Assert.AreEqual(4, Shader.Find(LiquidAssets.CanvasUpdateShader).passCount);
         }
 
         [Test]
@@ -116,6 +128,11 @@ namespace SabaProps.Liquid.WorldTests
                 }
 
                 Assert.AreNotEqual(0, projector.ignoreLayers & 1, "the Default layer is not ignored");
+
+                // Cameras cull the projector by its own layer. Avatar-only mirrors
+                // render Player but not Default.
+                Assert.AreEqual(LiquidCanvasPoolBuilder.PlayerLayer, projector.gameObject.layer,
+                    "the projector is not on the Player layer, so avatar-only mirrors will not show it");
             }
         }
 
@@ -177,6 +194,36 @@ namespace SabaProps.Liquid.WorldTests
             // 2 s of a 10 s drying time removes 0.2 of the film.
             Assert.AreEqual(wetBefore - 0.2f, wetAfter, 0.03f, "the film did not evaporate at the encoded rate");
             Assert.Greater(pigmentAfter, 0.5f, "the pigment went away with the film");
+        }
+
+        [Test]
+        public void Depth_RecordsTheSurfaceTheStampLandedOn()
+        {
+            Material update = UpdateMaterial();
+            RenderTexture pigmentA = Canvas(RenderTextureFormat.ARGB32);
+            RenderTexture pigmentB = Canvas(RenderTextureFormat.ARGB32);
+            RenderTexture filmA = Canvas(RenderTextureFormat.ARGBHalf);
+            RenderTexture filmB = Canvas(RenderTextureFormat.ARGBHalf);
+            RenderTexture depthA = Canvas(RenderTextureFormat.RGHalf);
+            RenderTexture depthB = Canvas(RenderTextureFormat.RGHalf);
+
+            // Paint on the outer side of a right arm, 0.49 m out along +X.
+            SetStamp(update, new Vector3(0.49f, 0f, 0f), Vector3.right, 0.3f,
+                Color.red, pigment: 1f, film: 1f, dryingEncoded: 0f);
+            Advance(update, pigmentA, pigmentB, filmA, filmB, depthA, depthB, deltaTime: 0f);
+
+            Color[] depth = Read(depthB, TextureFormat.RGBAHalf);
+            Color landed = TileCentre(depth, 0);
+            Assert.AreEqual(0.49f, landed.r, 0.01f, "the +X tile does not hold the depth of the arm");
+            Assert.Greater(landed.g, 0.9f, "the depth is recorded without confidence");
+            Assert.Less(TileCentre(depth, 1).g, 0.01f, "the -X tile recorded a depth for a stamp facing +X");
+
+            // A wash-only stamp does not move the recorded depth.
+            SetStamp(update, new Vector3(0.1f, 0f, 0f), Vector3.right, 0.3f,
+                Color.white, pigment: 0f, film: 0f, dryingEncoded: 0f);
+            Advance(update, pigmentB, pigmentA, filmB, filmA, depthB, depthA, deltaTime: 0f);
+            Assert.AreEqual(0.49f, TileCentre(Read(depthA, TextureFormat.RGBAHalf), 0).r, 0.01f,
+                "a stamp that leaves nothing behind moved the recorded depth");
         }
 
         [Test]
@@ -243,6 +290,238 @@ namespace SabaProps.Liquid.WorldTests
             Assert.AreEqual(Vector3.forward, waterGun.muzzle.localRotation * Vector3.forward, "the muzzle does not point along the gun");
         }
 
+        /// <summary>
+        /// Draws a stand-in body through the real projector and writes
+        /// TestResults/liquid-preview.png for a person to look at.
+        /// <para>
+        /// Asserts only that the projector changed the picture. Whether the wet
+        /// and muddy parts look right is a judgement the image exists for.
+        /// </para>
+        /// </summary>
+        [Test]
+        public void RenderPreviewForVisualReview()
+        {
+            const int layer = 9;
+            Vector3 origin = new Vector3(0f, 1.05f, 0f);
+
+            Primitive(PrimitiveType.Capsule, new Vector3(0f, 0.85f, 0f), new Vector3(0.55f, 0.85f, 0.4f), layer);
+            Primitive(PrimitiveType.Sphere, new Vector3(0f, 1.88f, 0f), Vector3.one * 0.34f, layer);
+            Primitive(PrimitiveType.Capsule, new Vector3(-0.42f, 1.15f, 0f), new Vector3(0.14f, 0.35f, 0.14f), layer);
+            Primitive(PrimitiveType.Capsule, new Vector3(0.42f, 1.15f, 0f), new Vector3(0.14f, 0.35f, 0.14f), layer);
+            var skin = new Material(Shader.Find("Standard")) { color = new Color(0.86f, 0.78f, 0.72f) };
+            _created.Add(skin);
+            foreach (Renderer renderer in Object.FindObjectsOfType<Renderer>())
+            {
+                if (renderer.gameObject.layer == layer)
+                {
+                    renderer.sharedMaterial = skin;
+                }
+            }
+
+            // Canvas contents: mud on the chest, paint on the right arm, water on the back.
+            Material update = UpdateMaterial();
+            // The package default resolution, so the picture shows what a world gets.
+            const int previewResolution = 160;
+            RenderTexture pigmentA = Canvas(RenderTextureFormat.ARGB32, previewResolution);
+            RenderTexture pigmentB = Canvas(RenderTextureFormat.ARGB32, previewResolution);
+            RenderTexture filmA = Canvas(RenderTextureFormat.ARGBHalf, previewResolution);
+            RenderTexture filmB = Canvas(RenderTextureFormat.ARGBHalf, previewResolution);
+            RenderTexture depthA = Canvas(RenderTextureFormat.RGHalf, previewResolution);
+            RenderTexture depthB = Canvas(RenderTextureFormat.RGHalf, previewResolution);
+
+            // Stamp centres sit on the stand-in's surfaces: the chest front at z = 0.2,
+            // the right arm's outer side at x = 0.49 and the back at z = -0.2.
+            SetStamps(update,
+                (new Vector3(0.05f, 0.2f, 0.2f), Vector3.forward, 0.22f, new Color(0.32f, 0.22f, 0.13f), 0.9f, 0.8f, 0.85f),
+                (new Vector3(0.49f, 0.1f, 0.02f), new Vector3(1f, 0f, 0.2f).normalized, 0.16f, new Color(0.85f, 0.1f, 0.12f), 1f, 0.6f, 0.3f),
+                (new Vector3(0f, 0.2f, -0.2f), Vector3.back, 0.4f, Color.white, 0f, 1f, 0.1f));
+            Advance(update, pigmentA, pigmentB, filmA, filmB, depthA, depthB, deltaTime: 0f);
+
+            // Let the water run for a few seconds so the drips show.
+            update.SetFloat("_StampCount", 0f);
+            update.SetFloat("_FlowSpeed", 0.08f);
+            for (int i = 0; i < 20; i++)
+            {
+                bool even = i % 2 == 0;
+                Advance(update, even ? pigmentB : pigmentA, even ? pigmentA : pigmentB,
+                    even ? filmB : filmA, even ? filmA : filmB,
+                    even ? depthB : depthA, even ? depthA : depthB, deltaTime: 0.1f);
+            }
+
+            // The atlas as the projector will read it, for reviewing the canvas on its own.
+            WritePng(pigmentB, "liquid-preview-pigment.png");
+            WritePng(filmB, "liquid-preview-film.png");
+
+            Shader projectorShader = Shader.Find(LiquidAssets.BodyProjectorShader);
+            var projectorMaterial = new Material(projectorShader);
+            _created.Add(projectorMaterial);
+            projectorMaterial.SetTexture("_PigmentTex", pigmentB);
+            projectorMaterial.SetTexture("_FilmTex", filmB);
+            projectorMaterial.SetTexture("_DepthTex", depthB);
+            projectorMaterial.SetFloat("_CanvasInset", Inset);
+            projectorMaterial.SetVector("_CanvasRowX", Row(Vector3.right, origin, HalfExtents.x));
+            projectorMaterial.SetVector("_CanvasRowY", Row(Vector3.up, origin, HalfExtents.y));
+            projectorMaterial.SetVector("_CanvasRowZ", Row(Vector3.forward, origin, HalfExtents.z));
+            // Standing in mud to the shins, and wet to the waist from a pool.
+            projectorMaterial.SetVector("_ImmersionLevels", new Vector4(-0.1f, -0.65f, 0.02f, 1f));
+            projectorMaterial.SetVector("_ImmersionAmounts", new Vector4(0.9f, 0.85f, 0.9f, 0f));
+            projectorMaterial.SetColor("_ImmersionColor", new Color(0.32f, 0.22f, 0.13f));
+
+            var projectorRoot = new GameObject("Canvas");
+            _created.Add(projectorRoot);
+            projectorRoot.transform.position = origin;
+            var projectorObject = new GameObject("Projector");
+            projectorObject.transform.SetParent(projectorRoot.transform, false);
+            LiquidCanvasPoolBuilder.ConfigureProjector(projectorObject, HalfExtents, projectorMaterial);
+
+            var lightObject = new GameObject("Key Light");
+            _created.Add(lightObject);
+            Light light = lightObject.AddComponent<Light>();
+            light.type = LightType.Directional;
+            light.transform.rotation = Quaternion.Euler(35f, 150f, 0f);
+            RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Flat;
+            RenderSettings.ambientLight = new Color(0.45f, 0.47f, 0.5f);
+
+            Texture2D withLiquid = RenderViews(layer, "liquid-preview.png");
+            projectorObject.SetActive(false);
+            Texture2D without = RenderViews(layer, null);
+
+            int changed = 0;
+            Color[] a = withLiquid.GetPixels();
+            Color[] b = without.GetPixels();
+            for (int i = 0; i < a.Length; i++)
+            {
+                if (Mathf.Abs(a[i].r - b[i].r) + Mathf.Abs(a[i].g - b[i].g) + Mathf.Abs(a[i].b - b[i].b) > 0.05f)
+                {
+                    changed++;
+                }
+            }
+
+            Assert.Greater(changed, a.Length / 50, "the projector left the body looking the same");
+        }
+
+        /// <summary>Front and back views side by side.</summary>
+        private Texture2D RenderViews(int layer, string fileName)
+        {
+            const int size = 512;
+            var target = new RenderTexture(size * 2, size, 24, RenderTextureFormat.ARGB32);
+            target.Create();
+            _created.Add(target);
+
+            var cameraObject = new GameObject("Preview Camera");
+            _created.Add(cameraObject);
+            Camera camera = cameraObject.AddComponent<Camera>();
+            camera.targetTexture = target;
+            camera.clearFlags = CameraClearFlags.SolidColor;
+            camera.backgroundColor = new Color(0.2f, 0.21f, 0.23f);
+            camera.cullingMask = 1 << layer;
+            camera.fieldOfView = 30f;
+            camera.aspect = 1f;
+
+            Vector3 look = new Vector3(0f, 1.05f, 0f);
+            camera.rect = new Rect(0f, 0f, 0.5f, 1f);
+            camera.transform.position = look + new Vector3(1.4f, 0.4f, 4.2f);
+            camera.transform.LookAt(look);
+            camera.Render();
+
+            camera.rect = new Rect(0.5f, 0f, 0.5f, 1f);
+            camera.transform.position = look + new Vector3(-1.4f, 0.4f, -4.2f);
+            camera.transform.LookAt(look);
+            camera.Render();
+
+            var image = new Texture2D(size * 2, size, TextureFormat.RGB24, false);
+            _created.Add(image);
+            RenderTexture previous = RenderTexture.active;
+            RenderTexture.active = target;
+            image.ReadPixels(new Rect(0, 0, size * 2, size), 0, 0);
+            image.Apply();
+            RenderTexture.active = previous;
+            camera.targetTexture = null;
+
+            if (fileName != null)
+            {
+                string directory = System.IO.Path.Combine(System.IO.Directory.GetCurrentDirectory(), "TestResults");
+                System.IO.Directory.CreateDirectory(directory);
+                System.IO.File.WriteAllBytes(System.IO.Path.Combine(directory, fileName), image.EncodeToPNG());
+            }
+
+            return image;
+        }
+
+        /// <summary>
+        /// Writes a canvas texture as a PNG. Premultiplied pigment is shown over
+        /// grey so uncovered texels are distinguishable from black pigment; film
+        /// shows its amount in red.
+        /// </summary>
+        private void WritePng(RenderTexture source, string fileName)
+        {
+            var readback = new Texture2D(source.width, source.height, TextureFormat.RGBAHalf, false, true);
+            _created.Add(readback);
+            RenderTexture previous = RenderTexture.active;
+            RenderTexture.active = source;
+            readback.ReadPixels(new Rect(0, 0, source.width, source.height), 0, 0);
+            readback.Apply();
+            RenderTexture.active = previous;
+
+            Color[] pixels = readback.GetPixels();
+            for (int i = 0; i < pixels.Length; i++)
+            {
+                Color c = pixels[i];
+                pixels[i] = new Color(c.r + 0.5f * (1f - c.a), c.g + 0.5f * (1f - c.a), c.b + 0.5f * (1f - c.a), 1f);
+            }
+
+            var image = new Texture2D(source.width, source.height, TextureFormat.RGB24, false);
+            _created.Add(image);
+            image.SetPixels(pixels);
+            image.Apply();
+
+            string directory = System.IO.Path.Combine(System.IO.Directory.GetCurrentDirectory(), "TestResults");
+            System.IO.Directory.CreateDirectory(directory);
+            System.IO.File.WriteAllBytes(System.IO.Path.Combine(directory, fileName), image.EncodeToPNG());
+        }
+
+        private GameObject Primitive(PrimitiveType type, Vector3 position, Vector3 scale, int layer)
+        {
+            GameObject go = GameObject.CreatePrimitive(type);
+            _created.Add(go);
+            go.layer = layer;
+            go.transform.position = position;
+            go.transform.localScale = scale;
+            return go;
+        }
+
+        private static Vector4 Row(Vector3 axis, Vector3 origin, float half)
+        {
+            return new Vector4(axis.x / half, axis.y / half, axis.z / half, -Vector3.Dot(axis, origin) / half);
+        }
+
+        private static void SetStamps(Material update,
+            params (Vector3 local, Vector3 normal, float radius, Color color, float pigment, float film, float viscosity)[] stamps)
+        {
+            var pos = new Vector4[LiquidBodyCanvas.MaxStampsPerUpdate];
+            var nrm = new Vector4[LiquidBodyCanvas.MaxStampsPerUpdate];
+            var col = new Vector4[LiquidBodyCanvas.MaxStampsPerUpdate];
+            var flm = new Vector4[LiquidBodyCanvas.MaxStampsPerUpdate];
+            var shp = new Vector4[LiquidBodyCanvas.MaxStampsPerUpdate];
+
+            for (int i = 0; i < stamps.Length; i++)
+            {
+                var s = stamps[i];
+                pos[i] = new Vector4(s.local.x, s.local.y, s.local.z, s.radius);
+                nrm[i] = new Vector4(s.normal.x, s.normal.y, s.normal.z, s.pigment);
+                col[i] = new Vector4(s.color.r, s.color.g, s.color.b, s.film);
+                flm[i] = new Vector4(0f, 0.9f, s.viscosity, 0f);
+                shp[i] = new Vector4(i * 17.3f, 0.6f, 0f, 0f);
+            }
+
+            update.SetFloat("_StampCount", stamps.Length);
+            update.SetVectorArray("_StampPos", pos);
+            update.SetVectorArray("_StampNormal", nrm);
+            update.SetVectorArray("_StampColor", col);
+            update.SetVectorArray("_StampFilm", flm);
+            update.SetVectorArray("_StampShape", shp);
+        }
+
         private static Color TilePixel(Color[] pixels, int face, float u, float v)
         {
             int column = face % LiquidBodyCanvas.AtlasColumns;
@@ -269,7 +548,13 @@ namespace SabaProps.Liquid.WorldTests
 
         private RenderTexture Canvas(RenderTextureFormat format)
         {
-            var texture = new RenderTexture(Width, Height, 0, format)
+            return Canvas(format, FaceResolution);
+        }
+
+        private RenderTexture Canvas(RenderTextureFormat format, int faceResolution)
+        {
+            var texture = new RenderTexture(
+                faceResolution * LiquidBodyCanvas.AtlasColumns, faceResolution * LiquidBodyCanvas.AtlasRows, 0, format)
             {
                 useMipMap = false,
                 wrapMode = TextureWrapMode.Clamp,
@@ -311,9 +596,22 @@ namespace SabaProps.Liquid.WorldTests
         private static void Advance(Material update, RenderTexture pigmentSource, RenderTexture pigmentTarget,
             RenderTexture filmSource, RenderTexture filmTarget, float deltaTime)
         {
+            Advance(update, pigmentSource, pigmentTarget, filmSource, filmTarget, null, null, deltaTime);
+        }
+
+        /// <summary>The same pass order as LiquidBodyCanvas.AdvanceCanvas.</summary>
+        private static void Advance(Material update, RenderTexture pigmentSource, RenderTexture pigmentTarget,
+            RenderTexture filmSource, RenderTexture filmTarget, RenderTexture depthSource, RenderTexture depthTarget,
+            float deltaTime)
+        {
             update.SetFloat("_DeltaTime", deltaTime);
             update.SetTexture("_FilmTex", filmSource);
             Graphics.Blit(pigmentSource, pigmentTarget, update, 0);
+            if (depthSource != null)
+            {
+                Graphics.Blit(depthSource, depthTarget, update, 3);
+            }
+
             Graphics.Blit(filmSource, filmTarget, update, 1);
         }
 

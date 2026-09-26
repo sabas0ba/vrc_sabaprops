@@ -116,7 +116,7 @@ docs.microsoft.com の URL 到達性を検証するもの）ため、終了コ�
 | `SabaProps.SoftProps.WorldTests` | EditMode + Playへの遷移 | Prefab生成、同梱デモのimport・参照・比較台、ClientSimでのCollider接触・復元・自動運動・立位荷重 |
 | `SabaProps.Tablet.WorldTests` | EditMode | 全コンポーネントの Udon コンパイル、サンプルシーンの全ボタンがエクスポート済みのイベントを呼ぶこと、ミラーの排他、テレポート地点の番号、Build の再実行で生成物が重複しないことを検証 |
 | `SabaProps.PutItems.Tests` | EditMode | 吸着対象と Pickup の設定、同梱デモの構成を検証 |
-| `SabaProps.Liquid.WorldTests` | EditMode | Body Canvas とプールの Udon コンパイル、シェーダのコンパイル、プール生成器の Projector 設定、Canvas 更新シェーダの GPU 上での付着・蒸発を検証 |
+| `SabaProps.Liquid.WorldTests` | EditMode | 全 Udon behaviour の UdonSharp コンパイルと公開イベント・同期変数、シェーダのコンパイル、生成された Projector と Source の構成、Canvas 更新シェーダの GPU 上での付着・蒸発・洗浄・奥行きの記録、サンプルシーンの構成（トリガーと液面の位置、泥に沈む床、スロープ、鏡）を検証。`TestResults/liquid-preview.png` に代用の体へ Projector で描いた確認画像を、`liquid-preview-pigment.png` と `liquid-preview-film.png` に Canvas のアトラスを出力 |
 
 Soft Propsの実行テストは指・棒・板の100 mmおよび0.5 mmの空隙、20 mmの侵入、離脱後の復元、自動上下運動、ローカルプレイヤーのFutonへの接地を検証します。VRChat実clientの手・胴体・リモートプレイヤーの接触を保証するテストではありません。
 

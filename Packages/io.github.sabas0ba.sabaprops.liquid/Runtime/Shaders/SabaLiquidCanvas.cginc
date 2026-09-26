@@ -80,6 +80,20 @@ float SabaLiquidFaceWeight(float3 normalCanvas, int face)
     return axis == 0 ? weights.x : (axis == 1 ? weights.y : weights.z);
 }
 
+// 付着した面の奥行きによる表示の重み。
+//
+// 6 面アトラスの 1 枚のタイルは、その面の向きを向いた表面のうち (u, v) が同じものを
+// すべて同じテクセルで表します。胴の側面と、その外側にある腕の側面は区別できません。
+// そこで付着を書くときに、当たった面の奥行き（面の軸方向の Canvas ローカル座標、m）を
+// 記録しておき、描くときに受け手の奥行きと比べて、離れていれば描きません。
+//
+// coverage はその奥行きの記録の確かさで、記録の無いテクセル（coverage 0）は制限しません。
+float SabaLiquidDepthMask(float surfaceDepth, float storedDepth, float coverage, float tolerance)
+{
+    float mask = 1.0 - smoothstep(tolerance, tolerance * 2.0, abs(surfaceDepth - storedDepth));
+    return lerp(1.0, mask, saturate(coverage));
+}
+
 float SabaLiquidStampFalloff(float distance, float radius)
 {
     float t = saturate(1.0 - (distance * distance) / max(radius * radius, 1e-8));

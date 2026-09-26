@@ -108,9 +108,18 @@ namespace SabaProps.Liquid.Editors
         /// plane at the full depth makes the frustum the box itself. The shader
         /// clips to the box again, so the frustum only has to be no smaller.
         /// </para>
+        /// <para>
+        /// The projector object itself sits on the Player layer. A camera culls a
+        /// projector by the projector's own layer, before it looks at what the
+        /// projector would land on, so a projector on Default disappears from any
+        /// camera that does not render Default. Avatar-only mirrors render
+        /// Player and MirrorReflection and nothing else; every camera that shows
+        /// remote avatars renders Player by definition.
+        /// </para>
         /// </summary>
         public static void ConfigureProjector(GameObject projectorObject, Vector3 halfExtents, Material material)
         {
+            projectorObject.layer = PlayerLayer;
             projectorObject.transform.localPosition = new Vector3(0f, 0f, -halfExtents.z);
             projectorObject.transform.localRotation = Quaternion.identity;
 

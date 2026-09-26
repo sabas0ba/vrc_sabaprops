@@ -21,6 +21,13 @@
 - `LiquidCanvasPool.CastPlayers`: 体をカプセルで近似した光線の命中判定
 - `LiquidBodyCanvas.WashBelow`: 指定した高さより下の顔料の洗浄
 - 水と泥のプロファイル、各 Source を配置する GameObject メニュー
+- プール、泥沼、シャワー、水道、水鉄砲、鏡を並べたサンプルシーンの生成（`Tools > SabaProps > Liquid > Create Sample Scene`）
+- 付着した面の奥行きの記録。同じ向きを向いた別の面（胴の側面と腕の外側など）に付着が写らないようにする
+- 差し出した手への命中判定（シャワーと水道が手を濡らす）
+
+### Fixed
+
+- Projector を Player レイヤに置くように変更。Default に置くと、アバターだけを映すミラーに付着が映らなかった
 
 ## [0.0.1] - 2026-09-23
 

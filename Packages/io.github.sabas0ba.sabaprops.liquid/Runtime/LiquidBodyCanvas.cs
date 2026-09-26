@@ -11,7 +11,7 @@ namespace SabaProps.Liquid
     /// 幾何計算は LiquidCanvasSolver.cs にあり、そちらは Unity 無しで実行して検査できます。
     /// </para>
     /// <para>
-    /// 付着は 2 枚の RenderTexture（顔料と液膜）に蓄えます。各テクスチャは前回の内容を
+    /// 付着は 3 種類の RenderTexture（顔料、液膜、付着した面の奥行き）に蓄えます。各テクスチャは前回の内容を
     /// 読みながら次を書くため 2 枚ずつ持ち、updateInterval ごとに VRCGraphics.Blit で進めます。
     /// 表示は子の Projector が担い、その投影範囲とマテリアルは Editor で確定させてあります。
     /// Udon からは Projector を操作できないためです。
@@ -78,6 +78,8 @@ namespace SabaProps.Liquid
         private RenderTexture _pigmentB;
         private RenderTexture _filmA;
         private RenderTexture _filmB;
+        private RenderTexture _depthA;
+        private RenderTexture _depthB;
         private bool _frontIsA = true;
 
         private Vector3 _origin;
@@ -384,10 +386,13 @@ namespace SabaProps.Liquid
             RenderTexture pigmentTarget = _frontIsA ? _pigmentB : _pigmentA;
             RenderTexture filmSource = _frontIsA ? _filmA : _filmB;
             RenderTexture filmTarget = _frontIsA ? _filmB : _filmA;
+            RenderTexture depthSource = _frontIsA ? _depthA : _depthB;
+            RenderTexture depthTarget = _frontIsA ? _depthB : _depthA;
 
-            // 顔料は流下の判定に更新前の液膜を読みます。液膜より先に進めます。
+            // 顔料と奥行きは流下の判定に更新前の液膜を読みます。液膜より先に進めます。
             updateMaterial.SetTexture("_FilmTex", filmSource);
             VRCGraphics.Blit(pigmentSource, pigmentTarget, updateMaterial, 0);
+            VRCGraphics.Blit(depthSource, depthTarget, updateMaterial, 3);
             VRCGraphics.Blit(filmSource, filmTarget, updateMaterial, 1);
             _frontIsA = !_frontIsA;
             _stampCount = 0;
@@ -433,6 +438,7 @@ namespace SabaProps.Liquid
         {
             projectorMaterial.SetTexture("_PigmentTex", _frontIsA ? _pigmentA : _pigmentB);
             projectorMaterial.SetTexture("_FilmTex", _frontIsA ? _filmA : _filmB);
+            projectorMaterial.SetTexture("_DepthTex", _frontIsA ? _depthA : _depthB);
             projectorMaterial.SetFloat("_CanvasInset", atlasInset);
         }
 
@@ -452,6 +458,10 @@ namespace SabaProps.Liquid
             _pigmentB = CreateCanvasTexture(width, height, RenderTextureFormat.ARGB32);
             _filmA = CreateCanvasTexture(width, height, RenderTextureFormat.ARGBHalf);
             _filmB = CreateCanvasTexture(width, height, RenderTextureFormat.ARGBHalf);
+
+            // 付着した面の奥行き（m、符号付き）と記録の確かさ。
+            _depthA = CreateCanvasTexture(width, height, RenderTextureFormat.RGHalf);
+            _depthB = CreateCanvasTexture(width, height, RenderTextureFormat.RGHalf);
         }
 
         private RenderTexture CreateCanvasTexture(int width, int height, RenderTextureFormat format)
@@ -472,6 +482,8 @@ namespace SabaProps.Liquid
             VRCGraphics.Blit(_pigmentA, _pigmentB, updateMaterial, 2);
             VRCGraphics.Blit(_filmB, _filmA, updateMaterial, 2);
             VRCGraphics.Blit(_filmA, _filmB, updateMaterial, 2);
+            VRCGraphics.Blit(_depthB, _depthA, updateMaterial, 2);
+            VRCGraphics.Blit(_depthA, _depthB, updateMaterial, 2);
             _frontIsA = true;
         }
     }

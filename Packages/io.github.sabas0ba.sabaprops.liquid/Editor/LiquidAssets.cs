@@ -59,6 +59,66 @@ namespace SabaProps.Liquid.Editors
             return MaterialFolder + "/LiquidBodyProjector_" + index.ToString("00") + ".mat";
         }
 
+        /// <summary>
+        /// Loads an opaque Standard material, or creates it with the given colour
+        /// and smoothness.
+        /// </summary>
+        public static Material CreateOrLoadSurfaceMaterial(string assetPath, Color colour, float smoothness)
+        {
+            var existing = AssetDatabase.LoadAssetAtPath<Material>(assetPath);
+            if (existing != null)
+            {
+                return existing;
+            }
+
+            Material material = CreateOrLoadMaterial(assetPath, "Standard");
+            if (material == null)
+            {
+                return null;
+            }
+
+            material.color = colour;
+            material.SetFloat("_Glossiness", smoothness);
+            EditorUtility.SetDirty(material);
+            return material;
+        }
+
+        /// <summary>
+        /// Loads a transparent Standard material, or creates it.
+        /// <para>
+        /// The Standard shader's "Transparent" mode is an inspector convenience:
+        /// the inspector sets these blend states, keywords and queue when the
+        /// mode changes. A material made from code has to set them itself.
+        /// </para>
+        /// </summary>
+        public static Material CreateOrLoadTransparentMaterial(string assetPath, Color colour, float smoothness)
+        {
+            var existing = AssetDatabase.LoadAssetAtPath<Material>(assetPath);
+            if (existing != null)
+            {
+                return existing;
+            }
+
+            Material material = CreateOrLoadMaterial(assetPath, "Standard");
+            if (material == null)
+            {
+                return null;
+            }
+
+            material.color = colour;
+            material.SetFloat("_Glossiness", smoothness);
+            material.SetFloat("_Mode", 3f);
+            material.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.One);
+            material.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+            material.SetInt("_ZWrite", 0);
+            material.DisableKeyword("_ALPHATEST_ON");
+            material.DisableKeyword("_ALPHABLEND_ON");
+            material.EnableKeyword("_ALPHAPREMULTIPLY_ON");
+            material.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent;
+            EditorUtility.SetDirty(material);
+            return material;
+        }
+
         /// <summary>Loads a material using the given shader, or creates it.</summary>
         public static Material CreateOrLoadMaterial(string assetPath, string shaderName)
         {

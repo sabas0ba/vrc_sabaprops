@@ -10,6 +10,7 @@ namespace SabaProps.Liquid
     /// 場の評価を行います。ノズルから円錐状に光線を出し、当たったプレイヤーの
     /// Body Canvas へ、着水点の高さより下の濡れと洗浄を与えます。水は着いた点から
     /// 体を伝って流れ落ちるためです。着水点には飛沫の付着も残します。
+    /// 差し出した手に当たった場合は、手に付着を残すだけです。
     /// </para>
     /// <para>
     /// 同期するのは放水しているかどうかだけです。光線の方向はサーバー時刻から求めた
@@ -208,7 +209,14 @@ namespace SabaProps.Liquid
                 }
 
                 Vector3 point = pool.lastHitPoint;
-                canvas.ApplyImmersion(point.y, profile, share);
+
+                // 体に当たった水は伝い落ちて下を濡らします。差し出した手に当たった水は
+                // 体を伝わらないため、手に飛沫を残すだけにします。
+                if (!pool.lastHitHand)
+                {
+                    canvas.ApplyImmersion(point.y, profile, share);
+                }
+
                 canvas.QueueStamp(point, pool.lastHitNormal, splashRadius, profile, splashPerSecond * share,
                     pool.Random01(sample) * 100f);
             }
