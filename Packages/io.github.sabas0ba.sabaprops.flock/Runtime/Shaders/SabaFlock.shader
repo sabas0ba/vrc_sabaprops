@@ -121,7 +121,10 @@ Shader "SabaProps/Flock/Swarm"
                 UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(i);
 
                 float3 normal = normalize(i.worldNormal);
-                float3 light = normalize(_WorldSpaceLightPos0.xyz);
+                // Direction for a directional light, or from this fragment to a
+                // point or spot light; zero when the scene has no main light.
+                float3 toLight = UnityWorldSpaceLightDir(i.worldPos);
+                float3 light = dot(toLight, toLight) > 1e-8 ? normalize(toLight) : float3(0.0, 1.0, 0.0);
                 float3 toCamera = _WorldSpaceCameraPos - i.worldPos;
                 float cameraDistance = length(toCamera);
                 float3 view = toCamera / max(cameraDistance, 1e-4);

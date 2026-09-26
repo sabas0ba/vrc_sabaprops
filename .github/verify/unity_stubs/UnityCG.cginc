@@ -41,6 +41,11 @@ float3 UnityObjectToWorldNormal(float3 normal)
     return normalize(mul(normal, (float3x3)unity_WorldToObject));
 }
 
+float3 UnityWorldSpaceLightDir(float3 worldPos)
+{
+    return _WorldSpaceLightPos0.xyz - worldPos * _WorldSpaceLightPos0.w;
+}
+
 float3 ShadeSH9(float4 normal)
 {
     return max(normal.xyz * 0.1 + 0.2, 0.0);

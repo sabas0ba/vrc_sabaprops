@@ -127,6 +127,26 @@ namespace SabaProps.Flock.CITests
         }
 
         [Test]
+        public void DuplicatedSwarm_GetsItsOwnMeshAsset()
+        {
+            FlockSwarm original = Create("goose");
+            Mesh originalMesh = original.generatedMeshes[0];
+            string originalPath = AssetDatabase.GetAssetPath(originalMesh);
+            int originalVertices = originalMesh.vertexCount;
+
+            GameObject copy = Object.Instantiate(original.gameObject);
+            _created.Add(copy);
+            var duplicate = copy.GetComponent<FlockSwarm>();
+            duplicate.settings.count = 3;
+            duplicate.settings.lodMode = FlockLodMode.Single;
+            FlockSwarmBuilder.Rebuild(duplicate);
+
+            Assert.AreNotEqual(originalPath, AssetDatabase.GetAssetPath(duplicate.generatedMeshes[0]));
+            Assert.AreEqual(originalPath, AssetDatabase.GetAssetPath(originalMesh), "the original's asset was deleted");
+            Assert.AreEqual(originalVertices, originalMesh.vertexCount, "rebuilding the copy rewrote the original's mesh");
+        }
+
+        [Test]
         public void SingleMode_ReplacesTheLodGroup()
         {
             FlockSwarm swarm = Create("koi");

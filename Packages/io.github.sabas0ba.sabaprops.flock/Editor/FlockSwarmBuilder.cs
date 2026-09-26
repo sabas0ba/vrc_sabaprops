@@ -132,11 +132,17 @@ namespace SabaProps.Flock.Editors
             return Mathf.Max(species.Span, species.bodyLength);
         }
 
-        /// <summary>Returns the swarm's mesh assets, creating or replacing the asset when the tier count changed.</summary>
+        /// <summary>
+        /// Returns the swarm's mesh assets, creating or replacing the asset when
+        /// the tier count changed. A duplicated GameObject still references the
+        /// original's meshes; such a swarm gets a new asset of its own, and the
+        /// shared asset is left untouched.
+        /// </summary>
         private static Mesh[] PrepareMeshes(FlockSwarm swarm, int count)
         {
             Mesh[] existing = swarm.generatedMeshes ?? new Mesh[0];
-            bool reusable = existing.Length == count;
+            bool shared = IsSharedWithAnotherSwarm(swarm, existing);
+            bool reusable = existing.Length == count && !shared;
             foreach (Mesh mesh in existing)
             {
                 reusable &= mesh != null && !string.IsNullOrEmpty(AssetDatabase.GetAssetPath(mesh));
@@ -147,7 +153,9 @@ namespace SabaProps.Flock.Editors
                 return existing;
             }
 
-            string path = existing.Length > 0 && existing[0] != null ? AssetDatabase.GetAssetPath(existing[0]) : string.Empty;
+            string path = !shared && existing.Length > 0 && existing[0] != null
+                ? AssetDatabase.GetAssetPath(existing[0])
+                : string.Empty;
             if (!string.IsNullOrEmpty(path))
             {
                 AssetDatabase.DeleteAsset(path);
@@ -172,6 +180,28 @@ namespace SabaProps.Flock.Editors
             }
 
             return meshes;
+        }
+
+        /// <summary>True when another swarm in the open scenes references any of <paramref name="meshes"/>.</summary>
+        private static bool IsSharedWithAnotherSwarm(FlockSwarm swarm, Mesh[] meshes)
+        {
+            foreach (FlockSwarm other in Object.FindObjectsOfType<FlockSwarm>())
+            {
+                if (other == swarm || other.generatedMeshes == null)
+                {
+                    continue;
+                }
+
+                foreach (Mesh mesh in meshes)
+                {
+                    if (mesh != null && System.Array.IndexOf(other.generatedMeshes, mesh) >= 0)
+                    {
+                        return true;
+                    }
+                }
+            }
+
+            return false;
         }
 
         private static Renderer CreateRenderer(FlockSwarm swarm, string name, Mesh mesh, Material material)
