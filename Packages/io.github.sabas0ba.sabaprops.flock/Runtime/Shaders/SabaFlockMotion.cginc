@@ -21,6 +21,9 @@
 #define FLOCK_PATTERN_TORNADO 6
 #define FLOCK_PATTERN_WANDER 7
 #define FLOCK_PATTERN_ANCHORED 8
+#define FLOCK_PATTERN_JET 9
+#define FLOCK_PATTERN_FLOAT 10
+#define FLOCK_PATTERN_FREEFLIGHT 11
 
 #define FLOCK_PART_WING 1
 
@@ -37,6 +40,8 @@ struct FlockMotionInput
     float3 random;
     float maxPitch;
     float bankGain;
+    float3 bodyMargin;
+    float animationFrequency;
 };
 
 float FlockFrac(float v)
@@ -94,24 +99,53 @@ float FlockOrbitRate(float speed, float orbit)
     return min(speed / max(orbit, 0.01), FLOCK_MAX_ORBIT_RATE);
 }
 
-float3 FlockWander(float3 area, float bodyLength, float speed, float3 r, float t)
+float3 FlockMargin(FlockMotionInput input)
 {
-    float3 room = max(area - bodyLength, 0.0);
-    float a = min(room.x, 2.5 * room.z) * (0.35 + 0.4 * r.x);
-    float b = room.z * (0.4 + 0.5 * r.z);
-    float direction = r.y > 0.5 ? 1.0 : -1.0;
-    float orbitRate = min(speed / max(0.5 * (a + b), 0.01), FLOCK_MAX_ORBIT_RATE);
-    float angle = direction * orbitRate * t + FLOCK_TWO_PI * r.y;
+    return dot(input.bodyMargin, input.bodyMargin) > 0.0 ? input.bodyMargin : input.bodyLength;
+}
 
+float3 FlockWander(float3 room, float speed, float3 r, float t)
+{
+    float a = room.x * (0.68 + 0.14 * r.x);
+    float b = room.z * (0.68 + 0.14 * r.z);
+    float direction = r.y > 0.5 ? 1.0 : -1.0;
+    float aspect = min(a, b) / max(max(a, b), 0.01);
+    float orbitRate = min(speed / max(0.5 * (a + b), 0.01), 1.2 * aspect);
+    float clock = orbitRate * t;
+    float angle = direction * (clock + 0.12 * sin(clock * 0.37 + FLOCK_TWO_PI * r.x)) + FLOCK_TWO_PI * r.y;
     float slowest = orbitRate * min(a, b);
     float drift = max(max(room.x - a, room.z - b), 0.01);
-    float driftRate = 0.3 * slowest / drift;
-    float vertical = min(speed / max(room.y, 0.01) * (0.12 + 0.1 * r.y), 0.3 * orbitRate);
-
+    float driftRate = 0.08 * slowest / drift;
+    float radiusX = a * (1.0 + 0.08 * sin(clock * 0.13 + FLOCK_TWO_PI * r.z));
+    float radiusZ = b * (1.0 + 0.08 * sin(clock * 0.17 + FLOCK_TWO_PI * r.x));
     return float3(
-        (room.x - a) * sin(t * driftRate + FLOCK_TWO_PI * r.z) + a * cos(angle),
-        room.y * sin(t * vertical + FLOCK_TWO_PI * r.z),
-        (room.z - b) * sin(t * driftRate * 0.7 + FLOCK_TWO_PI * r.x) + b * sin(angle));
+        (room.x - 1.08 * a) * sin(t * driftRate + FLOCK_TWO_PI * r.z) + radiusX * cos(angle),
+        room.y * (0.7 * sin(clock * 0.19 + FLOCK_TWO_PI * r.z) + 0.3 * sin(clock * 0.071 + FLOCK_TWO_PI * r.x)),
+        (room.z - 1.08 * b) * sin(t * driftRate * 0.7 + FLOCK_TWO_PI * r.x) + radiusZ * sin(angle));
+}
+
+float FlockJetClock(float t, float frequency, float3 r)
+{
+    float rate = FLOCK_TWO_PI * max(frequency, 0.05);
+    return t - 0.65 * sin(rate * t + FLOCK_TWO_PI * FlockFrac(r.y * 5.13 + r.z * 2.71)) / rate;
+}
+
+float3 FlockDriftPoint(float index, float3 r)
+{
+    float3 p = float3(FlockFrac(index * 0.1031 + r.x), FlockFrac(index * 0.11369 + r.y), FlockFrac(index * 0.13787 + r.z));
+    return float3(FlockFrac(p.x * (p.y + 19.19)), FlockFrac(p.y * (p.z + 23.23)), FlockFrac(p.z * (p.x + 29.29))) * 2.0 - 1.0;
+}
+
+float3 FlockFloatDrift(float3 room, float bodyLength, float speed, float3 r, float t)
+{
+    float clock = t * speed / max(bodyLength, 0.01) / (60.0 + 90.0 * r.y);
+    float index = floor(clock);
+    float u = FlockFrac(clock), v = 1.0 - u;
+    float3 waypoint = FlockDriftPoint(index - 1.0, r) * (v * v * v)
+        + FlockDriftPoint(index, r) * (3.0 * u * u * u - 6.0 * u * u + 4.0)
+        + FlockDriftPoint(index + 1.0, r) * (-3.0 * u * u * u + 3.0 * u * u + 3.0 * u + 1.0)
+        + FlockDriftPoint(index + 2.0, r) * (u * u * u);
+    return waypoint / 6.0 * room;
 }
 
 float FlockDriftSpeed(float speed, float radius)
@@ -136,8 +170,14 @@ float3 FlockPosition(FlockMotionInput input, float time)
 
     if (pattern == FLOCK_PATTERN_WANDER)
     {
-        return FlockWander(area, bodyLength, input.speed, r, t);
+        return FlockWander(max(area - FlockMargin(input), 0.0), input.speed, r, t);
     }
+    if (input.pattern == FLOCK_PATTERN_FREEFLIGHT)
+        return FlockWander(max(area - FlockMargin(input), 0.0), input.speed, r, t);
+    if (input.pattern == FLOCK_PATTERN_JET)
+        return FlockWander(max(area - FlockMargin(input), 0.0), input.speed, r, FlockJetClock(t, input.animationFrequency, r));
+    if (input.pattern == FLOCK_PATTERN_FLOAT)
+        return FlockFloatDrift(max(area - FlockMargin(input), 0.0), bodyLength, input.speed, r, t);
 
     float3 centreAmplitude = max(area - (radius + bodyLength), 0.0);
     float angularSpeed = FlockPathAngularSpeed(centreAmplitude, input.speed);
@@ -238,6 +278,16 @@ void FlockPose(FlockMotionInput input, float time,
     position = FlockPosition(input, time);
     float3 next = FlockPosition(input, time + h);
 
+    if (input.pattern == FLOCK_PATTERN_FLOAT)
+    {
+        float yaw = FLOCK_TWO_PI * input.random.x + 0.15 * sin((time + input.timeOffset)
+            * input.speed / max(input.bodyLength, 0.01) * 0.015 + FLOCK_TWO_PI * input.random.z);
+        forward = float3(sin(yaw), 0.0, cos(yaw));
+        up = float3(0.0, 1.0, 0.0);
+        right = cross(up, forward);
+        return;
+    }
+
     float3 velocity = next - previous;
     float3 direction = dot(velocity, velocity) > 1e-10 ? normalize(velocity) : float3(0.0, 0.0, 1.0);
 
@@ -259,6 +309,12 @@ float3 FlockAppendageOffset(float3 p, float4 body, float mode,
     float frequency, float amplitude, float t, float phase, float bodyLength)
 {
     float beat = sin(FLOCK_TWO_PI * frequency * t + phase);
+    if (mode > 6.5)
+    {
+        float contraction = cos(FLOCK_TWO_PI * frequency * t + phase);
+        return float3(0.08 * p.x, 0.08 * p.y, -0.04 * p.z) * contraction
+            + float3(amplitude * bodyLength * body.y * beat, 0.0, 0.0);
+    }
     if (mode < 3.5)
     {
         if (abs(body.z - 4.0) < 0.5)

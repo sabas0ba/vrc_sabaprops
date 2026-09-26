@@ -55,7 +55,8 @@ namespace SabaProps.Flock.Editors
                 rows[preset.Habitat] = x + half + 0.6f;
 
                 FlockSwarm swarm = FlockSwarmBuilder.Create(s.id, rowParents[preset.Habitat].gameObject, new Vector3(x, 0f, 0f));
-                swarm.settings.pattern = s.defaultPattern == FlockPattern.Anchored ? FlockPattern.Anchored : FlockPattern.Wander;
+                swarm.settings.pattern = s.defaultPattern == FlockPattern.Anchored || s.defaultPattern == FlockPattern.Jet
+                    || s.defaultPattern == FlockPattern.Float ? s.defaultPattern : FlockPattern.Wander;
                 swarm.settings.count = CloseUpCount;
                 swarm.settings.area = new Vector3(half, Mathf.Max(0.5f * half, 1.5f * s.bodyLength), half);
                 if (s.grounded) swarm.settings.area.y = 0.001f;

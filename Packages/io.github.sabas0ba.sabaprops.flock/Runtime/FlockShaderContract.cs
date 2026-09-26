@@ -14,6 +14,7 @@ namespace SabaProps.Flock
     /// <item><term>UV3</term><description>xyz = area half extents (m), w = body length (m).</description></item>
     /// <item><term>UV4</term><description>x = <see cref="FlockAnimation"/>, y = beat frequency (Hz), z = beat amplitude, w = glide fraction.</description></item>
     /// <item><term>UV5</term><description>x = individual count, y = bank gain, z = maximum pitch, w = size variance.</description></item>
+    /// <item><term>UV6</term><description>xyz = animated body clearance (m), w = reserved.</description></item>
     /// </list>
     /// </summary>
     public static class FlockShaderContract
@@ -26,6 +27,7 @@ namespace SabaProps.Flock
         public const int AreaChannel = 3;
         public const int AnimationChannel = 4;
         public const int ExtraChannel = 5;
+        public const int BodyMarginChannel = 6;
 
         public const string SilhouetteColorProperty = "_SilhouetteColor";
         public const string SilhouetteStartProperty = "_SilhouetteStart";

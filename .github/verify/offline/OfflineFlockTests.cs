@@ -36,6 +36,9 @@ internal static class OfflineFlockTests
         FlockPattern.Tornado,
         FlockPattern.Wander,
         FlockPattern.Anchored,
+        FlockPattern.Jet,
+        FlockPattern.Float,
+        FlockPattern.FreeFlight,
     };
 
     private static string _csharpMotionPath;
@@ -50,6 +53,7 @@ internal static class OfflineFlockTests
     {
         "PathAngularSpeed", "PathPoint", "PathFrame", "UnitBallPoint", "Wobble",
         "Wander", "OrbitRate", "DriftSpeed", "Position", "Pose", "Frac", "AppendageOffset",
+        "Margin", "JetClock", "DriftPoint", "FloatDrift",
     };
 
     private static int Main(string[] args)
@@ -82,6 +86,10 @@ internal static class OfflineFlockTests
         Run("wing tips and flight feathers take the detail colour", WingMarkingsAreColoured);
         Run("fish patterns reach the high tier", FishPatternsAreVisible);
         Run("degenerate settings stay finite", DegenerateSettingsStayFinite);
+        Run("small aquarium fish travel and turn inside the glass", AquariumTravel);
+        Run("large birds occupy broad independent flight paths", BroadBirdFlight);
+        Run("jet contraction drives forward pulses", JetPulses);
+        Run("jellyfish drift slowly in three dimensions and stay upright", JellyfishDrift);
 
         if (_failures > 0)
         {
@@ -440,6 +448,114 @@ internal static class OfflineFlockTests
         Require(Approximately(bounds.extents, expected, 1e-4f), $"bounds {bounds.extents} != {expected}");
     }
 
+    private static void BroadBirdFlight()
+    {
+        foreach (string id in new[] { "swan", "crane" })
+        {
+            FlockSpecies species = FlockSpeciesCatalog.Create(id);
+            var settings = new FlockSwarmSettings { pattern = FlockPattern.FreeFlight, count = 3, seed = 133,
+                area = new Vector3(30f, 6f, 24f) };
+            var distances = new List<float>();
+            float minX = float.MaxValue, maxX = float.MinValue;
+            for (float t = 0f; t < 1200f; t += 1f)
+            {
+                Vector3 a = FlockMotion.Position(FlockSwarmMeshBuilder.MotionInput(species, settings, 0), t);
+                Vector3 b = FlockMotion.Position(FlockSwarmMeshBuilder.MotionInput(species, settings, 1), t);
+                distances.Add((a - b).magnitude);
+                minX = Mathf.Min(minX, a.x); maxX = Mathf.Max(maxX, a.x);
+            }
+            distances.Sort();
+            Require(distances[distances.Count / 2] > species.Span * 3f, id + ": paths overlap for too much of the flight");
+            Require(maxX - minX > 25f, id + ": trajectory too narrow");
+        }
+    }
+
+    private static void AquariumTravel()
+    {
+        foreach (string id in new[] { "neon-tetra", "goldfish", "ryukin", "angelfish", "discus" })
+        {
+            FlockSpecies species = FlockSpeciesCatalog.Create(id);
+            float depth = species.bodyLength >= 0.08f ? 0.45f : 0.3f;
+            float height = species.bodyLength >= 0.08f ? 0.5f : 0.36f;
+            var settings = new FlockSwarmSettings { pattern = FlockPattern.Wander, count = 3, seed = 215,
+                area = new Vector3(0.29f, height * 0.5f - 0.02f, depth * 0.5f - 0.01f) };
+            for (int i = 0; i < 3; i++)
+            {
+                FlockMotionInput input = FlockSwarmMeshBuilder.MotionInput(species, settings, i);
+                Vector3 room = input.Area - input.BodyMargin;
+                if (room.x <= 0f || room.y <= 0f || room.z <= 0f)
+                {
+                    Fail(id + ": body cannot fit inside tank; room=" + room);
+                    return;
+                }
+                Vector3 min = Vector3.one * float.MaxValue, max = Vector3.one * float.MinValue;
+                FlockMotion.Pose(input, 0f, out _, out Vector3 first, out _, out _);
+                float leastDot = 1f;
+                for (float t = 0f; t < 600f; t += 0.5f)
+                {
+                    FlockMotion.Pose(input, t, out Vector3 p, out Vector3 f, out _, out _);
+                    min = new Vector3(Mathf.Min(min.x, p.x), Mathf.Min(min.y, p.y), Mathf.Min(min.z, p.z));
+                    max = new Vector3(Mathf.Max(max.x, p.x), Mathf.Max(max.y, p.y), Mathf.Max(max.z, p.z));
+                    if (Math.Abs(p.x) > room.x + 1e-5f || Math.Abs(p.y) > room.y + 1e-5f || Math.Abs(p.z) > room.z + 1e-5f)
+                    {
+                        Fail(id + ": animated body crosses glass");
+                        return;
+                    }
+                    leastDot = Mathf.Min(leastDot, Vector3.Dot(first, f));
+                }
+                Require(max.x - min.x > room.x && max.z - min.z > room.z, id + ": insufficient travel");
+                Require(leastDot < -0.5f, id + ": never turns around");
+            }
+        }
+    }
+
+    private static void JetPulses()
+    {
+        Vector3 random = new Vector3(0.2f, 0.4f, 0.7f);
+        const float frequency = 0.8f;
+        float min = 10f, max = 0f;
+        for (float t = 0f; t < 10f; t += 0.01f)
+        {
+            float rate = (FlockMotion.JetClock(t + 0.001f, frequency, random) - FlockMotion.JetClock(t, frequency, random)) / 0.001f;
+            min = Mathf.Min(min, rate); max = Mathf.Max(max, rate);
+            float phase = FlockMotion.TwoPi * FlockMotion.Frac(random.y * 5.13f + random.z * 2.71f);
+            Vector3 deformation = FlockMotion.AppendageOffset(Vector3.right, new Vector4(0f, 0f, 0f, 0f),
+                (float)FlockAnimation.Jet, frequency, 0.06f, t, phase, 1f);
+            Require(Math.Abs(rate - (1f - 0.65f * deformation.x / 0.08f)) < 0.015f, "jet pulse is out of phase with contraction");
+        }
+        Require(min > 0.3f && max / min > 4f, "jet must pulse without reversing");
+        foreach (string id in new[] { "squid", "octopus" })
+        {
+            FlockSpecies species = FlockSpeciesCatalog.Create(id);
+            Require(species.defaultPattern == FlockPattern.Jet && species.animation == FlockAnimation.Jet, id + ": wrong motion");
+        }
+    }
+
+    private static void JellyfishDrift()
+    {
+        FlockSpecies species = FlockSpeciesCatalog.Create("jellyfish");
+        Require(species.defaultPattern == FlockPattern.Float, "jellyfish must float");
+        var settings = new FlockSwarmSettings { pattern = FlockPattern.Float, count = 3, area = new Vector3(3.6f, 1.3f, 1.3f) };
+        FlockMotionInput input = FlockSwarmMeshBuilder.MotionInput(species, settings, 0);
+        float minY = float.MaxValue, maxY = float.MinValue;
+        for (float t = 0f; t < 3600f; t += 1f)
+        {
+            FlockMotion.Pose(input, t, out Vector3 p, out _, out Vector3 up, out _);
+            Vector3 next = FlockMotion.Position(input, t + 1f);
+            Require((next - p).magnitude < 0.08f, "jellyfish moves too fast");
+            Require(Approximately(up, Vector3.up, 1e-6f), "jellyfish tilts like a fish");
+            minY = Mathf.Min(minY, p.y); maxY = Mathf.Max(maxY, p.y);
+        }
+        Require(maxY - minY > 0.3f, "jellyfish lacks vertical drift");
+        float segment = (60f + 90f * input.Random.y) * input.BodyLength / input.Speed;
+        for (int i = 1; i < 10; i++)
+        {
+            float t = segment * i - input.TimeOffset;
+            Vector3 before = FlockMotion.Position(input, t - 0.1f), at = FlockMotion.Position(input, t), after = FlockMotion.Position(input, t + 0.1f);
+            Require((after - at - (at - before)).magnitude < 0.001f, "jellyfish drift snaps at waypoint");
+        }
+    }
+
     private static void ChannelsMatchMotionInput()
     {
         foreach (FlockPattern pattern in Patterns)
@@ -453,10 +569,14 @@ internal static class OfflineFlockTests
             var swarm = new List<Vector4>();
             var area = new List<Vector4>();
             var extra = new List<Vector4>();
+            var margin = new List<Vector4>();
+            var animation = new List<Vector4>();
             mesh.GetUVs(FlockShaderContract.IndividualChannel, individual);
             mesh.GetUVs(FlockShaderContract.SwarmChannel, swarm);
             mesh.GetUVs(FlockShaderContract.AreaChannel, area);
             mesh.GetUVs(FlockShaderContract.ExtraChannel, extra);
+            mesh.GetUVs(FlockShaderContract.BodyMarginChannel, margin);
+            mesh.GetUVs(FlockShaderContract.AnimationChannel, animation);
 
             for (int i = 0; i < settings.count; i++)
             {
@@ -469,6 +589,8 @@ internal static class OfflineFlockTests
                     ClusterRadius = swarm[v].w,
                     Area = new Vector3(area[v].x, area[v].y, area[v].z),
                     BodyLength = area[v].w,
+                    BodyMargin = new Vector3(margin[v].x, margin[v].y, margin[v].z),
+                    AnimationFrequency = animation[v].y,
                     Count = extra[v].x,
                     Index = individual[v].x,
                     Random = new Vector3(individual[v].y, individual[v].z, individual[v].w),
@@ -600,14 +722,17 @@ internal static class OfflineFlockTests
                     return;
                 }
 
-                bool inside = Math.Abs(p.x) <= area.x - s.bodyLength + tolerance
-                    && Math.Abs(p.y) <= area.y - s.bodyLength + tolerance
-                    && Math.Abs(p.z) <= area.z - s.bodyLength + tolerance;
+                Vector3 margin = settings.pattern == FlockPattern.Wander || settings.pattern == FlockPattern.FreeFlight
+                    || settings.pattern == FlockPattern.Jet || settings.pattern == FlockPattern.Float
+                    ? input.BodyMargin : Vector3.one * s.bodyLength;
+                bool inside = Math.Abs(p.x) <= area.x - margin.x + tolerance
+                    && Math.Abs(p.y) <= area.y - margin.y + tolerance
+                    && Math.Abs(p.z) <= area.z - margin.z + tolerance;
                 bool coveredByBounds = Math.Abs(p.x) <= bounds.x && Math.Abs(p.y) <= bounds.y && Math.Abs(p.z) <= bounds.z;
 
                 // An area thinner than two bodies cannot keep the margin; it
                 // must still stay inside the renderer bounds.
-                bool roomy = Math.Min(area.x, Math.Min(area.y, area.z)) > 2f * s.bodyLength;
+                bool roomy = area.x > margin.x && area.y > margin.y && area.z > margin.z;
                 if ((roomy && !inside) || !coveredByBounds)
                 {
                     Fail($"{label}: individual {i} at t={t} is at {p}, outside area {area}");
@@ -921,7 +1046,7 @@ internal static class OfflineFlockTests
         Require(normals.Length == vertices.Length, $"{label}: normals do not match vertices");
         Require(colors.Length == vertices.Length, $"{label}: colours do not match vertices");
 
-        for (int channel = 0; channel <= FlockShaderContract.ExtraChannel; channel++)
+        for (int channel = 0; channel <= FlockShaderContract.BodyMarginChannel; channel++)
         {
             var uvs = new List<Vector4>();
             mesh.GetUVs(channel, uvs);

@@ -40,8 +40,8 @@ namespace SabaProps.Flock.Editors
                 Tree(sky, new Vector3(-24f + i * 8f, 0f, 22f + (i % 2) * 5f), wood, leaves);
             Bench(sky, new Vector3(-3f, 0f, -4f), wood);
             Swarm(sky, "starling", new Vector3(-8f, 22f, 12f), new Vector3(22f, 7f, 18f), 180, FlockPattern.Murmuration, true, 101);
-            Swarm(sky, "goose", new Vector3(10f, 35f, 22f), new Vector3(30f, 8f, 25f), 16, FlockPattern.VFormation, true, 102);
-            Swarm(sky, "black-kite", new Vector3(0f, 15f, 5f), new Vector3(10f, 6f, 10f), 4, FlockPattern.Thermal, true, 103);
+            Swarm(sky, "goose", new Vector3(10f, 35f, 22f), new Vector3(30f, 8f, 25f), 6, FlockPattern.FreeFlight, true, 102);
+            Swarm(sky, "black-kite", new Vector3(0f, 20f, 5f), new Vector3(25f, 6f, 22f), 3, FlockPattern.FreeFlight, true, 103);
             View(sky, "Sky - ground eye 1.65 m", new Vector3(0f, 1.65f, -12f), new Vector3(0f, 12f, 18f), true);
             View(sky, "Sky - distant eye 1.65 m", new Vector3(0f, 1.65f, -42f), new Vector3(0f, 15f, 18f));
 
@@ -52,7 +52,7 @@ namespace SabaProps.Flock.Editors
             Tank(small, new Vector3(0f, 1.15f, 0f), new Vector3(0.6f, 0.36f, 0.3f), sand, tankBack, glass, water);
             Plant(small, new Vector3(-0.24f, 0.99f, 0.08f), 0.2f, leaves);
             Plant(small, new Vector3(0.24f, 0.99f, 0.08f), 0.12f, leaves);
-            Swarm(small, "neon-tetra", new Vector3(0f, 1.15f, 0f), new Vector3(0.24f, 0.12f, 0.10f), 12, FlockPattern.Wander, false, 201);
+            Swarm(small, "neon-tetra", new Vector3(0f, 1.15f, 0f), new Vector3(0.29f, 0.16f, 0.14f), 8, FlockPattern.Wander, false, 201);
             View(small, "Small tank - standing eye 1.65 m", new Vector3(0f, 1.65f, -2.8f), new Vector3(0f, 1.15f, 0.9f));
             View(small, "Small tank - close inspection", new Vector3(0f, 1.2f, -0.55f), new Vector3(0f, 1.15f, 0f));
 
@@ -128,9 +128,9 @@ namespace SabaProps.Flock.Editors
                     }
                     else
                     {
-                        Vector3 position = new Vector3((flying % 5 - 2) * 9f, 7f + flying / 5 * 5f, 10f + flying / 5 * 6f);
-                        Swarm(sky, id, position, new Vector3(4f, 2f, 4f), Mathf.Min(species.defaultCount, 6),
-                            species.defaultPattern, true, 120 + flying++);
+                        Vector3 position = new Vector3((flying % 5 - 2) * 12f, 16f + flying / 5 * 8f, 10f + flying / 5 * 10f);
+                        Swarm(sky, id, position, new Vector3(25f + flying % 3 * 5f, 6f, 24f), Mathf.Min(species.defaultCount, 3),
+                            FlockPattern.FreeFlight, true, 120 + flying++);
                     }
                 }
                 else if (preset.Habitat == FlockHabitat.Aquarium && id != "neon-tetra" && id != "koi" && id != "eel")
@@ -140,11 +140,12 @@ namespace SabaProps.Flock.Editors
                     int cell = aquarium < 1 ? 0 : aquarium + 1;
                     Vector3 offset = new Vector3((cell % 3 - 1) * 0.9f, 0f, cell / 3 * 0.9f);
                     Box(small, "Cabinet - " + id, offset + Vector3.up * 0.475f, new Vector3(0.8f, 0.95f, 0.5f), wood);
-                    Tank(small, offset + Vector3.up * 1.15f, new Vector3(0.6f, 0.36f, 0.3f), sand, back, glass, water);
-                    float margin = species.bodyLength * 1.3f;
-                    Vector3 area = new Vector3(Mathf.Max(0.3f - margin, 0.005f), Mathf.Max(0.18f - margin, 0.005f),
-                        Mathf.Max(0.15f - margin, 0.005f));
-                    Swarm(small, id, offset + Vector3.up * 1.15f, area, Mathf.Min(species.defaultCount, 8),
+                    float depth = species.bodyLength >= 0.08f ? 0.45f : 0.3f;
+                    float height = species.bodyLength >= 0.08f ? 0.5f : 0.36f;
+                    float centre = 0.97f + height * 0.5f;
+                    Tank(small, offset + Vector3.up * centre, new Vector3(0.6f, height, depth), sand, back, glass, water);
+                    Vector3 area = new Vector3(0.29f, height * 0.5f - 0.02f, depth * 0.5f - 0.01f);
+                    Swarm(small, id, offset + Vector3.up * centre, area, Mathf.Min(species.defaultCount, species.bodyLength >= 0.08f ? 3 : 8),
                         FlockPattern.Wander, false, 210 + aquarium++);
                 }
                 else if (id == "eel" || id == "salmon")
@@ -156,8 +157,8 @@ namespace SabaProps.Flock.Editors
                 {
                     if (species.bodyLength > 0.8f)
                     {
-                        Swarm(ocean, id, new Vector3((giant % 3 - 1) * 7f, giant / 3 == 0 ? 4f : 7f, 0f),
-                            new Vector3(2.8f, 1.2f, 2.3f), Mathf.Min(species.defaultCount, 3), FlockPattern.Wander, true, 501 + giant++);
+                        Swarm(ocean, id, new Vector3(0f, 5f, 0f),
+                            new Vector3(11.8f, 4.8f, 5.8f), Mathf.Min(species.defaultCount, 3), FlockPattern.Wander, true, 501 + giant++);
                     }
                     else
                     {
@@ -169,9 +170,11 @@ namespace SabaProps.Flock.Editors
                         Vector3 position = new Vector3((marine % 6 - 2.5f) * 1.1f, anchored ? 0.825f + floorOffset : 1.65f + marine / 6 * 0.45f,
                             anchored ? -0.4f : 0.35f);
                         float length = species.bodyLength;
-                        Swarm(large, id, position, anchored ? Vector3.one * length : new Vector3(length + 0.3f, length + 0.1f, length + 0.2f),
+                        bool special = species.defaultPattern == FlockPattern.Jet || species.defaultPattern == FlockPattern.Float;
+                        if (special) position = new Vector3(0f, 2.3f, 0f);
+                        Swarm(large, id, position, anchored ? Vector3.one * length : special ? new Vector3(3.6f, 1.3f, 1.3f) : new Vector3(length + 0.6f, length + 0.1f, length + 0.3f),
                             anchored ? 1 : Mathf.Min(species.defaultCount, length < 0.15f ? 6 : 3),
-                            anchored ? FlockPattern.Anchored : FlockPattern.Wander, false, 310 + marine++);
+                            anchored || special ? species.defaultPattern : FlockPattern.Wander, false, 310 + marine++);
                     }
                 }
             }

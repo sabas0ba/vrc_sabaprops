@@ -89,6 +89,8 @@ namespace SabaProps.Flock.Editors
                 ClusterRadius = ClusterRadius(species, settings),
                 Area = Area(settings),
                 BodyLength = species.bodyLength,
+                BodyMargin = Vector3.one * BodyReach(species),
+                AnimationFrequency = Mathf.Max(species.beatFrequency, 0f),
                 Count = Count(settings),
                 Index = index,
                 Random = IndividualRandom(settings.seed, index),
@@ -132,6 +134,7 @@ namespace SabaProps.Flock.Editors
                 ? 0.04f * species.bodyLength
                 : Amplitude(species) * species.bodyLength;
             if (species.animation == FlockAnimation.Tentacles) wave *= 1.12f;
+            if (species.animation == FlockAnimation.Jet) wave += 0.08f * radius;
             if (species.animation == FlockAnimation.Walk) wave += 0.05f * species.bodyLength;
             return (radius + 2f * shoulder + wave) * (1f + Mathf.Clamp(species.sizeVariance, 0f, 0.5f)) + 0.01f;
         }
@@ -163,6 +166,7 @@ namespace SabaProps.Flock.Editors
             var uvArea = new List<Vector4>(total);
             var uvAnimation = new List<Vector4>(total);
             var uvExtra = new List<Vector4>(total);
+            var uvMargin = new List<Vector4>(total);
             var triangles = new List<int>(body.Triangles.Count * count);
 
             Vector3 area = Area(settings);
@@ -178,6 +182,8 @@ namespace SabaProps.Flock.Editors
                 Amplitude(species),
                 Mathf.Clamp01(species.glide));
             var extra = new Vector4(count, BankGain(species), MaxPitch(species), Mathf.Clamp(species.sizeVariance, 0f, 0.5f));
+            float reach = BodyReach(species);
+            var margin = new Vector4(reach, reach, reach, 0f);
 
             for (int i = 0; i < count; i++)
             {
@@ -196,6 +202,7 @@ namespace SabaProps.Flock.Editors
                     uvArea.Add(areaChannel);
                     uvAnimation.Add(animation);
                     uvExtra.Add(extra);
+                    uvMargin.Add(margin);
                 }
 
                 foreach (int index in body.Triangles)
@@ -216,6 +223,7 @@ namespace SabaProps.Flock.Editors
             mesh.SetUVs(FlockShaderContract.AreaChannel, uvArea);
             mesh.SetUVs(FlockShaderContract.AnimationChannel, uvAnimation);
             mesh.SetUVs(FlockShaderContract.ExtraChannel, uvExtra);
+            mesh.SetUVs(FlockShaderContract.BodyMarginChannel, uvMargin);
             mesh.SetTriangles(triangles, 0, false);
 
             // The vertices hold one body at the origin; the shader spreads the

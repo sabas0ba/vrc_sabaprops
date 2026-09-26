@@ -29,6 +29,9 @@ namespace SabaProps.Flock
         public float MaxPitch;
         /// <summary>Bank angle in radians per metre per second squared of sideways acceleration.</summary>
         public float BankGain;
+        /// <summary>Conservative animated body radius on each axis, baked in UV6.</summary>
+        public Vector3 BodyMargin;
+        public float AnimationFrequency;
     }
 
     /// <summary>
@@ -41,7 +44,7 @@ namespace SabaProps.Flock
     /// turns smoothly. A change here must be mirrored in the shader include.
     /// </para>
     /// <para>
-    /// Every pattern except <see cref="FlockPattern.Wander"/> is a group centre
+    /// The original group patterns use a group centre
     /// <c>C(t)</c> plus a per-individual offset <c>O(t)</c> with
     /// <c>|O| &lt;= ClusterRadius</c>. The centre stays within
     /// <c>Area - ClusterRadius - BodyLength</c> on each axis, so the individual
@@ -79,8 +82,14 @@ namespace SabaProps.Flock
 
             if (input.Pattern == FlockPattern.Wander)
             {
-                return Wander(area, length, input.Speed, r, t);
+                return Wander(Max(area - Margin(input), 0f), input.Speed, r, t);
             }
+            if (input.Pattern == FlockPattern.FreeFlight)
+                return Wander(Max(area - Margin(input), 0f), input.Speed, r, t);
+            if (input.Pattern == FlockPattern.Jet)
+                return Wander(Max(area - Margin(input), 0f), input.Speed, r, JetClock(t, input.AnimationFrequency, r));
+            if (input.Pattern == FlockPattern.Float)
+                return FloatDrift(Max(area - Margin(input), 0f), length, input.Speed, r, t);
 
             Vector3 centreAmplitude = Max(area - Vector3.one * (radius + length), 0f);
             float angularSpeed = PathAngularSpeed(centreAmplitude, input.Speed);
@@ -198,6 +207,12 @@ namespace SabaProps.Flock
             float frequency, float amplitude, float t, float phase, float bodyLength)
         {
             float beat = Mathf.Sin(TwoPi * frequency * t + phase);
+            if (mode > 6.5f)
+            {
+                float contraction = Mathf.Cos(TwoPi * frequency * t + phase);
+                return new Vector3(0.08f * p.x, 0.08f * p.y, -0.04f * p.z) * contraction
+                    + new Vector3(amplitude * bodyLength * body.y * beat, 0f, 0f);
+            }
             if (mode < 3.5f)
             {
                 if (Mathf.Abs(body.z - 4f) < 0.5f)
@@ -238,6 +253,16 @@ namespace SabaProps.Flock
             Vector3 previous = Position(input, time - h);
             position = Position(input, time);
             Vector3 next = Position(input, time + h);
+
+            if (input.Pattern == FlockPattern.Float)
+            {
+                float yaw = TwoPi * input.Random.x + 0.15f * Mathf.Sin((time + input.TimeOffset)
+                    * input.Speed / Mathf.Max(input.BodyLength, 0.01f) * 0.015f + TwoPi * input.Random.z);
+                forward = new Vector3(Mathf.Sin(yaw), 0f, Mathf.Cos(yaw));
+                up = Vector3.up;
+                right = Vector3.Cross(up, forward);
+                return;
+            }
 
             Vector3 velocity = next - previous;
             Vector3 direction = velocity.sqrMagnitude > 1e-10f ? velocity.normalized : Vector3.forward;
@@ -358,28 +383,57 @@ namespace SabaProps.Flock
 
         /// <summary>
         /// Independent path of one individual inside the area, as a fish in a
-        /// tank: an ellipse whose centre drifts slowly. The drift is held
-        /// below a third of the slowest point on the ellipse, so the heading
-        /// never reverses.
+        /// tank: the animated body margin is subtracted once from its physical half extents.
         /// </summary>
-        public static Vector3 Wander(Vector3 area, float bodyLength, float speed, Vector3 r, float t)
+        public static Vector3 Margin(in FlockMotionInput input)
         {
-            Vector3 room = Max(area - Vector3.one * bodyLength, 0f);
-            float a = Mathf.Min(room.x, 2.5f * room.z) * (0.35f + 0.4f * r.x);
-            float b = room.z * (0.4f + 0.5f * r.z);
-            float direction = r.y > 0.5f ? 1f : -1f;
-            float orbitRate = Mathf.Min(speed / Mathf.Max(0.5f * (a + b), 0.01f), MaxOrbitRate);
-            float angle = direction * orbitRate * t + TwoPi * r.y;
+            return input.BodyMargin.sqrMagnitude > 0f ? input.BodyMargin : Vector3.one * input.BodyLength;
+        }
 
+        /// <summary>Wide individual paths with slowly varying radii, centre and speed.</summary>
+        public static Vector3 Wander(Vector3 room, float speed, Vector3 r, float t)
+        {
+            float a = room.x * (0.68f + 0.14f * r.x);
+            float b = room.z * (0.68f + 0.14f * r.z);
+            float direction = r.y > 0.5f ? 1f : -1f;
+            float aspect = Mathf.Min(a, b) / Mathf.Max(Mathf.Max(a, b), 0.01f);
+            float orbitRate = Mathf.Min(speed / Mathf.Max(0.5f * (a + b), 0.01f), 1.2f * aspect);
+            float clock = orbitRate * t;
+            float angle = direction * (clock + 0.12f * Mathf.Sin(clock * 0.37f + TwoPi * r.x)) + TwoPi * r.y;
             float slowest = orbitRate * Mathf.Min(a, b);
             float drift = Mathf.Max(Mathf.Max(room.x - a, room.z - b), 0.01f);
-            float driftRate = 0.3f * slowest / drift;
-            float vertical = Mathf.Min(speed / Mathf.Max(room.y, 0.01f) * (0.12f + 0.1f * r.y), 0.3f * orbitRate);
-
+            float driftRate = 0.08f * slowest / drift;
+            float radiusX = a * (1f + 0.08f * Mathf.Sin(clock * 0.13f + TwoPi * r.z));
+            float radiusZ = b * (1f + 0.08f * Mathf.Sin(clock * 0.17f + TwoPi * r.x));
             return new Vector3(
-                (room.x - a) * Mathf.Sin(t * driftRate + TwoPi * r.z) + a * Mathf.Cos(angle),
-                room.y * Mathf.Sin(t * vertical + TwoPi * r.z),
-                (room.z - b) * Mathf.Sin(t * driftRate * 0.7f + TwoPi * r.x) + b * Mathf.Sin(angle));
+                (room.x - 1.08f * a) * Mathf.Sin(t * driftRate + TwoPi * r.z) + radiusX * Mathf.Cos(angle),
+                room.y * (0.7f * Mathf.Sin(clock * 0.19f + TwoPi * r.z) + 0.3f * Mathf.Sin(clock * 0.071f + TwoPi * r.x)),
+                (room.z - 1.08f * b) * Mathf.Sin(t * driftRate * 0.7f + TwoPi * r.x) + radiusZ * Mathf.Sin(angle));
+        }
+
+        public static float JetClock(float t, float frequency, Vector3 r)
+        {
+            float rate = TwoPi * Mathf.Max(frequency, 0.05f);
+            return t - 0.65f * Mathf.Sin(rate * t + TwoPi * Frac(r.y * 5.13f + r.z * 2.71f)) / rate;
+        }
+
+        public static Vector3 DriftPoint(float index, Vector3 r)
+        {
+            Vector3 p = new Vector3(Frac(index * 0.1031f + r.x), Frac(index * 0.11369f + r.y), Frac(index * 0.13787f + r.z));
+            return new Vector3(Frac(p.x * (p.y + 19.19f)), Frac(p.y * (p.z + 23.23f)), Frac(p.z * (p.x + 29.29f))) * 2f - Vector3.one;
+        }
+
+        /// <summary>Cubic B-spline of seeded waypoints; all weights are nonnegative.</summary>
+        public static Vector3 FloatDrift(Vector3 room, float bodyLength, float speed, Vector3 r, float t)
+        {
+            float clock = t * speed / Mathf.Max(bodyLength, 0.01f) / (60f + 90f * r.y);
+            float index = Mathf.Floor(clock);
+            float u = Frac(clock), v = 1f - u;
+            Vector3 point = DriftPoint(index - 1f, r) * (v * v * v)
+                + DriftPoint(index, r) * (3f * u * u * u - 6f * u * u + 4f)
+                + DriftPoint(index + 1f, r) * (-3f * u * u * u + 3f * u * u + 3f * u + 1f)
+                + DriftPoint(index + 2f, r) * (u * u * u);
+            return Scale(point / 6f, room);
         }
 
         /// <summary>

@@ -108,14 +108,31 @@ namespace SabaProps.Flock.CITests
                     Assert.AreEqual(Vector3.one, swarm.transform.lossyScale);
                     Assert.IsTrue(swarm.generatedMeshes.Length > 0);
                     foreach (Mesh mesh in swarm.generatedMeshes) Assert.IsNotNull(mesh);
+                    if (swarm.presetId == "swan" || swarm.presetId == "crane")
+                    {
+                        Assert.AreEqual(FlockPattern.FreeFlight, swarm.settings.pattern);
+                        Assert.LessOrEqual(swarm.settings.count, 3);
+                        Assert.GreaterOrEqual(swarm.settings.area.x, 25f);
+                        Assert.GreaterOrEqual(swarm.settings.area.z, 24f);
+                    }
+                    if (swarm.presetId == "squid" || swarm.presetId == "octopus")
+                    {
+                        Assert.AreEqual(FlockPattern.Jet, swarm.settings.pattern);
+                        Assert.AreEqual(FlockAnimation.Jet, swarm.species.animation);
+                    }
+                    if (swarm.presetId == "jellyfish") Assert.AreEqual(FlockPattern.Float, swarm.settings.pattern);
                     if (swarm.GetComponent<LODGroup>() != null) lodCount++;
                     if (swarm.presetId == "neon-tetra")
                     {
                         smallTankCount++;
                         Assert.AreEqual(0.03f, swarm.species.bodyLength, 0.0001);
-                        Assert.IsTrue(swarm.settings.area.x + swarm.species.bodyLength < 0.3f);
-                        Assert.IsTrue(swarm.settings.area.y + swarm.species.bodyLength < 0.18f);
-                        Assert.IsTrue(swarm.settings.area.z + swarm.species.bodyLength < 0.15f);
+                        Assert.Less(swarm.settings.area.x, 0.3f);
+                        Assert.Less(swarm.settings.area.y, 0.18f);
+                        Assert.Less(swarm.settings.area.z, 0.15f);
+                        FlockMotionInput input = FlockSwarmMeshBuilder.MotionInput(swarm.species, swarm.settings, 0);
+                        Assert.Greater(input.BodyMargin.x, 0f);
+                        foreach (Mesh mesh in swarm.generatedMeshes)
+                            Assert.AreEqual(4, mesh.GetVertexAttributeDimension(VertexAttribute.TexCoord6));
                     }
                 }
                 Assert.AreEqual(1, smallTankCount);
@@ -232,7 +249,7 @@ namespace SabaProps.Flock.CITests
         {
             FlockSwarm swarm = Create("sardine");
             Mesh mesh = swarm.generatedMeshes[0];
-            for (int channel = 0; channel <= FlockShaderContract.ExtraChannel; channel++)
+            for (int channel = 0; channel <= FlockShaderContract.BodyMarginChannel; channel++)
             {
                 Assert.AreEqual(4, mesh.GetVertexAttributeDimension(VertexAttribute.TexCoord0 + channel),
                     $"UV{channel} is not four-dimensional");

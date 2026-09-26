@@ -32,6 +32,12 @@ namespace SabaProps.Flock
         Wander = 7,
         /// <summary>Fixed positions for sessile animals; appendages may still move.</summary>
         Anchored = 8,
+        /// <summary>Movement accelerates with mantle contraction, for cephalopods.</summary>
+        Jet = 9,
+        /// <summary>Slow smooth random drift in three dimensions, for jellyfish.</summary>
+        Float = 10,
+        /// <summary>Independent broad flight paths instead of a shared formation.</summary>
+        FreeFlight = 11,
     }
 
     /// <summary>Mesh detail tier.</summary>
@@ -70,6 +76,7 @@ namespace SabaProps.Flock
         Tentacles = 4,
         Pulse = 5,
         Static = 6,
+        Jet = 7,
     }
 
     /// <summary>Special anatomy beyond the ordinary bird and fish layouts.</summary>

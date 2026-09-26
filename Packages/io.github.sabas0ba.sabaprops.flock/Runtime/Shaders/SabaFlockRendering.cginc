@@ -26,6 +26,7 @@ struct appdata
     float4 area : TEXCOORD3;
     float4 animation : TEXCOORD4;
     float4 extra : TEXCOORD5;
+    float4 margin : TEXCOORD6;
     UNITY_VERTEX_INPUT_INSTANCE_ID
 };
 
@@ -54,6 +55,8 @@ v2f vert(appdata v)
     motion.clusterRadius = v.swarm.w;
     motion.area = v.area.xyz;
     motion.bodyLength = v.area.w;
+    motion.bodyMargin = v.margin.xyz;
+    motion.animationFrequency = v.animation.y;
     motion.count = v.extra.x;
     motion.index = v.individual.x;
     motion.random = v.individual.yzw;

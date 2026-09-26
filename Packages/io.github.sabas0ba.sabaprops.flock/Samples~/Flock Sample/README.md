@@ -5,6 +5,8 @@
 `FlockWorldScenarios.unity` を開き、`Tools > SabaProps > Flock > Sample View` で視点を切り替えます。
 全 69 種を空・地面、幅 60 cm の小型水槽 9 台、幅 8 m の大型水槽、川、幅 24 m の水槽へ配置しています。
 1 Unity unit = 1 m で、周辺 Props と個体の実寸、密度、遊泳範囲を比較できます。
+
+Play Mode で動きを確認してください。鳥は広い `FreeFlight`、小型水槽の魚は `Wander`、イカ・タコは収縮と加速が連動する `Jet`、クラゲは直立した長周期の `Float` です。クラゲの経由点は既定で 120～300 秒ごとに変わります。速度倍率を上げると早送りで確認できます。大きい観賞魚の水槽は高さ 0.50 m・奥行き 0.45 m としています。
 各区画の `Flock <種名>` をコピーし、Inspector の値を変えて `生成 / 更新` を押してください。
 Play Mode では動きを確認でき、Scene view では観察位置を自由に変えられます。
 区画ごとに 2 台の Camera と、地上の鳥を確認する Camera があり、全 11 台です。`Sample View > Ground birds / Oceanarium` で追加の視点を選べます。

@@ -79,8 +79,8 @@ namespace SabaProps.Flock
 
         private static void AddAdditionalSpecies(List<FlockPreset> list)
         {
-            AddMarine(list, "squid", "イカ", 0.4f, FlockBodyShape.Squid, FlockAnimation.Tentacles, 0xd5c4b9, 0x886f64);
-            AddMarine(list, "octopus", "タコ", 0.6f, FlockBodyShape.Octopus, FlockAnimation.Tentacles, 0xaa6251, 0xcf927a);
+            AddMarine(list, "squid", "イカ", 0.4f, FlockBodyShape.Squid, FlockAnimation.Jet, 0xd5c4b9, 0x886f64);
+            AddMarine(list, "octopus", "タコ", 0.6f, FlockBodyShape.Octopus, FlockAnimation.Jet, 0xaa6251, 0xcf927a);
             AddMarine(list, "jellyfish", "クラゲ", 0.3f, FlockBodyShape.Jellyfish, FlockAnimation.Pulse, 0xc4d9e0, 0x849dbb);
             AddMarine(list, "garden-eel", "チンアナゴ", 0.35f, FlockBodyShape.GardenEel, FlockAnimation.Tentacles, 0xdfd5b8, 0x504b3d, true);
             AddMarine(list, "crab", "カニ", 0.16f, FlockBodyShape.Crab, FlockAnimation.Tentacles, 0xa95e3c, 0xd88c5e, true);
@@ -120,10 +120,11 @@ namespace SabaProps.Flock
             s.bodyShape = shape; s.animation = animation;
             s.primary = C(bodyColor); s.secondary = C(appendageColor); s.accent = C(bodyColor);
             s.detail = C(appendageColor); s.extra = C(appendageColor); s.sizeVariance = 0.04f;
-            s.beatFrequency = shape == FlockBodyShape.Jellyfish ? 0.6f : 1.2f;
+            s.beatFrequency = shape == FlockBodyShape.Jellyfish ? 0.6f : animation == FlockAnimation.Jet ? 0.8f : 1.2f;
             s.beatAmplitude = animation == FlockAnimation.Static ? 0f : animation == FlockAnimation.Pulse ? 0.15f : 0.06f;
             s.cruiseSpeed = length * 0.5f;
-            s.defaultPattern = anchored ? FlockPattern.Anchored : FlockPattern.Wander;
+            s.defaultPattern = anchored ? FlockPattern.Anchored : animation == FlockAnimation.Jet ? FlockPattern.Jet
+                : shape == FlockBodyShape.Jellyfish ? FlockPattern.Float : FlockPattern.Wander;
             s.defaultCount = anchored ? 1 : 5;
             float horizontal = Mathf.Max(12f * length, 2f);
             s.defaultArea = new Vector3(horizontal, Mathf.Max(2f * length, 0.5f), horizontal);

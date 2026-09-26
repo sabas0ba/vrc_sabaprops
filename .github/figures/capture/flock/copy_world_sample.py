@@ -22,9 +22,41 @@ def references(text):
     return set(re.findall(r"guid: ([0-9a-f]{32})", text))
 
 
+def copy_all(sample, generated):
+    """Refresh all meshes when their vertex contract changes; keep Scene GUIDs."""
+    scene_names = ("FlockSample", "FlockWorldScenarios", "FlockComparisons")
+    scene_meta = {name: read(sample / (name + ".unity.meta")) for name in scene_names}
+    for name in ("Meshes", "WorldMeshes", "Materials", "Backdrop", "WorldMaterials"):
+        target = (sample / name).resolve()
+        if target.parent != sample.resolve():
+            raise ValueError(f"Invalid sample target: {target}")
+        if target.exists():
+            shutil.rmtree(target)
+        meta = sample / (name + ".meta")
+        if meta.exists():
+            meta.unlink()
+    for name in ("Meshes", "Materials"):
+        shutil.copytree(generated / "Flock" / name, sample / name)
+        shutil.copy2(generated / "Flock" / (name + ".meta"), sample / (name + ".meta"))
+    for name in ("WorldMaterials",):
+        shutil.copytree(generated / "FlockSample" / name, sample / name)
+        shutil.copy2(generated / "FlockSample" / (name + ".meta"), sample / (name + ".meta"))
+    for path in (generated / "FlockSample").glob("Backdrop*.mat*"):
+        shutil.copy2(path, sample / path.name)
+    for name in scene_names:
+        folder = "FlockComparisons" if name == "FlockComparisons" else "FlockSample"
+        shutil.copy2(generated / folder / (name + ".unity"), sample / (name + ".unity"))
+        (sample / (name + ".unity.meta")).write_text(scene_meta[name], encoding="utf-8", newline="\n")
+    for path in sample.rglob("*"):
+        if path.is_file() and path.suffix in (".asset", ".mat", ".meta", ".unity"):
+            path.write_text(re.sub(r"[ \t]+$", "", read(path), flags=re.MULTILINE), encoding="utf-8", newline="\n")
+    print("Updated all three scenes and their meshes; preserved Scene GUIDs.")
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--project", type=Path, required=True)
+    parser.add_argument("--all", action="store_true", help="Refresh all scenes after a vertex contract change.")
     args = parser.parse_args()
     repo = Path(__file__).resolve().parents[4]
     project = args.project.resolve()
@@ -33,6 +65,9 @@ def main():
 
     sample = repo / "Packages/io.github.sabas0ba.sabaprops.flock/Samples~/Flock Sample"
     generated = project / "Assets/SabaProps"
+    if args.all:
+        copy_all(sample, generated)
+        return
     scene = sample / "FlockWorldScenarios.unity"
     text = read(generated / "FlockSample/FlockWorldScenarios.unity")
     source_references = references(text)
