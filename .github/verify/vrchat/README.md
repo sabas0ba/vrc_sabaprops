@@ -39,6 +39,13 @@ Animator／Volume weight への反映と Volume の ON/OFF も検査します。
 ClientSim で通常のデモに加えて展示 World を実行し、全テーマの召喚・ページ送り・World のミラー操作を検査します。
 展示 World のローカル Build & Test は `SabaProps.Tablet.WorldTests.TabletBuildAndTest.RunGallery` で実行できます。
 
+文書の画像は、Windows で組み立て済みの専用プロジェクトを GUI で起動し、
+`-executeMethod SabaProps.Tablet.WorldTests.TabletDocumentationCapture.Run` を指定して再撮影できます。
+`-batchmode` は指定しません。操作ページ・World の画像と、Setup Window・Theme Presets・Inspector GUI を
+`TestResults/Documentation/` に保存し、撮影後に Editor を終了します。
+開始時にサンプルシーンを生成するため、作業中のプロジェクトではなく独立した検証プロジェクトを使ってください。
+画像を確認してからパッケージの `Documentation~/images/` に取り込みます。
+
 ローカル VRChat Build & Test は生成済みプロジェクトで次のメソッドを実行します。
 非同期処理完了時に Editor を終了するため、`-quit` は指定しません。
 

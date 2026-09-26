@@ -138,11 +138,13 @@ namespace SabaProps.Tablet.Editors
             TabletPage page = definition.FindOrAddPage("Bed Mirrors");
             page.bedDiagram = true;
             string[] names = { "Head", "Feet", "Left", "Right", "Ceiling" };
+            // 一辺 3 m の立方体。床面は生成せず、側面と天井が隙間なく接します。
+            Vector3 cubeCenter = center + Vector3.up * 1.5f;
             Vector3[] positions =
             {
-                center + new Vector3(0, 1.3f, 1.4f), center + new Vector3(0, 1.3f, -1.4f),
-                center + new Vector3(-1.1f, 1.3f, 0), center + new Vector3(1.1f, 1.3f, 0),
-                center + new Vector3(0, 2.5f, 0),
+                cubeCenter + new Vector3(0, 0, 1.5f), cubeCenter + new Vector3(0, 0, -1.5f),
+                cubeCenter + new Vector3(-1.5f, 0, 0), cubeCenter + new Vector3(1.5f, 0, 0),
+                cubeCenter + new Vector3(0, 1.5f, 0),
             };
             Vector2[] ui = { new Vector2(0, 0.4f), new Vector2(0, -0.4f), new Vector2(-0.33f, 0),
                 new Vector2(0.33f, 0), new Vector2(0.33f, 0.4f) };
@@ -150,10 +152,9 @@ namespace SabaProps.Tablet.Editors
             {
                 GameObject mirror = Mirror("Bed Mirror " + names[i], positions[i], LowQualityMirrorLayers);
                 // Quad の可視面 (-Z) をベッド中心の観察位置に向けます。
-                mirror.transform.rotation = Quaternion.LookRotation(positions[i] - (center + Vector3.up * 0.8f),
+                mirror.transform.rotation = Quaternion.LookRotation(positions[i] - cubeCenter,
                     i == 4 ? Vector3.forward : Vector3.up);
-                mirror.transform.localScale = i == 4 ? new Vector3(1.8f, 2.4f, 1) :
-                    new Vector3(i < 2 ? 1.8f : 2.4f, 1.8f, 1);
+                mirror.transform.localScale = new Vector3(3f, 3f, 1f);
                 mirror.SetActive(false);
                 page.entries.Add(new TabletEntry
                 {

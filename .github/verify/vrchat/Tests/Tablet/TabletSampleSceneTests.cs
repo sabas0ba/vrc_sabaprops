@@ -154,13 +154,17 @@ namespace SabaProps.Tablet.WorldTests
             TabletPage page = definition.FindOrAddPage("Bed Mirrors");
             Assert.That(page.bedDiagram, Is.True);
             Assert.That(page.entries.Count, Is.EqualTo(6));
-            Vector3 eye = new Vector3(6f, 0.8f, 3f);
+            Vector3 eye = new Vector3(6f, 1.5f, 3f);
             for (int i = 0; i < 5; i++)
             {
                 GameObject mirror = page.entries[i].objects[0];
                 Assert.That(mirror.GetComponent<VRCMirrorReflection>(), Is.Not.Null);
                 Assert.That(mirror.GetComponent<Renderer>().sharedMaterial.shader.name, Is.EqualTo("FX/MirrorReflection"));
                 Assert.That(Vector3.Dot(-mirror.transform.forward, (eye - mirror.transform.position).normalized), Is.GreaterThan(0.99f));
+                Assert.That(Vector3.Distance(eye, mirror.transform.position), Is.EqualTo(1.5f).Within(0.0001f));
+                Assert.That(mirror.transform.localScale, Is.EqualTo(new Vector3(3f, 3f, 1f)));
+                Vector3 offset = mirror.transform.position - eye;
+                Assert.That(Mathf.Abs(offset.x) + Mathf.Abs(offset.y) + Mathf.Abs(offset.z), Is.EqualTo(1.5f).Within(0.0001f));
                 Assert.That(page.entries[i].startOn, Is.False);
                 Assert.That(page.entries[i].exclusiveGroup, Is.Empty, "the bed faces can be enabled independently");
             }
