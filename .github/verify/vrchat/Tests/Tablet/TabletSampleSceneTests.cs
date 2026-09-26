@@ -163,6 +163,31 @@ namespace SabaProps.Tablet.WorldTests
             Assert.That(trigger.controller, Is.EqualTo(Object.FindObjectOfType<TabletController>()));
         }
 
+        [Test]
+        public void RemovedInteractItem_LosesItsTrigger()
+        {
+            var definition = Object.FindObjectOfType<TabletDefinition>();
+            GameObject stand = GameObject.Find(TabletSampleScene.StandName);
+            definition.interactItems.Remove(stand);
+            TabletBuilder.Build(definition);
+            Assert.That(stand.GetComponent<TabletInteractTrigger>(), Is.Null);
+            Assert.That(stand.GetComponent<VRC.Udon.UdonBehaviour>(), Is.Null);
+        }
+
+        [Test]
+        public void DuplicatedTablet_GetsItsOwnGeneratedFolder()
+        {
+            var original = Object.FindObjectOfType<TabletDefinition>();
+            string folder = original.generatedFolder;
+            GameObject copy = Object.Instantiate(original.gameObject);
+            var duplicate = copy.GetComponent<TabletDefinition>();
+            Assert.That(duplicate.generatedFolder, Is.EqualTo(folder), "the copy starts with the original's folder");
+
+            TabletBuilder.Build(duplicate);
+            Assert.That(duplicate.generatedFolder, Is.Not.EqualTo(folder));
+            Assert.That(original.generatedFolder, Is.EqualTo(folder));
+        }
+
         private static TabletToggle ToggleFor(string objectName)
         {
             foreach (TabletToggle toggle in Object.FindObjectsOfType<TabletToggle>())

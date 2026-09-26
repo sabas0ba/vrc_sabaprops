@@ -453,6 +453,26 @@ namespace SabaProps.Tablet.Editors
                 context.behaviours.Add(reach);
             }
 
+            // 定義から外したアイテムに以前の Build で付けたトリガを取り除きます。
+            // 対象はこのタブレットを呼ぶトリガだけで、他のタブレットのものには触れません。
+            foreach (TabletInteractTrigger stale in Object.FindObjectsOfType<TabletInteractTrigger>(true))
+            {
+                if (stale.controller == context.controller && !definition.interactItems.Contains(stale.gameObject))
+                {
+                    // UdonSharp の component と、実行時に使われる UdonBehaviour の両方を取り除きます。
+                    var backing = UdonSharpEditorUtility.GetBackingUdonBehaviour(stale);
+                    if (backing != null)
+                    {
+                        Undo.DestroyObjectImmediate(backing);
+                    }
+
+                    if (stale != null)
+                    {
+                        Undo.DestroyObjectImmediate(stale);
+                    }
+                }
+            }
+
             foreach (GameObject item in definition.interactItems)
             {
                 if (item == null)
@@ -608,7 +628,8 @@ namespace SabaProps.Tablet.Editors
 
             public void CreateAssets()
             {
-                if (string.IsNullOrEmpty(definition.generatedFolder) || !definition.generatedFolder.StartsWith("Assets/"))
+                if (string.IsNullOrEmpty(definition.generatedFolder) || !definition.generatedFolder.StartsWith("Assets/")
+                    || FolderSharedWithAnotherTablet(definition))
                 {
                     TabletAssets.EnsureFolder(TabletAssets.GeneratedFolder);
                     definition.generatedFolder = AssetDatabase.GenerateUniqueAssetPath(
@@ -666,6 +687,23 @@ namespace SabaProps.Tablet.Editors
             {
                 return TabletAssets.CreateOrReplace(
                     TabletAssets.ColorMaterial(theme.shader, color, theme.smoothness, name), folder + "/" + name + ".mat");
+            }
+
+            /// <summary>
+            /// 複製したタブレットは generatedFolder も複製されます。同じフォルダを使う別の定義が
+            /// 開いているシーンにあれば、Build する側に新しいフォルダを割り当て、複製元のアセットを書き換えないようにします。
+            /// </summary>
+            private static bool FolderSharedWithAnotherTablet(TabletDefinition definition)
+            {
+                foreach (TabletDefinition other in Object.FindObjectsOfType<TabletDefinition>(true))
+                {
+                    if (other != definition && other.generatedFolder == definition.generatedFolder)
+                    {
+                        return true;
+                    }
+                }
+
+                return false;
             }
 
             private static string SafeName(string name)
