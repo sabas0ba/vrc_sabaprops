@@ -223,7 +223,7 @@ namespace SabaProps.Liquid.Editors
         }
 
         /// <summary>Builds the package prefabs when they are missing, as in a fresh checkout.</summary>
-        internal static void EnsurePrefabs()
+        public static void EnsurePrefabs()
         {
             foreach (string name in LiquidPrefabBuilder.PrefabNames)
             {

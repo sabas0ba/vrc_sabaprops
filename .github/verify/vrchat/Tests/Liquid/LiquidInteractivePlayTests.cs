@@ -57,7 +57,12 @@ namespace SabaProps.Liquid.WorldTests
         public IEnumerator Interactive_SourcesHumidityAndLightBehave()
         {
             UdonSharpCompilerV1.CompileSync(new UdonSharpCompileOptions { IsEditorBuild = true });
-            LiquidPrefabBuilder.BuildAll();
+            // Saving over a prefab updates its instances in the open scene; right after another play
+            // session those instances can be in a state UdonSharp cannot serialize. Start from an empty
+            // scene, and only build the prefabs when they are missing (LiquidInteractiveSceneTests
+            // covers the builder itself).
+            EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
+            LiquidSampleScene.EnsurePrefabs();
             LiquidInteractiveScene.Create();
             EditorSceneManager.OpenScene(LiquidInteractiveScene.ScenePath);
 

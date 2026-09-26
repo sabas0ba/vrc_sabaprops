@@ -25,7 +25,11 @@ namespace SabaProps.Liquid.WorldTests
         public void CreateScene()
         {
             UdonSharpCompilerV1.CompileSync(new UdonSharpCompileOptions { IsEditorBuild = true });
-            LiquidPrefabBuilder.BuildAll();
+            // The prefabs are checked as shipped: export-liquid-sample.sh builds them in an editor
+            // session of its own. Rebuilding them here, after another test's play session with domain
+            // reload off, fails inside UdonSharp's serializer, so only missing ones are built.
+            EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
+            LiquidSampleScene.EnsurePrefabs();
             LiquidInteractiveScene.Create();
             EditorSceneManager.OpenScene(LiquidInteractiveScene.ScenePath, OpenSceneMode.Single);
             Physics.SyncTransforms();
