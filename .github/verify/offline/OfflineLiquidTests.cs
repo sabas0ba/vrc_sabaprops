@@ -61,6 +61,12 @@ namespace SabaProps.Liquid
             Run("shader constants agree with the solver", ShaderConstantsAgree);
             Run("degenerate input stays finite", DegenerateInputStaysFinite);
 
+            Run("a ray hits the capsule side, caps and misses correctly", LiquidCanvasPool.RayCapsuleCases);
+            Run("capsule hits lie on the surface with outward normals", LiquidCanvasPool.CapsuleHitsLieOnTheSurface);
+            Run("cone samples stay inside the cone", LiquidCanvasPool.ConeSamplesStayInsideTheCone);
+            Run("the hash is in [0, 1) and repeatable", LiquidCanvasPool.HashIsBoundedAndRepeatable);
+            Run("player-relative coordinates round trip and follow the player", LiquidCanvasPool.PlayerLocalRoundTrips);
+
             if (_failures > 0)
             {
                 Console.Error.WriteLine($"\n{_failures} liquid canvas check(s) failed");
@@ -537,6 +543,170 @@ namespace SabaProps.Liquid
         private sealed class CheckFailed : Exception
         {
             public CheckFailed(string message) : base(message) { }
+        }
+
+        internal static void Check(bool condition, string message)
+        {
+            Require(condition, message);
+        }
+    }
+
+    /// <summary>
+    /// Checks on the Source geometry in LiquidCanvasPoolSolver.cs. A partial of
+    /// LiquidCanvasPool for the same reason the canvas checks are a partial of
+    /// LiquidBodyCanvas; the entry point above runs them.
+    /// </summary>
+    public partial class LiquidCanvasPool
+    {
+        private const float Tolerance = 1e-4f;
+
+        internal static void RayCapsuleCases()
+        {
+            var pool = new LiquidCanvasPool();
+            Vector3 a = new Vector3(0f, 0.2f, 0f);
+            Vector3 b = new Vector3(0f, 1.6f, 0f);
+            const float r = 0.2f;
+
+            // 横から胴に当たる。表面は x = -0.2 なので距離は 1.8。
+            float side = pool.RayCapsule(new Vector3(-2f, 1f, 0f), Vector3.right, a, b, r);
+            LiquidBodyCanvas.Check(Mathf.Abs(side - 1.8f) < Tolerance, $"side hit at {side}");
+
+            // 真上から頭頂の半球に当たる。頭頂は y = 1.8。
+            float top = pool.RayCapsule(new Vector3(0f, 3f, 0f), Vector3.down, a, b, r);
+            LiquidBodyCanvas.Check(Mathf.Abs(top - 1.2f) < Tolerance, $"top hit at {top}");
+
+            // 真下から足元の半球に当たる。底は y = 0。
+            float bottom = pool.RayCapsule(new Vector3(0f, -1f, 0f), Vector3.up, a, b, r);
+            LiquidBodyCanvas.Check(Mathf.Abs(bottom - 1f) < Tolerance, $"bottom hit at {bottom}");
+
+            LiquidBodyCanvas.Check(pool.RayCapsule(new Vector3(-2f, 1f, 0.3f), Vector3.right, a, b, r) < 0f, "a ray passing beside the body hit it");
+            LiquidBodyCanvas.Check(pool.RayCapsule(new Vector3(-2f, 1f, 0f), -Vector3.right, a, b, r) < 0f, "a ray pointing away hit the body");
+            LiquidBodyCanvas.Check(pool.RayCapsule(new Vector3(0f, 1f, 0f), Vector3.right, a, b, r) < 0f, "a ray from inside the body hit it");
+            LiquidBodyCanvas.Check(pool.RayCapsule(new Vector3(-2f, 2.5f, 0f), Vector3.right, a, b, r) < 0f, "a ray above the head hit it");
+
+            // 軸と平行な光線（円柱の式が退化する場合）。
+            float parallel = pool.RayCapsule(new Vector3(0.1f, 5f, 0f), Vector3.down, a, b, r);
+            LiquidBodyCanvas.Check(parallel > 0f && IsFinite(parallel), $"a ray parallel to the axis gave {parallel}");
+        }
+
+        internal static void CapsuleHitsLieOnTheSurface()
+        {
+            var pool = new LiquidCanvasPool();
+            var random = new System.Random(23);
+            Vector3 a = new Vector3(1f, 0.25f, -2f);
+            Vector3 b = new Vector3(1.2f, 1.5f, -2.1f);
+            const float r = 0.25f;
+            int hits = 0;
+
+            for (int i = 0; i < 2000; i++)
+            {
+                Vector3 origin = a + RandomVector(random) * 4f;
+                Vector3 target = Vector3.Lerp(a, b, (float)random.NextDouble()) + RandomVector(random) * 0.3f;
+                Vector3 direction = (target - origin).normalized;
+                float t = pool.RayCapsule(origin, direction, a, b, r);
+                if (t < 0f)
+                {
+                    continue;
+                }
+
+                hits++;
+                Vector3 point = origin + direction * t;
+                float distance = DistanceToSegment(point, a, b);
+                LiquidBodyCanvas.Check(Mathf.Abs(distance - r) < 1e-3f, $"hit point is {distance} from the axis, not {r}");
+
+                Vector3 normal = pool.CapsuleNormal(point, a, b);
+                LiquidBodyCanvas.Check(Mathf.Abs(normal.magnitude - 1f) < Tolerance, "normal is not unit length");
+                LiquidBodyCanvas.Check(Vector3.Dot(normal, direction) <= 1e-3f, "the ray hit the far side of the body");
+            }
+
+            LiquidBodyCanvas.Check(hits > 500, $"only {hits} of 2000 aimed rays hit");
+        }
+
+        internal static void ConeSamplesStayInsideTheCone()
+        {
+            var pool = new LiquidCanvasPool();
+            Vector3 axis = new Vector3(0.3f, -1f, 0.2f).normalized;
+            const float angle = 12f;
+            float cosLimit = Mathf.Cos((angle + 0.01f) * Mathf.Deg2Rad);
+            float widest = 1f;
+
+            for (int i = 0; i < 1000; i++)
+            {
+                Vector3 d = pool.ConeDirection(axis, angle, pool.Hash01(i * 2), pool.Hash01(i * 2 + 1));
+                LiquidBodyCanvas.Check(Mathf.Abs(d.magnitude - 1f) < Tolerance, "sample is not unit length");
+                float c = Vector3.Dot(d, axis);
+                LiquidBodyCanvas.Check(c >= cosLimit, $"sample is {Mathf.Acos(c) * Mathf.Rad2Deg} degrees off axis");
+                widest = Mathf.Min(widest, c);
+            }
+
+            LiquidBodyCanvas.Check(widest < Mathf.Cos(angle * 0.7f * Mathf.Deg2Rad), "samples never reach the edge of the cone");
+
+            Vector3 straight = pool.ConeDirection(Vector3.up, 0f, 0.5f, 0.5f);
+            LiquidBodyCanvas.Check((straight - Vector3.up).magnitude < Tolerance, "a zero-angle cone is not the axis");
+        }
+
+        internal static void HashIsBoundedAndRepeatable()
+        {
+            var pool = new LiquidCanvasPool();
+            float sum = 0f;
+            for (int i = -5000; i < 5000; i++)
+            {
+                float h = pool.Hash01(i);
+                LiquidBodyCanvas.Check(h >= 0f && h < 1f, $"hash({i}) = {h}");
+                LiquidBodyCanvas.Check(h == pool.Hash01(i), $"hash({i}) is not repeatable");
+                sum += h;
+            }
+
+            float mean = sum / 10000f;
+            LiquidBodyCanvas.Check(Mathf.Abs(mean - 0.5f) < 0.05f, $"hash mean is {mean}");
+        }
+
+        internal static void PlayerLocalRoundTrips()
+        {
+            var pool = new LiquidCanvasPool();
+            Vector3 position = new Vector3(3f, 0.5f, -7f);
+            Vector3 facing = new Vector3(1f, 0.4f, 1f);
+            Vector3 world = new Vector3(3.2f, 1.7f, -6.6f);
+
+            Vector3 local = pool.ToPlayerLocal(world, position, facing);
+            Vector3 back = pool.FromPlayerLocal(local, position, facing);
+            LiquidBodyCanvas.Check((back - world).magnitude < Tolerance, $"round trip gave {back}");
+
+            // 同じプレイヤー基準の座標は、プレイヤーが動いて向きを変えても体の同じ所を指します。
+            Vector3 moved = new Vector3(-1f, 0.5f, 2f);
+            Vector3 turned = new Vector3(-1f, 0f, 0f);
+            Vector3 there = pool.FromPlayerLocal(local, moved, turned);
+            LiquidBodyCanvas.Check(Mathf.Abs((there - moved).magnitude - (world - position).magnitude) < Tolerance,
+                "the distance from the player changed");
+            LiquidBodyCanvas.Check(Mathf.Abs((there.y - moved.y) - (world.y - position.y)) < Tolerance,
+                "the height above the feet changed");
+
+            // 右手側の点は、向きを変えても右手側に残ります。
+            Vector3 rightSide = pool.FromPlayerLocal(new Vector3(0.5f, 1f, 0f), Vector3.zero, Vector3.forward);
+            LiquidBodyCanvas.Check(rightSide.x > 0.49f, $"+x local is not to the right of a player facing +z: {rightSide}");
+
+            Vector3 degenerate = pool.ToPlayerLocal(world, position, Vector3.up);
+            LiquidBodyCanvas.Check(IsFinite(degenerate.x) && IsFinite(degenerate.z), "facing straight up is not finite");
+        }
+
+        private static float DistanceToSegment(Vector3 p, Vector3 a, Vector3 b)
+        {
+            Vector3 ba = b - a;
+            float h = Mathf.Clamp01(Vector3.Dot(p - a, ba) / Vector3.Dot(ba, ba));
+            return (p - (a + ba * h)).magnitude;
+        }
+
+        private static Vector3 RandomVector(System.Random random)
+        {
+            return new Vector3(
+                (float)(random.NextDouble() * 2.0 - 1.0),
+                (float)(random.NextDouble() * 2.0 - 1.0),
+                (float)(random.NextDouble() * 2.0 - 1.0));
+        }
+
+        private static bool IsFinite(float value)
+        {
+            return !float.IsNaN(value) && !float.IsInfinity(value);
         }
     }
 }

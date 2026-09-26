@@ -179,6 +179,79 @@ namespace SabaProps.Liquid.WorldTests
             Assert.Greater(pigmentAfter, 0.5f, "the pigment went away with the film");
         }
 
+        [Test]
+        public void Wash_RemovesPigmentBelowTheLevelOnly()
+        {
+            Material update = UpdateMaterial();
+            RenderTexture pigmentA = Canvas(RenderTextureFormat.ARGB32);
+            RenderTexture pigmentB = Canvas(RenderTextureFormat.ARGB32);
+            RenderTexture filmA = Canvas(RenderTextureFormat.ARGBHalf);
+            RenderTexture filmB = Canvas(RenderTextureFormat.ARGBHalf);
+
+            // Pigment over the whole front face.
+            SetStamp(update, new Vector3(0f, 0f, HalfExtents.z), Vector3.forward, 3f,
+                Color.red, pigment: 1f, film: 0f, dryingEncoded: 0f);
+            Advance(update, pigmentA, pigmentB, filmA, filmB, deltaTime: 0f);
+
+            // Wash everything below the middle of the body, fully.
+            update.SetFloat("_StampCount", 0f);
+            update.SetVector("_Wash", new Vector4(0f, 1f, 0.02f, 0f));
+            Advance(update, pigmentB, pigmentA, filmB, filmA, deltaTime: 0f);
+            update.SetVector("_Wash", new Vector4(-2f, 0f, 0.02f, 0f));
+
+            Color[] pigment = Read(pigmentA, TextureFormat.RGBA32);
+            Assert.Less(TilePixel(pigment, 4, 0.5f, 0.2f).a, 0.02f, "pigment below the wash level stayed");
+            Assert.Greater(TilePixel(pigment, 4, 0.5f, 0.8f).a, 0.5f, "pigment above the wash level was washed");
+        }
+
+        [Test]
+        public void SourceBuilder_WiresSourcesToThePoolAndProfiles()
+        {
+            LiquidCanvasPool pool = LiquidSourceBuilder.FindOrCreatePool();
+            _created.Add(pool.gameObject);
+
+            LiquidProfile water = LiquidSourceBuilder.GetProfile(LiquidSourceBuilder.WaterName);
+            LiquidProfile mud = LiquidSourceBuilder.GetProfile(LiquidSourceBuilder.MudName);
+            _created.Add(water.transform.parent.gameObject);
+
+            Assert.AreSame(water, LiquidSourceBuilder.GetProfile(LiquidSourceBuilder.WaterName), "a second request made a second water profile");
+            Assert.AreEqual(0f, water.pigmentAmount, "water carries pigment");
+            Assert.Greater(water.washStrength, 0f, "water does not wash");
+            Assert.Greater(mud.pigmentAmount, 0f, "mud carries no pigment");
+            Assert.Greater(mud.viscosity, water.viscosity, "mud runs as freely as water");
+
+            GameObject volume = LiquidSourceBuilder.CreateImmersionVolume("Volume", pool, water, new Vector3(2f, 1f, 2f));
+            _created.Add(volume);
+            Assert.IsTrue(volume.GetComponent<BoxCollider>().isTrigger, "the volume blocks players instead of detecting them");
+            Assert.AreSame(pool, volume.GetComponent<LiquidImmersionVolume>().pool);
+
+            GameObject shower = LiquidSourceBuilder.CreateShower(pool, water);
+            _created.Add(shower);
+            LiquidShower head = shower.GetComponentInChildren<LiquidShower>();
+            Assert.IsNotNull(head);
+            Assert.IsNotNull(head.GetComponent<Collider>(), "the shower cannot be toggled without a collider");
+            Assert.Greater(Vector3.Dot(head.nozzle.forward, Vector3.down), 0.99f, "the shower does not point down");
+            Assert.IsFalse(head.stream.main.playOnAwake, "the stream plays before the shower is turned on");
+
+            GameObject gun = LiquidSourceBuilder.CreateWaterGun(pool, water);
+            _created.Add(gun);
+            Assert.IsNotNull(gun.GetComponent<VRC.SDK3.Components.VRCPickup>());
+            Assert.IsNotNull(gun.GetComponent<VRC.SDK3.Components.VRCObjectSync>(), "the gun's position is not synced");
+            LiquidWaterGun waterGun = gun.GetComponent<LiquidWaterGun>();
+            Assert.AreSame(pool, waterGun.pool);
+            Assert.AreSame(water, waterGun.profile);
+            Assert.AreEqual(Vector3.forward, waterGun.muzzle.localRotation * Vector3.forward, "the muzzle does not point along the gun");
+        }
+
+        private static Color TilePixel(Color[] pixels, int face, float u, float v)
+        {
+            int column = face % LiquidBodyCanvas.AtlasColumns;
+            int row = face / LiquidBodyCanvas.AtlasColumns;
+            int x = column * FaceResolution + Mathf.Clamp(Mathf.RoundToInt(u * FaceResolution), 0, FaceResolution - 1);
+            int y = row * FaceResolution + Mathf.Clamp(Mathf.RoundToInt(v * FaceResolution), 0, FaceResolution - 1);
+            return pixels[y * Width + x];
+        }
+
         private Material UpdateMaterial()
         {
             Shader shader = Shader.Find(LiquidAssets.CanvasUpdateShader);

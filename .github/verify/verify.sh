@@ -332,8 +332,10 @@ log "Compiling UdonSharp stub"
 # ---------------------------------------------------------------------------
 # The stub's event signatures name VRCPlayerApi, so it is built against the
 # real SDK too: a rename there fails here rather than in Unity.
-# VRC.Udon.Common carries UdonInputEventArgs, which the InputGrab event names.
-UDON_COMMON="$VPM/com.vrchat.worlds/Runtime/Udon/External/VRC.Udon.Common.dll"
+# VRC.Udon.Common carries UdonInputEventArgs, which the InputGrab event names,
+# and NetworkEventTarget, which the liquid Sources send their events with.
+UDON_EXTERNAL="$VPM/com.vrchat.worlds/Runtime/Udon/External"
+UDON_COMMON="$UDON_EXTERNAL/VRC.Udon.Common.dll"
 [ -f "$UDON_COMMON" ] || fail "VRC.Udon.Common.dll missing from the fetched SDK"
 
 csc "${COMMON[@]}" "${NETSTANDARD_ARGS[@]}" "${UNITY_ARGS[@]}" \
@@ -438,19 +440,28 @@ echo "ok: ${#TABLET_SAMPLE_RUNTIME[@]} sample Runtime, ${#TABLET_SAMPLE_EDITOR[@
 log "Compiling liquid Runtime and Editor (real VRChat SDK references + stubs)"
 # ---------------------------------------------------------------------------
 # Same arrangement as the stage camera: VRCPlayerApi, Utilities and
-# VRCGraphics come from the pinned VRCSDKBase.dll, UdonSharp and UnityEditor
-# from the stubs. Whether UdonSharp accepts the behaviours is settled in
-# vrchat/, not here.
+# VRCGraphics come from the pinned VRCSDKBase.dll, NetworkCallable and
+# NetworkCalling from VRCSDK3.dll, NetworkEventTarget from VRC.Udon.Common.dll,
+# UdonSharp and UnityEditor from the stubs. Whether UdonSharp accepts the
+# behaviours is settled in vrchat/, not here.
 mapfile -t LIQUID_SOURCES < <(find "$LIQUID/Runtime" -name '*.cs' | sort)
 [ "${#LIQUID_SOURCES[@]}" -gt 0 ] || fail "no Runtime sources found under $LIQUID"
 
-csc "${COMMON[@]}" "${NETSTANDARD_ARGS[@]}" "${UNITY_ARGS[@]}"     -r:"$SDK_PLUGINS/VRCSDKBase.dll" -r:"$OUT/UdonSharp.Runtime.dll"     -out:"$OUT/SabaProps.Liquid.Runtime.dll" "${LIQUID_SOURCES[@]}"
+csc "${COMMON[@]}" "${NETSTANDARD_ARGS[@]}" "${UNITY_ARGS[@]}" \
+    -r:"$SDK_PLUGINS/VRCSDKBase.dll" -r:"$SDK3_PLUGINS/VRCSDK3.dll" \
+    -r:"$UDON_EXTERNAL/VRC.Udon.Common.dll" -r:"$OUT/UdonSharp.Runtime.dll" \
+    -out:"$OUT/SabaProps.Liquid.Runtime.dll" "${LIQUID_SOURCES[@]}"
 echo "ok: ${#LIQUID_SOURCES[@]} Runtime file(s)"
 
 mapfile -t LIQUID_EDITOR_SOURCES < <(find "$LIQUID/Editor" -name '*.cs' | sort)
 [ "${#LIQUID_EDITOR_SOURCES[@]}" -gt 0 ] || fail "no Editor sources found under $LIQUID"
 
-csc "${COMMON[@]}" "${NETSTANDARD_ARGS[@]}" "${UNITY_ARGS[@]}"     -r:"$SDK_PLUGINS/VRCSDKBase.dll" -r:"$SDK3_PLUGINS/VRCSDK3.dll"     -r:"$OUT/UdonSharp.Runtime.dll" -r:"$OUT/UdonSharp.Editor.dll"     -r:"$OUT/UnityEditor.NetStandard.dll" -r:"$OUT/SabaProps.Liquid.Runtime.dll"     -out:"$OUT/SabaProps.Liquid.Editor.dll" "${LIQUID_EDITOR_SOURCES[@]}"
+csc "${COMMON[@]}" "${NETSTANDARD_ARGS[@]}" "${UNITY_ARGS[@]}" \
+    -r:"$SDK_PLUGINS/VRCSDKBase.dll" -r:"$SDK3_PLUGINS/VRCSDK3.dll" \
+    -r:"$UDON_EXTERNAL/VRC.Udon.Common.dll" \
+    -r:"$OUT/UdonSharp.Runtime.dll" -r:"$OUT/UdonSharp.Editor.dll" \
+    -r:"$OUT/UnityEditor.NetStandard.dll" -r:"$OUT/SabaProps.Liquid.Runtime.dll" \
+    -out:"$OUT/SabaProps.Liquid.Editor.dll" "${LIQUID_EDITOR_SOURCES[@]}"
 echo "ok: ${#LIQUID_EDITOR_SOURCES[@]} Editor file(s)"
 
 # ---------------------------------------------------------------------------
@@ -678,9 +689,15 @@ log "Running the liquid canvas solver (no Unity)"
 # checks also read the package's shader sources to confirm the constants the
 # HLSL restates, so they take the package directory and need the regex
 # assembly on top of the usual runtime set.
-csc_exe -r:"$RUNTIME_DIR/System.Text.RegularExpressions.dll"     -out:"$OFFLINE_OUT/OfflineLiquidTests.dll"     "$OFFLINE/UnityEngineShim.cs"     "$OFFLINE/OfflineLiquidTests.cs"     "$LIQUID/Runtime/LiquidCanvasSolver.cs"
+csc_exe -r:"$RUNTIME_DIR/System.Text.RegularExpressions.dll" \
+    -out:"$OFFLINE_OUT/OfflineLiquidTests.dll" \
+    "$OFFLINE/UnityEngineShim.cs" \
+    "$OFFLINE/OfflineLiquidTests.cs" \
+    "$LIQUID/Runtime/LiquidCanvasSolver.cs" \
+    "$LIQUID/Runtime/LiquidCanvasPoolSolver.cs"
 
-cp "$OFFLINE_OUT/OfflineMeshTests.runtimeconfig.json"    "$OFFLINE_OUT/OfflineLiquidTests.runtimeconfig.json"
+cp "$OFFLINE_OUT/OfflineMeshTests.runtimeconfig.json" \
+   "$OFFLINE_OUT/OfflineLiquidTests.runtimeconfig.json"
 
 dotnet "$OFFLINE_OUT/OfflineLiquidTests.dll" "$LIQUID" || fail "offline liquid canvas checks failed"
 

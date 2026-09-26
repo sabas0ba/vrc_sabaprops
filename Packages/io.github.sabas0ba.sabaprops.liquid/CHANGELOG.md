@@ -15,6 +15,12 @@
 - `LiquidProfile`: 液体の定義
 - Canvas 更新用の Blit シェーダと、アバターへ描画する Projector シェーダ
 - Canvas Pool を生成する GameObject メニュー
+- `LiquidImmersionVolume`: プール・浴槽・海・水たまり・泥沼の浸漬 Source。波による液面の上下に対応
+- `LiquidShower`: 固定シャワー・水道・手に持つシャワーヘッドの流下 Source。着水点より下を濡らして洗う
+- `LiquidWaterGun`: 水鉄砲。所有者が命中を判定し、プレイヤー基準の座標で全員へ送る
+- `LiquidCanvasPool.CastPlayers`: 体をカプセルで近似した光線の命中判定
+- `LiquidBodyCanvas.WashBelow`: 指定した高さより下の顔料の洗浄
+- 水と泥のプロファイル、各 Source を配置する GameObject メニュー
 
 ## [0.0.1] - 2026-09-23
 

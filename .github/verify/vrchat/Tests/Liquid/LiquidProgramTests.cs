@@ -74,6 +74,81 @@ namespace SabaProps.Liquid.WorldTests
             Assert.IsNotNull(Compile<LiquidProfile>());
         }
 
+        [Test]
+        public void CanvasPool_ExportsTheSourceGeometry()
+        {
+            List<string> exported = Exported(Compile<LiquidCanvasPool>());
+
+            foreach (string method in new[] { "CastPlayers", "SampleCone", "Random01", "WorldToPlayer", "PlayerToWorld" })
+            {
+                AssertExportsMethod(exported, method);
+            }
+        }
+
+        [Test]
+        public void ImmersionVolume_ExportsItsTriggerEvents()
+        {
+            List<string> exported = Exported(Compile<LiquidImmersionVolume>());
+
+            // The whole Source is driven by these two; without them nobody is ever inside.
+            CollectionAssert.Contains(exported, "_onPlayerTriggerEnter");
+            CollectionAssert.Contains(exported, "_onPlayerTriggerExit");
+            CollectionAssert.Contains(exported, "_update");
+            AssertSyncMode<LiquidImmersionVolume>(BehaviourSyncMode.None);
+        }
+
+        [Test]
+        public void Shower_ExportsItsControlsAndSyncsOnlyItsState()
+        {
+            IUdonProgram program = Compile<LiquidShower>();
+            List<string> exported = Exported(program);
+
+            CollectionAssert.Contains(exported, "_interact");
+            CollectionAssert.Contains(exported, "_onPickupUseDown");
+            CollectionAssert.Contains(exported, "_onPickupUseUp");
+            CollectionAssert.Contains(exported, "_onDeserialization");
+            AssertSyncMode<LiquidShower>(BehaviourSyncMode.Manual);
+            AssertSyncedFields(program, "_running");
+        }
+
+        [Test]
+        public void WaterGun_ExportsItsHitEventAndSyncsOnlyItsState()
+        {
+            IUdonProgram program = Compile<LiquidWaterGun>();
+            List<string> exported = Exported(program);
+
+            // Other clients call this over the network. If it stops being exported,
+            // hits are sent and silently dropped.
+            AssertExportsMethod(exported, "ReceiveHit");
+            CollectionAssert.Contains(exported, "_onPickupUseDown");
+            CollectionAssert.Contains(exported, "_onPickupUseUp");
+            AssertSyncMode<LiquidWaterGun>(BehaviourSyncMode.Manual);
+            AssertSyncedFields(program, "_firing");
+        }
+
+        private static void AssertSyncMode<T>(BehaviourSyncMode expected)
+        {
+            var attributes = (UdonBehaviourSyncModeAttribute[])typeof(T)
+                .GetCustomAttributes(typeof(UdonBehaviourSyncModeAttribute), true);
+            Assert.AreEqual(1, attributes.Length, typeof(T).Name + " should declare its sync mode explicitly");
+            Assert.AreEqual(expected, attributes[0].behaviourSyncMode, typeof(T).Name + " sync mode");
+        }
+
+        /// <summary>
+        /// Exactly these fields are synced. A Source that synced more than its
+        /// on/off state would be sending what every client can compute itself.
+        /// </summary>
+        private static void AssertSyncedFields(IUdonProgram program, params string[] expected)
+        {
+            var synced = new List<string>();
+            foreach (IUdonSyncMetadata metadata in program.SyncMetadataTable.GetAllSyncMetadata())
+            {
+                synced.Add(metadata.Name);
+            }
+
+            CollectionAssert.AreEquivalent(expected, synced);
+        }
+
         private IUdonProgram Compile<T>() where T : UdonSharpBehaviour
         {
             T behaviour = _root.AddUdonSharpComponent<T>();

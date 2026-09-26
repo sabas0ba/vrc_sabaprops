@@ -28,7 +28,7 @@ namespace SabaProps.Liquid.Editors
         public const int IgnoreNonAvatarLayers =
             ~((1 << PlayerLayer) | (1 << PlayerLocalLayer) | (1 << MirrorReflectionLayer));
 
-        [MenuItem("GameObject/SabaProps/Liquid Canvas Pool", false, 20)]
+        [MenuItem("GameObject/SabaProps/Liquid/Canvas Pool", false, 20)]
         public static void CreateFromMenu(MenuCommand command)
         {
             GameObject root = CreateCanvasPool(DefaultCanvasCount);

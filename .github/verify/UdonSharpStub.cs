@@ -77,6 +77,14 @@ namespace UdonSharp
 
         public object GetProgramVariable(string name) { return null; }
 
+        // The liquid water gun sends its hits as network events with parameters.
+        // NetworkEventTarget comes from the real VRC.Udon.Common.dll, so a change
+        // to the target enum fails here.
+        public void SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget target, string eventName) { }
+
+        public void SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget target, string eventName,
+            object parameter0, object parameter1, object parameter2, object parameter3) { }
+
         public virtual void Interact() { }
 
         public virtual void InputGrab(bool value, VRC.Udon.Common.UdonInputEventArgs args) { }
@@ -84,6 +92,10 @@ namespace UdonSharp
         public virtual void PostLateUpdate() { }
 
         public virtual void OnPickup() { }
+
+        public virtual void OnPickupUseDown() { }
+
+        public virtual void OnPickupUseUp() { }
 
         public virtual void OnDrop() { }
 
@@ -94,6 +106,10 @@ namespace UdonSharp
         public virtual void OnPlayerJoined(VRC.SDKBase.VRCPlayerApi player) { }
 
         public virtual void OnPlayerLeft(VRC.SDKBase.VRCPlayerApi player) { }
+
+        public virtual void OnPlayerTriggerEnter(VRC.SDKBase.VRCPlayerApi player) { }
+
+        public virtual void OnPlayerTriggerExit(VRC.SDKBase.VRCPlayerApi player) { }
 
         public virtual void OnOwnershipTransferred(VRC.SDKBase.VRCPlayerApi player) { }
 

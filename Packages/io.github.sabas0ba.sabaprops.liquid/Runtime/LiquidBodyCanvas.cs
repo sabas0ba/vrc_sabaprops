@@ -107,6 +107,10 @@ namespace SabaProps.Liquid
         private Color _immersionColor = Color.black;
         private bool _immersedThisUpdate;
 
+        // この周期に洗う範囲。高さは Canvas の正規化 y で、それより下の顔料を洗います。
+        private float _washLevel = -2f;
+        private float _washAmount;
+
         private void Start()
         {
             if (canvasRoot == null)
@@ -147,10 +151,11 @@ namespace SabaProps.Liquid
             _player = player;
             _playerId = player.playerId;
             _stampCount = 0;
-            _frameValid = false;
             _lastUpdateTime = Time.time;
             _lastActivityTime = Time.time;
 
+            // 割り当てた周期のうちに届いた付着を捨てないよう、座標系をここで確定させます。
+            UpdateFrame();
             BindTextures();
             PushImmersion();
 
@@ -250,11 +255,42 @@ namespace SabaProps.Liquid
                 _immersionPigmentCover = Mathf.Max(_immersionPigmentCover, profile.pigmentAmount);
                 _immersionColor = profile.pigmentColor;
             }
-            else if (profile.washStrength > 0f && level >= _immersionPigmentLevel)
+            else if (profile.washStrength > 0f)
             {
-                // 顔料の上端まで洗う液に浸かっていれば、その分だけ顔料が落ちる。
-                _immersionPigmentCover = Mathf.Max(0f,
-                    _immersionPigmentCover - profile.washStrength * Mathf.Max(0f, deltaSeconds));
+                AccumulateWash(level, profile.washStrength * Mathf.Max(0f, deltaSeconds));
+            }
+        }
+
+        /// <summary>
+        /// 指定した高さより下を洗います。水が着いた点から体を伝って流れ落ちる Source
+        /// （シャワー、水道）が、着水点の高さを渡して呼びます。
+        /// </summary>
+        public void WashBelow(float worldY, float amount)
+        {
+            if (_playerId < 0 || !_frameValid)
+            {
+                return;
+            }
+
+            float level = ImmersionLevel(worldY, _origin, _up, halfExtents.y);
+            if (level <= -1f)
+            {
+                return;
+            }
+
+            AccumulateWash(level, Mathf.Max(0f, amount));
+            _lastActivityTime = Time.time;
+        }
+
+        private void AccumulateWash(float level, float amount)
+        {
+            _washLevel = Mathf.Max(_washLevel, level);
+            _washAmount = Mathf.Min(1f, _washAmount + amount);
+
+            // 浸漬で付いた顔料は、その上端まで洗う液が届いていれば落ちる。
+            if (level >= _immersionPigmentLevel)
+            {
+                _immersionPigmentCover = Mathf.Max(0f, _immersionPigmentCover - amount);
             }
         }
 
@@ -342,6 +378,7 @@ namespace SabaProps.Liquid
             updateMaterial.SetFloat("_DeltaTime", dt);
             updateMaterial.SetFloat("_FlowSpeed", flowSpeed);
             updateMaterial.SetFloat("_MaxEvaporationRate", maxEvaporationRate);
+            updateMaterial.SetVector("_Wash", new Vector4(_washLevel, _washAmount, immersionEdge, 0f));
 
             RenderTexture pigmentSource = _frontIsA ? _pigmentA : _pigmentB;
             RenderTexture pigmentTarget = _frontIsA ? _pigmentB : _pigmentA;
@@ -354,6 +391,8 @@ namespace SabaProps.Liquid
             VRCGraphics.Blit(filmSource, filmTarget, updateMaterial, 1);
             _frontIsA = !_frontIsA;
             _stampCount = 0;
+            _washLevel = -2f;
+            _washAmount = 0f;
 
             AdvanceImmersion(dt);
             BindTextures();

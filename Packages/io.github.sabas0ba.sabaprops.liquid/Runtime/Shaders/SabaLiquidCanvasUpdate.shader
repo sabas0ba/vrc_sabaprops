@@ -42,6 +42,8 @@ Shader "Hidden/SabaProps/Liquid/Canvas Update"
     float _DeltaTime;
     float _FlowSpeed;
     float _MaxEvaporationRate;
+    // x: 洗う範囲の上端（Canvas 正規化 y）, y: 洗う量, z: 境界の幅
+    float4 _Wash;
 
     struct CanvasTexel
     {
@@ -91,6 +93,19 @@ Shader "Hidden/SabaProps/Liquid/Canvas Update"
         return saturate(film.r * (1.0 - film.b) * streak);
     }
 
+    // テクセルの高さ（Canvas 正規化 y）。
+    // X 面と Z 面はタイルの v がそのまま y です。Y 面のテクセルは高さを持たないため、
+    // 上面は頭や肩の高さ、下面は足裏の高さと見なします。
+    float SabaLiquidTexelHeight(CanvasTexel t)
+    {
+        if (t.axis == 1)
+        {
+            return t.face == 2 ? 0.8 : -1.0;
+        }
+
+        return t.tileUv.y * 2.0 - 1.0;
+    }
+
     float SabaLiquidStampAt(int i, CanvasTexel t)
     {
         float face = SabaLiquidFaceWeight(_StampNormal[i].xyz, t.face);
@@ -137,6 +152,10 @@ Shader "Hidden/SabaProps/Liquid/Canvas Update"
         float leave = SabaLiquidMobility(tex2D(_FilmTex, input.uv), t);
         float arrive = SabaLiquidMobility(tex2D(_FilmTex, upstreamUv), t);
         float4 pigment = self * (1.0 - leave) + upstream * arrive;
+
+        float edge = max(_Wash.z, 1e-4);
+        float washed = smoothstep(_Wash.x + edge, _Wash.x - edge, SabaLiquidTexelHeight(t));
+        pigment *= 1.0 - saturate(washed * _Wash.y);
 
         int count = (int)_StampCount;
         for (int i = 0; i < SABA_LIQUID_MAX_STAMPS; i++)
