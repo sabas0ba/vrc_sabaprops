@@ -151,12 +151,127 @@ namespace SabaProps.Liquid.Editors
             canvas.headAnchor = head;
             canvas.leftHandAnchor = leftHand;
             canvas.rightHandAnchor = rightHand;
+            canvas.leftFootAnchor = body.Find("Left Foot");
+            canvas.rightFootAnchor = body.Find("Right Foot");
             // The figure's head is 0.2 m across; the region sphere a little larger.
             canvas.headRadius = 0.13f;
             canvas.handRadius = 0.06f;
             UdonSharpEditorUtility.CopyProxyToUdon(canvas);
             EditorUtility.SetDirty(canvas);
             return canvas;
+        }
+
+        /// <summary>
+        /// An outfit for a clothed mannequin: the colour and surface of the top,
+        /// the trousers and the shoes, and whether the forearms and lower legs
+        /// are bare.
+        /// </summary>
+        public struct Outfit
+        {
+            public string Name;
+            public Color Top;
+            public string TopSurface;
+            public Color Bottom;
+            public string BottomSurface;
+            public Color Shoes;
+            public string ShoesSurface;
+            public Color Hair;
+            public bool ShortSleeves;
+            public bool Shorts;
+        }
+
+        /// <summary>A light T-shirt, jeans and leather shoes.</summary>
+        public static readonly Outfit Casual = new Outfit
+        {
+            Name = "Casual",
+            Top = new Color(0.86f, 0.86f, 0.84f), TopSurface = LiquidSurfaceBuilder.SoftClothName,
+            Bottom = new Color(0.2f, 0.27f, 0.42f), BottomSurface = LiquidSurfaceBuilder.HardClothName,
+            Shoes = new Color(0.28f, 0.16f, 0.09f), ShoesSurface = LiquidSurfaceBuilder.LeatherName,
+            Hair = new Color(0.12f, 0.09f, 0.07f), ShortSleeves = true,
+        };
+
+        /// <summary>A yellow rain jacket, dark trousers and rubber boots.</summary>
+        public static readonly Outfit RainGear = new Outfit
+        {
+            Name = "Rain Gear",
+            Top = new Color(0.92f, 0.72f, 0.1f), TopSurface = LiquidSurfaceBuilder.PlasticName,
+            Bottom = new Color(0.12f, 0.12f, 0.13f), BottomSurface = LiquidSurfaceBuilder.HardClothName,
+            Shoes = new Color(0.1f, 0.25f, 0.14f), ShoesSurface = LiquidSurfaceBuilder.PlasticName,
+            Hair = new Color(0.45f, 0.3f, 0.16f),
+        };
+
+        /// <summary>A knit jumper, cloth shorts and leather boots, with bare legs.</summary>
+        public static readonly Outfit Knit = new Outfit
+        {
+            Name = "Knit",
+            Top = new Color(0.55f, 0.16f, 0.14f), TopSurface = LiquidSurfaceBuilder.SoftClothName,
+            Bottom = new Color(0.42f, 0.38f, 0.3f), BottomSurface = LiquidSurfaceBuilder.SoftClothName,
+            Shoes = new Color(0.16f, 0.1f, 0.06f), ShoesSurface = LiquidSurfaceBuilder.LeatherName,
+            Hair = new Color(0.75f, 0.62f, 0.4f), Shorts = true,
+        };
+
+        /// <summary>
+        /// A clothed mannequin: skin, hair, a top, trousers and shoes, each part
+        /// with the surface its material implies, and avatar regions on so the
+        /// canvas treats them the way it treats a player.
+        /// </summary>
+        public static LiquidBodyCanvas CreateClothed(Transform parent, string name, int index, Material update,
+            bool turntable, Outfit outfit)
+        {
+            Material skin = Skin("Skin", new Color(0.86f, 0.68f, 0.58f), 0.35f);
+            LiquidBodyCanvas canvas = Create(parent, name, index, skin, update, turntable,
+                LiquidSurfaceBuilder.GetSurface(outfit.TopSurface), true,
+                Skin(outfit.Name + "Hair", outfit.Hair, 0.4f), null);
+
+            Transform body = canvas.anchor.parent;
+            Material top = Skin(outfit.Name + "Top", outfit.Top, SurfaceSmoothness(outfit.TopSurface));
+            Material bottom = Skin(outfit.Name + "Bottom", outfit.Bottom, SurfaceSmoothness(outfit.BottomSurface));
+            Material shoes = Skin(outfit.Name + "Shoes", outfit.Shoes, SurfaceSmoothness(outfit.ShoesSurface));
+
+            Paint(body, top, "Chest", "Waist", "Left Upper Arm", "Right Upper Arm");
+            if (!outfit.ShortSleeves)
+            {
+                Paint(body, top, "Left Forearm", "Right Forearm");
+            }
+
+            Paint(body, bottom, "Pelvis", "Left Thigh", "Right Thigh");
+            if (!outfit.Shorts)
+            {
+                Paint(body, bottom, "Left Shin", "Right Shin");
+            }
+
+            Paint(body, shoes, "Left Foot", "Right Foot");
+
+            // Hair over the crown and the back of the head, set back so the face stays bare.
+            Material hair = Skin(outfit.Name + "Hair", outfit.Hair, 0.4f);
+            body.Find("Head").GetComponent<Renderer>().sharedMaterial = skin;
+            Part(body, "Hair", PrimitiveType.Sphere, new Vector3(0f, 1.7f, -0.04f), new Vector3(0.21f, 0.2f, 0.2f),
+                Quaternion.identity, hair, MannequinLayer);
+
+            canvas.lowerSurface = LiquidSurfaceBuilder.GetSurface(outfit.BottomSurface);
+            canvas.feetSurface = LiquidSurfaceBuilder.GetSurface(outfit.ShoesSurface);
+            UdonSharpEditorUtility.CopyProxyToUdon(canvas);
+            EditorUtility.SetDirty(canvas);
+            return canvas;
+        }
+
+        private static float SurfaceSmoothness(string surface)
+        {
+            switch (surface)
+            {
+                case LiquidSurfaceBuilder.PlasticName: return 0.75f;
+                case LiquidSurfaceBuilder.LeatherName: return 0.55f;
+                case LiquidSurfaceBuilder.HardClothName: return 0.2f;
+                default: return 0.05f;
+            }
+        }
+
+        private static void Paint(Transform body, Material material, params string[] parts)
+        {
+            foreach (string part in parts)
+            {
+                body.Find(part).GetComponent<Renderer>().sharedMaterial = material;
+            }
         }
 
         /// <summary>

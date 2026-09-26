@@ -20,6 +20,9 @@ namespace SabaProps.Liquid.Editors
         public const float RowSpacing = 3f;
         public const float RowStartZ = -6f;
 
+        /// <summary>First mannequin number in the comparison scene.</summary>
+        public const int ComparisonIndexBase = 100;
+
         public const string LabelMaterialPath = LiquidSampleScene.SampleFolder + "/Label.mat";
         public const string DeviceMaterialPath = LiquidSampleScene.SampleFolder + "/Device.mat";
         public const string GlassMaterialPath = LiquidSampleScene.SampleFolder + "/Glass.mat";
@@ -44,7 +47,7 @@ namespace SabaProps.Liquid.Editors
                 bay.transform.position = feet;
                 bay.transform.rotation = Quaternion.Euler(0f, 90f, 0f);
 
-                LiquidBodyCanvas mannequin = LiquidMannequinBuilder.Create(bay.transform, "Mannequin", mannequins.Count,
+                LiquidBodyCanvas mannequin = LiquidMannequinBuilder.Create(bay.transform, "Mannequin", NextIndex(mannequins),
                     LiquidMannequinBuilder.LightSkin(), update, true);
                 mannequins.Add(mannequin);
 
@@ -203,7 +206,7 @@ namespace SabaProps.Liquid.Editors
             for (int i = 0; i < names.Length; i++)
             {
                 Transform bay = RearBay(row.transform, names[i], i, SurfaceRowZ);
-                mannequins.Add(LiquidMannequinBuilder.Create(bay, "Mannequin", mannequins.Count,
+                mannequins.Add(LiquidMannequinBuilder.Create(bay, "Mannequin", NextIndex(mannequins),
                     LiquidMannequinBuilder.Skin(names[i], colours[i], smoothness[i]), update, true,
                     LiquidSurfaceBuilder.GetSurface(names[i]), false, null, null));
                 WaterAndPaint(bay, pool, water, paint, device);
@@ -211,7 +214,7 @@ namespace SabaProps.Liquid.Editors
             }
 
             Transform avatar = RearBay(row.transform, "Avatar Regions", names.Length, SurfaceRowZ);
-            mannequins.Add(LiquidMannequinBuilder.Create(avatar, "Mannequin", mannequins.Count,
+            mannequins.Add(LiquidMannequinBuilder.Create(avatar, "Mannequin", NextIndex(mannequins),
                 LiquidMannequinBuilder.Skin(LiquidSurfaceBuilder.SoftClothName, colours[0], smoothness[0]), update, true,
                 LiquidSurfaceBuilder.GetSurface(LiquidSurfaceBuilder.SoftClothName), true,
                 LiquidMannequinBuilder.Skin(LiquidSurfaceBuilder.HairName, colours[3], smoothness[3]),
@@ -239,7 +242,7 @@ namespace SabaProps.Liquid.Editors
             for (int i = 0; i < names.Length; i++)
             {
                 Transform bay = RearBay(row.transform, names[i], i, BodyColourRowZ);
-                mannequins.Add(LiquidMannequinBuilder.Create(bay, "Mannequin", mannequins.Count,
+                mannequins.Add(LiquidMannequinBuilder.Create(bay, "Mannequin", NextIndex(mannequins),
                     LiquidMannequinBuilder.Skin("Colour" + names[i], colours[i], 0.12f), update, true,
                     LiquidSurfaceBuilder.GetSurface(LiquidSurfaceBuilder.SoftClothName), false, null, null));
                 WaterAndPaint(bay, pool, water, mud, device);
@@ -260,7 +263,7 @@ namespace SabaProps.Liquid.Editors
             for (int i = 0; i < greys.Length; i++)
             {
                 Transform bay = RearBay(row.transform, greys[i], i, LiquidColourRowZ);
-                mannequins.Add(LiquidMannequinBuilder.Create(bay, "Mannequin", mannequins.Count,
+                mannequins.Add(LiquidMannequinBuilder.Create(bay, "Mannequin", NextIndex(mannequins),
                     LiquidMannequinBuilder.LightSkin(), update, true,
                     LiquidSurfaceBuilder.GetSurface(LiquidSurfaceBuilder.HardClothName), false, null, null));
                 LiquidSprayer spray = LiquidSourceBuilder.CreateSprayer(bay, "Sprayer", pool,
@@ -283,7 +286,7 @@ namespace SabaProps.Liquid.Editors
             {
                 bool dark = b == 1;
                 Transform bay = RearBay(row.transform, dark ? "Mixed On Black" : "Mixed", greys.Length + b, LiquidColourRowZ);
-                mannequins.Add(LiquidMannequinBuilder.Create(bay, "Mannequin", mannequins.Count,
+                mannequins.Add(LiquidMannequinBuilder.Create(bay, "Mannequin", NextIndex(mannequins),
                     dark ? LiquidMannequinBuilder.DarkSkin() : LiquidMannequinBuilder.LightSkin(), update, true,
                     LiquidSurfaceBuilder.GetSurface(LiquidSurfaceBuilder.HardClothName), false, null, null));
 
@@ -413,6 +416,16 @@ namespace SabaProps.Liquid.Editors
                 mesh.font = font;
                 label.GetComponent<MeshRenderer>().sharedMaterial = font.material;
             }
+        }
+
+        /// <summary>
+        /// The mannequin number for the comparison rows, which live in their own
+        /// scene. Numbered from <see cref="ComparisonIndexBase"/> so their projector
+        /// materials never share an asset with the demo scene's mannequins.
+        /// </summary>
+        private static int NextIndex(List<LiquidBodyCanvas> mannequins)
+        {
+            return ComparisonIndexBase + mannequins.Count;
         }
 
         private static Material Device()

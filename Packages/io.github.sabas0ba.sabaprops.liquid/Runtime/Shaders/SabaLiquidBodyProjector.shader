@@ -38,6 +38,10 @@ Shader "SabaProps/Liquid/Body Projector"
         _SurfaceBodyB ("Body Surface B", Vector) = (0.5, 0, 0.012, 0)
         _SurfaceHairA ("Hair Surface A", Vector) = (0.35, 0.6, 0.5, 0.45)
         _SurfaceHairB ("Hair Surface B", Vector) = (0.2, 0.8, 0.01, 0)
+        _SurfaceLowerA ("Lower Body Surface A", Vector) = (0.45, 0.5, 0.35, 0.5)
+        _SurfaceLowerB ("Lower Body Surface B", Vector) = (0.25, 0, 0.012, 0)
+        _SurfaceFeetA ("Feet Surface A", Vector) = (0.12, 0.8, 0.65, 0.35)
+        _SurfaceFeetB ("Feet Surface B", Vector) = (0.08, 0, 0.014, 0)
         _SurfaceSkinA ("Skin Surface A", Vector) = (0.2, 0.15, 0.45, 0.8)
         _SurfaceSkinB ("Skin Surface B", Vector) = (0.12, 0, 0.012, 0)
     }
@@ -76,6 +80,8 @@ Shader "SabaProps/Liquid/Body Projector"
             // x: 液膜の量, y: 顔料の被覆, z: 液膜の平滑度
             float4 _ImmersionAmounts;
             float4 _ImmersionColor;
+            // 雪と雨。x: 積雪の深さ, y: 上を向いた面の水（雨と溶けた雪）, w: 1 = 有効
+            float4 _Snow;
             float _WetDarken;
             float _WetReflection;
             float _WetSpecular;
@@ -89,6 +95,14 @@ Shader "SabaProps/Liquid/Body Projector"
             float4 _RegionHead;
             float4 _RegionHandL;
             float4 _RegionHandR;
+            // 腰の面（xyz: 面上の点, w: 境界の幅）と足（xyz: 位置, w: 半径）。
+            float4 _RegionHip;
+            float4 _RegionFootL;
+            float4 _RegionFootR;
+            float4 _SurfaceLowerA;
+            float4 _SurfaceLowerB;
+            float4 _SurfaceFeetA;
+            float4 _SurfaceFeetB;
             float4 _SurfaceBodyA;
             float4 _SurfaceBodyB;
             float4 _SurfaceHairA;
@@ -270,16 +284,31 @@ Shader "SabaProps/Liquid/Body Projector"
                     film.r = max(film.r, immersionWet);
                 }
 
-                if (pigment.a <= 0.001 && film.r <= 0.001)
+                // 雪は上を向いた面に積もり、縁はむらになります。雨と溶けた雪の水は上を向いた面ほど多く残ります。
+                float snow = 0.0;
+                if (_Snow.w > 0.5)
+                {
+                    float upFacing = saturate((worldNormal.y - 0.15) / 0.55);
+                    float patch = SabaLiquidValueNoise(input.worldPos.xz * 18.0 + input.worldPos.y * 7.0);
+                    snow = smoothstep(0.25, 0.6, _Snow.x * upFacing * 1.3 + (patch - 0.5) * 0.35);
+                    float melt = _Snow.y * saturate(upFacing * 1.5 + 0.2);
+                    film.g = lerp(film.g, 0.9, saturate(melt - film.r));
+                    film.r = max(film.r, melt);
+                }
+
+                if (pigment.a <= 0.001 && film.r <= 0.001 && snow <= 0.001)
                 {
                     return fixed4(0.0, 0.0, 0.0, 0.0);
                 }
 
-                // 受け手の素材。部位の重みで 3 つのプロファイルを混ぜます。
-                float3 regions = SabaLiquidRegionWeights(input.worldPos, _RegionHead, CanvasAxis(2), CanvasAxis(1),
-                    _RegionHandL, _RegionHandR);
-                float4 surfaceA = _SurfaceBodyA * regions.x + _SurfaceHairA * regions.y + _SurfaceSkinA * regions.z;
-                float4 surfaceB = _SurfaceBodyB * regions.x + _SurfaceHairB * regions.y + _SurfaceSkinB * regions.z;
+                // 受け手の素材。部位の重みで 5 つのプロファイルを混ぜます。
+                float4 regions = SabaLiquidRegionWeights(input.worldPos, _RegionHead, CanvasAxis(2), CanvasAxis(1),
+                    _RegionHandL, _RegionHandR, _RegionHip, _RegionFootL, _RegionFootR);
+                float feetWeight = saturate(1.0 - regions.x - regions.y - regions.z - regions.w);
+                float4 surfaceA = _SurfaceBodyA * regions.x + _SurfaceLowerA * regions.y + _SurfaceHairA * regions.z
+                    + _SurfaceSkinA * regions.w + _SurfaceFeetA * feetWeight;
+                float4 surfaceB = _SurfaceBodyB * regions.x + _SurfaceLowerB * regions.y + _SurfaceHairB * regions.z
+                    + _SurfaceSkinB * regions.w + _SurfaceFeetB * feetWeight;
                 float absorbency = saturate(surfaceA.x);
                 float repellency = saturate(surfaceA.y);
                 float sheen = saturate(surfaceA.z);
@@ -295,7 +324,8 @@ Shader "SabaProps/Liquid/Body Projector"
                     pigment = lerp(pigment, BleedPigment(tile, bleed), bleed);
                 }
 
-                float wet = saturate(film.r);
+                // 雪の下の液は見えません。
+                float wet = saturate(film.r) * (1.0 - snow);
 
                 // 毛束：液が上下方向の筋にまとまります。
                 if (strands > 0.01)
@@ -306,9 +336,15 @@ Shader "SabaProps/Liquid/Body Projector"
                     pigment *= saturate(s);
                 }
 
+                // 雪は白くつや消しの顔料として重ねます。毛束の揺らぎは液だけにかけ、雪にはかけません。
+                pigment = pigment * (1.0 - snow) + float4(float3(0.9, 0.92, 0.95) * snow, snow);
+
                 // 水滴：はじく素材では、顔料の無い液膜が面ではなく水滴として見えます。
                 float beadWeight = repellency * (1.0 - saturate(pigment.a * 2.0));
-                float4 beads = beadWeight > 0.01 ? SabaLiquidBeads(tile.metric, beadSize, wet) : 0.0;
+                // 面内の重力方向。タイルの軸へ投影し、面が水平に近いときは伸ばしません。
+                float2 gravity = float2(dot(float3(0.0, -1.0, 0.0), tile.uAxis), dot(float3(0.0, -1.0, 0.0), tile.vAxis));
+                gravity = dot(gravity, gravity) > 0.04 ? normalize(gravity) : float2(0.0, 0.0);
+                float4 beads = beadWeight > 0.01 ? SabaLiquidBeads(tile.metric, beadSize, wet, gravity) : 0.0;
                 float sheet = wet * (1.0 - beadWeight);
                 float beaded = beads.x * beadWeight * saturate(wet * 3.0);
                 float wetLook = saturate(sheet + beaded);
@@ -360,7 +396,16 @@ Shader "SabaProps/Liquid/Body Projector"
                 float darken = saturate(sheet * darkenStrength + beaded * _WetDarken * 0.9) * (1.0 - pigment.a);
                 float alpha = 1.0 - (1.0 - pigment.a) * (1.0 - darken);
 
-                return fixed4((pigmentColor + reflection + highlight * fresnel * 2.5) * fade, saturate(alpha * fade));
+                // 雪のきらめき。細かい結晶が主光源を拾って点状に光ります。
+                float3 sparkle = 0.0;
+                if (snow > 0.01 && _Udon_SabaLiquidLightDirection.w > 0.5)
+                {
+                    float glint = step(0.992, SabaLiquidHash(floor(input.worldPos.xz * 300.0) + floor(input.worldPos.y * 300.0)));
+                    sparkle = _Udon_SabaLiquidLightColor.rgb * glint * snow
+                        * saturate(dot(shaded, normalize(_Udon_SabaLiquidLightDirection.xyz))) * 2.0;
+                }
+
+                return fixed4((pigmentColor + reflection + highlight * fresnel * 2.5 + sparkle) * fade, saturate(alpha * fade));
             }
             ENDCG
         }

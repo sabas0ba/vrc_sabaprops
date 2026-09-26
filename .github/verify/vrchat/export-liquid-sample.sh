@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
-# Regenerates the liquid package's bundled sample (Samples~/LiquidDemo) from the
-# generator, in the world verification project.
+# Regenerates the liquid package's bundled sample (Samples~/LiquidDemo, with the
+# demo and comparison scenes) from the generator, in the world verification project.
 #
 # The sample is generated rather than hand-edited: this script replaces the
 # package in the project with the working tree's copy, deletes the previously
@@ -52,7 +52,9 @@ echo "generating the sample scene in $PROJECT"
     -logFile "$(to_native "$LOG")"
 
 GENERATED="$PROJECT/Assets/SabaProps/Liquid"
-[ -f "$GENERATED/Samples/LiquidDemo.unity" ] || { echo "error: the scene was not generated; see $LOG" >&2; exit 1; }
+for scene in LiquidDemo LiquidComparison; do
+    [ -f "$GENERATED/Samples/$scene.unity" ] || { echo "error: $scene was not generated; see $LOG" >&2; exit 1; }
+done
 
 rm -rf "$SAMPLE"
 mkdir -p "$SAMPLE/Assets/SabaProps" "$SAMPLE/Assets/SerializedUdonPrograms"

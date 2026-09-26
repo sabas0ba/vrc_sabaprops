@@ -106,12 +106,14 @@ namespace SabaProps.Liquid.Editors
         }
 
         /// <summary>
-        /// Gives a canvas the usual avatar assignment: clothing on the body, hair
-        /// on the head and skin on the face and hands.
+        /// Gives a canvas the usual avatar assignment: a soft top, harder trousers,
+        /// leather shoes, hair on the head and skin on the face and hands.
         /// </summary>
         public static void AssignAvatarDefaults(LiquidBodyCanvas canvas)
         {
             canvas.bodySurface = GetSurface(SoftClothName);
+            canvas.lowerSurface = GetSurface(HardClothName);
+            canvas.feetSurface = GetSurface(LeatherName);
             canvas.hairSurface = GetSurface(HairName);
             canvas.skinSurface = GetSurface(SkinName);
             canvas.estimateRegions = true;

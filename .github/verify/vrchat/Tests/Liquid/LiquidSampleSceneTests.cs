@@ -116,13 +116,87 @@ namespace SabaProps.Liquid.WorldTests
         {
             LiquidCanvasPool pool = Object.FindObjectOfType<LiquidCanvasPool>();
             Assert.IsNotNull(pool.mannequins);
-            int expected = LiquidSourceBuilder.PresetNames.Length          // liquid row
+            int expected = 6                                                // clothed row: three outfits, two liquids
                 + 7                                                         // source row
-                + LiquidSurfaceBuilder.PresetNames.Length + 1               // surface row and avatar regions
-                + 7                                                         // body colour row
-                + LiquidSourceBuilder.GreyscalePaintNames.Length + 2;       // liquid colour row and the two mixes
-            Assert.AreEqual(expected, pool.mannequins.Length, "a comparison row is missing mannequins");
+                + 2 * 5;                                                    // two weather yards: four in the open, one sheltered
+            Assert.AreEqual(expected, pool.mannequins.Length, "a row is missing mannequins");
 
+            AssertMannequinsDrawOnTheirOwnLayer(pool);
+            foreach (LiquidBodyCanvas mannequin in pool.mannequins)
+            {
+                StringAssert.DoesNotMatch(@"_1\d\d\.mat$", AssetDatabase.GetAssetPath(mannequin.projectorMaterial),
+                    "a demo mannequin uses a projector material numbered for the comparison scene");
+            }
+        }
+
+        [Test]
+        public void ClothedMannequins_UseTheSurfaceOfEachGarment()
+        {
+            GameObject row = GameObject.Find(LiquidDemoWeather.ClothedRowName);
+            Assert.IsNotNull(row);
+            LiquidBodyCanvas[] clothed = row.GetComponentsInChildren<LiquidBodyCanvas>();
+            Assert.AreEqual(6, clothed.Length);
+
+            foreach (LiquidBodyCanvas canvas in clothed)
+            {
+                Assert.IsTrue(canvas.estimateRegions, canvas.name + " does not tell hair and skin from clothing");
+                Assert.IsNotNull(canvas.lowerSurface, canvas.name + " has no trouser surface");
+                Assert.IsNotNull(canvas.feetSurface, canvas.name + " has no shoe surface");
+                Assert.IsNotNull(canvas.leftFootAnchor, canvas.name + " has no foot anchors");
+                Assert.IsNotNull(canvas.rightFootAnchor, canvas.name + " has no foot anchors");
+            }
+        }
+
+        [Test]
+        public void WeatherYards_FallOnTheOpenAndSpareTheSheltered()
+        {
+            LiquidCanvasPool pool = Object.FindObjectOfType<LiquidCanvasPool>();
+            LiquidWeather[] areas = Object.FindObjectsOfType<LiquidWeather>();
+            Assert.AreEqual(2, areas.Length, "expected a rain yard and a snow yard");
+            Assert.AreEqual(1, System.Array.FindAll(areas, a => a.snow).Length, "expected exactly one snow yard");
+
+            foreach (LiquidWeather weather in areas)
+            {
+                Assert.AreSame(pool, weather.pool, weather.name);
+                Assert.IsTrue(weather.snow || weather.profile != null, weather.name + ": rain without a liquid");
+                Assert.IsNotNull(weather.precipitation, weather.name + " has no particles");
+                Assert.IsNotEmpty(weather.groundMaterials, weather.name + " has no ground to wet");
+                foreach (Material ground in weather.groundMaterials)
+                {
+                    Assert.AreEqual(LiquidWeatherBuilder.WeatherSurfaceShader, ground.shader.name, ground.name);
+                }
+
+                // Each yard's mannequins stand inside its area. The ones in the open see the sky;
+                // the one in the shelter has the roof above it, on a layer the area treats as cover.
+                Transform yard = weather.transform.parent.parent;
+                LiquidBodyCanvas[] bodies = yard.GetComponentsInChildren<LiquidBodyCanvas>();
+                Assert.AreEqual(5, bodies.Length, yard.name);
+                Physics.SyncTransforms();
+                int sheltered = 0;
+                foreach (LiquidBodyCanvas body in bodies)
+                {
+                    Vector3 local = weather.transform.InverseTransformPoint(body.anchor.position);
+                    Assert.Less(Mathf.Abs(local.x), weather.areaSize.x * 0.5f, body.name + " stands outside the area");
+                    Assert.Less(Mathf.Abs(local.z), weather.areaSize.z * 0.5f, body.name + " stands outside the area");
+
+                    Vector3 top = body.GetBodyTop() + Vector3.up * pool.bodyRadius;
+                    if (Physics.Raycast(top, Vector3.up, weather.shelterCheckDistance, pool.occluderLayers,
+                        QueryTriggerInteraction.Ignore))
+                    {
+                        sheltered++;
+                    }
+                }
+
+                Assert.AreEqual(1, sheltered, yard.name + ": expected exactly one mannequin under the roof");
+            }
+        }
+
+        /// <summary>
+        /// Every mannequin has its own projector material, and both it and its
+        /// projector stay on the mannequin layer; player canvases never draw on them.
+        /// </summary>
+        internal static void AssertMannequinsDrawOnTheirOwnLayer(LiquidCanvasPool pool)
+        {
             var materials = new System.Collections.Generic.HashSet<string>();
             foreach (LiquidBodyCanvas mannequin in pool.mannequins)
             {

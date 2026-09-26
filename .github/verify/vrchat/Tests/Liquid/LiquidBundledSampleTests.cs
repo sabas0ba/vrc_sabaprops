@@ -17,11 +17,21 @@ namespace SabaProps.Liquid.WorldTests
     /// from the copy or a serialized program left behind shows up here as a
     /// reference that does not resolve.
     /// </para>
+    /// <para>
+    /// Runs once for each of the two scenes the sample ships.
+    /// </para>
     /// </summary>
+    [TestFixture("Assets/SabaProps/Liquid/Samples/LiquidDemo.unity")]
+    [TestFixture("Assets/SabaProps/Liquid/Samples/LiquidComparison.unity")]
     public class LiquidBundledSampleTests
     {
         private const string SampleSource = "Packages/io.github.sabas0ba.sabaprops.liquid/Samples~/LiquidDemo/Assets";
-        private const string ImportedScene = "Assets/SabaProps/Liquid/Samples/LiquidDemo.unity";
+        private readonly string _importedScene;
+
+        public LiquidBundledSampleTests(string importedScene)
+        {
+            _importedScene = importedScene;
+        }
 
         [OneTimeSetUp]
         public void ImportSample()
@@ -30,7 +40,8 @@ namespace SabaProps.Liquid.WorldTests
             AssetDatabase.DeleteAsset("Assets/SabaProps/Liquid");
             CopyDirectory(Path.GetFullPath(SampleSource), Path.GetFullPath("Assets"));
             AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
-            EditorSceneManager.OpenScene(ImportedScene);
+            Assert.IsNotNull(AssetDatabase.LoadAssetAtPath<SceneAsset>(_importedScene), _importedScene + " is not in the sample");
+            EditorSceneManager.OpenScene(_importedScene);
         }
 
         [OneTimeTearDown]
@@ -61,6 +72,17 @@ namespace SabaProps.Liquid.WorldTests
                 Assert.IsNotNull(sprayer.profile, sprayer.name);
                 Assert.IsNotNull(sprayer.stream.GetComponent<ParticleSystemRenderer>().sharedMaterial,
                     sprayer.name + ": stream material is missing from the sample");
+            }
+
+            foreach (LiquidWeather weather in Object.FindObjectsOfType<LiquidWeather>())
+            {
+                Assert.IsNotNull(weather.precipitation.GetComponent<ParticleSystemRenderer>().sharedMaterial,
+                    weather.name + ": particle material is missing from the sample");
+                foreach (Material ground in weather.groundMaterials)
+                {
+                    Assert.IsNotNull(ground, weather.name + ": a ground material is missing from the sample");
+                    Assert.AreEqual("SabaProps/Liquid/Weather Surface", ground.shader.name, ground.name);
+                }
             }
         }
 

@@ -233,15 +233,17 @@ namespace SabaProps.Liquid
         }
 
         /// <summary>
-        /// 受け手の部位の重み。x: 衣服（体）, y: 髪, z: 肌。SabaLiquidCanvas.cginc の
-        /// SabaLiquidRegionWeights と同じ定義です。
+        /// 受け手の部位の重み。x: 上半身の衣服, y: 下半身の衣服, z: 髪, w: 肌。靴は 1 から 4 つの和を引いた残りです。
+        /// SabaLiquidCanvas.cginc の SabaLiquidRegionWeights と同じ定義です。
         /// <para>
         /// Projector は受け手のマテリアルを読めないため、部位は位置から推定します。頭の球の中は髪、
-        /// ただし顔の向き側で頭頂でない所は肌、手の球の中は肌、それ以外は衣服です。
-        /// head.w と手の w は半径で、0 ならその部位を使いません。
+        /// ただし顔の向き側で頭頂でない所は肌、手の球の中は肌、足の球の中は靴、腰の面より下は
+        /// 下半身の衣服、それ以外は上半身の衣服です。球の w は半径、hip の w は境界の幅で、
+        /// 0 ならその部位を使いません。
         /// </para>
         /// </summary>
-        private Vector3 RegionWeights(Vector3 p, Vector4 head, Vector3 face, Vector3 up, Vector4 leftHand, Vector4 rightHand)
+        private Vector4 RegionWeights(Vector3 p, Vector4 head, Vector3 face, Vector3 up, Vector4 leftHand, Vector4 rightHand,
+            Vector4 hip, Vector4 leftFoot, Vector4 rightFoot)
         {
             float hair = 0f;
             float skin = 0f;
@@ -272,7 +274,31 @@ namespace SabaProps.Liquid
             }
 
             hair = Mathf.Min(hair, 1f - skin);
-            return new Vector3(1f - hair - skin, hair, skin);
+            float rest = 1f - hair - skin;
+
+            float feet = 0f;
+            if (leftFoot.w > 0f)
+            {
+                float d = (p - new Vector3(leftFoot.x, leftFoot.y, leftFoot.z)).magnitude;
+                feet = Mathf.Max(feet, 1f - Smoothstep(leftFoot.w * 0.9f, leftFoot.w * 1.4f, d));
+            }
+
+            if (rightFoot.w > 0f)
+            {
+                float d = (p - new Vector3(rightFoot.x, rightFoot.y, rightFoot.z)).magnitude;
+                feet = Mathf.Max(feet, 1f - Smoothstep(rightFoot.w * 0.9f, rightFoot.w * 1.4f, d));
+            }
+
+            feet = Mathf.Min(feet, rest);
+            rest -= feet;
+
+            float lower = 0f;
+            if (hip.w > 0f)
+            {
+                lower = rest * Smoothstep(hip.w, -hip.w, Vector3.Dot(p - new Vector3(hip.x, hip.y, hip.z), up));
+            }
+
+            return new Vector4(rest - lower, lower, hair, skin);
         }
 
         /// <summary>HLSL の smoothstep と同じ定義。</summary>
@@ -328,6 +354,20 @@ namespace SabaProps.Liquid
             }
 
             return Mathf.Max(0f, amount - deltaSeconds / dryingSeconds);
+        }
+
+        /// <summary>
+        /// 雪が溶ける量。meltSeconds で積雪 1 が溶けきる速さとし、残っている以上は溶けません。
+        /// 溶けた分は水として体を濡らします。
+        /// </summary>
+        private float MeltSnow(float depth, float meltSeconds, float deltaSeconds)
+        {
+            if (depth <= 0f || meltSeconds <= 0f)
+            {
+                return 0f;
+            }
+
+            return Mathf.Min(depth, deltaSeconds / meltSeconds);
         }
 
         /// <summary>

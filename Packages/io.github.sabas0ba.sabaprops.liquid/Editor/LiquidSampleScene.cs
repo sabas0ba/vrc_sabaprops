@@ -10,8 +10,14 @@ using VRC.SDK3.Components;
 namespace SabaProps.Liquid.Editors
 {
     /// <summary>
-    /// Generates a demo world with one of each Source and a mirror to watch
-    /// the result on your own avatar.
+    /// Generates the sample worlds: a demo world with one of each Source, a
+    /// mirror to watch the result on your own avatar, clothed figures and rain
+    /// and snow yards, and a comparison world with the rows that set liquids,
+    /// surfaces and colours side by side.
+    /// <para>
+    /// The two are separate scenes to keep each within what one client draws
+    /// comfortably: every mannequin keeps its own canvas textures.
+    /// </para>
     /// <para>
     /// The pits are real: the pool and the mud bog are holes in the ground, so
     /// the liquid line rises on the avatar as the player walks down into them.
@@ -28,6 +34,7 @@ namespace SabaProps.Liquid.Editors
     {
         public const string SampleFolder = LiquidAssets.RootFolder + "/Samples";
         public const string ScenePath = SampleFolder + "/LiquidDemo.unity";
+        public const string ComparisonScenePath = SampleFolder + "/LiquidComparison.unity";
 
         public const string GroundMaterialPath = SampleFolder + "/Ground.mat";
         public const string TileMaterialPath = SampleFolder + "/Tile.mat";
@@ -80,10 +87,32 @@ namespace SabaProps.Liquid.Editors
                 return;
             }
 
+            LookAt(new Vector3(0f, 0.5f, 4f), 18f);
+        }
+
+        [MenuItem("Tools/SabaProps/Liquid/Create Comparison Scene", false, 2)]
+        public static void CreateComparisonAndOpen()
+        {
+            if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo())
+            {
+                return;
+            }
+
+            Scene scene = CreateComparison();
+            if (!scene.IsValid())
+            {
+                return;
+            }
+
+            LookAt(new Vector3(0f, 0.5f, 8f), 22f);
+        }
+
+        private static void LookAt(Vector3 point, float distance)
+        {
             SceneView view = SceneView.lastActiveSceneView;
             if (view != null)
             {
-                view.LookAt(new Vector3(0f, 0.5f, 1f), Quaternion.Euler(35f, 0f, 0f), 14f);
+                view.LookAt(point, Quaternion.Euler(35f, 0f, 0f), distance);
             }
         }
 
@@ -101,6 +130,7 @@ namespace SabaProps.Liquid.Editors
         {
             UdonSharp.Compiler.UdonSharpCompilerV1.CompileSync(
                 new UdonSharp.Compiler.UdonSharpCompileOptions { IsEditorBuild = true });
+            CreateComparison();
             Create();
             AssetDatabase.SaveAssets();
         }
@@ -134,18 +164,13 @@ namespace SabaProps.Liquid.Editors
             BuildWaterGuns(pool, water, furniture);
             BuildMirror();
 
-            // The unattended rows: mannequins the sprayers, showers and tanks work on by themselves.
-            Material update = LiquidAssets.CreateOrLoadMaterial(
-                LiquidAssets.CanvasUpdateMaterialPath, LiquidAssets.CanvasUpdateShader);
+            // The unattended rows: mannequins the sprayers, showers, tanks and weather work on by themselves.
+            Material update = CanvasUpdateMaterial();
             var mannequins = new List<LiquidBodyCanvas>();
-            LiquidDemoGalleries.BuildLiquidRow(pool, update, mannequins);
+            LiquidDemoWeather.BuildClothedRow(pool, update, mannequins);
             LiquidDemoGalleries.BuildSourceRow(pool, update, mannequins);
-            LiquidDemoGalleries.BuildSurfaceRow(pool, update, mannequins);
-            LiquidDemoGalleries.BuildBodyColourRow(pool, update, mannequins);
-            LiquidDemoGalleries.BuildLiquidColourRow(pool, update, mannequins);
-            pool.mannequins = mannequins.ToArray();
-            UdonSharpEditorUtility.CopyProxyToUdon(pool);
-            EditorUtility.SetDirty(pool);
+            LiquidDemoWeather.BuildWeatherYards(pool, update, mannequins);
+            AssignMannequins(pool, mannequins);
 
             BuildWorld();
 
@@ -154,6 +179,52 @@ namespace SabaProps.Liquid.Editors
 
             Debug.Log(Summarise());
             return scene;
+        }
+
+        /// <summary>
+        /// Replaces the open scene with the comparison rows on flat ground and
+        /// saves it to <see cref="ComparisonScenePath"/>.
+        /// </summary>
+        public static Scene CreateComparison()
+        {
+            LiquidAssets.EnsureFolder(SampleFolder);
+
+            Scene scene = EditorSceneManager.NewScene(NewSceneSetup.DefaultGameObjects, NewSceneMode.Single);
+            ConfigureLight();
+
+            Material ground = LiquidAssets.CreateOrLoadSurfaceMaterial(GroundMaterialPath, new Color(0.55f, 0.56f, 0.52f), 0.1f);
+            var root = new GameObject(GroundRootName);
+            Slab(root.transform, "Ground", -GroundHalfSize, GroundHalfSize, -GroundHalfSize, GroundHalfSize, 0f,
+                GroundThickness, ground);
+
+            LiquidCanvasPool pool = LiquidSourceBuilder.FindOrCreatePool();
+            Material update = CanvasUpdateMaterial();
+            var mannequins = new List<LiquidBodyCanvas>();
+            LiquidDemoGalleries.BuildLiquidRow(pool, update, mannequins);
+            LiquidDemoGalleries.BuildSurfaceRow(pool, update, mannequins);
+            LiquidDemoGalleries.BuildBodyColourRow(pool, update, mannequins);
+            LiquidDemoGalleries.BuildLiquidColourRow(pool, update, mannequins);
+            AssignMannequins(pool, mannequins);
+
+            BuildWorld();
+
+            AssetDatabase.SaveAssets();
+            EditorSceneManager.SaveScene(scene, ComparisonScenePath);
+
+            Debug.Log(SummariseComparison());
+            return scene;
+        }
+
+        private static Material CanvasUpdateMaterial()
+        {
+            return LiquidAssets.CreateOrLoadMaterial(LiquidAssets.CanvasUpdateMaterialPath, LiquidAssets.CanvasUpdateShader);
+        }
+
+        private static void AssignMannequins(LiquidCanvasPool pool, List<LiquidBodyCanvas> mannequins)
+        {
+            pool.mannequins = mannequins.ToArray();
+            UdonSharpEditorUtility.CopyProxyToUdon(pool);
+            EditorUtility.SetDirty(pool);
         }
 
         // ------------------------------------------------------------------
@@ -434,12 +505,23 @@ namespace SabaProps.Liquid.Editors
             text.AppendLine($"・{ShowerName}（奥）: Interact で放水を切り替えます。当たった所から下が濡れ、泥が洗い流されます。");
             text.AppendLine($"・{FaucetName}（右手前）: 手を差し出すと濡れます。Interact で開閉します。");
             text.AppendLine($"・{WaterGunsName}（左手前）: 持って使用ボタンを押している間、放水します。命中は全員に同期されます。");
-            text.AppendLine($"・{LiquidDemoGalleries.LiquidRowName}（左の列）: 同じ設定の Sprayer で、液体ごとの付き方・垂れ方・乾き方を比べます。");
+            text.AppendLine($"・{LiquidDemoWeather.ClothedRowName}（左の列）: 服を着た人型に、水と泥、水と塗料をかけます。上着、ズボン、靴、髪、肌で付き方が変わります。");
             text.AppendLine($"・{LiquidDemoGalleries.SourceRowName}（右の列）: シャワー、水槽、泥、水流、滴り、体の色の違いを比べます。");
-            text.AppendLine($"・{LiquidDemoGalleries.SurfaceRowName}（鏡の奥 1 列目）: 柔らかい布、硬い布、革、髪、肌、樹脂、アバターの部位推定を比べます。");
+            text.AppendLine($"・{LiquidDemoWeather.RainYardName}（鏡の奥の左）: 雨が周期的に降り、体と地面が濡れて乾きます。屋根の下は濡れません。");
+            text.AppendLine($"・{LiquidDemoWeather.SnowYardName}（鏡の奥の右）: 雪が周期的に降り、上を向いた面に積もってから溶けて濡れます。");
+            text.AppendLine("列と天候はサーバー時刻に合わせて自動で動き、操作しなくても変化が見えます。");
+            text.AppendLine($"液体、素材、色の比較は {ComparisonScenePath} にあります。");
+            return text.ToString();
+        }
+
+        private static string SummariseComparison()
+        {
+            var text = new StringBuilder();
+            text.AppendLine($"[SabaProps Liquid] 比較シーンを {ComparisonScenePath} に作成しました。");
+            text.AppendLine($"・{LiquidDemoGalleries.LiquidRowName}（左の列）: 同じ設定の Sprayer で、液体ごとの付き方・垂れ方・乾き方を比べます。");
+            text.AppendLine($"・{LiquidDemoGalleries.SurfaceRowName}（奥の 1 列目）: 柔らかい布、硬い布、革、髪、肌、樹脂、アバターの部位推定を比べます。");
             text.AppendLine($"・{LiquidDemoGalleries.BodyColourRowName}（2 列目）: 体の色による見え方の違いを比べます。");
             text.AppendLine($"・{LiquidDemoGalleries.LiquidColourRowName}（3 列目）: 黒から白の塗料と、複数色を同時にかけた場合を比べます。");
-            text.AppendLine("比較の列はサーバー時刻に合わせて自動で動き、操作しなくても変化が見えます。");
             return text.ToString();
         }
     }

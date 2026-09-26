@@ -694,7 +694,8 @@ csc_exe -r:"$RUNTIME_DIR/System.Text.RegularExpressions.dll" \
     "$OFFLINE/UnityEngineShim.cs" \
     "$OFFLINE/OfflineLiquidTests.cs" \
     "$LIQUID/Runtime/LiquidCanvasSolver.cs" \
-    "$LIQUID/Runtime/LiquidCanvasPoolSolver.cs"
+    "$LIQUID/Runtime/LiquidCanvasPoolSolver.cs" \
+    "$LIQUID/Runtime/LiquidWeatherSolver.cs"
 
 cp "$OFFLINE_OUT/OfflineMeshTests.runtimeconfig.json" \
    "$OFFLINE_OUT/OfflineLiquidTests.runtimeconfig.json"

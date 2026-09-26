@@ -71,6 +71,15 @@ namespace SabaProps.Liquid
         [Tooltip("浸漬の境界の幅（正規化高さ）。")]
         public float immersionEdge = 0.02f;
 
+        [Header("雪")]
+        [Tooltip("雪が止んでから、積雪 1 が溶けきるまでの秒数。")]
+        [Min(1f)]
+        public float snowMeltSeconds = 40f;
+
+        [Tooltip("雨と溶けた雪で上を向いた面に残る水が、乾ききるまでの秒数。")]
+        [Min(1f)]
+        public float surfaceWaterDryingSeconds = 90f;
+
         [Header("マネキン")]
         [Tooltip("プレイヤーの代わりに追従する Transform（マネキンの腰）。設定するとプールを介さず常に有効になります。")]
         public Transform anchor;
@@ -93,9 +102,21 @@ namespace SabaProps.Liquid
         [Tooltip("マネキンの右手。")]
         public Transform rightHandAnchor;
 
+        [Tooltip("マネキンの左足。")]
+        public Transform leftFootAnchor;
+
+        [Tooltip("マネキンの右足。")]
+        public Transform rightFootAnchor;
+
         [Header("受け手の素材")]
-        [Tooltip("衣服（体）の素材。未設定ならマテリアルの既定値（柔らかい布）です。")]
+        [Tooltip("上半身の衣服の素材。未設定ならマテリアルの既定値（柔らかい布）です。")]
         public LiquidSurfaceProfile bodySurface;
+
+        [Tooltip("下半身の衣服の素材。未設定ならマテリアルの既定値（硬い布）です。")]
+        public LiquidSurfaceProfile lowerSurface;
+
+        [Tooltip("靴の素材。未設定ならマテリアルの既定値（革）です。")]
+        public LiquidSurfaceProfile feetSurface;
 
         [Tooltip("髪の素材。")]
         public LiquidSurfaceProfile hairSurface;
@@ -111,6 +132,12 @@ namespace SabaProps.Liquid
 
         [Tooltip("目の高さ 1.6 m のアバターでの手の半径（m）。")]
         public float handRadius = 0.07f;
+
+        [Tooltip("目の高さ 1.6 m のアバターでの足（靴）の半径（m）。")]
+        public float footRadius = 0.13f;
+
+        [Tooltip("腰から上半身と下半身の境目までの高さ（m、体の上方向）。")]
+        public float waistOffset = 0.05f;
 
         private VRCPlayerApi _player;
         private int _playerId = -1;
@@ -150,6 +177,12 @@ namespace SabaProps.Liquid
         private float _immersionDryingSeconds = 90f;
         private Color _immersionColor = Color.black;
         private bool _immersedThisUpdate;
+
+        // 雪と雨。積雪は上を向いた面に積もり、止むと溶けて水になります。
+        // 雨と溶けた雪の水は、上を向いた面ほど多く残る一様な濡れとして持ちます。
+        private float _snowDepth;
+        private float _surfaceWater;
+        private float _lastSnowTime = -1000f;
 
         // この周期に洗う範囲。高さは Canvas の正規化 y で、それより下の顔料を洗います。
         private float _washLevel = -2f;
@@ -265,6 +298,18 @@ namespace SabaProps.Liquid
                 projectorMaterial.SetVector("_SurfaceSkinA", skinSurface.GetPrimary());
                 projectorMaterial.SetVector("_SurfaceSkinB", skinSurface.GetSecondary());
             }
+
+            if (lowerSurface != null)
+            {
+                projectorMaterial.SetVector("_SurfaceLowerA", lowerSurface.GetPrimary());
+                projectorMaterial.SetVector("_SurfaceLowerB", lowerSurface.GetSecondary());
+            }
+
+            if (feetSurface != null)
+            {
+                projectorMaterial.SetVector("_SurfaceFeetA", feetSurface.GetPrimary());
+                projectorMaterial.SetVector("_SurfaceFeetB", feetSurface.GetSecondary());
+            }
         }
 
         /// <summary>
@@ -276,27 +321,42 @@ namespace SabaProps.Liquid
             Vector4 head = Vector4.zero;
             Vector4 left = Vector4.zero;
             Vector4 right = Vector4.zero;
+            Vector4 hip = Vector4.zero;
+            Vector4 leftFoot = Vector4.zero;
+            Vector4 rightFoot = Vector4.zero;
 
             if (estimateRegions)
             {
+                float scale = 1f;
                 if (anchor != null)
                 {
                     head = RegionSphere(headAnchor, headRadius);
                     left = RegionSphere(leftHandAnchor, handRadius);
                     right = RegionSphere(rightHandAnchor, handRadius);
+                    leftFoot = RegionSphere(leftFootAnchor, footRadius);
+                    rightFoot = RegionSphere(rightFootAnchor, footRadius);
                 }
                 else if (Utilities.IsValid(_player))
                 {
-                    float scale = Mathf.Max(_player.GetAvatarEyeHeightAsMeters(), 0.2f) / 1.6f;
+                    scale = Mathf.Max(_player.GetAvatarEyeHeightAsMeters(), 0.2f) / 1.6f;
                     head = RegionBone(_player.GetBonePosition(HumanBodyBones.Head), headRadius * scale);
                     left = RegionBone(_player.GetBonePosition(HumanBodyBones.LeftHand), handRadius * scale);
                     right = RegionBone(_player.GetBonePosition(HumanBodyBones.RightHand), handRadius * scale);
+                    leftFoot = RegionBone(_player.GetBonePosition(HumanBodyBones.LeftFoot), footRadius * scale);
+                    rightFoot = RegionBone(_player.GetBonePosition(HumanBodyBones.RightFoot), footRadius * scale);
                 }
+
+                // 上半身と下半身の境目は、腰から体の上方向に少し上がった面です。
+                Vector3 waist = _origin - _up * centerOffset.y + _up * (waistOffset * scale);
+                hip = new Vector4(waist.x, waist.y, waist.z, 0.03f * scale);
             }
 
             projectorMaterial.SetVector("_RegionHead", head);
             projectorMaterial.SetVector("_RegionHandL", left);
             projectorMaterial.SetVector("_RegionHandR", right);
+            projectorMaterial.SetVector("_RegionHip", hip);
+            projectorMaterial.SetVector("_RegionFootL", leftFoot);
+            projectorMaterial.SetVector("_RegionFootR", rightFoot);
         }
 
         private Vector4 RegionSphere(Transform centre, float radius)
@@ -417,6 +477,44 @@ namespace SabaProps.Liquid
             {
                 AccumulateWash(level, profile.washStrength * Mathf.Max(0f, deltaSeconds));
             }
+        }
+
+        /// <summary>
+        /// 雪が降り積もることを伝えます。降雪の Source が評価周期ごとに呼びます。
+        /// <para>
+        /// 積雪は Canvas に焼かず、深さだけを持ちます。上を向いた面に積もる様子と、溶けた水が
+        /// 上を向いた面を濡らす様子は、Projector のシェーダが受け手の向きから描きます。
+        /// 降らなかった周期には溶け、溶けた分は水になって乾いていきます。
+        /// </para>
+        /// </summary>
+        public void ApplySnow(float amount)
+        {
+            if (!_active)
+            {
+                return;
+            }
+
+            _snowDepth = Mathf.Min(1f, _snowDepth + Mathf.Max(0f, amount));
+            _lastSnowTime = Time.time;
+            _lastActivityTime = Time.time;
+        }
+
+        /// <summary>
+        /// 雨に濡れることを伝えます。降雨の Source が評価周期ごとに呼びます。
+        /// <para>
+        /// 雨粒の命中（QueueStamp）とは別に、体の上を向いた面が全体に濡れていく様子を
+        /// 一様な水の量として持ちます。描き方は溶けた雪の水と同じで、乾燥時間で乾きます。
+        /// </para>
+        /// </summary>
+        public void ApplyRain(float amount)
+        {
+            if (!_active)
+            {
+                return;
+            }
+
+            _surfaceWater = Mathf.Min(1f, _surfaceWater + Mathf.Max(0f, amount));
+            _lastActivityTime = Time.time;
         }
 
         /// <summary>
@@ -577,6 +675,7 @@ namespace SabaProps.Liquid
             _washAmount = 0f;
 
             AdvanceImmersion(dt);
+            AdvanceSnow(dt);
             BindTextures();
             PushImmersion();
         }
@@ -592,8 +691,32 @@ namespace SabaProps.Liquid
             _immersedThisUpdate = false;
         }
 
+        private void AdvanceSnow(float dt)
+        {
+            // 降雪の評価が途切れてから少し経ったら、止んだとみなして溶かし始めます。
+            if (Time.time - _lastSnowTime > 0.5f)
+            {
+                float melted = MeltSnow(_snowDepth, snowMeltSeconds, dt);
+                _snowDepth -= melted;
+                _surfaceWater = Mathf.Min(1f, _surfaceWater + melted * 2f);
+            }
+
+            _surfaceWater = EvaporateAmount(_surfaceWater, surfaceWaterDryingSeconds, dt);
+
+            bool visible = _snowDepth > 0f || _surfaceWater > 0f;
+            projectorMaterial.SetVector("_Snow", new Vector4(_snowDepth, _surfaceWater, 0f, visible ? 1f : 0f));
+        }
+
         private void ResetImmersion()
         {
+            _snowDepth = 0f;
+            _surfaceWater = 0f;
+            _lastSnowTime = -1000f;
+            if (projectorMaterial != null)
+            {
+                projectorMaterial.SetVector("_Snow", Vector4.zero);
+            }
+
             _immersionFilmLevel = -1f;
             _immersionPigmentLevel = -1f;
             _immersionFilmAmount = 0f;

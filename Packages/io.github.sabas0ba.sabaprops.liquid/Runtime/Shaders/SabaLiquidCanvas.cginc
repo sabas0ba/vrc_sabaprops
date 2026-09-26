@@ -94,13 +94,15 @@ float SabaLiquidDepthMask(float surfaceDepth, float storedDepth, float coverage,
     return lerp(1.0, mask, saturate(coverage));
 }
 
-// 受け手の部位の重み。x: 衣服（体）, y: 髪, z: 肌。和は 1 です。
+// 受け手の部位の重み。x: 上半身の衣服, y: 下半身の衣服, z: 髪, w: 肌。靴は 1 から 4 つの和を引いた残りです。
 //
 // Projector は受け手の実際のマテリアルを読めないため、部位は位置から推定します。
-// 頭の球の中は髪、ただし顔の向き側で頭頂でない所は肌、手の球の中は肌、それ以外は衣服です。
+// 頭の球の中は髪、ただし顔の向き側で頭頂でない所は肌、手の球の中は肌、足の球の中は靴、
+// 腰の面より下は下半身の衣服、それ以外は上半身の衣服です。
 // C# 側の LiquidCanvasSolver.RegionWeights と同じ定義です。
-// head.w と hand の w は半径で、0 なら その部位を使いません。
-float3 SabaLiquidRegionWeights(float3 p, float4 head, float3 face, float3 up, float4 leftHand, float4 rightHand)
+// 球の w は半径、hip の w は境界の幅で、0 ならその部位を使いません。
+float4 SabaLiquidRegionWeights(float3 p, float4 head, float3 face, float3 up, float4 leftHand, float4 rightHand,
+    float4 hip, float4 leftFoot, float4 rightFoot)
 {
     float hair = 0.0;
     float skin = 0.0;
@@ -129,7 +131,29 @@ float3 SabaLiquidRegionWeights(float3 p, float4 head, float3 face, float3 up, fl
     }
 
     hair = min(hair, 1.0 - skin);
-    return float3(1.0 - hair - skin, hair, skin);
+    float rest = 1.0 - hair - skin;
+
+    float feet = 0.0;
+    if (leftFoot.w > 0.0)
+    {
+        feet = max(feet, 1.0 - smoothstep(leftFoot.w * 0.9, leftFoot.w * 1.4, length(p - leftFoot.xyz)));
+    }
+
+    if (rightFoot.w > 0.0)
+    {
+        feet = max(feet, 1.0 - smoothstep(rightFoot.w * 0.9, rightFoot.w * 1.4, length(p - rightFoot.xyz)));
+    }
+
+    feet = min(feet, rest);
+    rest -= feet;
+
+    float lower = 0.0;
+    if (hip.w > 0.0)
+    {
+        lower = rest * smoothstep(hip.w, -hip.w, dot(p - hip.xyz, up));
+    }
+
+    return float4(rest - lower, lower, hair, skin);
 }
 
 float SabaLiquidStampFalloff(float distance, float radius)
@@ -162,15 +186,17 @@ float2 SabaLiquidHash2(float2 p)
     return float2(SabaLiquidHash(p), SabaLiquidHash(p + 19.19));
 }
 
-// 撥水面の水滴。metric は面内の座標（m）、size は水滴の間隔（m）、wet は液量です。
-// x: 水滴の中か（縁を滑らかにした被覆）, y: 水滴の高さ（球の断面）, zw: 水滴の中心から外向きの傾き。
-// 液量が少ないほど水滴は小さく疎らになります。
-float4 SabaLiquidBeads(float2 metric, float size, float wet)
+// 撥水面の水滴の 1 層。position は格子単位の座標、density は水滴が置かれる割合、
+// gravity は面内の重力方向（単位ベクトル、0 なら伸ばさない）です。
+// 返り値は SabaLiquidBeads と同じ並びです。
+float4 SabaLiquidBeadLayer(float2 position, float density, float amount, float2 gravity, float seed)
 {
-    float2 position = metric / max(size, 1e-4);
     float2 cell = floor(position);
     float2 local = position - cell;
-    float amount = saturate(wet * 1.5);
+    // 水平な面では重力の向きが無く、引き伸ばしません。
+    bool oriented = dot(gravity, gravity) > 0.5;
+    float2 down = oriented ? gravity : float2(0.0, 1.0);
+    float2 across = float2(-down.y, down.x);
     float best = 0.0;
     float2 slope = 0.0;
 
@@ -180,30 +206,60 @@ float4 SabaLiquidBeads(float2 metric, float size, float wet)
         [unroll]
         for (int x = -1; x <= 1; x++)
         {
-            float2 neighbour = cell + float2(x, y);
+            float2 neighbour = cell + float2(x, y) + seed;
             float2 random = SabaLiquidHash2(neighbour);
-            if (random.y > amount + 0.15)
+            if (random.y > density)
             {
                 continue;
             }
 
-            float2 centre = float2(x, y) + 0.2 + 0.6 * random;
-            float radius = (0.18 + 0.3 * SabaLiquidHash(neighbour + 7.7)) * sqrt(amount);
+            // 大きさは小さい方へ偏らせます。大粒はまれで、小粒が多いのが実際の水滴です。
+            float size = SabaLiquidHash(neighbour + 7.7);
+            float radius = (0.08 + 0.42 * size * size) * sqrt(amount);
+            float2 centre = float2(x, y) + 0.05 + 0.9 * SabaLiquidHash2(neighbour + 3.1);
             float2 d = local - centre;
-            float r2 = dot(d, d) / max(radius * radius, 1e-5);
+
+            // 重力方向の下側を引き伸ばします。大きい水滴ほど重みで垂れた形になります。
+            float along = dot(d, down);
+            float stretch = oriented ? 1.0 + (along > 0.0 ? 0.9 : 0.2) * size : 1.0;
+            float2 shaped = across * dot(d, across) + down * (along / stretch);
+            float r2 = dot(shaped, shaped) / max(radius * radius, 1e-5);
             if (r2 < 1.0)
             {
-                float height = sqrt(1.0 - r2);
+                float height = sqrt(1.0 - r2) * (0.6 + 0.4 * size);
                 if (height > best)
                 {
                     best = height;
-                    slope = d / max(radius, 1e-4);
+                    slope = shaped / max(radius, 1e-4);
                 }
             }
         }
     }
 
     return float4(saturate(best * 5.0), best, slope);
+}
+
+// 撥水面の水滴。metric は面内の座標（m）、size は水滴の間隔（m）、wet は液量、
+// gravity は面内の重力方向（単位ベクトル）です。
+// x: 水滴の中か（縁を滑らかにした被覆）, y: 水滴の高さ（球の断面）, zw: 水滴の中心から外向きの傾き。
+//
+// 格子に 1 つずつ置くだけでは並びと大きさがそろって見えるため、細かい層と粗い層を重ね、
+// 低い周波数のむらで水滴の多い所と少ない所を作ります。液量が少ないほど小さく疎らになります。
+float4 SabaLiquidBeads(float2 metric, float size, float wet, float2 gravity)
+{
+    float amount = saturate(wet * 1.5);
+    float2 position = metric / max(size, 1e-4);
+    float cluster = 0.35 + 1.1 * SabaLiquidValueNoise(position * 0.18 + 5.3);
+    float density = saturate((amount + 0.15) * cluster);
+
+    float4 fine = SabaLiquidBeadLayer(position, density, amount, gravity, 0.0);
+
+    // 粗い層は格子を 35 度回し、細かい層と並びがそろわないようにします。
+    float2x2 turn = float2x2(0.819, -0.574, 0.574, 0.819);
+    float4 coarse = SabaLiquidBeadLayer(mul(turn, position) * 0.42, density * 0.45, amount,
+        mul(turn, gravity), 17.0);
+
+    return coarse.y > fine.y ? coarse : fine;
 }
 
 #endif

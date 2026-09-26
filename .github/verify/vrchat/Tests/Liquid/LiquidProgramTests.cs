@@ -52,7 +52,7 @@ namespace SabaProps.Liquid.WorldTests
             // event, the canvas never follows the body.
             CollectionAssert.Contains(exported, "_postLateUpdate");
 
-            foreach (string method in new[] { "Assign", "Release", "QueueStamp", "ApplyImmersion", "WashImmersion", "GetPlayerId", "GetLastActivityTime" })
+            foreach (string method in new[] { "Assign", "Release", "QueueStamp", "ApplyImmersion", "WashImmersion", "ApplySnow", "ApplyRain", "GetPlayerId", "GetLastActivityTime" })
             {
                 AssertExportsMethod(exported, method);
             }
@@ -135,6 +135,15 @@ namespace SabaProps.Liquid.WorldTests
             List<string> exported = Exported(Compile<LiquidSprayer>());
             CollectionAssert.Contains(exported, "_update");
             AssertSyncMode<LiquidSprayer>(BehaviourSyncMode.None);
+        }
+
+        [Test]
+        public void Weather_RunsFromServerTimeWithoutSyncing()
+        {
+            List<string> exported = Exported(Compile<LiquidWeather>());
+            CollectionAssert.Contains(exported, "_update");
+            AssertExportsMethod(exported, "IsFalling");
+            AssertSyncMode<LiquidWeather>(BehaviourSyncMode.None);
         }
 
         [Test]

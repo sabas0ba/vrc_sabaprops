@@ -6,8 +6,10 @@ using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.TestTools;
+using UdonSharpEditor;
 using VRC.SDK3.ClientSim;
 using VRC.SDKBase;
+using VRC.Udon;
 
 namespace SabaProps.Liquid.WorldTests
 {
@@ -17,12 +19,30 @@ namespace SabaProps.Liquid.WorldTests
     /// The edit mode tests check how the scene is built. This checks that it
     /// works unattended: after a few seconds of play, the sprayers, showers and
     /// tanks have put liquid on every mannequin, with nobody touching anything.
-    /// It also writes review images of both comparison rows to TestResults.
+    /// It also writes review images of each row and yard to TestResults.
+    /// </para>
+    /// <para>
+    /// The weather yards run on a cycle of a minute or more, so the test makes
+    /// both fall continuously before entering play mode, then stops the snow to
+    /// watch it melt. The mannequin under each roof must stay untouched.
     /// </para>
     /// </summary>
     public class LiquidDemoPlayTests
     {
         private const float RunSeconds = 20f;
+        private const float MeltSeconds = 8f;
+
+        // Order of the mannequins in the pool, as LiquidSampleScene.Create builds them.
+        private const int ClothedFirst = 0;
+        private const int ClothedCount = 6;
+        private const int SourceFirst = ClothedFirst + ClothedCount;
+        private const int SourceCount = 7;
+        private const int RainFirst = SourceFirst + SourceCount;
+        private const int SnowFirst = RainFirst + 5;
+        private const int YardCount = 5;
+
+        // In each yard, the four in the open come first and the sheltered one last.
+        private const int ShelteredInYard = 4;
 
         private bool _optionsEnabled;
         private EnterPlayModeOptions _options;
@@ -43,6 +63,13 @@ namespace SabaProps.Liquid.WorldTests
             UdonSharpCompilerV1.CompileSync(new UdonSharpCompileOptions { IsEditorBuild = true });
             LiquidSampleScene.Create();
             EditorSceneManager.OpenScene(LiquidSampleScene.ScenePath);
+
+            // Weather that falls throughout the run, rather than when the server clock says.
+            foreach (LiquidWeather weather in Object.FindObjectsOfType<LiquidWeather>())
+            {
+                weather.clearSeconds = 0f;
+                UdonSharpEditorUtility.CopyProxyToUdon(weather);
+            }
 
             _optionsEnabled = EditorSettings.enterPlayModeOptionsEnabled;
             _options = EditorSettings.enterPlayModeOptions;
@@ -83,24 +110,67 @@ namespace SabaProps.Liquid.WorldTests
             LiquidCanvasPool pool = Object.FindObjectOfType<LiquidCanvasPool>();
             Assert.IsNotNull(pool.mannequins);
 
-            int liquids = LiquidSourceBuilder.PresetNames.Length;
-            CaptureGrid("liquid-demo-liquids.png", pool.mannequins, 0, liquids);
-            CaptureGrid("liquid-demo-sources.png", pool.mannequins, liquids, pool.mannequins.Length - liquids);
+            Assert.AreEqual(SnowFirst + YardCount, pool.mannequins.Length, "the pool order changed; update the indices");
+
+            CaptureGrid("liquid-demo-clothed.png", pool.mannequins, ClothedFirst, ClothedCount);
+            CaptureGrid("liquid-demo-clothed-closeup.png", pool.mannequins, ClothedFirst, 3, 1.3f, 1.35f);
+            CaptureGrid("liquid-demo-sources.png", pool.mannequins, SourceFirst, SourceCount);
+            CaptureGrid("liquid-demo-immersion.png", pool.mannequins, SourceFirst + 1, 2, 1.7f, 0.75f);
             Capture("liquid-demo-overview.png", new Vector3(0f, 7f, -14f), new Vector3(0f, 0.5f, 2f), 60f);
-            CaptureGrid("liquid-demo-immersion.png", pool.mannequins, liquids + 1, 2, 1.7f, 0.75f);
-            int surfaces = liquids + 7;
-            CaptureGrid("liquid-demo-surfaces.png", pool.mannequins, surfaces, 7);
-            CaptureGrid("liquid-demo-surfaces-closeup.png", pool.mannequins, surfaces, 7, 1.3f, 1.35f);
-            CaptureGrid("liquid-demo-body-colours.png", pool.mannequins, surfaces + 7, 7);
-            CaptureGrid("liquid-demo-liquid-colours.png", pool.mannequins, surfaces + 14, 7);
-            foreach (LiquidBodyCanvas mannequin in pool.mannequins)
+            Capture("liquid-demo-yards.png", new Vector3(0f, 6f, 8.5f), new Vector3(0f, 0.8f, 18.5f), 70f);
+            CaptureGrid("liquid-demo-rain.png", pool.mannequins, RainFirst, YardCount);
+            CaptureGrid("liquid-demo-snow.png", pool.mannequins, SnowFirst, YardCount);
+            CaptureGrid("liquid-demo-snow-closeup.png", pool.mannequins, SnowFirst, 4, 1.3f, 1.35f);
+
+            for (int i = 0; i < RainFirst; i++)
             {
+                LiquidBodyCanvas mannequin = pool.mannequins[i];
                 string bay = mannequin.transform.parent.parent.name;
                 TestContext.WriteLine(bay + ": immersion levels " + mannequin.projectorMaterial.GetVector("_ImmersionLevels")
                     + " amounts " + mannequin.projectorMaterial.GetVector("_ImmersionAmounts"));
                 float coverage = Coverage(mannequin.projectorMaterial);
                 Assert.Greater(coverage, 0f, bay + ": nothing has landed on the mannequin after " + RunSeconds + " s");
             }
+
+            for (int i = 0; i < YardCount; i++)
+            {
+                LiquidBodyCanvas rained = pool.mannequins[RainFirst + i];
+                LiquidBodyCanvas snowed = pool.mannequins[SnowFirst + i];
+                Vector4 snow = snowed.projectorMaterial.GetVector("_Snow");
+                TestContext.WriteLine("rain " + i + ": coverage " + Coverage(rained.projectorMaterial) + ", snow " + i + ": " + snow);
+
+                if (i == ShelteredInYard)
+                {
+                    Assert.AreEqual(0f, Coverage(rained.projectorMaterial), "rain reached the mannequin under the roof");
+                    Assert.AreEqual(0f, rained.projectorMaterial.GetVector("_Snow").y, "rain soaked the mannequin under the roof");
+                    Assert.AreEqual(0f, snow.x, "snow reached the mannequin under the roof");
+                }
+                else
+                {
+                    Assert.Greater(Coverage(rained.projectorMaterial), 0f, "rain " + i + ": nothing landed after " + RunSeconds + " s");
+                    Assert.Greater(rained.projectorMaterial.GetVector("_Snow").y, 0f, "rain " + i + ": the body did not soak");
+                    Assert.Greater(snow.x, 0f, "snow " + i + ": no snow settled after " + RunSeconds + " s");
+                }
+            }
+
+            LiquidWeather snowfall = System.Array.Find(Object.FindObjectsOfType<LiquidWeather>(), w => w.snow);
+            Assert.Greater(snowfall.groundMaterials[0].GetVector("_WeatherState").y, 0f, "the snow yard's ground stayed bare");
+
+            // Stop the snow and let it melt.
+            Vector4 before = pool.mannequins[SnowFirst].projectorMaterial.GetVector("_Snow");
+            UdonBehaviour backing = UdonSharpEditorUtility.GetBackingUdonBehaviour(snowfall);
+            backing.SetProgramVariable("precipitationSeconds", 0f);
+            until = Time.time + MeltSeconds;
+            while (Time.time < until)
+            {
+                yield return null;
+            }
+
+            Vector4 after = pool.mannequins[SnowFirst].projectorMaterial.GetVector("_Snow");
+            TestContext.WriteLine("snow before melting " + before + ", after " + after);
+            Assert.Less(after.x, before.x, "the snow did not melt once it stopped falling");
+            Assert.Greater(after.y, 0f, "melting snow left no water behind");
+            CaptureGrid("liquid-demo-snow-melting.png", pool.mannequins, SnowFirst, YardCount);
         }
 
         /// <summary>

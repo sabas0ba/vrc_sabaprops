@@ -59,6 +59,7 @@ namespace SabaProps.Liquid
             Run("evaporation encoding matches the drying time", EvaporationEncodingMatchesDryingTime);
             Run("immersion level follows the body axis", ImmersionLevelFollowsTheBodyAxis);
             Run("the film line drains down and stops at the bottom", FilmLineDrains);
+            Run("snow melts at its rate and never below zero", SnowMelts);
 
             Run("shader constants agree with the solver", ShaderConstantsAgree);
             Run("degenerate input stays finite", DegenerateInputStaysFinite);
@@ -69,6 +70,11 @@ namespace SabaProps.Liquid
             Run("the hash is in [0, 1) and repeatable", LiquidCanvasPool.HashIsBoundedAndRepeatable);
             Run("player-relative coordinates round trip and follow the player", LiquidCanvasPool.PlayerLocalRoundTrips);
             Run("mannequin targets never collide with players or none", LiquidCanvasPool.MannequinTargetsAreDistinct);
+
+            Run("precipitation ramps up, holds and stops on the cycle", LiquidWeather.PrecipitationFollowsTheCycle);
+            Run("ground cover builds while it falls and clears after", LiquidWeather.GroundCoverBuildsAndClears);
+            Run("melting snow wets the ground, which then dries", LiquidWeather.MeltWetsThenDries);
+            Run("the area test and drop origins stay in place", LiquidWeather.AreaAndDropsStayInPlace);
 
             if (_failures > 0)
             {
@@ -400,8 +406,9 @@ namespace SabaProps.Liquid
         }
 
         /// <summary>
-        /// 頭頂と後頭部は髪、顔の正面は肌、手は肌、胴は衣服。重みは非負で和が 1。
-        /// 頭と手を無効（半径 0）にすると全身が衣服になること。
+        /// 頭頂と後頭部は髪、顔の正面は肌、手は肌、足は靴、腰より下は下半身の衣服、胴は上半身の衣服。
+        /// 重みは非負で、靴（1 から 4 つの和を引いた残り）を含めて和が 1。
+        /// 部位をすべて無効にすると全身が上半身の衣服になること。
         /// </summary>
         private static void RegionsFollowTheBody()
         {
@@ -411,32 +418,42 @@ namespace SabaProps.Liquid
             Vector3 up = Vector3.up;
             Vector4 left = new Vector4(-0.34f, 0.78f, 0f, 0.06f);
             Vector4 right = new Vector4(0.34f, 0.78f, 0f, 0.06f);
+            Vector4 hip = new Vector4(0f, 1.05f, 0f, 0.03f);
+            Vector4 leftFoot = new Vector4(-0.1f, 0.06f, 0.04f, 0.13f);
+            Vector4 rightFoot = new Vector4(0.1f, 0.06f, 0.04f, 0.13f);
 
-            Vector3 crown = canvas.RegionWeights(new Vector3(0f, 1.78f, 0f), head, face, up, left, right);
-            Vector3 back = canvas.RegionWeights(new Vector3(0f, 1.66f, -0.11f), head, face, up, left, right);
-            Vector3 front = canvas.RegionWeights(new Vector3(0f, 1.64f, 0.11f), head, face, up, left, right);
-            Vector3 hand = canvas.RegionWeights(new Vector3(0.34f, 0.8f, 0.03f), head, face, up, left, right);
-            Vector3 chest = canvas.RegionWeights(new Vector3(0f, 1.3f, 0.11f), head, face, up, left, right);
+            Vector4 Weights(Vector3 p) => canvas.RegionWeights(p, head, face, up, left, right, hip, leftFoot, rightFoot);
+            float Feet(Vector4 w) => 1f - w.x - w.y - w.z - w.w;
 
-            Require(crown.y > 0.9f, $"the crown is not hair: {crown}");
-            Require(back.y > 0.9f, $"the back of the head is not hair: {back}");
-            Require(front.z > 0.9f, $"the face is not skin: {front}");
-            Require(hand.z > 0.9f, $"the hand is not skin: {hand}");
-            Require(chest.x > 0.99f, $"the chest is not clothing: {chest}");
+            Vector4 crown = Weights(new Vector3(0f, 1.78f, 0f));
+            Vector4 back = Weights(new Vector3(0f, 1.66f, -0.11f));
+            Vector4 front = Weights(new Vector3(0f, 1.64f, 0.11f));
+            Vector4 hand = Weights(new Vector3(0.34f, 0.8f, 0.03f));
+            Vector4 chest = Weights(new Vector3(0f, 1.3f, 0.11f));
+            Vector4 thigh = Weights(new Vector3(0.1f, 0.7f, 0.07f));
+            Vector4 shoe = Weights(new Vector3(0.1f, 0.04f, 0.1f));
+
+            Require(crown.z > 0.9f, $"the crown is not hair: {crown}");
+            Require(back.z > 0.9f, $"the back of the head is not hair: {back}");
+            Require(front.w > 0.9f, $"the face is not skin: {front}");
+            Require(hand.w > 0.9f, $"the hand is not skin: {hand}");
+            Require(chest.x > 0.99f, $"the chest is not upper-body clothing: {chest}");
+            Require(thigh.y > 0.99f, $"the thigh is not lower-body clothing: {thigh}");
+            Require(Feet(shoe) > 0.9f, $"the foot is not a shoe: {shoe}");
 
             var random = new System.Random(29);
             for (int i = 0; i < 1000; i++)
             {
                 Vector3 p = new Vector3(
                     (float)(random.NextDouble() - 0.5), (float)random.NextDouble() * 2f, (float)(random.NextDouble() - 0.5));
-                Vector3 w = canvas.RegionWeights(p, head, face, up, left, right);
-                Require(w.x >= -1e-5f && w.y >= -1e-5f && w.z >= -1e-5f, $"negative weight {w}");
-                Require(Mathf.Abs(w.x + w.y + w.z - 1f) < Tolerance, $"weights {w} do not sum to one");
+                Vector4 w = Weights(p);
+                Require(w.x >= -1e-5f && w.y >= -1e-5f && w.z >= -1e-5f && w.w >= -1e-5f && Feet(w) >= -1e-5f,
+                    $"negative weight {w}");
             }
 
             Vector4 none = new Vector4(0f, 0f, 0f, 0f);
-            Vector3 off = canvas.RegionWeights(new Vector3(0f, 1.78f, 0f), none, face, up, none, none);
-            Require(off.x == 1f, $"with regions off the crown is not clothing: {off}");
+            Vector4 off = canvas.RegionWeights(new Vector3(0f, 1.78f, 0f), none, face, up, none, none, none, none, none);
+            Require(off.x == 1f, $"with regions off the crown is not upper-body clothing: {off}");
         }
 
         private static void EvaporationEncodingMatchesDryingTime()
@@ -584,6 +601,29 @@ namespace SabaProps.Liquid
         private static bool Near(Vector3 a, Vector3 b)
         {
             return (a - b).magnitude < Tolerance;
+        }
+
+        private static void SnowMelts()
+        {
+            var canvas = new LiquidBodyCanvas();
+
+            // 40 秒で 1 溶ける速さ。0.1 秒では 0.0025 溶けます。
+            Require(Mathf.Abs(canvas.MeltSnow(1f, 40f, 0.1f) - 0.0025f) < Tolerance, "the melt rate is not depth per meltSeconds");
+            Require(canvas.MeltSnow(0.001f, 40f, 1f) == 0.001f, "more melted than there was");
+            Require(canvas.MeltSnow(0f, 40f, 1f) == 0f, "no snow still melted");
+            Require(canvas.MeltSnow(0.5f, 0f, 1f) == 0f, "a zero melt time melted");
+
+            // 積もった 1 を刻みで溶かすと、meltSeconds でちょうど無くなります。
+            float depth = 1f;
+            float melted = 0f;
+            for (int i = 0; i < 400; i++)
+            {
+                float step = canvas.MeltSnow(depth, 40f, 0.1f);
+                depth -= step;
+                melted += step;
+            }
+
+            Require(depth < 1e-3f && Mathf.Abs(melted - 1f) < 1e-3f, $"after 40 s, {depth} snow left");
         }
 
         private static bool IsFinite(float value)
@@ -813,6 +853,112 @@ namespace SabaProps.Liquid
         private static bool IsFinite(float value)
         {
             return !float.IsNaN(value) && !float.IsInfinity(value);
+        }
+    }
+
+    /// <summary>
+    /// Checks on the weather cycle in LiquidWeatherSolver.cs, a partial of
+    /// LiquidWeather for the same reason as the others.
+    /// </summary>
+    public partial class LiquidWeather
+    {
+        private const float Tolerance = 1e-4f;
+
+        internal static void PrecipitationFollowsTheCycle()
+        {
+            var weather = new LiquidWeather();
+
+            // 30 秒降って 30 秒止む。降り始めと降り終わりの 3 秒で強さが変わります。
+            LiquidBodyCanvas.Check(weather.PrecipitationLevel(0.0, 30f, 30f, 3f) == 0f, "full strength at the very start");
+            LiquidBodyCanvas.Check(Mathf.Abs(weather.PrecipitationLevel(1.5, 30f, 30f, 3f) - 0.5f) < Tolerance, "the ramp up is not linear");
+            LiquidBodyCanvas.Check(weather.PrecipitationLevel(15.0, 30f, 30f, 3f) == 1f, "not full strength mid-way");
+            LiquidBodyCanvas.Check(Mathf.Abs(weather.PrecipitationLevel(28.5, 30f, 30f, 3f) - 0.5f) < Tolerance, "the ramp down is not linear");
+            LiquidBodyCanvas.Check(weather.PrecipitationLevel(45.0, 30f, 30f, 3f) == 0f, "falling while it should be clear");
+
+            // 周期は繰り返し、サーバー時刻が大きくても同じ値になります。
+            double later = 60.0 * 1000000.0 + 15.0;
+            LiquidBodyCanvas.Check(weather.PrecipitationLevel(later, 30f, 30f, 3f) == 1f, "the cycle drifted at large times");
+
+            LiquidBodyCanvas.Check(weather.PrecipitationLevel(45.0, 30f, 0f, 3f) == 1f, "no clear time did not mean always");
+            LiquidBodyCanvas.Check(weather.PrecipitationLevel(5.0, 0f, 30f, 3f) == 0f, "no falling time still fell");
+            LiquidBodyCanvas.Check(weather.PrecipitationLevel(1.0, 30f, 30f, 0f) == 1f, "no ramp did not start at full strength");
+        }
+
+        internal static void GroundCoverBuildsAndClears()
+        {
+            var weather = new LiquidWeather();
+            const float on = 60f, off = 60f, build = 30f, clear = 45f;
+
+            LiquidBodyCanvas.Check(weather.GroundCover(0.0, on, off, build, clear) == 0f, "cover before anything fell");
+            LiquidBodyCanvas.Check(Mathf.Abs(weather.GroundCover(15.0, on, off, build, clear) - 0.5f) < Tolerance, "cover not halfway at half the build time");
+            LiquidBodyCanvas.Check(weather.GroundCover(50.0, on, off, build, clear) == 1f, "cover did not reach full");
+
+            // 止んでから 22.5 秒で半分、45 秒で消えきり、次に降るまで 0 のままです。
+            LiquidBodyCanvas.Check(Mathf.Abs(weather.GroundCover(82.5, on, off, build, clear) - 0.5f) < Tolerance, "clearing is not linear");
+            LiquidBodyCanvas.Check(weather.GroundCover(110.0, on, off, build, clear) == 0f, "cover left after clearing");
+
+            // 周期の中で値は増えるか減るかのどちらかで、飛びません（周期の境目を除く）。
+            float previous = weather.GroundCover(0.0, on, off, build, clear);
+            for (int i = 1; i < 1200; i++)
+            {
+                float value = weather.GroundCover(i * 0.1, on, off, build, clear);
+                LiquidBodyCanvas.Check(value >= 0f && value <= 1f, $"cover {value} out of range");
+                LiquidBodyCanvas.Check(Mathf.Abs(value - previous) <= 0.1f / Mathf.Min(build, clear) + Tolerance,
+                    $"cover jumped from {previous} to {value} at {i * 0.1} s");
+                previous = value;
+            }
+
+            // 短い降雪では積もりきらず、その分だけ早く消えます。
+            float peak = weather.GroundCover(9.99, 10f, 60f, build, clear);
+            LiquidBodyCanvas.Check(Mathf.Abs(peak - 1f / 3f) < 1e-3f, $"a short fall peaked at {peak}");
+            LiquidBodyCanvas.Check(weather.GroundCover(10.0 + 15.0 + 0.01, 10f, 60f, build, clear) == 0f, "a light cover took the full clear time");
+        }
+
+        internal static void MeltWetsThenDries()
+        {
+            var weather = new LiquidWeather();
+            const float on = 60f, off = 60f, build = 30f, melt = 45f, dry = 10f;
+
+            LiquidBodyCanvas.Check(weather.MeltWetness(30.0, on, off, build, melt, dry) == 0f, "wet while still snowing");
+            float midway = weather.MeltWetness(60.0 + 22.5, on, off, build, melt, dry);
+            LiquidBodyCanvas.Check(Mathf.Abs(midway - 0.5f) < Tolerance, $"half melted but {midway} wet");
+            float melted = weather.MeltWetness(60.0 + 45.0, on, off, build, melt, dry);
+            LiquidBodyCanvas.Check(Mathf.Abs(melted - 1f) < Tolerance, $"fully melted but {melted} wet");
+            float drying = weather.MeltWetness(60.0 + 50.0, on, off, build, melt, dry);
+            LiquidBodyCanvas.Check(Mathf.Abs(drying - 0.5f) < Tolerance, $"half dried but {drying} wet");
+            LiquidBodyCanvas.Check(weather.MeltWetness(119.9, on, off, build, melt, dry) == 0f, "still wet after drying");
+            LiquidBodyCanvas.Check(weather.MeltWetness(80.0, on, 0f, build, melt, dry) == 0f, "wet under endless snow");
+        }
+
+        internal static void AreaAndDropsStayInPlace()
+        {
+            var weather = new LiquidWeather();
+            Vector3 half = new Vector3(5f, 3f, 5f);
+            LiquidBodyCanvas.Check(weather.InsideArea(new Vector3(4.9f, -2.9f, -4.9f), half), "a point inside the area was outside");
+            LiquidBodyCanvas.Check(!weather.InsideArea(new Vector3(5.1f, 0f, 0f), half), "a point beyond x was inside");
+            LiquidBodyCanvas.Check(!weather.InsideArea(new Vector3(0f, 3.1f, 0f), half), "a point above was inside");
+
+            // 雨粒は円の中から落ち、風があれば風上から落ちて、風下へ流れながら頭上の円に戻ります。
+            Vector3 top = new Vector3(1f, 1.8f, -2f);
+            Vector3 wind = new Vector3(0.2f, 0f, -0.1f);
+            var random = new System.Random(5);
+            for (int i = 0; i < 1000; i++)
+            {
+                float u = (float)random.NextDouble();
+                float v = (float)random.NextDouble();
+                Vector3 origin = weather.DropOrigin(top, 0.35f, 1.2f, wind, u, v);
+                LiquidBodyCanvas.Check(Mathf.Abs(origin.y - (top.y + 1.2f)) < Tolerance, $"drop starts at height {origin.y}");
+
+                Vector3 direction = weather.DropDirection(wind);
+                LiquidBodyCanvas.Check(Mathf.Abs(direction.magnitude - 1f) < Tolerance, "the drop direction is not a unit vector");
+
+                // 頭頂の高さまで落ちたときの位置。円の半径以内に来ます。
+                float t = 1.2f / -direction.y;
+                Vector3 landing = origin + direction * t;
+                Vector3 offset = landing - top;
+                float radial = new Vector3(offset.x, 0f, offset.z).magnitude;
+                LiquidBodyCanvas.Check(radial <= 0.35f + 1e-3f, $"drop lands {radial} m from the centre");
+            }
         }
     }
 }
