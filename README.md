@@ -283,4 +283,4 @@ SDK の取得はコンテナ内で行い、ローカルの VCC / ALCOM のキャ
 
 ## ライセンス
 
-MIT License. 詳細は [LICENSE](LICENSE) を参照してください。
+Apache License 2.0. 詳細は [LICENSE](LICENSE) を参照してください。

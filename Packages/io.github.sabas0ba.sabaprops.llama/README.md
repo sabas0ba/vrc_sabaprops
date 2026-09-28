@@ -162,3 +162,7 @@ World検証経路の`LlamaUdonTests`はclient向けUdonコンパイルを強制�
 - [llama2.c checkpoint・tokenizer形式](https://github.com/karpathy/llama2.c)
 
 外部の推論ライブラリや学習済み重みは本パッケージへ取り込んでいません。
+
+## ライセンス
+
+本パッケージは Apache License 2.0 で提供します。全文は [LICENSE.md](LICENSE.md) を参照してください。外部依存・モデル・素材には、それぞれの配布元のライセンスが適用されます。
