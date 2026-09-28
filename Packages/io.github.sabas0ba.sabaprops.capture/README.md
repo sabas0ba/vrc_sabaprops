@@ -116,3 +116,7 @@ Recorder は次のイベントを受け付けます。いずれもアンダー�
 `VRCGraphics.Blit`、`Camera.Render()`、実行時の `RenderTexture` 生成が VRChat クライアント上で想定どおり動くことは、自動では確かめられません。Build & Test で確認してください。
 
 設計の判断は [Documentation~/design.md](Documentation~/design.md) にまとめています。
+
+## ライセンス
+
+本パッケージは Apache License 2.0 で提供します。全文は [LICENSE.md](LICENSE.md) を参照してください。外部依存・モデル・素材には、それぞれの配布元のライセンスが適用されます。
