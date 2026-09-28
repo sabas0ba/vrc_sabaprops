@@ -1,5 +1,11 @@
 # Changelog
 
+## [Unreleased]
+
+### Changed
+
+- Apache-2.0 の宣言、公式ライセンスURL、同梱するライセンス全文と README の表記を統一。
+
 ## [0.1.1] - 2026-09-23
 
 - VRChat Worlds SDK の依存範囲を 3.10.x に変更し、3.10 系の既存 SDK と競合しないように修正。

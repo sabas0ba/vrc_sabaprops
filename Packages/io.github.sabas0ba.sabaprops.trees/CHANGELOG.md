@@ -4,6 +4,11 @@ All notable changes to this package are documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- Apache-2.0 の宣言、公式ライセンスURL、同梱するライセンス全文と README の表記を統一。
+
+
 ## [0.1.0] - 2026-09-13
 
 初回配布に向け、初期実装と公開前レビューの修正をこのバージョンに集約しています。

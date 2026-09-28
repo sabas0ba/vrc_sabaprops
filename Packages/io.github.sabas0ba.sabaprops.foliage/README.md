@@ -457,4 +457,4 @@ Built-in RP のサーフェスシェーダーです。
 
 ## ライセンス
 
-Apache License 2.0. リポジトリの [LICENSE](https://github.com/sabas0ba/vrc_sabaprops/blob/main/LICENSE) を参照してください。
+Apache License 2.0. リポジトリの [LICENSE.md](LICENSE.md) を参照してください。

@@ -74,3 +74,7 @@ Tests~ に Unity EditMode テストを収録しています。実行環境と手
 - [Object Ownership](https://creators.vrchat.com/worlds/udon/networking/ownership/)
 - [UdonSharp Attributes](https://creators.vrchat.com/worlds/udon/udonsharp/attributes/)
 - [Unity Layers in VRChat](https://creators.vrchat.com/worlds/layers/)
+
+## ライセンス
+
+本パッケージは Apache License 2.0 で提供します。全文は [LICENSE.md](LICENSE.md) を参照してください。外部依存・モデル・素材には、それぞれの配布元のライセンスが適用されます。

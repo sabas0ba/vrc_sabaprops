@@ -1,5 +1,11 @@
 # Changelog
 
+## [Unreleased]
+
+### Changed
+
+- Apache-2.0 の宣言、公式ライセンスURL、同梱するライセンス全文と README の表記を統一。
+
 ## [0.2.0] - 2026-09-07
 
 デモ・接地検出の機能追加と接触応答の変更を含むminor更新です。既存sceneは自動移行しません。[更新手順](Documentation~/upgrading.md)を参照してください。
