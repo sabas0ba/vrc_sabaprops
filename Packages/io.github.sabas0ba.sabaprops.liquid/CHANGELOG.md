@@ -6,6 +6,11 @@
 
 ## [Unreleased]
 
+### Changed
+
+- Apache-2.0 の宣言、公式ライセンスURL、同梱するライセンス全文と README の表記を統一。
+
+
 ### Added
 
 - `LiquidBodyCanvas`: プレイヤーの全身に液体の付着を描く Body Canvas。
