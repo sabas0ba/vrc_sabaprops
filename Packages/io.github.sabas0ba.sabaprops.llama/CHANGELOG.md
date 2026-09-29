@@ -6,7 +6,7 @@
 
 - Apache-2.0 の宣言、公式ライセンスURL、同梱するライセンス全文と README の表記を統一。
 
-## Unreleased
+### Added
 
 - GGUF v2/v3のLlama F32/F16/Q4_0/Q8_0をFP32 textureへ変換し、内蔵tokenizerを取り込むEditor readerを追加。
 - 固定revision・SHA-256によるStories260K / Stories15M Q4_0の取得手順と実ファイルCPU検査を追加。
