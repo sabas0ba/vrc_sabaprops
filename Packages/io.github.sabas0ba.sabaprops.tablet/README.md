@@ -229,4 +229,4 @@ VR での指先の押下、Grab による取り出し、Global な Toggle の同
 
 ## ライセンス
 
-MIT。[LICENSE.md](LICENSE.md) を参照してください。
+Apache License 2.0。[LICENSE.md](LICENSE.md) を参照してください。

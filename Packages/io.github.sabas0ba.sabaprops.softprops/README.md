@@ -110,3 +110,7 @@ VRChatのWorld Contactsにはworld全体でactive component数の上限があり
 - 静的batchingは使用できません。shaderの`DisableBatching=True`は、object-localの接触座標を維持するために必要です。
 
 詳細なmodel追加手順は[authoring.md](Documentation~/authoring.md)を参照してください。
+
+## ライセンス
+
+本パッケージは Apache License 2.0 で提供します。全文は [LICENSE.md](LICENSE.md) を参照してください。外部依存・モデル・素材には、それぞれの配布元のライセンスが適用されます。

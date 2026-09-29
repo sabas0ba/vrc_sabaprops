@@ -56,3 +56,7 @@ VRChat World 向けに、鳥の群れ、魚群、水槽や池の魚を中景か�
 - 影を落としません。Directional / Point / Spot Light と、その影を受けます。
 - 生成された Renderer を Batching Static にしないでください。静的 batching は頂点を world 空間に変換するため、Shader の運動が成立しなくなります。生成時に Static flag は外されます。
 - 個体の運動は周期関数の組み合わせです。群れの形は時間とともに変化しますが、実際の群れの相互作用を模擬するものではありません。
+
+## ライセンス
+
+本パッケージは Apache License 2.0 で提供します。全文は [LICENSE.md](LICENSE.md) を参照してください。外部依存・モデル・素材には、それぞれの配布元のライセンスが適用されます。
