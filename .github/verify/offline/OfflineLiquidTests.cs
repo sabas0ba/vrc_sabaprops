@@ -1,0 +1,1118 @@
+// Behavioural checks on the liquid Body Canvas solver, executed without Unity.
+//
+// LiquidCanvasSolver.cs is a partial of LiquidBodyCanvas that carries no base
+// type and no VRChat references, so it compiles on its own against the shim in
+// UnityEngineShim.cs. This file is another partial of the same class, which is
+// how it reaches the solver's private members without widening their
+// visibility in the shipped package. It is never part of the package.
+//
+// What this can assert: the body frame, the mapping from the body to the
+// six-face atlas, the stamp and immersion arithmetic, and that the constants
+// the HLSL side restates still agree with the C# ones.
+//
+// What it cannot: that the shaders compile or draw what is intended, that
+// UdonSharp accepts the behaviour, or that VRChat returns bones the way the
+// collection layer expects. Those stay with the VRChat world tests.
+//
+// Usage: OfflineLiquidTests <package directory>
+using System;
+using System.IO;
+using System.Text.RegularExpressions;
+using UnityEngine;
+
+namespace SabaProps.Liquid
+{
+    public partial class LiquidBodyCanvas
+    {
+        private static int _failures;
+        private static string _packageDirectory;
+
+        private const float Tolerance = 1e-4f;
+
+        private static int Main(string[] args)
+        {
+            if (args.Length != 1 || !Directory.Exists(args[0]))
+            {
+                Console.Error.WriteLine("usage: OfflineLiquidTests <package directory>");
+                return 2;
+            }
+
+            _packageDirectory = args[0];
+
+            Run("an upright body gives the world axes", UprightBodyGivesWorldAxes);
+            Run("the frame is orthonormal and left-handed in any pose", FrameIsOrthonormalInAnyPose);
+            Run("missing bones fall back to the player orientation", MissingBonesFallBack);
+            Run("a player facing sideways without legs keeps its facing", SidewaysPlayerKeepsItsFacing);
+
+            Run("canvas rows map the box to [-1, 1]", CanvasRowsMapTheBox);
+            Run("local conversion round trips", LocalConversionRoundTrips);
+
+            Run("every face lands in its own tile", EveryFaceLandsInItsOwnTile);
+            Run("atlas tiles do not overlap and keep their inset", AtlasTilesDoNotOverlap);
+            Run("tile axes follow the documented mapping", TileAxesFollowTheMapping);
+            Run("front and back never share a tile", FrontAndBackNeverShareATile);
+            Run("face weights are non-negative and sum to one", FaceWeightsSumToOne);
+
+            Run("stamp falloff is one at the centre and zero at the radius", StampFalloffShape);
+            Run("the depth mask keeps nearby surfaces and drops distant ones", DepthMaskSeparatesSurfaces);
+            Run("body regions put hair on the crown, skin on the face and hands", RegionsFollowTheBody);
+            Run("evaporation encoding matches the drying time", EvaporationEncodingMatchesDryingTime);
+            Run("immersion level follows the body axis", ImmersionLevelFollowsTheBodyAxis);
+            Run("the film line drains down and stops at the bottom", FilmLineDrains);
+            Run("snow melts at its rate and never below zero", SnowMelts);
+            Run("luminous paint charges in light and fades in the dark", LuminousPaintChargesAndFades);
+            Run("humid air slows drying and condenses above the threshold", HumidAirSlowsDryingAndCondenses);
+
+            Run("shader constants agree with the solver", ShaderConstantsAgree);
+            Run("degenerate input stays finite", DegenerateInputStaysFinite);
+
+            Run("a ray hits the capsule side, caps and misses correctly", LiquidCanvasPool.RayCapsuleCases);
+            Run("capsule hits lie on the surface with outward normals", LiquidCanvasPool.CapsuleHitsLieOnTheSurface);
+            Run("cone samples stay inside the cone", LiquidCanvasPool.ConeSamplesStayInsideTheCone);
+            Run("the hash is in [0, 1) and repeatable", LiquidCanvasPool.HashIsBoundedAndRepeatable);
+            Run("player-relative coordinates round trip and follow the player", LiquidCanvasPool.PlayerLocalRoundTrips);
+            Run("mannequin targets never collide with players or none", LiquidCanvasPool.MannequinTargetsAreDistinct);
+
+            Run("precipitation ramps up, holds and stops on the cycle", LiquidWeather.PrecipitationFollowsTheCycle);
+            Run("ground cover builds while it falls and clears after", LiquidWeather.GroundCoverBuildsAndClears);
+            Run("melting snow wets the ground, which then dries", LiquidWeather.MeltWetsThenDries);
+            Run("the area test and drop origins stay in place", LiquidWeather.AreaAndDropsStayInPlace);
+            Run("umbrellas cover what is below them and nothing else", LiquidCanvasPool.UmbrellasCoverBelow);
+            Run("nozzle settings split into rays and keep the total amount", LiquidNozzle.SettingsSplitIntoRays);
+            Run("nozzle speed sets the delay and the drop, size sets the spread", LiquidNozzle.SpeedAndSizeShapeTheShot);
+
+            if (_failures > 0)
+            {
+                Console.Error.WriteLine($"\n{_failures} liquid canvas check(s) failed");
+                return 1;
+            }
+
+            Console.WriteLine("\nall liquid canvas checks passed");
+            return 0;
+        }
+
+        // ------------------------------------------------------------------
+        // 体の座標系
+        // ------------------------------------------------------------------
+
+        private static void UprightBodyGivesWorldAxes()
+        {
+            var canvas = new LiquidBodyCanvas();
+            Vector3 hips = new Vector3(2f, 1f, -3f);
+            Vector3 up = canvas.SolveFrameUp(hips, hips + new Vector3(0f, 0.3f, 0f), Vector3.up);
+            Vector3 right = canvas.SolveFrameRight(up,
+                hips + new Vector3(-0.1f, -0.05f, 0f), hips + new Vector3(0.1f, -0.05f, 0f), Vector3.forward);
+            Vector3 forward = canvas.SolveFrameForward(right, up);
+
+            Require(Near(up, Vector3.up), $"up {up}");
+            Require(Near(right, Vector3.right), $"right {right}");
+            Require(Near(forward, Vector3.forward), $"forward {forward}");
+        }
+
+        private static void FrameIsOrthonormalInAnyPose()
+        {
+            var canvas = new LiquidBodyCanvas();
+            var random = new System.Random(7);
+
+            for (int i = 0; i < 500; i++)
+            {
+                Vector3 hips = RandomVector(random) * 5f;
+                Vector3 spine = RandomVector(random);
+                Vector3 lateral = RandomVector(random);
+                if (spine.sqrMagnitude < 1e-3f || lateral.sqrMagnitude < 1e-3f)
+                {
+                    continue;
+                }
+
+                Vector3 up = canvas.SolveFrameUp(hips, hips + spine * 0.3f, Vector3.up);
+                Vector3 right = canvas.SolveFrameRight(up, hips - lateral * 0.1f, hips + lateral * 0.1f, Vector3.forward);
+                Vector3 forward = canvas.SolveFrameForward(right, up);
+
+                Require(Mathf.Abs(up.magnitude - 1f) < Tolerance, $"|up| {up.magnitude}");
+                Require(Mathf.Abs(right.magnitude - 1f) < Tolerance, $"|right| {right.magnitude}");
+                Require(Mathf.Abs(forward.magnitude - 1f) < Tolerance, $"|forward| {forward.magnitude}");
+                Require(Mathf.Abs(Vector3.Dot(up, right)) < Tolerance, "up and right are not orthogonal");
+                Require(Mathf.Abs(Vector3.Dot(up, forward)) < Tolerance, "up and forward are not orthogonal");
+                Require(Mathf.Abs(Vector3.Dot(right, forward)) < Tolerance, "right and forward are not orthogonal");
+
+                // Unity の左手系: right x up = forward。符号が逆だと鏡像の座標系になり、
+                // シェーダの面の向きと Canvas の中身が左右反転します。
+                Require(Near(Vector3.Cross(right, up), forward), "the frame is mirrored");
+
+                // 右方向は太腿を結ぶ向きと同じ側を向きます。
+                if (Mathf.Abs(Vector3.Dot(lateral.normalized, spine.normalized)) < 0.95f)
+                {
+                    Require(Vector3.Dot(right, lateral) > 0f, "right points away from the right leg");
+                }
+            }
+        }
+
+        private static void MissingBonesFallBack()
+        {
+            var canvas = new LiquidBodyCanvas();
+            Vector3 hips = new Vector3(0f, 1f, 0f);
+
+            Vector3 up = canvas.SolveFrameUp(hips, Vector3.zero, Vector3.up);
+            Require(Near(up, Vector3.up), $"missing chest: up {up}");
+
+            Vector3 tilted = new Vector3(0f, 1f, 1f).normalized;
+            up = canvas.SolveFrameUp(Vector3.zero, new Vector3(0f, 2f, 0f), tilted);
+            Require(Near(up, tilted), $"missing hips: up {up}");
+
+            up = canvas.SolveFrameUp(hips, hips, Vector3.zero);
+            Require(Near(up, Vector3.up), $"coincident bones and no fallback: up {up}");
+
+            Vector3 right = canvas.SolveFrameRight(Vector3.up, Vector3.zero, new Vector3(0.1f, 1f, 0f), Vector3.forward);
+            Require(Near(right, Vector3.right), $"missing left leg: right {right}");
+
+            right = canvas.SolveFrameRight(Vector3.up, new Vector3(0f, 1f, 0f), new Vector3(0f, 1.2f, 0f), Vector3.forward);
+            Require(Near(right, Vector3.right), $"legs along the spine: right {right}");
+
+            right = canvas.SolveFrameRight(Vector3.up, Vector3.zero, Vector3.zero, Vector3.up);
+            Require(Mathf.Abs(right.magnitude - 1f) < Tolerance && Mathf.Abs(Vector3.Dot(right, Vector3.up)) < Tolerance,
+                $"facing parallel to up: right {right}");
+        }
+
+        private static void SidewaysPlayerKeepsItsFacing()
+        {
+            var canvas = new LiquidBodyCanvas();
+            Vector3 facing = Vector3.right;
+            Vector3 up = canvas.SolveFrameUp(Vector3.zero, Vector3.zero, Vector3.up);
+            Vector3 right = canvas.SolveFrameRight(up, Vector3.zero, Vector3.zero, facing);
+            Vector3 forward = canvas.SolveFrameForward(right, up);
+            Require(Near(forward, facing), $"forward {forward} does not follow the player facing {facing}");
+        }
+
+        // ------------------------------------------------------------------
+        // Canvas 空間
+        // ------------------------------------------------------------------
+
+        private static void CanvasRowsMapTheBox()
+        {
+            var canvas = new LiquidBodyCanvas();
+            Vector3 origin = new Vector3(1f, 2f, 3f);
+            Vector3 axis = new Vector3(1f, 1f, 0f).normalized;
+            Vector3 other = new Vector3(-1f, 1f, 0f).normalized;
+            const float half = 0.7f;
+            Vector4 row = canvas.CanvasRow(axis, origin, half);
+
+            Require(Mathf.Abs(Apply(row, origin)) < Tolerance, "the origin is not at 0");
+            Require(Mathf.Abs(Apply(row, origin + axis * half) - 1f) < Tolerance, "the positive face is not at 1");
+            Require(Mathf.Abs(Apply(row, origin - axis * half) + 1f) < Tolerance, "the negative face is not at -1");
+            Require(Mathf.Abs(Apply(row, origin + other * 5f)) < Tolerance, "a perpendicular offset changed the value");
+        }
+
+        private static void LocalConversionRoundTrips()
+        {
+            var canvas = new LiquidBodyCanvas();
+            Vector3 up = new Vector3(0.2f, 1f, 0.1f).normalized;
+            Vector3 right = canvas.SolveFrameRight(up, Vector3.zero, Vector3.zero, Vector3.forward);
+            Vector3 forward = canvas.SolveFrameForward(right, up);
+            Vector3 origin = new Vector3(-4f, 0.5f, 9f);
+            Vector3 expected = new Vector3(0.3f, -0.6f, 0.25f);
+            Vector3 world = origin + right * expected.x + up * expected.y + forward * expected.z;
+
+            Vector3 local = canvas.ToCanvasLocalPoint(world, origin, right, up, forward);
+            Require(Near(local, expected), $"point {local} != {expected}");
+
+            Vector3 direction = canvas.ToCanvasLocalDirection(forward * 2f, right, up, forward);
+            Require(Near(direction, new Vector3(0f, 0f, 2f)), $"direction {direction}");
+        }
+
+        // ------------------------------------------------------------------
+        // アトラス
+        // ------------------------------------------------------------------
+
+        private static void EveryFaceLandsInItsOwnTile()
+        {
+            var canvas = new LiquidBodyCanvas();
+            const float inset = 0.02f;
+            var random = new System.Random(11);
+
+            for (int face = 0; face < FaceCount; face++)
+            {
+                int axis = face / 2;
+                float sign = face % 2 == 0 ? 1f : -1f;
+
+                for (int i = 0; i < 200; i++)
+                {
+                    // 箱の面上の点。面の軸は ±1、他の 2 軸は [-1, 1] の乱数です。
+                    Vector3 q = RandomVector(random);
+                    q = SetAxis(q, axis, sign);
+                    Vector3 normal = SetAxis(Vector3.zero, axis, sign);
+
+                    Require(canvas.DominantAxis(normal) == axis, $"face {face}: dominant axis");
+                    Require(canvas.FaceOf(axis, sign) == face, $"face {face}: FaceOf");
+
+                    Vector2 tile = canvas.TileUv(q, axis);
+                    Require(tile.x >= 0f && tile.x <= 1f && tile.y >= 0f && tile.y <= 1f, $"face {face}: tile uv {tile}");
+
+                    Vector2 atlas = canvas.AtlasUv(face, tile, inset);
+                    Require(canvas.FaceAtAtlasUv(atlas) == face, $"face {face}: atlas uv {atlas} reads back as face {canvas.FaceAtAtlasUv(atlas)}");
+
+                    Vector2 back = canvas.TileUvAtAtlasUv(atlas, inset);
+                    Require(Mathf.Abs(back.x - tile.x) < Tolerance && Mathf.Abs(back.y - tile.y) < Tolerance,
+                        $"face {face}: tile uv {tile} round trips to {back}");
+                }
+            }
+        }
+
+        private static void AtlasTilesDoNotOverlap()
+        {
+            var canvas = new LiquidBodyCanvas();
+            const float inset = 0.02f;
+            float marginX = inset / AtlasColumns;
+            float marginY = inset / AtlasRows;
+
+            for (int face = 0; face < FaceCount; face++)
+            {
+                float column = face % AtlasColumns;
+                float row = face / AtlasColumns;
+
+                for (int i = 0; i <= 20; i++)
+                {
+                    for (int j = 0; j <= 20; j++)
+                    {
+                        Vector2 atlas = canvas.AtlasUv(face, new Vector2(i / 20f, j / 20f), inset);
+                        float lx = atlas.x - column / AtlasColumns;
+                        float ly = atlas.y - row / AtlasRows;
+                        float width = 1f / AtlasColumns;
+                        float height = 1f / AtlasRows;
+
+                        Require(lx >= marginX - Tolerance && lx <= width - marginX + Tolerance,
+                            $"face {face}: u {atlas.x} is inside the inset");
+                        Require(ly >= marginY - Tolerance && ly <= height - marginY + Tolerance,
+                            $"face {face}: v {atlas.y} is inside the inset");
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// 面内の軸は X 面が (z, y)、Y 面が (x, z)、Z 面が (x, y)。
+        /// 往復の検査は C# 内で閉じているため、軸を入れ替えても通ってしまいます。
+        /// シェーダと同じ対応であることは、ここで対応そのものを固定して確かめます。
+        /// </summary>
+        private static void TileAxesFollowTheMapping()
+        {
+            var canvas = new LiquidBodyCanvas();
+            Vector3 q = new Vector3(0.2f, -0.4f, 0.6f);
+            Vector2 x = canvas.TileUv(q, 0);
+            Vector2 y = canvas.TileUv(q, 1);
+            Vector2 z = canvas.TileUv(q, 2);
+
+            Require(Mathf.Abs(x.x - 0.8f) < Tolerance && Mathf.Abs(x.y - 0.3f) < Tolerance, $"X face maps to {x}, expected (z, y)");
+            Require(Mathf.Abs(y.x - 0.6f) < Tolerance && Mathf.Abs(y.y - 0.8f) < Tolerance, $"Y face maps to {y}, expected (x, z)");
+            Require(Mathf.Abs(z.x - 0.6f) < Tolerance && Mathf.Abs(z.y - 0.3f) < Tolerance, $"Z face maps to {z}, expected (x, y)");
+        }
+
+        private static void FrontAndBackNeverShareATile()
+        {
+            var canvas = new LiquidBodyCanvas();
+            var random = new System.Random(13);
+
+            for (int i = 0; i < 1000; i++)
+            {
+                Vector3 n = RandomVector(random).normalized;
+                if (n.sqrMagnitude < 0.5f)
+                {
+                    continue;
+                }
+
+                for (int axis = 0; axis < 3; axis++)
+                {
+                    float c = canvas.AxisComponent(n, axis);
+                    if (Mathf.Abs(c) < 1e-6f)
+                    {
+                        continue;
+                    }
+
+                    int behind = canvas.FaceOf(axis, -c);
+                    Require(canvas.FaceWeight(n, behind) == 0f,
+                        $"normal {n} writes to face {behind}, which faces away from it");
+                }
+            }
+        }
+
+        private static void FaceWeightsSumToOne()
+        {
+            var canvas = new LiquidBodyCanvas();
+            var random = new System.Random(17);
+
+            for (int i = 0; i < 1000; i++)
+            {
+                Vector3 n = RandomVector(random).normalized;
+                if (n.sqrMagnitude < 0.5f)
+                {
+                    continue;
+                }
+
+                float sum = 0f;
+                for (int face = 0; face < FaceCount; face++)
+                {
+                    float w = canvas.FaceWeight(n, face);
+                    Require(w >= 0f && w <= 1f, $"weight {w} out of range");
+                    sum += w;
+                }
+
+                Require(Mathf.Abs(sum - 1f) < Tolerance, $"weights for {n} sum to {sum}");
+            }
+
+            Require(Mathf.Abs(canvas.FaceWeight(Vector3.forward, 4) - 1f) < Tolerance, "a +Z normal does not fully select +Z");
+        }
+
+        // ------------------------------------------------------------------
+        // 付着と浸漬
+        // ------------------------------------------------------------------
+
+        private static void StampFalloffShape()
+        {
+            var canvas = new LiquidBodyCanvas();
+            const float radius = 0.08f;
+            Require(Mathf.Abs(canvas.StampFalloff(0f, radius) - 1f) < Tolerance, "not 1 at the centre");
+            Require(canvas.StampFalloff(radius, radius) == 0f, "not 0 at the radius");
+            Require(canvas.StampFalloff(radius * 3f, radius) == 0f, "not 0 beyond the radius");
+
+            float previous = 2f;
+            for (int i = 0; i <= 50; i++)
+            {
+                float value = canvas.StampFalloff(radius * i / 50f, radius);
+                Require(value <= previous, "falloff increases with distance");
+                previous = value;
+            }
+
+            Require(IsFinite(canvas.StampFalloff(0f, 0f)), "a zero radius is not finite");
+        }
+
+        /// <summary>
+        /// 胴の側面（x = 0.275）と腕の外側（x = 0.49）が同じ +X タイルを共有するとき、
+        /// 腕に付けた付着が胴に描かれないこと。腕の丸み（0.07 m 程度）の中では描かれること。
+        /// </summary>
+        private static void DepthMaskSeparatesSurfaces()
+        {
+            var canvas = new LiquidBodyCanvas();
+            const float tolerance = 0.08f;
+            const float arm = 0.49f;
+
+            Require(canvas.DepthMask(arm, arm, 1f, tolerance) == 1f, "the surface the stamp landed on is masked");
+            Require(canvas.DepthMask(arm - 0.07f, arm, 1f, tolerance) == 1f, "the curve of the arm is masked");
+            Require(canvas.DepthMask(0.275f, arm, 1f, tolerance) == 0f, "the torso side shows paint put on the arm");
+            Require(canvas.DepthMask(-0.35f, arm, 1f, tolerance) == 0f, "the other arm shows paint put on this arm");
+            Require(canvas.DepthMask(0.275f, arm, 0f, tolerance) == 1f, "a texel with no recorded depth is masked");
+
+            float previous = 2f;
+            for (int i = 0; i <= 40; i++)
+            {
+                float value = canvas.DepthMask(arm - i * 0.005f, arm, 1f, tolerance);
+                Require(value >= 0f && value <= 1f, $"mask {value} out of range");
+                Require(value <= previous + 1e-6f, "the mask grows with distance");
+                previous = value;
+            }
+        }
+
+        /// <summary>
+        /// 頭頂と後頭部は髪、顔の正面は肌、手は肌、足は靴、腰より下は下半身の衣服、胴は上半身の衣服。
+        /// 重みは非負で、靴（1 から 4 つの和を引いた残り）を含めて和が 1。
+        /// 部位をすべて無効にすると全身が上半身の衣服になること。
+        /// </summary>
+        private static void RegionsFollowTheBody()
+        {
+            var canvas = new LiquidBodyCanvas();
+            Vector4 head = new Vector4(0f, 1.66f, 0f, 0.13f);
+            Vector3 face = Vector3.forward;
+            Vector3 up = Vector3.up;
+            Vector4 left = new Vector4(-0.34f, 0.78f, 0f, 0.06f);
+            Vector4 right = new Vector4(0.34f, 0.78f, 0f, 0.06f);
+            Vector4 hip = new Vector4(0f, 1.05f, 0f, 0.03f);
+            Vector4 leftFoot = new Vector4(-0.1f, 0.06f, 0.04f, 0.13f);
+            Vector4 rightFoot = new Vector4(0.1f, 0.06f, 0.04f, 0.13f);
+
+            Vector4 Weights(Vector3 p) => canvas.RegionWeights(p, head, face, up, left, right, hip, leftFoot, rightFoot);
+            float Feet(Vector4 w) => 1f - w.x - w.y - w.z - w.w;
+
+            Vector4 crown = Weights(new Vector3(0f, 1.78f, 0f));
+            Vector4 back = Weights(new Vector3(0f, 1.66f, -0.11f));
+            Vector4 front = Weights(new Vector3(0f, 1.64f, 0.11f));
+            Vector4 hand = Weights(new Vector3(0.34f, 0.8f, 0.03f));
+            Vector4 chest = Weights(new Vector3(0f, 1.3f, 0.11f));
+            Vector4 thigh = Weights(new Vector3(0.1f, 0.7f, 0.07f));
+            Vector4 shoe = Weights(new Vector3(0.1f, 0.04f, 0.1f));
+
+            Require(crown.z > 0.9f, $"the crown is not hair: {crown}");
+            Require(back.z > 0.9f, $"the back of the head is not hair: {back}");
+            Require(front.w > 0.9f, $"the face is not skin: {front}");
+            Require(hand.w > 0.9f, $"the hand is not skin: {hand}");
+            Require(chest.x > 0.99f, $"the chest is not upper-body clothing: {chest}");
+            Require(thigh.y > 0.99f, $"the thigh is not lower-body clothing: {thigh}");
+            Require(Feet(shoe) > 0.9f, $"the foot is not a shoe: {shoe}");
+
+            var random = new System.Random(29);
+            for (int i = 0; i < 1000; i++)
+            {
+                Vector3 p = new Vector3(
+                    (float)(random.NextDouble() - 0.5), (float)random.NextDouble() * 2f, (float)(random.NextDouble() - 0.5));
+                Vector4 w = Weights(p);
+                Require(w.x >= -1e-5f && w.y >= -1e-5f && w.z >= -1e-5f && w.w >= -1e-5f && Feet(w) >= -1e-5f,
+                    $"negative weight {w}");
+            }
+
+            Vector4 none = new Vector4(0f, 0f, 0f, 0f);
+            Vector4 off = canvas.RegionWeights(new Vector3(0f, 1.78f, 0f), none, face, up, none, none, none, none, none);
+            Require(off.x == 1f, $"with regions off the crown is not upper-body clothing: {off}");
+        }
+
+        private static void EvaporationEncodingMatchesDryingTime()
+        {
+            var canvas = new LiquidBodyCanvas();
+            const float maxRate = 0.2f;
+            const float dt = 0.1f;
+
+            foreach (float seconds in new[] { 5f, 30f, 90f, 600f })
+            {
+                float encoded = canvas.EncodeEvaporation(seconds, maxRate);
+                Require(encoded > 0f && encoded <= 1f, $"{seconds}s encodes to {encoded}");
+
+                // Canvas Update シェーダは amount - dt * encoded * maxRate で減らします。
+                float shader = Mathf.Max(0f, 1f - dt * encoded * maxRate);
+                float solver = canvas.EvaporateAmount(1f, seconds, dt);
+                Require(Mathf.Abs(shader - solver) < Tolerance, $"{seconds}s: shader {shader} != solver {solver}");
+            }
+
+            Require(canvas.EncodeEvaporation(0f, maxRate) == 0f, "never drying does not encode to 0");
+            Require(canvas.EncodeEvaporation(-1f, maxRate) == 0f, "a negative time does not encode to 0");
+            Require(canvas.EncodeEvaporation(0.5f, maxRate) == 1f, "a drying time faster than the cap does not clamp");
+            Require(canvas.EvaporateAmount(0.4f, 0f, 10f) == 0.4f, "never drying still evaporated");
+            Require(canvas.EvaporateAmount(0.01f, 1f, 10f) == 0f, "evaporation went below zero");
+        }
+
+        private static void ImmersionLevelFollowsTheBodyAxis()
+        {
+            var canvas = new LiquidBodyCanvas();
+            Vector3 origin = new Vector3(0f, 1f, 0f);
+            const float half = 1.1f;
+
+            Require(Mathf.Abs(canvas.ImmersionLevel(1f, origin, Vector3.up, half)) < Tolerance, "surface at the origin is not 0");
+            Require(Mathf.Abs(canvas.ImmersionLevel(1f + half, origin, Vector3.up, half) - 1f) < Tolerance, "surface at the top is not 1");
+            Require(Mathf.Abs(canvas.ImmersionLevel(1f - half, origin, Vector3.up, half) + 1f) < Tolerance, "surface at the bottom is not -1");
+
+            // 体が傾くと、同じ液面でも体軸に沿った交点は遠くなります。
+            Vector3 leaning = new Vector3(0f, 1f, 1f).normalized;
+            float upright = canvas.ImmersionLevel(1.5f, origin, Vector3.up, half);
+            float leant = canvas.ImmersionLevel(1.5f, origin, leaning, half);
+            Require(leant > upright, "leaning does not raise the level along the body");
+
+            Require(canvas.ImmersionLevel(2f, origin, Vector3.forward, half) == 2f, "lying below the surface is not fully immersed");
+            Require(canvas.ImmersionLevel(0f, origin, Vector3.forward, half) == -2f, "lying above the surface is not dry");
+        }
+
+        private static void FilmLineDrains()
+        {
+            var canvas = new LiquidBodyCanvas();
+            float level = 0.8f;
+            for (int i = 0; i < 100; i++)
+            {
+                float next = canvas.DrainLevel(level, 0.2f, 0.05f, 0.1f);
+                Require(next <= level, "the line rose while draining");
+                Require(next >= -1f, "the line went below the bottom");
+                level = next;
+            }
+
+            Require(canvas.DrainLevel(0.3f, 1f, 0.05f, 10f) == 0.3f, "a fully viscous film drained");
+            Require(canvas.DrainLevel(-0.99f, 0f, 1f, 10f) == -1f, "the line did not stop at the bottom");
+        }
+
+        // ------------------------------------------------------------------
+        // シェーダとの一致
+        // ------------------------------------------------------------------
+
+        private static void ShaderConstantsAgree()
+        {
+            string shaders = Path.Combine(_packageDirectory, "Runtime", "Shaders");
+            string canvasInclude = File.ReadAllText(Path.Combine(shaders, "SabaLiquidCanvas.cginc"));
+            string update = File.ReadAllText(Path.Combine(shaders, "SabaLiquidCanvasUpdate.shader"));
+
+            Require(DefineValue(canvasInclude, "SABA_LIQUID_ATLAS_COLUMNS") == AtlasColumns, "atlas columns differ");
+            Require(DefineValue(canvasInclude, "SABA_LIQUID_ATLAS_ROWS") == AtlasRows, "atlas rows differ");
+            Require(DefineValue(update, "SABA_LIQUID_MAX_STAMPS") == MaxStampsPerUpdate, "stamp array length differs");
+
+            // 面内の軸の対応。TileAxesFollowTheMapping が C# 側を固定し、ここで HLSL 側を固定します。
+            string mapping = "axis == 0 ? q.zy : (axis == 1 ? q.xz : q.xy)";
+            Require(canvasInclude.Contains(mapping), "SabaLiquidTileUv no longer uses the (z, y) / (x, z) / (x, y) mapping");
+
+            // 奥行きの重み。DepthMaskSeparatesSurfaces が C# 側を固定し、ここで HLSL 側を固定します。
+            string depthMask = "1.0 - smoothstep(tolerance, tolerance * 2.0, abs(surfaceDepth - storedDepth))";
+            Require(canvasInclude.Contains(depthMask), "SabaLiquidDepthMask no longer fades between one and two tolerances");
+
+            // 部位の推定。RegionsFollowTheBody が C# 側を固定し、ここで HLSL 側の閾値を固定します。
+            foreach (string rule in new[]
+            {
+                "1.0 - smoothstep(head.w * 0.95, head.w * 1.25, distance)",
+                "smoothstep(0.1, 0.5, dot(direction, face))",
+                "smoothstep(0.35, 0.7, dot(direction, up))",
+                "smoothstep(leftHand.w * 0.9, leftHand.w * 1.4,",
+            })
+            {
+                Require(canvasInclude.Contains(rule), $"SabaLiquidRegionWeights no longer contains '{rule}'");
+            }
+        }
+
+        private static float DefineValue(string source, string name)
+        {
+            Match match = Regex.Match(source, @"#define\s+" + name + @"\s+([0-9.]+)");
+            Require(match.Success, $"#define {name} not found");
+            return float.Parse(match.Groups[1].Value, System.Globalization.CultureInfo.InvariantCulture);
+        }
+
+        private static void DegenerateInputStaysFinite()
+        {
+            var canvas = new LiquidBodyCanvas();
+            Vector3 up = canvas.SolveFrameUp(Vector3.zero, Vector3.zero, Vector3.zero);
+            Vector3 right = canvas.SolveFrameRight(up, Vector3.zero, Vector3.zero, Vector3.zero);
+            Vector3 forward = canvas.SolveFrameForward(right, up);
+            Require(IsFinite(up) && IsFinite(right) && IsFinite(forward), "the frame is not finite");
+            Require(Mathf.Abs(forward.magnitude - 1f) < Tolerance, "the frame collapsed");
+
+            Vector4 row = canvas.CanvasRow(Vector3.right, Vector3.zero, 0f);
+            Require(IsFinite(row.x) && IsFinite(row.w), "a zero half extent is not finite");
+            Require(IsFinite(canvas.ImmersionLevel(1f, Vector3.zero, Vector3.up, 0f)), "a zero height is not finite");
+            Require(IsFinite(canvas.FaceWeight(Vector3.zero, 0)), "a zero normal is not finite");
+        }
+
+        // ------------------------------------------------------------------
+        // 補助
+        // ------------------------------------------------------------------
+
+        private static float Apply(Vector4 row, Vector3 p)
+        {
+            return row.x * p.x + row.y * p.y + row.z * p.z + row.w;
+        }
+
+        private static Vector3 SetAxis(Vector3 v, int axis, float value)
+        {
+            if (axis == 0) v.x = value;
+            else if (axis == 1) v.y = value;
+            else v.z = value;
+            return v;
+        }
+
+        private static Vector3 RandomVector(System.Random random)
+        {
+            return new Vector3(
+                (float)(random.NextDouble() * 2.0 - 1.0),
+                (float)(random.NextDouble() * 2.0 - 1.0),
+                (float)(random.NextDouble() * 2.0 - 1.0));
+        }
+
+        private static bool Near(Vector3 a, Vector3 b)
+        {
+            return (a - b).magnitude < Tolerance;
+        }
+
+        private static void SnowMelts()
+        {
+            var canvas = new LiquidBodyCanvas();
+
+            // 40 秒で 1 溶ける速さ。0.1 秒では 0.0025 溶けます。
+            Require(Mathf.Abs(canvas.MeltSnow(1f, 40f, 0.1f) - 0.0025f) < Tolerance, "the melt rate is not depth per meltSeconds");
+            Require(canvas.MeltSnow(0.001f, 40f, 1f) == 0.001f, "more melted than there was");
+            Require(canvas.MeltSnow(0f, 40f, 1f) == 0f, "no snow still melted");
+            Require(canvas.MeltSnow(0.5f, 0f, 1f) == 0f, "a zero melt time melted");
+
+            // 積もった 1 を刻みで溶かすと、meltSeconds でちょうど無くなります。
+            float depth = 1f;
+            float melted = 0f;
+            for (int i = 0; i < 400; i++)
+            {
+                float step = canvas.MeltSnow(depth, 40f, 0.1f);
+                depth -= step;
+                melted += step;
+            }
+
+            Require(depth < 1e-3f && Mathf.Abs(melted - 1f) < 1e-3f, $"after 40 s, {depth} snow left");
+        }
+
+        private static void LuminousPaintChargesAndFades()
+        {
+            var canvas = new LiquidBodyCanvas();
+
+            // 明るい所では蓄え、時定数 6 秒で 1 に近づきます。
+            float charge = 0f;
+            for (int i = 0; i < 60; i++)
+            {
+                charge = canvas.ChargeGlow(charge, 1f, 6f, 60f, 0.1f);
+            }
+
+            Require(Mathf.Abs(charge - (1f - Mathf.Exp(-1f))) < 1e-3f, $"after one time constant the charge is {charge}");
+
+            // 暗くなると時定数 60 秒で減り、明るさが 0 でも急には消えません。
+            float full = 1f;
+            float faded = full;
+            for (int i = 0; i < 600; i++)
+            {
+                faded = canvas.ChargeGlow(faded, 0f, 6f, 60f, 0.1f);
+            }
+
+            Require(Mathf.Abs(faded - Mathf.Exp(-1f)) < 1e-3f, $"after one afterglow time constant {faded} remains");
+
+            // 薄暗い所では、その明るさを下回るまで減りません。
+            Require(Mathf.Abs(canvas.ChargeGlow(0.3f, 0.3f, 6f, 60f, 1f) - 0.3f) < Tolerance, "the charge moved at its own brightness");
+            Require(canvas.ChargeGlow(0.5f, 0.3f, 6f, 60f, 1000f) >= 0.3f, "the charge fell below the surrounding brightness");
+            Require(canvas.ChargeGlow(0.2f, 5f, 6f, 60f, 1000f) <= 1f, "the charge went above one");
+        }
+
+        private static void HumidAirSlowsDryingAndCondenses()
+        {
+            var canvas = new LiquidBodyCanvas();
+
+            Require(canvas.DryingScale(0f, 0.08f) == 1f, "dry air slowed drying");
+            Require(Mathf.Abs(canvas.DryingScale(1f, 0.08f) - 0.08f) < Tolerance, "saturated air did not reach the minimum");
+            float previous = 1f;
+            for (int i = 1; i <= 10; i++)
+            {
+                float scale = canvas.DryingScale(i / 10f, 0.08f);
+                Require(scale <= previous, $"drying sped up as humidity rose to {i / 10f}");
+                previous = scale;
+            }
+
+            // 閾値以下では増えず、乾いていきます。
+            Require(canvas.Condense(0f, 0.7f, 0.75f, 25f, 60f, 1f) == 0f, "condensed below the threshold");
+            Require(canvas.Condense(0.5f, 0.5f, 0.75f, 25f, 60f, 6f) < 0.5f, "condensation did not dry in dry air");
+
+            // 飽和した空気では condenseSeconds で 0 から 1 に達します。
+            float amount = 0f;
+            for (int i = 0; i < 250; i++)
+            {
+                amount = canvas.Condense(amount, 1f, 0.75f, 25f, 60f, 0.1f);
+            }
+
+            Require(Mathf.Abs(amount - 1f) < 1e-3f, $"saturated air reached {amount} in the condense time");
+
+            // 閾値をわずかに超えただけなら、ゆっくり増えます。
+            float slight = canvas.Condense(0f, 0.8f, 0.75f, 25f, 60f, 1f);
+            Require(slight > 0f && slight < 0.04f / 5f + Tolerance, $"slightly humid air condensed {slight} in a second");
+        }
+
+        private static bool IsFinite(float value)
+        {
+            return !float.IsNaN(value) && !float.IsInfinity(value);
+        }
+
+        private static bool IsFinite(Vector3 value)
+        {
+            return IsFinite(value.x) && IsFinite(value.y) && IsFinite(value.z);
+        }
+
+        private static void Run(string name, Action check)
+        {
+            try
+            {
+                check();
+                Console.WriteLine($"  ok   {name}");
+            }
+            catch (CheckFailed failure)
+            {
+                _failures++;
+                Console.WriteLine($"  FAIL {name}");
+                Console.WriteLine($"       {failure.Message}");
+            }
+            catch (Exception error)
+            {
+                _failures++;
+                Console.WriteLine($"  FAIL {name}");
+                Console.WriteLine($"       threw {error.GetType().Name}: {error.Message}");
+            }
+        }
+
+        private static void Require(bool condition, string message)
+        {
+            if (!condition)
+            {
+                throw new CheckFailed(message);
+            }
+        }
+
+        private sealed class CheckFailed : Exception
+        {
+            public CheckFailed(string message) : base(message) { }
+        }
+
+        internal static void Check(bool condition, string message)
+        {
+            Require(condition, message);
+        }
+    }
+
+    /// <summary>
+    /// Checks on the Source geometry in LiquidCanvasPoolSolver.cs. A partial of
+    /// LiquidCanvasPool for the same reason the canvas checks are a partial of
+    /// LiquidBodyCanvas; the entry point above runs them.
+    /// </summary>
+    public partial class LiquidCanvasPool
+    {
+        private const float Tolerance = 1e-4f;
+
+        internal static void RayCapsuleCases()
+        {
+            var pool = new LiquidCanvasPool();
+            Vector3 a = new Vector3(0f, 0.2f, 0f);
+            Vector3 b = new Vector3(0f, 1.6f, 0f);
+            const float r = 0.2f;
+
+            // 横から胴に当たる。表面は x = -0.2 なので距離は 1.8。
+            float side = pool.RayCapsule(new Vector3(-2f, 1f, 0f), Vector3.right, a, b, r);
+            LiquidBodyCanvas.Check(Mathf.Abs(side - 1.8f) < Tolerance, $"side hit at {side}");
+
+            // 真上から頭頂の半球に当たる。頭頂は y = 1.8。
+            float top = pool.RayCapsule(new Vector3(0f, 3f, 0f), Vector3.down, a, b, r);
+            LiquidBodyCanvas.Check(Mathf.Abs(top - 1.2f) < Tolerance, $"top hit at {top}");
+
+            // 真下から足元の半球に当たる。底は y = 0。
+            float bottom = pool.RayCapsule(new Vector3(0f, -1f, 0f), Vector3.up, a, b, r);
+            LiquidBodyCanvas.Check(Mathf.Abs(bottom - 1f) < Tolerance, $"bottom hit at {bottom}");
+
+            LiquidBodyCanvas.Check(pool.RayCapsule(new Vector3(-2f, 1f, 0.3f), Vector3.right, a, b, r) < 0f, "a ray passing beside the body hit it");
+            LiquidBodyCanvas.Check(pool.RayCapsule(new Vector3(-2f, 1f, 0f), -Vector3.right, a, b, r) < 0f, "a ray pointing away hit the body");
+            LiquidBodyCanvas.Check(pool.RayCapsule(new Vector3(0f, 1f, 0f), Vector3.right, a, b, r) < 0f, "a ray from inside the body hit it");
+            LiquidBodyCanvas.Check(pool.RayCapsule(new Vector3(-2f, 2.5f, 0f), Vector3.right, a, b, r) < 0f, "a ray above the head hit it");
+
+            // 軸と平行な光線（円柱の式が退化する場合）。
+            float parallel = pool.RayCapsule(new Vector3(0.1f, 5f, 0f), Vector3.down, a, b, r);
+            LiquidBodyCanvas.Check(parallel > 0f && IsFinite(parallel), $"a ray parallel to the axis gave {parallel}");
+        }
+
+        internal static void CapsuleHitsLieOnTheSurface()
+        {
+            var pool = new LiquidCanvasPool();
+            var random = new System.Random(23);
+            Vector3 a = new Vector3(1f, 0.25f, -2f);
+            Vector3 b = new Vector3(1.2f, 1.5f, -2.1f);
+            const float r = 0.25f;
+            int hits = 0;
+
+            for (int i = 0; i < 2000; i++)
+            {
+                Vector3 origin = a + RandomVector(random) * 4f;
+                Vector3 target = Vector3.Lerp(a, b, (float)random.NextDouble()) + RandomVector(random) * 0.3f;
+                Vector3 direction = (target - origin).normalized;
+                float t = pool.RayCapsule(origin, direction, a, b, r);
+                if (t < 0f)
+                {
+                    continue;
+                }
+
+                hits++;
+                Vector3 point = origin + direction * t;
+                float distance = DistanceToSegment(point, a, b);
+                LiquidBodyCanvas.Check(Mathf.Abs(distance - r) < 1e-3f, $"hit point is {distance} from the axis, not {r}");
+
+                Vector3 normal = pool.CapsuleNormal(point, a, b);
+                LiquidBodyCanvas.Check(Mathf.Abs(normal.magnitude - 1f) < Tolerance, "normal is not unit length");
+                LiquidBodyCanvas.Check(Vector3.Dot(normal, direction) <= 1e-3f, "the ray hit the far side of the body");
+            }
+
+            LiquidBodyCanvas.Check(hits > 500, $"only {hits} of 2000 aimed rays hit");
+        }
+
+        internal static void ConeSamplesStayInsideTheCone()
+        {
+            var pool = new LiquidCanvasPool();
+            Vector3 axis = new Vector3(0.3f, -1f, 0.2f).normalized;
+            const float angle = 12f;
+            float cosLimit = Mathf.Cos((angle + 0.01f) * Mathf.Deg2Rad);
+            float widest = 1f;
+
+            for (int i = 0; i < 1000; i++)
+            {
+                Vector3 d = pool.ConeDirection(axis, angle, pool.Hash01(i * 2), pool.Hash01(i * 2 + 1));
+                LiquidBodyCanvas.Check(Mathf.Abs(d.magnitude - 1f) < Tolerance, "sample is not unit length");
+                float c = Vector3.Dot(d, axis);
+                LiquidBodyCanvas.Check(c >= cosLimit, $"sample is {Mathf.Acos(c) * Mathf.Rad2Deg} degrees off axis");
+                widest = Mathf.Min(widest, c);
+            }
+
+            LiquidBodyCanvas.Check(widest < Mathf.Cos(angle * 0.7f * Mathf.Deg2Rad), "samples never reach the edge of the cone");
+
+            Vector3 straight = pool.ConeDirection(Vector3.up, 0f, 0.5f, 0.5f);
+            LiquidBodyCanvas.Check((straight - Vector3.up).magnitude < Tolerance, "a zero-angle cone is not the axis");
+        }
+
+        internal static void HashIsBoundedAndRepeatable()
+        {
+            var pool = new LiquidCanvasPool();
+            float sum = 0f;
+            for (int i = -5000; i < 5000; i++)
+            {
+                float h = pool.Hash01(i);
+                LiquidBodyCanvas.Check(h >= 0f && h < 1f, $"hash({i}) = {h}");
+                LiquidBodyCanvas.Check(h == pool.Hash01(i), $"hash({i}) is not repeatable");
+                sum += h;
+            }
+
+            float mean = sum / 10000f;
+            LiquidBodyCanvas.Check(Mathf.Abs(mean - 0.5f) < 0.05f, $"hash mean is {mean}");
+        }
+
+        internal static void PlayerLocalRoundTrips()
+        {
+            var pool = new LiquidCanvasPool();
+            Vector3 position = new Vector3(3f, 0.5f, -7f);
+            Vector3 facing = new Vector3(1f, 0.4f, 1f);
+            Vector3 world = new Vector3(3.2f, 1.7f, -6.6f);
+
+            Vector3 local = pool.ToPlayerLocal(world, position, facing);
+            Vector3 back = pool.FromPlayerLocal(local, position, facing);
+            LiquidBodyCanvas.Check((back - world).magnitude < Tolerance, $"round trip gave {back}");
+
+            // 同じプレイヤー基準の座標は、プレイヤーが動いて向きを変えても体の同じ所を指します。
+            Vector3 moved = new Vector3(-1f, 0.5f, 2f);
+            Vector3 turned = new Vector3(-1f, 0f, 0f);
+            Vector3 there = pool.FromPlayerLocal(local, moved, turned);
+            LiquidBodyCanvas.Check(Mathf.Abs((there - moved).magnitude - (world - position).magnitude) < Tolerance,
+                "the distance from the player changed");
+            LiquidBodyCanvas.Check(Mathf.Abs((there.y - moved.y) - (world.y - position.y)) < Tolerance,
+                "the height above the feet changed");
+
+            // 右手側の点は、向きを変えても右手側に残ります。
+            Vector3 rightSide = pool.FromPlayerLocal(new Vector3(0.5f, 1f, 0f), Vector3.zero, Vector3.forward);
+            LiquidBodyCanvas.Check(rightSide.x > 0.49f, $"+x local is not to the right of a player facing +z: {rightSide}");
+
+            Vector3 degenerate = pool.ToPlayerLocal(world, position, Vector3.up);
+            LiquidBodyCanvas.Check(IsFinite(degenerate.x) && IsFinite(degenerate.z), "facing straight up is not finite");
+        }
+
+        /// <summary>
+        /// ターゲット番号は、0 以上がプレイヤー ID、-1 が無し、-2 以下がマネキンです。
+        /// 命中は番号のまま同期されるため、重なると別の相手に付着が付きます。
+        /// </summary>
+        internal static void MannequinTargetsAreDistinct()
+        {
+            var pool = new LiquidCanvasPool();
+            for (int index = 0; index < 1000; index++)
+            {
+                int target = pool.MannequinTarget(index);
+                LiquidBodyCanvas.Check(target <= -2, $"mannequin {index} maps to {target}, which is a player or none");
+                LiquidBodyCanvas.Check(pool.MannequinIndex(target) == index, $"mannequin {index} does not round trip");
+            }
+
+            LiquidBodyCanvas.Check(pool.MannequinIndex(-1) < 0, "none reads as a mannequin");
+            for (int player = 0; player < 1000; player++)
+            {
+                LiquidBodyCanvas.Check(pool.MannequinIndex(player) < 0, $"player {player} reads as a mannequin");
+            }
+        }
+
+        internal static void UmbrellasCoverBelow()
+        {
+            var pool = new LiquidCanvasPool();
+            Vector3 canopy = new Vector3(1f, 2.1f, -1f);
+
+            LiquidBodyCanvas.Check(pool.UnderCanopy(new Vector3(1f, 1.9f, -1f), canopy, Vector3.up, 0.55f, 2.2f), "the head right under the canopy is uncovered");
+            LiquidBodyCanvas.Check(pool.UnderCanopy(new Vector3(1.5f, 1.0f, -1f), canopy, Vector3.up, 0.55f, 2.2f), "the canopy does not widen downwards");
+            LiquidBodyCanvas.Check(!pool.UnderCanopy(new Vector3(1.7f, 1.9f, -1f), canopy, Vector3.up, 0.55f, 2.2f), "a point beside the canopy is covered");
+            LiquidBodyCanvas.Check(!pool.UnderCanopy(new Vector3(1f, 2.6f, -1f), canopy, Vector3.up, 0.55f, 2.2f), "a point above the canopy is covered");
+            LiquidBodyCanvas.Check(!pool.UnderCanopy(new Vector3(1f, -0.5f, -1f), canopy, Vector3.up, 0.55f, 2.2f), "a point below the covered depth is covered");
+
+            // 傾けた傘は、傾いた向きの下を覆います。
+            Vector3 tilted = new Vector3(0.5f, 1f, 0f).normalized;
+            Vector3 along = canopy - tilted * 1f;
+            LiquidBodyCanvas.Check(pool.UnderCanopy(along, canopy, tilted, 0.55f, 2.2f), "a tilted umbrella does not cover along its axis");
+
+            LiquidBodyCanvas.Check(pool.InsideBox(new Vector3(0.9f, -0.9f, 0.9f), Vector3.one), "a point inside the box is outside");
+            LiquidBodyCanvas.Check(!pool.InsideBox(new Vector3(0f, 1.1f, 0f), Vector3.one), "a point above the box is inside");
+        }
+
+        private static float DistanceToSegment(Vector3 p, Vector3 a, Vector3 b)
+        {
+            Vector3 ba = b - a;
+            float h = Mathf.Clamp01(Vector3.Dot(p - a, ba) / Vector3.Dot(ba, ba));
+            return (p - (a + ba * h)).magnitude;
+        }
+
+        private static Vector3 RandomVector(System.Random random)
+        {
+            return new Vector3(
+                (float)(random.NextDouble() * 2.0 - 1.0),
+                (float)(random.NextDouble() * 2.0 - 1.0),
+                (float)(random.NextDouble() * 2.0 - 1.0));
+        }
+
+        private static bool IsFinite(float value)
+        {
+            return !float.IsNaN(value) && !float.IsInfinity(value);
+        }
+    }
+
+    /// <summary>
+    /// Checks on the weather cycle in LiquidWeatherSolver.cs, a partial of
+    /// LiquidWeather for the same reason as the others.
+    /// </summary>
+    public partial class LiquidWeather
+    {
+        private const float Tolerance = 1e-4f;
+
+        internal static void PrecipitationFollowsTheCycle()
+        {
+            var weather = new LiquidWeather();
+
+            // 30 秒降って 30 秒止む。降り始めと降り終わりの 3 秒で強さが変わります。
+            LiquidBodyCanvas.Check(weather.PrecipitationLevel(0.0, 30f, 30f, 3f) == 0f, "full strength at the very start");
+            LiquidBodyCanvas.Check(Mathf.Abs(weather.PrecipitationLevel(1.5, 30f, 30f, 3f) - 0.5f) < Tolerance, "the ramp up is not linear");
+            LiquidBodyCanvas.Check(weather.PrecipitationLevel(15.0, 30f, 30f, 3f) == 1f, "not full strength mid-way");
+            LiquidBodyCanvas.Check(Mathf.Abs(weather.PrecipitationLevel(28.5, 30f, 30f, 3f) - 0.5f) < Tolerance, "the ramp down is not linear");
+            LiquidBodyCanvas.Check(weather.PrecipitationLevel(45.0, 30f, 30f, 3f) == 0f, "falling while it should be clear");
+
+            // 周期は繰り返し、サーバー時刻が大きくても同じ値になります。
+            double later = 60.0 * 1000000.0 + 15.0;
+            LiquidBodyCanvas.Check(weather.PrecipitationLevel(later, 30f, 30f, 3f) == 1f, "the cycle drifted at large times");
+
+            LiquidBodyCanvas.Check(weather.PrecipitationLevel(45.0, 30f, 0f, 3f) == 1f, "no clear time did not mean always");
+            LiquidBodyCanvas.Check(weather.PrecipitationLevel(5.0, 0f, 30f, 3f) == 0f, "no falling time still fell");
+            LiquidBodyCanvas.Check(weather.PrecipitationLevel(1.0, 30f, 30f, 0f) == 1f, "no ramp did not start at full strength");
+        }
+
+        internal static void GroundCoverBuildsAndClears()
+        {
+            var weather = new LiquidWeather();
+            const float on = 60f, off = 60f, build = 30f, clear = 45f;
+
+            LiquidBodyCanvas.Check(weather.GroundCover(0.0, on, off, build, clear) == 0f, "cover before anything fell");
+            LiquidBodyCanvas.Check(Mathf.Abs(weather.GroundCover(15.0, on, off, build, clear) - 0.5f) < Tolerance, "cover not halfway at half the build time");
+            LiquidBodyCanvas.Check(weather.GroundCover(50.0, on, off, build, clear) == 1f, "cover did not reach full");
+
+            // 止んでから 22.5 秒で半分、45 秒で消えきり、次に降るまで 0 のままです。
+            LiquidBodyCanvas.Check(Mathf.Abs(weather.GroundCover(82.5, on, off, build, clear) - 0.5f) < Tolerance, "clearing is not linear");
+            LiquidBodyCanvas.Check(weather.GroundCover(110.0, on, off, build, clear) == 0f, "cover left after clearing");
+
+            // 周期の中で値は増えるか減るかのどちらかで、飛びません（周期の境目を除く）。
+            float previous = weather.GroundCover(0.0, on, off, build, clear);
+            for (int i = 1; i < 1200; i++)
+            {
+                float value = weather.GroundCover(i * 0.1, on, off, build, clear);
+                LiquidBodyCanvas.Check(value >= 0f && value <= 1f, $"cover {value} out of range");
+                LiquidBodyCanvas.Check(Mathf.Abs(value - previous) <= 0.1f / Mathf.Min(build, clear) + Tolerance,
+                    $"cover jumped from {previous} to {value} at {i * 0.1} s");
+                previous = value;
+            }
+
+            // 短い降雪では積もりきらず、その分だけ早く消えます。
+            float peak = weather.GroundCover(9.99, 10f, 60f, build, clear);
+            LiquidBodyCanvas.Check(Mathf.Abs(peak - 1f / 3f) < 1e-3f, $"a short fall peaked at {peak}");
+            LiquidBodyCanvas.Check(weather.GroundCover(10.0 + 15.0 + 0.01, 10f, 60f, build, clear) == 0f, "a light cover took the full clear time");
+        }
+
+        internal static void MeltWetsThenDries()
+        {
+            var weather = new LiquidWeather();
+            const float on = 60f, off = 60f, build = 30f, melt = 45f, dry = 10f;
+
+            LiquidBodyCanvas.Check(weather.MeltWetness(30.0, on, off, build, melt, dry) == 0f, "wet while still snowing");
+            float midway = weather.MeltWetness(60.0 + 22.5, on, off, build, melt, dry);
+            LiquidBodyCanvas.Check(Mathf.Abs(midway - 0.5f) < Tolerance, $"half melted but {midway} wet");
+            float melted = weather.MeltWetness(60.0 + 45.0, on, off, build, melt, dry);
+            LiquidBodyCanvas.Check(Mathf.Abs(melted - 1f) < Tolerance, $"fully melted but {melted} wet");
+            float drying = weather.MeltWetness(60.0 + 50.0, on, off, build, melt, dry);
+            LiquidBodyCanvas.Check(Mathf.Abs(drying - 0.5f) < Tolerance, $"half dried but {drying} wet");
+            LiquidBodyCanvas.Check(weather.MeltWetness(119.9, on, off, build, melt, dry) == 0f, "still wet after drying");
+            LiquidBodyCanvas.Check(weather.MeltWetness(80.0, on, 0f, build, melt, dry) == 0f, "wet under endless snow");
+        }
+
+        internal static void AreaAndDropsStayInPlace()
+        {
+            var weather = new LiquidWeather();
+            Vector3 half = new Vector3(5f, 3f, 5f);
+            LiquidBodyCanvas.Check(weather.InsideArea(new Vector3(4.9f, -2.9f, -4.9f), half), "a point inside the area was outside");
+            LiquidBodyCanvas.Check(!weather.InsideArea(new Vector3(5.1f, 0f, 0f), half), "a point beyond x was inside");
+            LiquidBodyCanvas.Check(!weather.InsideArea(new Vector3(0f, 3.1f, 0f), half), "a point above was inside");
+
+            // 雨粒は円の中から落ち、風があれば風上から落ちて、風下へ流れながら頭上の円に戻ります。
+            Vector3 top = new Vector3(1f, 1.8f, -2f);
+            Vector3 wind = new Vector3(0.2f, 0f, -0.1f);
+            var random = new System.Random(5);
+            for (int i = 0; i < 1000; i++)
+            {
+                float u = (float)random.NextDouble();
+                float v = (float)random.NextDouble();
+                Vector3 origin = weather.DropOrigin(top, 0.35f, 1.2f, wind, u, v);
+                LiquidBodyCanvas.Check(Mathf.Abs(origin.y - (top.y + 1.2f)) < Tolerance, $"drop starts at height {origin.y}");
+
+                Vector3 direction = weather.DropDirection(wind);
+                LiquidBodyCanvas.Check(Mathf.Abs(direction.magnitude - 1f) < Tolerance, "the drop direction is not a unit vector");
+
+                // 頭頂の高さまで落ちたときの位置。円の半径以内に来ます。
+                float t = 1.2f / -direction.y;
+                Vector3 landing = origin + direction * t;
+                Vector3 offset = landing - top;
+                float radial = new Vector3(offset.x, 0f, offset.z).magnitude;
+                LiquidBodyCanvas.Check(radial <= 0.35f + 1e-3f, $"drop lands {radial} m from the centre");
+            }
+        }
+    }
+
+    /// <summary>
+    /// Checks on the nozzle arithmetic in LiquidNozzleSolver.cs.
+    /// </summary>
+    public partial class LiquidNozzle
+    {
+        private const float Tolerance = 1e-4f;
+
+        internal static void SettingsSplitIntoRays()
+        {
+            var nozzle = new LiquidNozzle();
+
+            LiquidBodyCanvas.Check(nozzle.RaysFor(0f) == 1, "no volume fired no ray");
+            LiquidBodyCanvas.Check(nozzle.RaysFor(0.1f) == 1, "a cupful fired more than one ray");
+            LiquidBodyCanvas.Check(nozzle.RaysFor(1f) == 8, $"a litre fired {nozzle.RaysFor(1f)} rays");
+            LiquidBodyCanvas.Check(nozzle.RaysFor(10f) == MaxRaysPerShot, "a bucketful went over the ray limit");
+
+            // 光線が頭打ちになるまでは、1 本あたりの量は変わりません。
+            LiquidBodyCanvas.Check(Mathf.Abs(nozzle.AmountPerRay(0.5f) - nozzle.AmountPerRay(1f)) < Tolerance,
+                "the amount per ray changed below the ray limit");
+            // 頭打ちの後は 1 本あたりを増やし、量が多いほど多く付きます。
+            float large = nozzle.RaysFor(5f) * nozzle.AmountPerRay(5f);
+            float small = nozzle.RaysFor(1f) * nozzle.AmountPerRay(1f);
+            LiquidBodyCanvas.Check(large > small * 1.8f, $"five litres left {large}, one litre {small}");
+
+            // 刻みと範囲。
+            LiquidBodyCanvas.Check(Mathf.Abs(nozzle.Step(0.5f, 0.1f, 1, 0.1f, 10f) - 0.6f) < Tolerance, "a step up did not add one step");
+            LiquidBodyCanvas.Check(Mathf.Abs(nozzle.Step(0.1f, 0.1f, -1, 0.1f, 10f) - 0.1f) < Tolerance, "a step went below the minimum");
+            LiquidBodyCanvas.Check(Mathf.Abs(nozzle.Step(10f, 1f, 1, 0.1f, 10f) - 10f) < Tolerance, "a step went above the maximum");
+            LiquidBodyCanvas.Check(Mathf.Abs(nozzle.Step(0.3000001f, 0.1f, 1, 0.1f, 10f) - 0.4f) < Tolerance, "rounding drifted off the grid");
+        }
+
+        internal static void SpeedAndSizeShapeTheShot()
+        {
+            var nozzle = new LiquidNozzle();
+
+            LiquidBodyCanvas.Check(Mathf.Abs(nozzle.FlightTime(5f, 10f) - 0.5f) < Tolerance, "5 m at 10 m/s is not half a second of flight");
+            LiquidBodyCanvas.Check(nozzle.FlightTime(5f, 0f) == 0f, "zero speed gave a flight");
+
+            // 放物線。水平に 4 m/s で放つと、1 秒で 4 m 進み 4.905 m 落ちます。
+            Vector3 origin = new Vector3(1f, 2f, 3f);
+            Vector3 p = nozzle.ArcPoint(origin, new Vector3(4f, 0f, 0f), 1f);
+            LiquidBodyCanvas.Check((p - new Vector3(5f, 2f - 4.905f, 3f)).magnitude < 1e-3f, $"the arc point is {p}");
+            LiquidBodyCanvas.Check((nozzle.ArcPoint(origin, Vector3.one, 0f) - origin).magnitude < Tolerance, "the arc does not start at the nozzle");
+
+            // 速さが倍なら、同じ距離での落ち方は 1/4 です。
+            float slow = 2f - nozzle.ArcPoint(new Vector3(0f, 2f, 0f), new Vector3(4f, 0f, 0f), 1f).y;
+            float fast = 2f - nozzle.ArcPoint(new Vector3(0f, 2f, 0f), new Vector3(8f, 0f, 0f), 0.5f).y;
+            LiquidBodyCanvas.Check(Mathf.Abs(fast * 4f - slow) < 1e-3f, "the drop is not inverse square in speed");
+
+            // 上へ放つと、頂点で速さの上向き成分が 0 になります（t = vy / g）。
+            float apexTime = 3f / 9.81f;
+            float before = nozzle.ArcPoint(Vector3.zero, new Vector3(0f, 3f, 0f), apexTime - 0.01f).y;
+            float apex = nozzle.ArcPoint(Vector3.zero, new Vector3(0f, 3f, 0f), apexTime).y;
+            float after = nozzle.ArcPoint(Vector3.zero, new Vector3(0f, 3f, 0f), apexTime + 0.01f).y;
+            LiquidBodyCanvas.Check(apex >= before && apex >= after, "the arc has no apex where it should");
+
+            // 太いほど広がり、遠いほど狭い角度で同じ直径になります。
+            LiquidBodyCanvas.Check(nozzle.ConeAngleFor(0.3f, 4f) > nozzle.ConeAngleFor(0.1f, 4f), "a wider nozzle spread less");
+            LiquidBodyCanvas.Check(nozzle.ConeAngleFor(0.2f, 8f) < nozzle.ConeAngleFor(0.2f, 4f), "the angle grew with range");
+            float angle = nozzle.ConeAngleFor(0.2f, 4f) * Mathf.Deg2Rad;
+            LiquidBodyCanvas.Check(Mathf.Abs(Mathf.Tan(angle) * 4f - 0.1f) < 1e-3f, "the spread does not match the radius at range");
+
+            LiquidBodyCanvas.Check(nozzle.HitRadiusFor(0.2f, 0f) >= 0.1f - Tolerance, "a hit is smaller than the stream");
+            LiquidBodyCanvas.Check(nozzle.HitRadiusFor(0.2f, 5f) > nozzle.HitRadiusFor(0.2f, 1f), "a stream does not widen with distance");
+            LiquidBodyCanvas.Check(nozzle.HitRadiusFor(0f, 0f) >= 0.01f, "a zero nozzle gave a zero hit");
+        }
+    }
+}
