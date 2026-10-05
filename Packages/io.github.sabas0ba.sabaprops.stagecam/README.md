@@ -209,4 +209,4 @@ VRChat はアバターの身長差が大きく、しかもアバタースケー�
 
 ## ライセンス
 
-MIT License.
+Apache License 2.0。全文は [LICENSE.md](LICENSE.md) を参照してください。

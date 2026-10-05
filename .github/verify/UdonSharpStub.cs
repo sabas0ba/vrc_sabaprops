@@ -69,7 +69,17 @@ namespace UdonSharp
 
         public void SendCustomEvent(string eventName) { }
 
+        // The real method takes a third, optional EventTiming argument; the
+        // two-argument call compiles against both.
+        public void SendCustomEventDelayedSeconds(string eventName, float delaySeconds) { }
+
+        public void SetProgramVariable(string name, object value) { }
+
+        public object GetProgramVariable(string name) { return null; }
+
         public virtual void Interact() { }
+
+        public virtual void InputGrab(bool value, VRC.Udon.Common.UdonInputEventArgs args) { }
 
         public virtual void PostLateUpdate() { }
 

@@ -1,5 +1,7 @@
 # サンプルシーンの実写
 
+Foliage と Flock の文書用画像を、実際の Unity Shader で描画するツールです。
+
 `Tools > SabaProps > Foliage > Capture Docs Images` で、サンプルシーンを実際の Unity で描画して
 `Packages/io.github.sabas0ba.sabaprops.foliage/Documentation~/images/captured/` に JPEG を書き出します。
 
@@ -55,3 +57,56 @@ CI では動きません。GameCI の runner には GPU が無く、ライセン
 `Editor/` に置けば全利用者のプロジェクトにコンパイル対象として配られてしまうため、リポジトリ側に置いています。
 代わりに `verify.sh` がこのファイルを実物の UnityEngine 参照アセンブリに対してコンパイルするので、
 放置して壊れることはありません。
+
+## Flock の Sample と画像
+
+Flock の capture tool は `flock/` にあり、Foliage とは別の assembly です。
+追加依存はありません。再生成には Unity 2022.3 の Built-in Render Pipeline を使用します。
+
+1. 空の Unity プロジェクトの `Packages/` に Flock パッケージを配置します。
+2. `SabaProps.Flock.Editors.FlockSampleScene.GenerateAllForDistribution` をコマンドラインの `-executeMethod` で実行します。
+   `Assets/SabaProps/FlockSample` が既に存在する場合は生成を止めるため、Sample の再生成には空のプロジェクトを使ってください。
+3. `Assets/SabaProps/FlockSample` と `Assets/SabaProps/FlockComparisons` の Scene と backdrop / World Material、および
+   `Assets/SabaProps/Flock` の `Meshes`、`Materials` を、meta を含めて
+   `Packages/io.github.sabas0ba.sabaprops.flock/Samples~/Flock Sample` に配置します。
+4. このリポジトリの `capture/flock/` をプロジェクトの `Assets/` 配下へコピーまたはリンクします。
+5. `Tools > SabaProps > Flock > Capture Docs Images` を実行します。
+   batch mode では `SabaProps.Flock.DocsCapture.FlockDocsCapture.CaptureExpanded` を `-executeMethod` で実行できます。
+
+`CaptureExpanded` は 3 つの Scene を開き、従来の 5 枚、World の 8 枚、夕方・夜の空と水槽 4 枚、泳ぎ方・飛び方の比較 2 枚、追加種 13 枚を描画します。全 Scene の共有 Mesh と Material は一度だけコピーします。各種の撮影では対象以外の Renderer を一時的に非表示にします。Shader のコンパイルエラーがないことと実画像を確認してから文書へ反映してください。
+
+Capture は生成済みの `Assets/SabaProps/FlockSample/FlockSample.unity` を開きます。
+現在の Scene は置き換わるため、未保存の変更は先に保存してください。
+
+次の 5 枚を Flock の `Documentation~/images/captured/` に書き出します。
+
+| ファイル | 内容 |
+| --- | --- |
+| `sample-overview.jpg` | 8 種・8 動作を配置した Sample Scene の全景 |
+| `starling.jpg` | ムクドリの近接表示 |
+| `goose.jpg` | マガンの近接表示 |
+| `sardine.jpg` | マイワシの近接表示 |
+| `anthias.jpg` | キンギョハナダイの近接表示 |
+
+配布用 Sample を検証する際は、生成元の assets がない別のプロジェクトで Import します。
+生成元と Sample のコピーは同じ GUID を持つため、同じプロジェクトで両方を Import すると
+Unity が GUID を付け替え、配布時とは異なる参照状態になります。
+
+### World の状況別 Scene
+
+World のみを更新する場合は、生成用プロジェクトをリポジトリの `Temp/` に置き、`python3 .github/figures/capture/flock/copy_world_sample.py --project Temp/<project>` を実行します。この処理は既存の比較 Scene とその共有 Material / Mesh、および World Scene の GUID を保持し、World の Mesh を `WorldMeshes` へ配置します。画像は `SabaProps.Flock.DocsCapture.FlockDocsCapture.CaptureWorldWithLighting` で昼・夕方・夜を生成できます。
+
+別の空のプロジェクトで `SabaProps.Flock.Editors.FlockWorldSample.GenerateForDistribution` を
+`-executeMethod` で実行します。`FlockWorldScenarios.unity`、`WorldMaterials` とその meta を
+Sample のルートへコピーします。生成された `Flock/Meshes` は `WorldMeshes`、
+`Flock/Materials` は `WorldFlockMaterials` として meta を含めてコピーします。
+既存の比較 Scene の Mesh と Material は保持してください。参照は GUID で維持されます。
+
+`SabaProps.Flock.DocsCapture.FlockDocsCapture.CaptureWorld` を実行すると、
+`world-sky`、`world-small-tank`、`world-small-tank-close`、`world-large-tank`、
+`world-river`、`world-river-bridge` の 6 枚を JPG で出力します。
+空は遠景 Camera、小型水槽は立位と近接、大型水槽は観覧者の目線、川は川岸と橋からの描画です。
+画像は Shader の運動の一時点です。時間経過による密度や画面内への入り方は Play Mode で確認します。
+
+レビュー用プロジェクトでは `FlockWorldSample.OpenForReview` を `-executeMethod` で起動すると、
+生成した Scene と Game view を開けます。この起動には `-batchmode` と `-quit` を付けません。

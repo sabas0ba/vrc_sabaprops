@@ -26,6 +26,8 @@ STAGECAM="$REPO/Packages/io.github.sabas0ba.sabaprops.stagecam"
 CAPTURE_PACKAGE="$REPO/Packages/io.github.sabas0ba.sabaprops.capture"
 SOFT_PROPS_PACKAGE="$REPO/Packages/io.github.sabas0ba.sabaprops.softprops"
 PUT_ITEMS_PACKAGE="$REPO/Packages/io.github.sabas0ba.sabaprops.putitems"
+TABLET_PACKAGE="$REPO/Packages/io.github.sabas0ba.sabaprops.tablet"
+TREES_PACKAGE="$REPO/Packages/io.github.sabas0ba.sabaprops.trees"
 
 PROJECT="${1:-$REPO/build/WorldProject}"
 VPM="${VPM_DIR:-$REPO/build/vpm}"
@@ -84,6 +86,8 @@ replace "$CAPTURE_PACKAGE" "$PROJECT/Packages/io.github.sabas0ba.sabaprops.captu
 
 replace "$SOFT_PROPS_PACKAGE" "$PROJECT/Packages/io.github.sabas0ba.sabaprops.softprops"
 replace "$PUT_ITEMS_PACKAGE" "$PROJECT/Packages/io.github.sabas0ba.sabaprops.putitems"
+replace "$TABLET_PACKAGE" "$PROJECT/Packages/io.github.sabas0ba.sabaprops.tablet"
+replace "$TREES_PACKAGE" "$PROJECT/Packages/io.github.sabas0ba.sabaprops.trees"
 replace "$VPM/com.vrchat.base" "$PROJECT/Packages/com.vrchat.base"
 replace "$VPM/com.vrchat.worlds" "$PROJECT/Packages/com.vrchat.worlds"
 

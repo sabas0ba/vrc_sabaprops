@@ -1,0 +1,25 @@
+{
+    "name": "SabaProps.Tablet.Editor",
+    "rootNamespace": "SabaProps.Tablet.Editors",
+    "references": [
+        "SabaProps.Tablet.Runtime",
+        "SabaProps.Tablet.Authoring",
+        "Unity.TextMeshPro",
+        "VRC.SDKBase",
+        "VRC.SDK3",
+        "VRC.Udon",
+        "UdonSharp.Runtime",
+        "UdonSharp.Editor"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

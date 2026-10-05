@@ -42,11 +42,23 @@ for name in System.Runtime System.Private.CoreLib System.Collections System.Cons
     RUNTIME_ARGS+=(-r:"$RUNTIME_DIR/$name.dll")
 done
 
+# The flock figures draw bodies from the flock generators. Everything but the
+# MonoBehaviour and the UnityEditor-facing tools, as in ../verify/verify.sh.
+FLOCK="$REPO/Packages/io.github.sabas0ba.sabaprops.flock"
+FLOCK_SOURCES=()
+for file in "$FLOCK"/Runtime/*.cs "$FLOCK"/Editor/*.cs; do
+    case "$(basename "$file")" in
+        FlockSwarm.cs | FlockSwarmEditor.cs | FlockMenu.cs | FlockAssetLibrary.cs | FlockSwarmBuilder.cs | FlockGallery.cs | FlockSampleScene.cs | FlockWorldSample.cs | FlockComparisonScene.cs | FlockLightingPreview.cs) ;;
+        *) FLOCK_SOURCES+=("$file") ;;
+    esac
+done
+
 dotnet "$CSC_DLL" -nologo -langversion:9.0 -target:exe -nostdlib+ -noconfig \
     "${RUNTIME_ARGS[@]}" \
     -out:"$WORK/DumpFigures.dll" \
     "$REPO/.github/verify/offline/UnityEngineShim.cs" \
     "$FIGURES/DumpFigures.cs" \
+    "${FLOCK_SOURCES[@]}" \
     "$PACKAGE/Runtime/FoliageRandom.cs" \
     "$PACKAGE/Runtime/FoliageSeason.cs" \
     "$PACKAGE/Runtime/FoliageSpecies.cs" \

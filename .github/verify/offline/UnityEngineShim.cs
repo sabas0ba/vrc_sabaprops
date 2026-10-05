@@ -122,6 +122,9 @@ namespace UnityEngine
 
         public static Vector2 zero => new Vector2(0f, 0f);
 
+        public float sqrMagnitude => x * x + y * y;
+        public float magnitude => Mathf.Sqrt(sqrMagnitude);
+
         public static Vector2 operator +(Vector2 a, Vector2 b) => new Vector2(a.x + b.x, a.y + b.y);
         public static Vector2 operator -(Vector2 a, Vector2 b) => new Vector2(a.x - b.x, a.y - b.y);
         public static Vector2 operator *(Vector2 a, float s) => new Vector2(a.x * s, a.y * s);
@@ -560,6 +563,17 @@ namespace UnityEngine
                 GetUVs(0, list);
                 return list.ToArray();
             }
+        }
+
+        public void Clear()
+        {
+            _uvs.Clear();
+            vertices = new Vector3[0];
+            normals = new Vector3[0];
+            colors = new Color[0];
+            triangles = new int[0];
+            indexFormat = Rendering.IndexFormat.UInt16;
+            bounds = new Bounds(Vector3.zero, Vector3.zero);
         }
 
         public void SetVertices(List<Vector3> value)
