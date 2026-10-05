@@ -115,7 +115,9 @@
     'io.github.sabas0ba.sabaprops.softprops': '接触 / 変形',
     'io.github.sabas0ba.sabaprops.stagecam': 'カメラ / 追従',
     'io.github.sabas0ba.sabaprops.putitems': '配置 / 同期',
-    'io.github.sabas0ba.sabaprops.tablet': 'UI / 操作'
+    'io.github.sabas0ba.sabaprops.tablet': 'UI / 操作',
+    'io.github.sabas0ba.sabaprops.flock': '群体 / 環境',
+    'io.github.sabas0ba.sabaprops.screenfx': '画面効果 / 天候'
   };
   var images = {
     'io.github.sabas0ba.sabaprops.foliage': 'docs/io.github.sabas0ba.sabaprops.foliage/images/generated/foliage-demo-overview.svg',
@@ -124,7 +126,9 @@
     'io.github.sabas0ba.sabaprops.softprops': 'docs/io.github.sabas0ba.sabaprops.softprops/demo-overview.png',
     'io.github.sabas0ba.sabaprops.stagecam': 'docs/io.github.sabas0ba.sabaprops.stagecam/images/stagecam-demo.png',
     'io.github.sabas0ba.sabaprops.putitems': 'docs/io.github.sabas0ba.sabaprops.putitems/demo-overview.png',
-    'io.github.sabas0ba.sabaprops.tablet': 'docs/io.github.sabas0ba.sabaprops.tablet/images/tablet-layout.svg'
+    'io.github.sabas0ba.sabaprops.tablet': 'docs/io.github.sabas0ba.sabaprops.tablet/images/tablet-layout.svg',
+    'io.github.sabas0ba.sabaprops.flock': 'docs/io.github.sabas0ba.sabaprops.flock/images/captured/sample-overview.jpg',
+    'io.github.sabas0ba.sabaprops.screenfx': 'docs/io.github.sabas0ba.sabaprops.screenfx/images/udon-demo.png'
   };
   function text(tag, className, value) { var node = document.createElement(tag); if (className) node.className = className; if (value != null) node.textContent = value; return node; }
   function latestVersion(versions) { var keys = Object.keys(versions || {}); return keys.length ? versions[keys[0]] : null; }
@@ -143,12 +147,16 @@
       card.href = 'docs/' + encodeURIComponent(id) + '/index.html';
       card.setAttribute('aria-label', name + ' のドキュメントを開く');
       card.dataset.search = [name, id, manifest.description || '', categories[id] || ''].join(' ').toLowerCase();
-      var image = document.createElement('img');
-      image.className = 'pkg-image';
-      image.src = images[id] || '';
-      image.alt = name + ' の表示例';
-      image.loading = 'lazy';
-      card.appendChild(image);
+      // A card without a thumbnail is left without an <img>: an empty src
+      // renders as a broken image icon.
+      if (images[id]) {
+        var image = document.createElement('img');
+        image.className = 'pkg-image';
+        image.src = images[id];
+        image.alt = name + ' の表示例';
+        image.loading = 'lazy';
+        card.appendChild(image);
+      }
 
       var body = text('div', 'pkg-body');
       var head = text('div', 'pkg-head');
