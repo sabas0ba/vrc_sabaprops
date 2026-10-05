@@ -106,7 +106,7 @@ VRChat Worlds SDKとUdonSharpを備えたUnityプロジェクトへパッケー�
 - リモートの姿勢には遅延があります。視点の快適性は実機での調整が必要です。
 - 非Humanoidの頭・体幹は標準体型で代替します。
 - 同時に扱う対象はマネキンとリモートプレイヤーの合計16体までです。
-- ClientSim用PlayModeテストは未実装です。
+- ClientSimではUdon実行によるHUD・Gizmo・切替を検査します。PostLateUpdateはテストから明示的に送り、実クライアントでの自動発火は別途確認が必要です。
 
 ## ライセンス
 

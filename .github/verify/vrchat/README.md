@@ -194,6 +194,19 @@ C# のコンパイルエラーは実際には存在しません。
 UNITY_EXTRA_ARGS=--burst-disable-compilation ./.github/verify/vrchat/run-tests.sh
 ```
 
+## Body Contactの実行時表示検査
+
+`SabaProps.BodyContact.WorldTests` はClientSimでPlayModeへ入り、Udon VM経由のHUD更新、
+描画画素、Gizmoメッシュと切替を確認します。ClientSimではPostLateUpdateをテストから明示的に送ります。
+これは実クライアントでの自動発火やVR描画を保証しません。
+
+追加で配布物を調べる場合は、Unityプロセスへ以下の環境変数を渡します。
+
+- `BODYCONTACT_DELIVERED_SCENE`: 検証プロジェクト内へ取り込んだシーンのAssets相対パス
+- `BODYCONTACT_BUILT_WORLD`: Build & Testで使われた `.vrcw` ファイルの絶対パス
+
+未指定の配布物検査はスキップします。HUD画像は `TestResults/bodycontact-hud-*.png` に保存します。
+
 ## SDK のバージョンを上げるには
 
 [`packages.lock`](packages.lock) の該当行のバージョン・SHA256・URL を、
