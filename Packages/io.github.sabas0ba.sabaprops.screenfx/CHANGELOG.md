@@ -9,3 +9,6 @@
 - Rain、Snow、Speed、Drunk、Underwater、Mud、Dark、Tension、Heat、Cold、Humid、Fog、Glareを含む24種のプリセットMaterialとVolume生成menu
 - 全プリセットを歩いて比較するGallery Sceneの生成menu
 - 公開イベント、Trigger、移動速度でWeightを操作するUdon Driverサンプル
+- Udon操作用のDemo Sceneと独立した操作パネル／Triggerのコピー用Prefab
+- プリセット・Lite切替、Weight・Exposure・Particles調整、即時停止、自動停止、パラメータ復帰
+- 実Udonコンパイル、ClientSimでのUI・Material独立性・Trigger動作検査

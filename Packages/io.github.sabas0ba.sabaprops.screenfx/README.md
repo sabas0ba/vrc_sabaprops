@@ -39,6 +39,10 @@ VRChat World向けの画面全体エフェクトです。雨、雪、高速移�
 
 ## GrabPass版とLite版
 
+Udon から操作する World のデモは、Package Manager の Samples → **Udon Driver** を Import し、
+インポート先の `Demo/ScreenFxUdonDemo.unity` を開いてください。コピー用の操作リグと Trigger リグの Prefab、
+オンオフ・プリセット切替・パラメータ調整のパネルを同梱しています。手順と Udon の呼び出し例はサンプル内の `README.md` にあります。
+
 | | GrabPass版 | Lite版 |
 | --- | --- | --- |
 | Shader | `SabaProps/Screen FX/Composite` | `SabaProps/Screen FX/Composite Lite` |

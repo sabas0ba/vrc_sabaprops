@@ -1,0 +1,88 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!21 &2100000
+Material:
+  serializedVersion: 8
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: Damage
+  m_Shader: {fileID: 4800000, guid: 0250050410f956fb4946848eab465487, type: 3}
+  m_Parent: {fileID: 0}
+  m_ModifiedSerializedProperties: 0
+  m_ValidKeywords: []
+  m_InvalidKeywords: []
+  m_LightmapFlags: 4
+  m_EnableInstancingVariants: 1
+  m_DoubleSidedGI: 0
+  m_CustomRenderQueue: -1
+  stringTagMap: {}
+  disabledShaderPasses: []
+  m_LockedProperties:
+  m_SavedProperties:
+    serializedVersion: 3
+    m_TexEnvs: []
+    m_Ints: []
+    m_Floats:
+    - _Blink: 0
+    - _BlinkAuto: 0
+    - _BlinkRate: 0.25
+    - _Blur: 0.2
+    - _BlurEdge: 1
+    - _Caustics: 0
+    - _CausticsScale: 4
+    - _Chromatic: 0.3
+    - _Contrast: 1
+    - _DoubleVision: 0
+    - _EdgeFade: 1
+    - _Exposure: 0
+    - _FogDensity: 0
+    - _FogNoise: 0
+    - _FogVeil: 0
+    - _Frost: 0
+    - _Glare: 0
+    - _GlareFocus: 8
+    - _Grain: 0
+    - _Haze: 0
+    - _HazeScale: 12
+    - _HazeSpeed: 1
+    - _LensDropScale: 8
+    - _LensDropSlide: 0.3
+    - _LensDrops: 0
+    - _LightResponse: 0.8
+    - _Particle: 0
+    - _ParticleDensity: 6
+    - _ParticleSize: 0.12
+    - _ParticleStretch: 0
+    - _ParticleSway: 0
+    - _Pulse: 0.6
+    - _PulseRate: 1.3
+    - _RadialBlur: 0
+    - _Saturation: 0.6
+    - _SpeedLineInner: 0.5
+    - _SpeedLineRate: 3
+    - _SpeedLines: 0
+    - _Splat: 0
+    - _SplatDrip: 0.05
+    - _SplatScale: 3
+    - _UseDepth: 0
+    - _Vignette: 0.7
+    - _VignetteRadius: 0.5
+    - _VignetteSoftness: 0.6
+    - _Weight: 1
+    - _Wobble: 0
+    - _WobbleScale: 1
+    - _WobbleSpeed: 1
+    m_Colors:
+    - _FogColor: {r: 0.7, g: 0.75, b: 0.78, a: 1}
+    - _FrostColor: {r: 0.85, g: 0.93, b: 1, a: 0.9}
+    - _GlareColor: {r: 1, g: 0.96999997, b: 0.9, a: 1}
+    - _GlareDirection: {r: 0, g: 0, b: 0, a: 0}
+    - _ParticleColor: {r: 1, g: 1, b: 1, a: 0.8}
+    - _ParticleVelocity: {r: 0, g: 0.4, b: 0, a: 0}
+    - _SpeedLineColor: {r: 1, g: 1, b: 1, a: 0.6}
+    - _SplatColor: {r: 0.19999996, g: 0.12999997, b: 0.06999998, a: 1}
+    - _Tint: {r: 1, g: 1, b: 1, a: 0}
+    - _VignetteColor: {r: 0.6, g: 0, b: 0, a: 1}
+  m_BuildTextureStacks: []

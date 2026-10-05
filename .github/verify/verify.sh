@@ -459,10 +459,11 @@ echo "ok: ${#TABLET_SAMPLE_RUNTIME[@]} sample Runtime, ${#TABLET_SAMPLE_EDITOR[@
 # ---------------------------------------------------------------------------
 log "Compiling the Screen FX Udon sample (real VRChat SDK references + stub)"
 # ---------------------------------------------------------------------------
-# The driver is the only Udon in the package and ships as a sample, so the
-# package itself stays free of the SDK.
-mapfile -t SCREENFX_SAMPLE_SOURCES < <(find "$SCREENFX_PACKAGE/Samples~/UdonDriver" -name '*.cs' | sort)
+# The runtime driver and its panel ship as a sample, so the package itself
+# stays free of the SDK. The sample's Editor builder is checked in Unity.
+mapfile -t SCREENFX_SAMPLE_SOURCES < <(find "$SCREENFX_PACKAGE/Samples~/UdonDriver" -path '*/Editor/*' -prune -o -name '*.cs' -print | sort)
 csc "${COMMON[@]}" "${NETSTANDARD_ARGS[@]}" "${UNITY_ARGS[@]}" \
+    -r:"$OUT/UnityEngine.UI.dll" \
     -r:"$SDK_PLUGINS/VRCSDKBase.dll" -r:"$UDON_COMMON" -r:"$OUT/UdonSharp.Runtime.dll" \
     -out:"$OUT/SabaProps.ScreenFx.UdonDriver.dll" "${SCREENFX_SAMPLE_SOURCES[@]}"
 echo "ok: ${#SCREENFX_SAMPLE_SOURCES[@]} sample file(s)"

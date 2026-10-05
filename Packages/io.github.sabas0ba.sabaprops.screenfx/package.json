@@ -16,7 +16,7 @@
   "samples": [
     {
       "displayName": "Udon Driver",
-      "description": "公開イベント、Triggerへの出入り、移動速度でエフェクトのWeightを操作するUdonSharpBehaviourです。VRChat Worlds SDKが必要です。",
+      "description": "Udonからオンオフ・プリセット・パラメータを操作するDemo Scene、コピー用Prefab、Trigger例、Driverです。VRChat Worlds SDKが必要です。",
       "path": "Samples~/UdonDriver"
     }
   ],
