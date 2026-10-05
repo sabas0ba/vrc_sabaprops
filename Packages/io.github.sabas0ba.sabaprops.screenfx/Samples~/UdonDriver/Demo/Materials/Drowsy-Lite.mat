@@ -1,0 +1,73 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!21 &2100000
+Material:
+  serializedVersion: 8
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: Drowsy-Lite
+  m_Shader: {fileID: 4800000, guid: 6d5691695b2cf08f4b51333daf8b1fe6, type: 3}
+  m_Parent: {fileID: 0}
+  m_ModifiedSerializedProperties: 0
+  m_ValidKeywords: []
+  m_InvalidKeywords: []
+  m_LightmapFlags: 4
+  m_EnableInstancingVariants: 1
+  m_DoubleSidedGI: 0
+  m_CustomRenderQueue: -1
+  stringTagMap: {}
+  disabledShaderPasses: []
+  m_LockedProperties:
+  m_SavedProperties:
+    serializedVersion: 3
+    m_TexEnvs: []
+    m_Ints: []
+    m_Floats:
+    - _Blink: 0.15
+    - _BlinkAuto: 0.9
+    - _BlinkRate: 0.22
+    - _Caustics: 0
+    - _CausticsScale: 4
+    - _EdgeFade: 1
+    - _Exposure: -0.3
+    - _FogNoise: 0
+    - _FogVeil: 0
+    - _Frost: 0
+    - _Glare: 0
+    - _GlareFocus: 8
+    - _Grain: 0
+    - _LensDropScale: 8
+    - _LensDropSlide: 0.3
+    - _LensDrops: 0
+    - _LightResponse: 0.8
+    - _Particle: 0
+    - _ParticleDensity: 6
+    - _ParticleSize: 0.12
+    - _ParticleStretch: 0
+    - _ParticleSway: 0
+    - _Pulse: 0
+    - _PulseRate: 1.2
+    - _SpeedLineInner: 0.5
+    - _SpeedLineRate: 3
+    - _SpeedLines: 0
+    - _Splat: 0
+    - _SplatDrip: 0.05
+    - _SplatScale: 3
+    - _Vignette: 0.45
+    - _VignetteRadius: 0.6
+    - _VignetteSoftness: 0.6
+    - _Weight: 1
+    m_Colors:
+    - _FogColor: {r: 0.7, g: 0.75, b: 0.78, a: 1}
+    - _FrostColor: {r: 0.85, g: 0.93, b: 1, a: 0.9}
+    - _GlareColor: {r: 1, g: 0.96999997, b: 0.9, a: 1}
+    - _GlareDirection: {r: 0, g: 0, b: 0, a: 0}
+    - _ParticleColor: {r: 1, g: 1, b: 1, a: 0.8}
+    - _ParticleVelocity: {r: 0, g: 0.4, b: 0, a: 0}
+    - _SpeedLineColor: {r: 1, g: 1, b: 1, a: 0.6}
+    - _SplatColor: {r: 0.19999996, g: 0.12999997, b: 0.06999998, a: 1}
+    - _Tint: {r: 1, g: 1, b: 1, a: 0}
+    - _VignetteColor: {r: 0, g: 0, b: 0, a: 1}
+  m_BuildTextureStacks: []

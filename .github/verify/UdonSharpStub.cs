@@ -95,6 +95,12 @@ namespace UdonSharp
 
         public virtual void OnPlayerLeft(VRC.SDKBase.VRCPlayerApi player) { }
 
+        public virtual void OnPlayerTriggerEnter(VRC.SDKBase.VRCPlayerApi player) { }
+
+        public virtual void OnPlayerTriggerExit(VRC.SDKBase.VRCPlayerApi player) { }
+
+        public virtual void OnPlayerRespawn(VRC.SDKBase.VRCPlayerApi player) { }
+
         public virtual void OnOwnershipTransferred(VRC.SDKBase.VRCPlayerApi player) { }
 
         public virtual void OnAvatarEyeHeightChanged(VRC.SDKBase.VRCPlayerApi player, float prevEyeHeightAsMeters) { }

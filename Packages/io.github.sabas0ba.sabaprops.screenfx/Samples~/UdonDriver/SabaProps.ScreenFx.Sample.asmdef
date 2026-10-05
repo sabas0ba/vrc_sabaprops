@@ -1,0 +1,10 @@
+{
+    "name":  "SabaProps.ScreenFx.Sample",
+    "references":  [
+                       "UdonSharp.Runtime",
+                       "VRC.SDKBase",
+                       "VRC.Udon",
+                       "UnityEngine.UI"
+                   ],
+    "autoReferenced":  true
+}

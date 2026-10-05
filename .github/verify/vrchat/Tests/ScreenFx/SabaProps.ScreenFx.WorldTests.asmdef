@@ -1,0 +1,40 @@
+{
+    "name":  "SabaProps.ScreenFx.WorldTests",
+    "rootNamespace":  "SabaProps.ScreenFx.WorldTests",
+    "references":  [
+                       "SabaProps.ScreenFx.Sample",
+                       "SabaProps.ScreenFx.Sample.Editor",
+                       "SabaProps.ScreenFx.Editor",
+                       "UnityEngine.UI",
+                       "VRC.SDK3",
+                       "VRC.ClientSim",
+                       "VRC.ClientSim.Editor",
+                       "VRC.SDKBase.Editor",
+                       "UdonSharp.Runtime",
+                       "UdonSharp.Editor",
+                       "VRC.Udon",
+                       "VRC.Udon.Editor",
+                       "VRC.SDKBase",
+                       "UnityEngine.TestRunner",
+                       "UnityEditor.TestRunner"
+                   ],
+    "includePlatforms":  [
+                             "Editor"
+                         ],
+    "excludePlatforms":  [
+
+                         ],
+    "allowUnsafeCode":  false,
+    "overrideReferences":  false,
+    "precompiledReferences":  [
+
+                              ],
+    "autoReferenced":  false,
+    "defineConstraints":  [
+                              "UNITY_INCLUDE_TESTS"
+                          ],
+    "versionDefines":  [
+
+                       ],
+    "noEngineReferences":  false
+}
