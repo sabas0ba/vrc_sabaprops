@@ -45,6 +45,9 @@ namespace SabaProps.BodyContact
         [Tooltip("起動時に表示します。")]
         public bool visible = true;
 
+        [Tooltip("押し戻し対象外の腕・脚を灰色で表示します。")]
+        public bool showInactiveLimbs = true;
+
         [Tooltip("数値表示を更新する間隔 (秒)。")]
         public float labelInterval = 0.2f;
 
@@ -57,6 +60,7 @@ namespace SabaProps.BodyContact
         public Color contactColor = new Color(1f, 0.2f, 0.2f, 1f);
         public Color probeColor = new Color(0.2f, 0.8f, 1f, 1f);
         public Color separationColor = new Color(1f, 0.3f, 1f, 1f);
+        public Color inactiveLimbColor = new Color(0.55f, 0.55f, 0.6f, 0.65f);
 
         private Mesh _mesh;
         private Vector3[] _vertices = new Vector3[MaxLines * 2];
@@ -88,6 +92,11 @@ namespace SabaProps.BodyContact
         {
             visible = !visible;
             ApplyVisibility();
+        }
+
+        public void _ToggleInactiveLimbs()
+        {
+            showInactiveLimbs = !showInactiveLimbs;
         }
 
         /// <summary>BodyContactSystem が 1 フレームの処理を終えた直後に呼びます。</summary>
@@ -131,10 +140,13 @@ namespace SabaProps.BodyContact
                 int offset = body * partCount;
                 for (int part = 0; part < partCount; part++)
                 {
+                    bool inactive = part >= BodyContactSystem.PartLeftUpperArm;
+                    if (inactive && !showInactiveLimbs) continue;
                     float radius = source.partRadii[offset + part];
                     if (radius > 0f)
                     {
-                        AddCapsule(source.partA[offset + part], source.partB[offset + part], radius, color);
+                        AddCapsule(source.partA[offset + part], source.partB[offset + part], radius,
+                            inactive ? inactiveLimbColor : color);
                     }
                 }
             }
@@ -320,9 +332,16 @@ namespace SabaProps.BodyContact
             }
 
             int contacts = 0;
+            int validProbes = 0;
+            int validLimbs = 0;
             float deepest = 0f;
             for (int probe = 0; probe < source.activeProbeCount; probe++)
             {
+                if (source.probeRadii[probe] > 0f)
+                {
+                    validProbes++;
+                    if (probe >= BodyContactSystem.CoreProbeCount) validLimbs++;
+                }
                 float depth = source.probeDepths[probe];
                 if (depth > 0f) contacts++;
                 if (depth > deepest) deepest = depth;
@@ -332,14 +351,17 @@ namespace SabaProps.BodyContact
             float speed = deltaTime > 0f ? source.appliedStep.magnitude / deltaTime : 0f;
 
             statusLabel.text =
-                "bodies " + source.bodyCount + "  in range " + inRange + "  pass-through " + passThrough
+                "VR " + (Utilities.IsValid(local) && local.IsUserInVR() ? "ON" : "OFF")
+                + "  probes " + validProbes + "/" + source.activeProbeCount + "  limbs " + validLimbs + "/4"
+                + "\nbodies " + source.bodyCount + "  in range " + inRange + "  pass-through " + passThrough
                 + "\ncontacts " + contacts + "  depth " + (deepest * 1000f).ToString("F0") + " mm"
                 + "\nseparation " + (source.separation.magnitude * 1000f).ToString("F0") + " mm"
                 + "  speed " + speed.ToString("F2") + " m/s"
                 + "\nreversals " + source.reversalsPerSecond + " /s"
                 + (source.blockedByWorld ? "  blocked by world" : "")
                 + "\nmode " + (source.moveMode == BodyContactSystem.MoveByVelocity ? "velocity" : "teleport")
-                + (source.IsSuspended() ? "  suspended" : "");
+                + (source.IsSuspended() ? "  suspended" : "")
+                + "\ngray limbs: no push / dim lines: occluded";
         }
     }
 }

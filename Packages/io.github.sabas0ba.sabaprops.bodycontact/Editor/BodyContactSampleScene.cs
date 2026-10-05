@@ -9,8 +9,8 @@ namespace SabaProps.BodyContact.Editors
     /// <summary>
     /// Build &amp; Test でそのまま確認できる検証用シーンを生成します。
     /// <para>
-    /// README の検証手順に対応する 3 体の固定ダミーを置きます。開けた場所のダミー、
-    /// 背後に壁があるダミー、体格の小さいダミーです。リモートプレイヤーとの接触は、
+    /// 静止・壁際・小型・往復移動・旋回のマネキンと、距離の目盛りがある床を置きます。
+    /// リモートプレイヤーとの接触は、
     /// 同じシーンを 2 クライアントで起動して確認します。
     /// </para>
     /// <para>
@@ -29,6 +29,10 @@ namespace SabaProps.BodyContact.Editors
         public const string OpenDummyName = "Dummy Open";
         public const string WallDummyName = "Dummy Wall";
         public const string SmallDummyName = "Dummy Small";
+        public const string MovingDummyName = "Dummy Moving";
+        public const string TurningDummyName = "Dummy Turning";
+        public static readonly Vector3 MovingDummyPosition = new Vector3(-2.5f, 0f, 6f);
+        public static readonly Vector3 TurningDummyPosition = new Vector3(2.5f, 0f, 6f);
 
         /// <summary>プレイヤーの出現位置。ダミーの列を正面に見ます。</summary>
         public static readonly Vector3 SpawnPosition = new Vector3(0f, 0.05f, -2f);
@@ -95,6 +99,21 @@ namespace SabaProps.BodyContact.Editors
             small.name = SmallDummyName;
             small.transform.localScale = new Vector3(SmallDummyScale, SmallDummyScale, SmallDummyScale);
 
+            GameObject moving = BodyContactMenu.AddDummy(system, MovingDummyPosition);
+            moving.name = MovingDummyName;
+            BodyContactSampleVisuals.AddMotion(moving, true);
+            GameObject turning = BodyContactMenu.AddDummy(system, TurningDummyPosition);
+            turning.name = TurningDummyName;
+            BodyContactSampleVisuals.AddMotion(turning, false);
+
+            var signs = new GameObject("Test labels");
+            BodyContactSampleVisuals.Label(signs.transform, "Open label", "STATIC / HEAD + TORSO", OpenDummyPosition + Vector3.up * 2.1f);
+            BodyContactSampleVisuals.Label(signs.transform, "Wall label", "WALL / BLOCKED BY WORLD", WallDummyPosition + Vector3.up * 2.9f);
+            BodyContactSampleVisuals.Label(signs.transform, "Small label", "SMALL / 0.6x", SmallDummyPosition + Vector3.up * 1.5f);
+            BodyContactSampleVisuals.Label(signs.transform, "Moving label", "TRANSLATE / +/-0.8 m / 8 s", MovingDummyPosition + Vector3.up * 2.1f);
+            BodyContactSampleVisuals.Label(signs.transform, "Turning label", "TURN / +/-60 deg / 8 s", TurningDummyPosition + Vector3.up * 2.1f);
+            BodyContactSampleVisuals.Label(signs.transform, "Grid legend", "FLOOR: 1 m squares / 10 cm subdivisions\nGOLD: head + torso / GRAY: limbs (no push)", new Vector3(0f, 2.8f, 8f));
+
             BuildWorld(camera);
 
             AssetDatabase.SaveAssets();
@@ -110,18 +129,21 @@ namespace SabaProps.BodyContact.Editors
         {
             var environment = new GameObject("Environment");
 
-            CreateBox(
+            GameObject floor = CreateBox(
                 environment.transform, FloorName,
                 new Vector3(0f, -0.5f, 2f), new Vector3(24f, 1f, 16f));
+            floor.GetComponent<Renderer>().sharedMaterial = BodyContactSampleVisuals.Material(
+                "MetricFloor", "SabaProps/Body Contact/Metric Floor", Color.white);
 
             // ダミーの手前 1.1 m に置きます。壁とダミーの間に立つと、押し戻される先が壁になります。
-            CreateBox(
+            GameObject wall = CreateBox(
                 environment.transform, WallName,
                 WallDummyPosition + new Vector3(0f, 1.25f, -1.1f), new Vector3(2.4f, 2.5f, 0.2f));
+            wall.GetComponent<Renderer>().sharedMaterial = BodyContactSampleVisuals.Material(
+                "TestWall", "Standard", new Color(0.32f, 0.4f, 0.48f));
         }
 
-        // Unity 標準のマテリアルのままにし、シーンのためだけのマテリアルを増やしません。
-        private static void CreateBox(Transform parent, string name, Vector3 position, Vector3 size)
+        private static GameObject CreateBox(Transform parent, string name, Vector3 position, Vector3 size)
         {
             GameObject box = GameObject.CreatePrimitive(PrimitiveType.Cube);
             box.name = name;
@@ -129,6 +151,7 @@ namespace SabaProps.BodyContact.Editors
             box.transform.position = position;
             box.transform.localScale = size;
             box.isStatic = true;
+            return box;
         }
 
         private static void BuildWorld(Camera referenceCamera)

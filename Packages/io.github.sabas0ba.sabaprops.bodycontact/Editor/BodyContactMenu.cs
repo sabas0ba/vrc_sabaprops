@@ -81,6 +81,7 @@ namespace SabaProps.BodyContact.Editors
             var dummy = new GameObject("Body Contact Dummy");
             dummy.transform.SetParent(system.transform, false);
             dummy.transform.position = position;
+            BodyContactSampleVisuals.AddMannequin(system, dummy.transform);
 
             int count = system.dummies == null ? 0 : system.dummies.Length;
             var next = new Transform[count + 1];
@@ -106,7 +107,7 @@ namespace SabaProps.BodyContact.Editors
             Canvas canvas = canvasObject.AddComponent<Canvas>();
             canvas.renderMode = RenderMode.WorldSpace;
             var canvasRect = (RectTransform)canvasObject.transform;
-            canvasRect.sizeDelta = new Vector2(420f, 170f);
+            canvasRect.sizeDelta = new Vector2(520f, 220f);
 
             var labelObject = new GameObject("Status");
             labelObject.transform.SetParent(canvasObject.transform, false);
@@ -126,24 +127,25 @@ namespace SabaProps.BodyContact.Editors
             return label;
         }
 
-        // 頂点カラーをそのまま出す Unity 標準シェーダーを使い、専用シェーダーを同梱しません。
+        // 既存の生成済みマテリアルも更新し、シーンを作り直すと透過表示へ移行します。
         private static Material LoadOrCreateLineMaterial()
         {
             Material material = AssetDatabase.LoadAssetAtPath<Material>(LineMaterialPath);
-            if (material != null)
-            {
-                return material;
-            }
-
-            Shader shader = Shader.Find("Sprites/Default");
+            Shader shader = Shader.Find("SabaProps/Body Contact/Debug Lines");
             if (shader == null)
             {
-                Debug.LogWarning("[SabaProps Body Contact] Sprites/Default シェーダーが見つからないため、線のマテリアルを作成できません。");
+                Debug.LogError("[SabaProps Body Contact] Debug Lines シェーダーが見つかりません。");
                 return null;
             }
 
             EnsureFolder("Assets", "SabaProps");
             EnsureFolder("Assets/SabaProps", "BodyContact");
+            if (material != null)
+            {
+                material.shader = shader;
+                EditorUtility.SetDirty(material);
+                return material;
+            }
             material = new Material(shader);
             material.name = "BodyContactDebugLine";
             AssetDatabase.CreateAsset(material, LineMaterialPath);

@@ -23,7 +23,7 @@ VCC でこのパッケージを追加すると、依存する VRChat Worlds SDK 
 ### 検証用シーン
 
 `Tools > SabaProps > Body Contact > Create Sample Scene` で、床・壁・Spawn・Body Contact System と
-3 体の固定ダミーを含むシーンを生成します。保存先は `Assets/SabaProps/BodyContact/Samples/BodyContactDemo.unity`
+5 体のマネキンを含むシーンを生成します。保存先は `Assets/SabaProps/BodyContact/Samples/BodyContactDemo.unity`
 です。そのまま VRChat SDK の Build & Test で起動できます。
 
 | ダミー | 位置 | 用途 |
@@ -31,8 +31,14 @@ VCC でこのパッケージを追加すると、依存する VRChat Worlds SDK 
 | `Dummy Open` | 正面 | 歩いて入る、手を押し込む、の基本動作 |
 | `Dummy Wall` | 右。手前に壁 | 壁とダミーの間に立ち、押し戻しが壁で止まることの確認 |
 | `Dummy Small` | 左。0.6 倍 | 寸法が体格に比例することの確認 |
+| `Dummy Moving` | 奥の左 | 左右 ±0.8 m、8 秒周期の往復移動に対する接触 |
+| `Dummy Turning` | 奥の右 | 左右 ±60 度、8 秒周期の旋回に対する接触 |
 
-ダミーには表示用のモデルがありません。形状はデバッグ表示の線で確認します。
+マネキンの外観は判定と同じ標準体型から生成します。金色が頭・体幹、灰色が押し戻し対象外の腕・脚です。外観に Collider は付けません。床は 1 m の市松模様と主格子、10 cm の補助格子で距離を読み取れます。
+
+動作型は全身の移動・回転を行う Animation です。関節ごとの歩行や手振りではありません。判定は毎フレーム同じ Transform を参照するため、外観と一緒に移動します。アニメーションの位相はクライアントごとで、ネットワーク同期の検証には使いません。
+
+外観は生成時の `Dummy Eye Height` と `Radius Scale` に合わせます。これらを変更した場合は外観も生成し直してください。均等スケールでの拡大・縮小と位置・回転の変更は、そのまま外観と判定へ反映されます。
 生成し直すと同名のシーンを上書きします。
 
 ### 既存のシーンへ配置
@@ -61,6 +67,7 @@ Station の `OnStationEntered` と `OnStationExited` から、ローカルプレ
 | `Body Contact System` | `_Resume` | 再開します。重なっている相手は、離れるまで通り抜けを許可します |
 | `Body Contact System` | `_ToggleEnabled` | `Contact Enabled` を切り替えます。プレイヤーごとの無効化設定に使います |
 | `Body Contact Debug View` | `_Show` / `_Hide` / `_ToggleVisible` | デバッグ表示を切り替えます |
+| `Body Contact Debug View` | `_ToggleInactiveLimbs` | 押し戻し対象外の腕・脚の線を切り替えます |
 
 ## パラメータ
 
@@ -78,7 +85,7 @@ Station の `OnStationEntered` と `OnStationExited` から、ローカルプレ
 | Pass Through Seconds | 2.5 秒 | 体幹同士の接触がこの時間続くと、離れるまで通り抜けを許可します。0 以下で無効 |
 | Broad Phase Factor | 0.8 | 双方の目線の高さの合計にこの値を掛けた距離より遠い相手は判定しません |
 | World Collision Mask | Player と PlayerLocal 以外 | 押し戻された先の壁を調べるレイヤー |
-| Dummies | なし | 固定ダミーの位置 |
+| Dummies | なし | 標準体型マネキンの位置・回転。動く Transform も指定できます |
 | Dummy Eye Height | 1.6 m | ダミーの目線の高さ |
 
 寸法はすべてアバターの目線の高さに比例します。
@@ -90,16 +97,22 @@ World 内に線で描画します。Editor の Play と VRChat クライアン�
 
 | 表示 | 意味 |
 | --- | --- |
-| 緑のカプセル | 判定が有効な相手の部位 |
-| 黄のカプセル | 通り抜けを許可している相手の部位 |
+| 緑のカプセル | 判定が有効な相手の頭・体幹 |
+| 黄のカプセル | 通り抜けを許可している相手の頭・体幹 |
+| 灰色のカプセル | 相手の腕・脚。押し戻し対象外 |
 | 水色の球 | 自分の判定点 |
 | 赤の球と線 | 接触している判定点と、相手側の最近点 |
 | 紫の線 | 分離ベクトル。10 倍に拡大して腰の高さに描画します |
+
+アバターや壁に隠れた線は薄く透過表示します。`Show Inactive Limbs` をオフにすると、対象外の腕・脚を非表示にできます。線が表示されていても、すべてが押し戻し対象とは限りません。手足同士は判定対象外なので、握手だけでは浅い接触の許容値を評価できません。
 
 範囲外の相手は描画しません。数値表示の項目は次のとおりです。
 
 | 項目 | 意味 |
 | --- | --- |
+| VR | ローカルプレイヤーが VR と判定されているか |
+| probes | ボーン位置が有効な判定点数 / 使用する判定点枠数。通常は VR で 7/7、Desktop で 3/3 |
+| limbs | 有効な手足の判定点数 / 4。Desktop または手足判定無効時は 0/4 |
 | bodies / in range / pass-through | 相手の総数、判定範囲内の数、通り抜けを許可している数 |
 | contacts / depth | 接触している判定点の数と、最大の侵入量 |
 | separation / speed | 分離ベクトルの長さと、実際に動かした速度 |

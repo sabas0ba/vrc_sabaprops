@@ -111,7 +111,7 @@ namespace SabaProps.BodyContact
         /// 目線の高さを 1 とした標準体型の関節位置。足元が原点、+Z が正面、-X が左です。
         /// ダミーの形状と、ボーンを取得できないアバターの体幹の代替に使います。
         /// </summary>
-        private Vector3 StandardJoint(int joint)
+        public Vector3 StandardJoint(int joint)
         {
             if (joint == JointHips) return new Vector3(0f, 0.59f, 0f);
             if (joint == JointNeck) return new Vector3(0f, 0.89f, 0f);
@@ -138,7 +138,7 @@ namespace SabaProps.BodyContact
         }
 
         /// <summary>部位のカプセルの始点側の関節。</summary>
-        private int PartJointA(int part)
+        public int PartJointA(int part)
         {
             if (part == PartHead) return JointHead;
             if (part == PartTorso) return JointHips;
@@ -153,7 +153,7 @@ namespace SabaProps.BodyContact
         }
 
         /// <summary>部位のカプセルの終点側の関節。頭は球なので始点と同じです。</summary>
-        private int PartJointB(int part)
+        public int PartJointB(int part)
         {
             if (part == PartHead) return JointHead;
             if (part == PartTorso) return JointNeck;
@@ -168,7 +168,7 @@ namespace SabaProps.BodyContact
         }
 
         /// <summary>目線の高さを 1 とした部位の半径。</summary>
-        private float PartUnitRadius(int part)
+        public float PartUnitRadius(int part)
         {
             if (part == PartHead) return 0.065f;
             if (part == PartTorso) return 0.095f;

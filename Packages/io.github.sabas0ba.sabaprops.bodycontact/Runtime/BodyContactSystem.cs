@@ -466,6 +466,7 @@ namespace SabaProps.BodyContact
 
         private void ClearFrameOutputs()
         {
+            activeProbeCount = 0;
             for (int i = 0; i < ProbeCount; i++)
             {
                 probeDepths[i] = 0f;
