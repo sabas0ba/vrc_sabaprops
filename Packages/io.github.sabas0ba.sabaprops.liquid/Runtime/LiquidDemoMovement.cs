@@ -37,7 +37,7 @@ namespace SabaProps.Liquid
 
         private void Start()
         {
-            Apply();
+            ApplySoon();
         }
 
         public override void OnPlayerJoined(VRCPlayerApi player)
@@ -45,8 +45,27 @@ namespace SabaProps.Liquid
             // 開始時にローカルプレイヤーがまだ用意できていない場合に備えて、入った時点でも設定します。
             if (Utilities.IsValid(player) && player.isLocal)
             {
+                ApplySoon();
+            }
+        }
+
+        public override void OnPlayerRespawn(VRCPlayerApi player)
+        {
+            if (Utilities.IsValid(player) && player.isLocal)
+            {
                 Apply();
             }
+        }
+
+        /// <summary>
+        /// すぐに設定し、少し後にも設定し直します。入った直後はプレイヤーの初期化が続いており、
+        /// 先に設定した値が既定値で上書きされることがあるためです。
+        /// </summary>
+        private void ApplySoon()
+        {
+            Apply();
+            SendCustomEventDelayedSeconds(nameof(Apply), 1f);
+            SendCustomEventDelayedSeconds(nameof(Apply), 5f);
         }
 
         /// <summary>ローカルプレイヤーに速度とジャンプを設定します。値を実行中に変えたときにも呼べます。</summary>

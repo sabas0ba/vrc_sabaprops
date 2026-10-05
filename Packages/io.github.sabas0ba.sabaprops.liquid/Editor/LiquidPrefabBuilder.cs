@@ -389,8 +389,12 @@ namespace SabaProps.Liquid.Editors
             collision.collidesWith = ~((1 << 13) | (1 << 10));
             nozzle.range = 8f;
             nozzle.speed = 10f;
-            nozzle.diameter = 0.05f;
-            nozzle.volume = mode == LiquidNozzle.ModeOneShot ? 1.5f : 0.6f;
+            // The stream reads as a spray a hand wide. A thin nozzle with a small flow leaves marks much
+            // smaller than what is seen leaving it, so the flowing modes use a wide nozzle and a large flow:
+            // at 3 m, each hit is about 0.15 m in radius, and two land per evaluation.
+            bool oneShot = mode == LiquidNozzle.ModeOneShot;
+            nozzle.diameter = oneShot ? 0.12f : 0.2f;
+            nozzle.volume = oneShot ? 1.5f : 2.5f;
 
             string useText = mode == LiquidNozzle.ModeOneShot ? "Fire" : mode == LiquidNozzle.ModeHold ? "Spray" : "Start / Stop";
             MakePickup(root, useText, nozzle);
