@@ -202,12 +202,16 @@ def check_listing_cards(repo: str, out: str) -> list[str]:
             if not maps[name].get(package_id):
                 problems.append(f"Website/index.html: {name} has no entry for {package_id}")
 
+        # Resolved the way the browser does, relative to the listing page at
+        # the site root, so a path that leaves the site fails here even when
+        # it happens to name a file in the repository.
         image = maps["images"].get(package_id)
-        if image and not os.path.isfile(os.path.join(out, image.replace("/", os.sep))):
+        problem = image and check_link(image, os.path.join(out, "index.html"), out)
+        if problem:
             problems.append(
-                f"Website/index.html: thumbnail for {package_id} is not in the site: {image!r}; "
-                "the image has to be referenced from one of the package's documents "
-                "for build_docs.py to copy it"
+                f"Website/index.html: thumbnail for {package_id}: "
+                f"{problem.replace('link', 'image')}; the image has to be referenced "
+                "from one of the package's documents for build_docs.py to copy it"
             )
 
     return problems
