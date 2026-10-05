@@ -2,7 +2,7 @@
 
 VRChat 向けのアセットを **VCC (VRChat Creator Companion) / VPM** で配布するためのリポジトリです。
 
-草木配置の **SabaProps Foliage**、樹木生成の **SabaProps Trees**、水面・雨・霧・水中表現の **SabaProps Water**、PC VRChat 向け接触変形家具の **SabaProps Soft Props**、演者を追うカメラリグの **SabaProps Stage Cam**、Pickup の配置補正を行う **SabaProps Put Items**、ミラーやコライダーを操作するタブレット型 UI の **SabaProps Tablet**、鳥の群れや魚群を中景から遠景に配置する **SabaProps Flock** を収録しています。
+草木配置の **SabaProps Foliage**、樹木生成の **SabaProps Trees**、水面・雨・霧・水中表現の **SabaProps Water**、PC VRChat 向け接触変形家具の **SabaProps Soft Props**、演者を追うカメラリグの **SabaProps Stage Cam**、Pickup の配置補正を行う **SabaProps Put Items**、ミラーやコライダーを操作するタブレット型 UI の **SabaProps Tablet**、鳥の群れや魚群を中景から遠景に配置する **SabaProps Flock**、プレイヤー同士の体の貫通を抑える **SabaProps Body Contact** を収録しています。
 
 ---
 
@@ -33,6 +33,7 @@ https://sabas0ba.github.io/vrc_sabaprops/index.json
 | `io.github.sabas0ba.sabaprops.putitems` | SabaProps Put Items | Pickup を手放した位置の近くにある机・壁へ位置と姿勢を補正。Object Sync 接続と独自同期向けの計算 API を提供。 |
 | `io.github.sabas0ba.sabaprops.tablet` | SabaProps Tablet | キー・頭上からの取り出し・アイテムの Interact で呼び出すタブレット型 UI。物理ボタンでミラー・コライダー・エフェクトの切り替え、テレポート、任意の Udon イベント呼び出しを行う。 |
 | `io.github.sabas0ba.sabaprops.flock` | SabaProps Flock | 鳥 27 種・魚・水生生物 41 種の群れを、Shader が時刻から計算する固定配置を含む 13 種の群れの動きで配置。Silhouette / Low / High の 3 段階 LOD。 |
+| `io.github.sabas0ba.sabaprops.bodycontact` | SabaProps Body Contact | 相手の頭・体幹・四肢を部位ごとに判定し、自分の体が侵入した分だけ自分の位置を戻す Udon コンポーネント。同期なし。World 内のデバッグ表示付き。 |
 
 各パッケージの詳細は `Packages/<package-id>/README.md` を参照してください。
 
@@ -89,9 +90,13 @@ Put Items は `Tools > SabaProps > Put Items > Open Demo Scene` から、食卓�
 │   │   ├── Editor/                 # 生成器、Setup Window、サンプルシーン
 │   │   ├── Samples~/               # Stage Cam 連携の実装例
 │   │   └── Documentation~/
-│   └── io.github.sabas0ba.sabaprops.flock/
-│       ├── Runtime/                # 種のプリセット、運動の基準実装、群れのShader
-│       ├── Editor/                 # 個体形状と群れMeshの生成器、ギャラリーScene
+│   ├── io.github.sabas0ba.sabaprops.flock/
+│   │   ├── Runtime/                # 種のプリセット、運動の基準実装、群れのShader
+│   │   ├── Editor/                 # 個体形状と群れMeshの生成器、ギャラリーScene
+│   │   └── Documentation~/
+│   └── io.github.sabas0ba.sabaprops.bodycontact/
+│       ├── Runtime/                # UdonSharp の接触判定、判定規則のソルバ、デバッグ表示
+│       ├── Editor/                 # System とダミーを配置するメニュー
 │       └── Documentation~/
 ├── Website/                        # GitHub Pages で公開するリスティングサイト
 ├── source.json                     # VPM リスティングのメタ情報
@@ -113,7 +118,7 @@ Put Items は `Tools > SabaProps > Put Items > Open Demo Scene` から、食卓�
 `Packages/` 配下に、このリポジトリの `Packages/<package-id>` をシンボリックリンク（または
 クローンごと配置）してください。編集するパッケージの分だけ張ります。
 
-`io.github.sabas0ba.sabaprops.stagecam` と `io.github.sabas0ba.sabaprops.tablet` は Udon を使うため、リンク先のプロジェクトには
+`io.github.sabas0ba.sabaprops.stagecam`、`io.github.sabas0ba.sabaprops.tablet`、`io.github.sabas0ba.sabaprops.bodycontact` は Udon を使うため、リンク先のプロジェクトには
 VRChat Worlds SDK が入っている必要があります。`io.github.sabas0ba.sabaprops.foliage` の方は
 SDK が無くても動きます。
 
@@ -238,6 +243,8 @@ Markdown 変換は `build_listing.py` と同じ方針で自前実装です。CI 
 | **Stage Cam の追従計算** | **実際に実行**して幾何の性質を検査（下記） |
 | Tablet の Runtime / Authoring / Editor | 実物の VRChat SDK アセンブリ（`VRCSDKBase.dll`、`VRCSDK3.dll`、`VRC.Udon.Common.dll`）に対してコンパイル。TextMeshPro は手書きのスタブ |
 | **Tablet の判定と生成** | 召喚位置、指先の押下の状態遷移、取り出し位置、プレイヤー選択、ボタン配置、角丸メッシュの閉包性と面の向きを**実際に実行**して検査 |
+| Body Contact の Runtime / Editor | 実物の VRChat SDK アセンブリ（`VRCSDKBase.dll`）に対してコンパイル |
+| **Body Contact の判定と応答** | 退く側の規則、侵入量と分離方向、通り抜けの状態遷移、遅延を入れた 2 クライアントの収束を**実際に実行**して検査 |
 | **ドキュメントの図** | 生成器を実行し直し、committed の図と一致するかを検査 |
 | ドキュメント | サイトの生成、未変換の記法・壊れたリンク・存在しない画像の検出 |
 | マニフェスト | `package.json` の必須項目、フォルダ名との一致、CHANGELOG のバージョン記載、`source.json` への登録、`.meta` の欠落 |
