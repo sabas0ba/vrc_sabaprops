@@ -87,6 +87,8 @@ namespace SabaProps.Liquid.WorldTests
 
             LogAssert.ignoreFailingMessages = false;
             Assert.IsNotNull(Networking.LocalPlayer);
+            Assert.Greater(Networking.LocalPlayer.GetJumpImpulse(), 0f, "the world does not let players jump");
+            Assert.Greater(Networking.LocalPlayer.GetWalkSpeed(), 2f, "the world leaves the walk speed at VRChat's default");
             var menu = Object.FindObjectOfType<ClientSimMenu>(true);
             if (menu != null)
             {

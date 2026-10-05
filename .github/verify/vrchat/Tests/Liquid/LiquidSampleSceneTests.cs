@@ -46,6 +46,7 @@ namespace SabaProps.Liquid.WorldTests
 
             VRCSceneDescriptor descriptor = Object.FindObjectOfType<VRCSceneDescriptor>();
             Assert.IsNotNull(descriptor, "no VRCSceneDescriptor");
+            LiquidSampleSceneTests.AssertMovement();
             Assert.AreEqual(1, descriptor.spawns.Length);
             Assert.AreEqual(LiquidSampleScene.SpawnPosition, descriptor.spawns[0].position);
         }
@@ -142,6 +143,21 @@ namespace SabaProps.Liquid.WorldTests
         public void ResetPanel_IsBesideTheSpawn()
         {
             AssertResetPanel(LiquidSampleScene.SpawnPosition);
+        }
+
+        /// <summary>
+        /// The world raises the movement speeds above VRChat's defaults (walk 2,
+        /// run 4, strafe 2) and lets players jump (default impulse 0).
+        /// </summary>
+        internal static void AssertMovement()
+        {
+            LiquidDemoMovement[] movement = Object.FindObjectsOfType<LiquidDemoMovement>();
+            Assert.AreEqual(1, movement.Length, "expected one movement setting in the world");
+            Assert.IsNotNull(movement[0].GetComponent<VRCSceneDescriptor>(), "the movement setting is not on the world object");
+            Assert.Greater(movement[0].walkSpeed, 2f);
+            Assert.Greater(movement[0].runSpeed, 4f);
+            Assert.Greater(movement[0].strafeSpeed, 2f);
+            Assert.Greater(movement[0].jumpImpulse, 0f);
         }
 
         /// <summary>

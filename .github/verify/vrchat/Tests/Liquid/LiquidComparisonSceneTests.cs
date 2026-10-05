@@ -35,6 +35,7 @@ namespace SabaProps.Liquid.WorldTests
 
             VRCSceneDescriptor descriptor = Object.FindObjectOfType<VRCSceneDescriptor>();
             Assert.IsNotNull(descriptor, "no VRCSceneDescriptor");
+            LiquidSampleSceneTests.AssertMovement();
             Assert.AreEqual(1, descriptor.spawns.Length);
             Assert.IsNotNull(Object.FindObjectOfType<LiquidLighting>(), "no LiquidLighting");
         }

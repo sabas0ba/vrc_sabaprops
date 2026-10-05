@@ -56,6 +56,7 @@ namespace SabaProps.Liquid.WorldTests
         public void Scene_IsAWorld()
         {
             Assert.IsNotNull(Object.FindObjectOfType<VRCSceneDescriptor>(), "the scene has no scene descriptor");
+            LiquidSampleSceneTests.AssertMovement();
             LiquidCanvasPool pool = Object.FindObjectOfType<LiquidCanvasPool>();
             Assert.IsNotNull(pool);
             Assert.AreEqual(1, pool.mannequins.Length, "the studio mannequin is not registered");

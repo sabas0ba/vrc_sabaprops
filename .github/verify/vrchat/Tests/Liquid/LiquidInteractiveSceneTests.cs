@@ -229,6 +229,7 @@ namespace SabaProps.Liquid.WorldTests
         public void Scene_IsAWorldWithEveryMannequinRegistered()
         {
             Assert.IsNotNull(Object.FindObjectOfType<VRCSceneDescriptor>());
+            LiquidSampleSceneTests.AssertMovement();
             LiquidCanvasPool pool = Object.FindObjectOfType<LiquidCanvasPool>();
             int expected = 3                                                  // nozzle bench
                 + LiquidInteractiveScene.ViscosityPresets.Length               // viscosity row

@@ -13,6 +13,9 @@ Package Manager の Samples から **Liquid Demo World** を取り込むと、`A
 
 マネキンと Surface Canvas はそれぞれ RenderTexture を持つため、シーンを分けています。比較の列はサーバー時刻に合わせて自動で動き、操作しなくても変化が見え、全員に同じ様子が見えます。
 
+どのシーンも、移動速度を VRChat の既定より上げ（歩行 4、走行 8、横移動 4 m/s）、ジャンプできるようにしています
+（`VRCWorld` の `LiquidDemoMovement`）。自分のワールドに使う場合は、値を変えるか外してください。
+
 各シーンのスポーンの横に、付着を消す操作盤（自分、マネキン、全員、壁と床）があります。
 
 以下の画像は、テスト（`.github/verify/vrchat/Tests/Liquid`）が ClientSim でシーンを 20 秒動かした後に、Unity のカメラで撮ったものです。

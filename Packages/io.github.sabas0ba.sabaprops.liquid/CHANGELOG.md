@@ -85,6 +85,7 @@
   （塗装した壁、コンクリート、タイル）
 - 明かりの範囲と雨が Surface Canvas にも届く
 - 消去の操作盤に、壁と床を消すボタンを追加
+- `LiquidDemoMovement`: サンプルのワールドで移動速度を上げ（歩行 4、走行 8、横移動 4 m/s）、ジャンプできるようにする
 - サンプルに `LiquidPainting.unity` を追加（`Tools > SabaProps > Liquid > Create Painting Scene`）
 
 ### Changed

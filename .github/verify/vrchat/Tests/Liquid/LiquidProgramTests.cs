@@ -288,6 +288,18 @@ namespace SabaProps.Liquid.WorldTests
         }
 
         [Test]
+        public void DemoMovement_AppliesOnStartAndJoinWithoutSyncing()
+        {
+            IUdonProgram program = Compile<LiquidDemoMovement>();
+            List<string> exported = Exported(program);
+            CollectionAssert.Contains(exported, "_start");
+            CollectionAssert.Contains(exported, "_onPlayerJoined");
+            AssertExportsMethod(exported, "Apply");
+            AssertSyncMode<LiquidDemoMovement>(BehaviourSyncMode.None);
+            AssertSyncedFields(program);
+        }
+
+        [Test]
         public void Turntable_RunsWithoutSyncing()
         {
             List<string> exported = Exported(Compile<LiquidTurntable>());

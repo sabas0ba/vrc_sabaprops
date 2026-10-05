@@ -520,6 +520,10 @@ namespace SabaProps.Liquid.Editors
             descriptor.spawns = new[] { spawn.transform };
             descriptor.RespawnHeightY = -50f;
 
+            // The areas are tens of metres apart; faster than VRChat's default, and able to jump.
+            LiquidDemoMovement movement = world.AddUdonSharpComponent<LiquidDemoMovement>();
+            UdonSharpEditorUtility.CopyProxyToUdon(movement);
+
             if (Camera.main != null)
             {
                 descriptor.ReferenceCamera = Camera.main.gameObject;
