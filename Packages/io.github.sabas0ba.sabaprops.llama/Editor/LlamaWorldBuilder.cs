@@ -2,7 +2,6 @@ using System;
 using System.IO;
 using System.Reflection;
 using UnityEditor;
-using UnityEditor.PackageManager;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -28,7 +27,8 @@ namespace SabaProps.Llama
         {
             Type programType = FindType("UdonSharp.UdonSharpProgramAsset");
             if (programType == null) throw new InvalidOperationException("VRChat Worlds SDK / UdonSharpが必要です。");
-            PackageInfo package = PackageInfo.FindForAssetPath(PackagePath + "/package.json");
+            UnityEditor.PackageManager.PackageInfo package =
+                UnityEditor.PackageManager.PackageInfo.FindForAssetPath(PackagePath + "/package.json");
             string source = Path.Combine(package == null ? PackagePath : package.resolvedPath, "Samples~/VRChat/SabaLlamaRunner.cs");
             string contents = File.ReadAllText(source);
             if (File.Exists(RuntimePath) && File.ReadAllText(RuntimePath) != contents)

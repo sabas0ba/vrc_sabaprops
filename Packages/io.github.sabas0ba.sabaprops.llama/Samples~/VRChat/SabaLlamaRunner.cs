@@ -222,7 +222,7 @@ public class SabaLlamaRunner : UdonSharpBehaviour
         mergeIndex = 1; bestIndex = -1; bestId = -1; bestScore = float.NegativeInfinity;
     }
 
-    public void OnAsyncGpuReadbackComplete(VRCAsyncGPUReadbackRequest request)
+    public override void OnAsyncGpuReadbackComplete(VRCAsyncGPUReadbackRequest request)
     {
         // Completion is polled in Update. This avoids stale callback correlation
         // and lets a disabled runner drain the request after being enabled again.
