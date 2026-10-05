@@ -145,6 +145,7 @@ namespace SabaProps.Capture
             following = false;
             playing = false;
             playhead = 0f;
+            ForgetShownTime();
         }
 
         /// <summary>最新の画像へ移り、以後は新しい画像が撮られるたびに追従します。</summary>
@@ -183,6 +184,7 @@ namespace SabaProps.Capture
             following = false;
             playing = false;
             playhead = frame;
+            ForgetShownTime();
         }
 
         // ------------------------------------------------------------------
@@ -205,6 +207,17 @@ namespace SabaProps.Capture
             following = false;
             playing = false;
             playhead = StepFrame(PlayheadFrame(playhead, count), delta, count, loop);
+            ForgetShownTime();
+        }
+
+        /// <summary>
+        /// 操作で再生位置を指定した後に呼びます。OnRecorderChanged は、表示中の画像の時刻へ
+        /// 再生位置を合わせ直します。指定した位置を表示する前に Recorder の内容が変わると、
+        /// その処理が指定を上書きしてしまうため、合わせ直す先の時刻を無効にします。
+        /// </summary>
+        private void ForgetShownTime()
+        {
+            shownTime = -1.0;
         }
 
         private void OnRecorderChanged(int count)
