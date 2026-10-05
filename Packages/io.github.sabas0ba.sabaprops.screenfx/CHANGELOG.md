@@ -12,3 +12,8 @@
 - Udon操作用のDemo Sceneと独立した操作パネル／Triggerのコピー用Prefab
 - プリセット・Lite切替、Weight・Exposure・Particles調整、即時停止、自動停止、パラメータ復帰
 - 実Udonコンパイル、ClientSimでのUI・Material独立性・Trigger動作検査
+
+### Fixed
+
+- Gallery 生成メニューの通常版・Lite 版で、Scene を置き換える前に未保存変更の保存・キャンセルを確認
+- double-wide ステレオの GrabPass サンプルを片眼の幅に合わせ、半 texel の余白を含めて片眼の範囲へ制限。ぼけ・歪みのサンプルが反対側の眼へ漏れる問題を修正

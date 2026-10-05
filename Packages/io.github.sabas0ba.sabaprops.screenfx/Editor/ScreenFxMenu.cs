@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using UnityEditor;
+using UnityEditor.SceneManagement;
 using UnityEngine;
 
 namespace SabaProps.ScreenFx.Editors
@@ -24,10 +25,18 @@ namespace SabaProps.ScreenFx.Editors
         }
 
         [MenuItem("Tools/SabaProps/Screen FX/Create Gallery Scene", false, 1)]
-        public static void CreateGallery() => ScreenFxGallery.Create(false);
+        public static void CreateGallery()
+        {
+            if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo()) return;
+            ScreenFxGallery.Create(false);
+        }
 
         [MenuItem("Tools/SabaProps/Screen FX/Create Gallery Scene (Lite)", false, 2)]
-        public static void CreateGalleryLite() => ScreenFxGallery.Create(true);
+        public static void CreateGalleryLite()
+        {
+            if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo()) return;
+            ScreenFxGallery.Create(true);
+        }
 
         [MenuItem("Tools/SabaProps/Screen FX/Documentation", false, 100)]
         public static void OpenDocumentation()

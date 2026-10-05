@@ -117,8 +117,10 @@ Shader "SabaProps/Screen FX/Composite"
             #pragma shader_feature_local _SABA_FX_DEPTH
             #pragma multi_compile_instancing
             #include "SabaScreenFxCore.cginc"
+            #include "SabaScreenFxSampling.cginc"
 
             UNITY_DECLARE_SCREENSPACE_TEXTURE(_GrabTexture);
+            float4 _GrabTexture_TexelSize;
             #if defined(_SABA_FX_DEPTH)
                 UNITY_DECLARE_DEPTH_TEXTURE(_CameraDepthTexture);
             #endif
@@ -152,7 +154,10 @@ Shader "SabaProps/Screen FX/Composite"
             #if defined(UNITY_STEREO_INSTANCING_ENABLED) || defined(UNITY_STEREO_MULTIVIEW_ENABLED)
                 toUv.y = 0.5;
             #endif
-                float2 base = grabUv + offset * toUv;
+                float4 eyeViewport = float4(1.0, 1.0, 0.0, 0.0);
+            #if defined(UNITY_SINGLE_PASS_STEREO) && !defined(UNITY_STEREO_INSTANCING_ENABLED) && !defined(UNITY_STEREO_MULTIVIEW_ENABLED)
+                eyeViewport = unity_StereoScaleOffset[unity_StereoEyeIndex];
+            #endif
 
                 float weight = context.weight;
                 float edge = saturate(length(context.q) * 0.8);
@@ -165,7 +170,7 @@ Shader "SabaProps/Screen FX/Composite"
                 UNITY_BRANCH
                 if (blur + radial + chromatic + doubled < 1e-3)
                 {
-                    return SABA_FX_SAMPLE_GRAB(saturate(base));
+                    return SABA_FX_SAMPLE_GRAB(SabaFxGrabUv(grabUv, offset * toUv, eyeViewport, _GrabTexture_TexelSize.xy));
                 }
 
                 // A per-pixel rotation trades the banding of eight fixed taps for noise.
@@ -191,7 +196,7 @@ Shader "SabaProps/Screen FX/Composite"
                     float3 spectral = saturate(1.0 - abs(2.0 * fraction - float3(0.0, 1.0, 2.0)));
                     float3 tapWeight = lerp(
                         float3(1.0, 1.0, 1.0), spectral, saturate(chromatic * 8.0));
-                    sum += SABA_FX_SAMPLE_GRAB(saturate(base + tap * toUv)) * tapWeight;
+                    sum += SABA_FX_SAMPLE_GRAB(SabaFxGrabUv(grabUv, (offset + tap) * toUv, eyeViewport, _GrabTexture_TexelSize.xy)) * tapWeight;
                     weightSum += tapWeight;
                 }
 
