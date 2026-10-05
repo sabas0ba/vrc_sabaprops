@@ -1,0 +1,24 @@
+{
+    "name": "SabaProps.Capture.Editor",
+    "rootNamespace": "SabaProps.Capture.Editors",
+    "references": [
+        "SabaProps.Capture.Runtime",
+        "UnityEngine.UI",
+        "VRC.SDKBase",
+        "VRC.SDK3",
+        "VRC.Udon",
+        "UdonSharp.Runtime",
+        "UdonSharp.Editor"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
