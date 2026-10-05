@@ -460,6 +460,10 @@ namespace SabaProps.Liquid.Editors
             Put(corner.transform, LiquidPrefabBuilder.BucketName, table + new Vector3(0f, 0.8f, 0f), 0f);
             Put(corner.transform, LiquidPrefabBuilder.WaterGunName, table + new Vector3(0.5f, 0.86f, 0f), 0f);
             Put(corner.transform, LiquidPrefabBuilder.SprayGunName, table + new Vector3(0.25f, 0.87f, -0.25f), 0f);
+            // The paint tools draw on the target mannequin and on other players; this scene has no Surface Canvas.
+            Put(corner.transform, LiquidPrefabBuilder.PenName, table + new Vector3(-0.6f, 0.86f, -0.25f), 0f);
+            Put(corner.transform, LiquidPrefabBuilder.StampName, table + new Vector3(-0.35f, 0.86f, -0.25f), 0f);
+            Put(corner.transform, LiquidPrefabBuilder.EraserName, table + new Vector3(-0.1f, 0.86f, -0.25f), 0f);
 
             AddMannequin(corner.transform, "Target", table + new Vector3(0f, 0f, 2.3f), mannequins,
                 LiquidMannequinBuilder.CreateClothed(null, "Mannequin", NextIndex(mannequins), update, true,
@@ -636,7 +640,7 @@ namespace SabaProps.Liquid.Editors
         /// doorway in the wall facing -Z. Walls and roof are solid, so they cast
         /// shadows and block rain, spray and sunlight.
         /// </summary>
-        private static GameObject Room(string name, Vector3 centre, Vector3 size, Material wall)
+        internal static GameObject Room(string name, Vector3 centre, Vector3 size, Material wall)
         {
             var room = new GameObject(name);
             const float t = 0.15f;
@@ -733,7 +737,7 @@ namespace SabaProps.Liquid.Editors
             quad.GetComponent<Renderer>().sharedMaterial = material;
         }
 
-        private static Material Device()
+        internal static Material Device()
         {
             return LiquidAssets.CreateOrLoadSurfaceMaterial(LiquidDemoGalleries.DeviceMaterialPath,
                 new Color(0.3f, 0.32f, 0.35f), 0.6f);

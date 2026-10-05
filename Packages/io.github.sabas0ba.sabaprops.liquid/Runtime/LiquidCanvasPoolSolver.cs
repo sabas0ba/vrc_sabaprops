@@ -160,7 +160,22 @@ namespace SabaProps.Liquid
         /// <summary>MannequinTarget の逆変換。マネキンでないターゲットには負の値を返します。</summary>
         private int MannequinIndex(int target)
         {
-            return target <= -2 ? -target - 2 : -1;
+            return target <= -2 && target > SurfaceTargetBase ? -target - 2 : -1;
+        }
+
+        /// <summary>ワールドの面のターゲット番号の始まり。これ以下がワールドの面です。</summary>
+        public const int SurfaceTargetBase = -100000;
+
+        /// <summary>ワールドの面（Surface Canvas）の番号をターゲット番号へ変換します。</summary>
+        private int SurfaceTarget(int index)
+        {
+            return SurfaceTargetBase - index;
+        }
+
+        /// <summary>SurfaceTarget の逆変換。ワールドの面でないターゲットには負の値を返します。</summary>
+        private int SurfaceIndex(int target)
+        {
+            return target <= SurfaceTargetBase ? SurfaceTargetBase - target : -1;
         }
 
         /// <summary>

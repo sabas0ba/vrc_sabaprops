@@ -18,6 +18,12 @@ namespace SabaProps.Liquid.Editors
         public const string HairName = "Hair";
         public const string SkinName = "Skin";
         public const string PlasticName = "Plastic";
+        public const string PaintedWallName = "Painted Wall";
+        public const string ConcreteName = "Concrete";
+        public const string GlazedTileName = "Glazed Tile";
+
+        /// <summary>Surfaces for walls and floors (Surface Canvas), apart from the ones a body wears.</summary>
+        public static readonly string[] WorldSurfaceNames = { PaintedWallName, ConcreteName, GlazedTileName };
 
         /// <summary>Every preset, in the order the comparison demo lines them up.</summary>
         public static readonly string[] PresetNames =
@@ -86,6 +92,18 @@ namespace SabaProps.Liquid.Editors
                     return;
                 case PlasticName:
                     Set(surface, 0f, 0.85f, 0.7f, 0.2f, 0f, 0f, 0.018f);
+                    return;
+                case PaintedWallName:
+                    // A painted wall: takes little in, beads some, and lets liquid run down.
+                    Set(surface, 0.1f, 0.55f, 0.3f, 0.3f, 0.03f, 0f, 0.016f);
+                    return;
+                case ConcreteName:
+                    // Bare concrete: soaks liquid in and darkens; paint edges spread a little.
+                    Set(surface, 0.75f, 0.05f, 0.05f, 0.7f, 0.2f, 0f, 0.012f);
+                    return;
+                case GlazedTileName:
+                    // Glazed tile: absorbs nothing, beads fully, runs freely.
+                    Set(surface, 0f, 0.85f, 0.8f, 0.12f, 0f, 0f, 0.02f);
                     return;
                 default:
                     Set(surface, 0.9f, 0.05f, 0.05f, 0.65f, 0.7f, 0f, 0.012f);

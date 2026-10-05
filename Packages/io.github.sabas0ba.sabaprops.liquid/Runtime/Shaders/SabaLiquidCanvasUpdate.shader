@@ -35,10 +35,12 @@ Shader "Hidden/SabaProps/Liquid/Canvas Update"
     float4 _StampColor[SABA_LIQUID_MAX_STAMPS];
     // x: 洗浄量, y: 平滑度, z: 粘性, w: 蒸発率（符号化済み）
     float4 _StampFilm[SABA_LIQUID_MAX_STAMPS];
-    // x: 乱数シード, y: 輪郭の不規則さ
+    // x: 乱数シード, y: 輪郭の不規則さ, z: 形（0 = 飛沫、1 以上は SabaLiquidShapeCoverage の形）, w: 面内の回転（rad）
     float4 _StampShape[SABA_LIQUID_MAX_STAMPS];
     // x: 蛍光, y: 蓄光
     float4 _StampGlow[SABA_LIQUID_MAX_STAMPS];
+    // xyz: 線の終点までのずれ（Canvas ローカル、m）, w: 液膜を消す強さ（消しゴム）
+    float4 _StampEnd[SABA_LIQUID_MAX_STAMPS];
 
     float4 _HalfExtents;
     float4 _GravityCanvas;
@@ -124,6 +126,15 @@ Shader "Hidden/SabaProps/Liquid/Canvas Update"
         float radius = max(_StampPos[i].w, 1e-4);
         float2 center = SabaLiquidPair(_StampPos[i].xyz, t.axis);
         float2 offset = t.metric - center;
+        int shape = (int)(_StampShape[i].z + 0.5);
+        if (shape > 0)
+        {
+            // 輪郭のはっきりした形は、面の重みで薄めません。斜めの面でも、最も向いている面には
+            // 形がそのまま出ます。
+            return step(0.2, face) * SabaLiquidShapeCoverage(shape, offset,
+                SabaLiquidPair(_StampEnd[i].xyz, t.axis), radius, _StampShape[i].w);
+        }
+
         float noise = SabaLiquidValueNoise(t.metric * (3.0 / radius) + _StampShape[i].x);
         float shaped = radius * (1.0 + _StampShape[i].y * (noise - 0.5));
         return face * SabaLiquidStampFalloff(length(offset), shaped);
@@ -208,7 +219,9 @@ Shader "Hidden/SabaProps/Liquid/Canvas Update"
                 break;
             }
 
-            float added = saturate(SabaLiquidStampAt(i, t) * _StampColor[i].a);
+            float k = SabaLiquidStampAt(i, t);
+            amount *= 1.0 - saturate(k * _StampEnd[i].w);
+            float added = saturate(k * _StampColor[i].a);
             float total = saturate(amount + added);
             float share = total > 1e-4 ? added / total : 0.0;
             properties = lerp(properties, _StampFilm[i].yzw, share);

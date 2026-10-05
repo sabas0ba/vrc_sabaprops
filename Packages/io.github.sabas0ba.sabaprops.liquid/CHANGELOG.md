@@ -75,6 +75,18 @@
 - アバターが変わったプレイヤーの付着を消す（`LiquidCanvasPool.OnAvatarChanged`）
 - 持ち運べるノズルに中身を示すタンク（液体の色、蛍光と蓄光は発光）。すべての液体のノズルを並べた棚をデモに追加
 
+- Surface Canvas: ワールドに固定した箱の中の壁、床、家具に付着を描く Body Canvas（`worldSurface`）。
+  既存の Source の光線が環境に当たると、その点を含む Surface Canvas に付着する。
+  `GameObject > SabaProps > Liquid > Surface Canvas (Walls and Floor)` で配置する
+- `LiquidPaintTool`: 向けた先に描くペン、スタンプ（円、四角、星、ハート、輪）、消しゴム。
+  Prefab の Liquid Pen、Liquid Stamp、Liquid Eraser を追加
+- `LiquidPaintLog`: ワールドの面への描画を直近 1000 件まで覚え、後から入った人へ渡す
+- インクのプリセット（黒、赤、青、黄、白、蛍光の桃と緑、蓄光）と、壁と床の素材のプリセット
+  （塗装した壁、コンクリート、タイル）
+- 明かりの範囲と雨が Surface Canvas にも届く
+- 消去の操作盤に、壁と床を消すボタンを追加
+- サンプルに `LiquidPainting.unity` を追加（`Tools > SabaProps > Liquid > Create Painting Scene`）
+
 ### Changed
 
 - 顔料の付着を、中心が不透明で縁だけ薄くなる形に変更。黒や濃い色の塗料が半透明に見えていた

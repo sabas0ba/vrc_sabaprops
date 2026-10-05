@@ -13,9 +13,11 @@ namespace SabaProps.Liquid
     /// 自分の体に付いた液体が他人の都合で消えるのは、見え方として最も不自然なためです。
     /// </para>
     /// <para>
-    /// ターゲットはプレイヤーとマネキンです。マネキンは固定の Transform に追従する
-    /// Body Canvas で、割り当ての対象にならず常に有効です。ターゲットは整数で表し、
-    /// 0 以上はプレイヤー ID、-2 以下はマネキンの番号、-1 は無しです。
+    /// ターゲットはプレイヤー、マネキン、ワールドの面です。マネキンは固定の Transform に追従する
+    /// Body Canvas で、割り当ての対象にならず常に有効です。ワールドの面は、箱の中の壁や床に
+    /// 付着を描く Surface Canvas で、光線が環境に当たった点を含む箱のものが相手になります。
+    /// ターゲットは整数で表し、0 以上はプレイヤー ID、-2 以下はマネキンの番号、
+    /// SurfaceTargetBase 以下はワールドの面の番号、-1 は無しです。
     /// </para>
     /// <para>
     /// 割り当ては各クライアントが独立に決めます。同じプレイヤーでも、クライアントごとに
@@ -37,6 +39,12 @@ namespace SabaProps.Liquid
 
         [Tooltip("マネキンの Canvas。Source の命中判定の対象になります。")]
         public LiquidBodyCanvas[] mannequins;
+
+        [Tooltip("ワールドの壁や床に描く Surface Canvas。体に当たらなかった液が、箱の中の環境に当たるとここに付きます。")]
+        public LiquidBodyCanvas[] surfaces;
+
+        [Tooltip("ペンやスタンプの描画の履歴。後から入った人へ直近の描画を伝えます。無くても動きます。")]
+        public LiquidPaintLog paintLog;
 
         [Header("命中判定")]
         [Tooltip("液体を遮る環境のレイヤ。既定は Default と Environment です。プレイヤーのレイヤは含めません。")]
@@ -155,6 +163,12 @@ namespace SabaProps.Liquid
                 return Utilities.IsValid(player) ? AcquireCanvas(player) : null;
             }
 
+            int surface = SurfaceIndex(target);
+            if (surface >= 0)
+            {
+                return surfaces != null && surface < surfaces.Length ? surfaces[surface] : null;
+            }
+
             int index = MannequinIndex(target);
             if (mannequins == null || index < 0 || index >= mannequins.Length)
             {
@@ -162,6 +176,44 @@ namespace SabaProps.Liquid
             }
 
             return mannequins[index];
+        }
+
+        /// <summary>ワールドの面（Surface Canvas）の数。</summary>
+        public int GetSurfaceCount()
+        {
+            return surfaces == null ? 0 : surfaces.Length;
+        }
+
+        /// <summary>ワールドの面のターゲット番号。</summary>
+        public int GetSurfaceTarget(int index)
+        {
+            return SurfaceTarget(index);
+        }
+
+        /// <summary>ターゲットがワールドの面かどうか。</summary>
+        public bool IsSurfaceTarget(int target)
+        {
+            return SurfaceIndex(target) >= 0;
+        }
+
+        /// <summary>ワールドの点を箱に含む Surface Canvas の番号。無ければ -1。</summary>
+        public int SurfaceAt(Vector3 point)
+        {
+            if (surfaces == null)
+            {
+                return -1;
+            }
+
+            for (int i = 0; i < surfaces.Length; i++)
+            {
+                LiquidBodyCanvas surface = surfaces[i];
+                if (surface != null && surface.ContainsPoint(point))
+                {
+                    return i;
+                }
+            }
+
+            return -1;
         }
 
         /// <summary>マネキンの数。</summary>
@@ -178,6 +230,7 @@ namespace SabaProps.Liquid
 
         /// <summary>
         /// 光線が最初に当たるターゲットを返します。当たらない、または環境に遮られた場合は -1。
+        /// 環境に当たった点が Surface Canvas の箱の中なら、そのワールドの面がターゲットになります。
         /// <para>
         /// プレイヤーの体は足元から頭頂までのカプセルで、手は手首のボーンを中心とする球で近似します。
         /// 手を別に扱うのは、体から離して差し出した手（蛇口の下など）が体のカプセルに入らないためです。
@@ -196,13 +249,29 @@ namespace SabaProps.Liquid
             CastAgainstPlayers(origin, dir, includeLocal);
             CastAgainstMannequins(origin, dir);
 
-            if (_castTarget == -1)
+            // 体に当たらなかった光線は、Surface Canvas が無ければ環境を調べる必要がありません。
+            if (_castTarget == -1 && GetSurfaceCount() == 0)
             {
                 return -1;
             }
 
             RaycastHit blocker;
             if (Physics.Raycast(origin, dir, out blocker, _castNearest, occluderLayers, QueryTriggerInteraction.Ignore))
+            {
+                int surface = SurfaceAt(blocker.point);
+                if (surface < 0)
+                {
+                    return -1;
+                }
+
+                lastHitDistance = blocker.distance;
+                lastHitPoint = blocker.point;
+                lastHitNormal = blocker.normal;
+                lastHitHand = false;
+                return SurfaceTarget(surface);
+            }
+
+            if (_castTarget == -1)
             {
                 return -1;
             }
@@ -527,6 +596,24 @@ namespace SabaProps.Liquid
                 {
                     mannequins[i].Clear();
                 }
+            }
+        }
+
+        /// <summary>ワールドの面の付着を消し、描画の履歴も捨てます。</summary>
+        public void ClearSurfaces()
+        {
+            int count = GetSurfaceCount();
+            for (int i = 0; i < count; i++)
+            {
+                if (surfaces[i] != null)
+                {
+                    surfaces[i].Clear();
+                }
+            }
+
+            if (paintLog != null)
+            {
+                paintLog.Forget();
             }
         }
 

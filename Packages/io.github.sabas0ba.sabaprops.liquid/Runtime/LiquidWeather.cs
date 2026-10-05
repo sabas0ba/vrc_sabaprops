@@ -86,6 +86,10 @@ namespace SabaProps.Liquid
         [Tooltip("風。雨粒が 1 m 落ちる間に横へ流される量（m）です。")]
         public Vector3 wind = new Vector3(0.15f, 0f, 0.05f);
 
+        [Tooltip("ワールドの面（Surface Canvas）へ 1 秒に当てる雨粒の数（最も強いとき）。範囲の中の無作為な位置に落とします。")]
+        [Min(0f)]
+        public float surfaceDropsPerSecond = 30f;
+
         [Header("雪")]
         [Tooltip("1 秒に積もる深さ（最も強いとき）。深さ 1 で上を向いた面が覆われます。")]
         [Min(0f)]
@@ -124,6 +128,7 @@ namespace SabaProps.Liquid
         private VRCPlayerApi[] _players = new VRCPlayerApi[100];
         private float _lastEvaluation;
         private float _dropCarry;
+        private float _surfaceDropCarry;
 
         private void Start()
         {
@@ -169,6 +174,45 @@ namespace SabaProps.Liquid
             if (affectPlayers)
             {
                 EvaluatePlayers(level * elapsed, dropCount, tick);
+            }
+
+            if (!snow && pool.GetSurfaceCount() > 0)
+            {
+                float surfaceDrops = surfaceDropsPerSecond * level * elapsed + _surfaceDropCarry;
+                int surfaceDropCount = Mathf.Min(Mathf.FloorToInt(surfaceDrops), 16);
+                _surfaceDropCarry = surfaceDrops - Mathf.FloorToInt(surfaceDrops);
+                EvaluateSurfaces(surfaceDropCount, tick);
+            }
+        }
+
+        /// <summary>
+        /// 範囲の上面の無作為な位置から雨粒を落とし、ワールドの面に当たったものを付着として積みます。
+        /// 体に当たった粒は、体ごとの評価が別に数えているため捨てます。屋根や傘に当たった粒は届きません。
+        /// </summary>
+        private void EvaluateSurfaces(int dropCount, int tick)
+        {
+            Vector3 direction = DropDirection(wind);
+            Vector3 half = areaSize * 0.5f;
+            for (int d = 0; d < dropCount; d++)
+            {
+                int sample = (tick * 16 + d) * 173 + 977;
+                Vector3 origin = transform.TransformPoint(new Vector3(
+                    (pool.Random01(sample) * 2f - 1f) * half.x, half.y, (pool.Random01(sample + 4099) * 2f - 1f) * half.z));
+                int hit = pool.CastTargets(origin, direction, areaSize.y * 1.5f, true);
+                if (!pool.IsSurfaceTarget(hit) || pool.IsUnderUmbrella(pool.lastHitPoint))
+                {
+                    continue;
+                }
+
+                LiquidBodyCanvas canvas = pool.CanvasForTarget(hit);
+                if (canvas == null)
+                {
+                    continue;
+                }
+
+                float size = dropRadius * (0.6f + 0.8f * pool.Random01(sample + 7919));
+                canvas.QueueStamp(pool.lastHitPoint, pool.lastHitNormal, size, profile, dropAmount,
+                    pool.Random01(sample + 12289) * 100f);
             }
         }
 

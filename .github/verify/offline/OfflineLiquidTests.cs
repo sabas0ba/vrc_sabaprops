@@ -81,6 +81,17 @@ namespace SabaProps.Liquid
             Run("nozzle settings split into rays and keep the total amount", LiquidNozzle.SettingsSplitIntoRays);
             Run("nozzle speed sets the delay and the drop, size sets the spread", LiquidNozzle.SpeedAndSizeShapeTheShot);
 
+            Run("shapes fill their centre and stay inside their radius", ShapesStayInsideTheirRadius);
+            Run("a stroke covers its segment and nothing beyond its width", StrokeCoversItsSegment);
+            Run("the star, heart and square have the documented outline", ShapeOutlines);
+            Run("the shape shader restates the solver's constants", ShapeShaderAgrees);
+            Run("surface targets never collide with mannequins, players or none", LiquidCanvasPool.SurfaceTargetsAreDistinct);
+            Run("a stroke's normal and turn survive packing", LiquidPaintTool.StrokeCodeRoundTrips);
+            Run("stamps turn with the tool on a floor and stay upright on a wall", LiquidPaintTool.ShapeAngleFollowsTheTool);
+            Run("a stroke continues from the last point only when it is near", LiquidPaintTool.StrokeStartsWhereItShould);
+            Run("paint log entries keep the tool, the surface and the stroke", LiquidPaintLog.EntriesRoundTrip);
+            Run("the paint log keeps the newest entries in order", LiquidPaintLog.RingKeepsTheNewestInOrder);
+
             if (_failures > 0)
             {
                 Console.Error.WriteLine($"\n{_failures} liquid canvas check(s) failed");
@@ -723,6 +734,139 @@ namespace SabaProps.Liquid
             }
         }
 
+        // ------------------------------------------------------------------
+        // 形（ペン、スタンプ、消しゴム）
+        // ------------------------------------------------------------------
+
+        private static readonly int[] StampShapes = { ShapeSquare, ShapeStar, ShapeHeart, ShapeRing };
+
+        private static void ShapesStayInsideTheirRadius()
+        {
+            var canvas = new LiquidBodyCanvas();
+            var random = new System.Random(31);
+            const float radius = 0.2f;
+
+            foreach (int shape in StampShapes)
+            {
+                int inside = 0;
+                const int samples = 4000;
+                for (int i = 0; i < samples; i++)
+                {
+                    var p = new Vector2((float)random.NextDouble() * 2f - 1f, (float)random.NextDouble() * 2f - 1f) * (radius * 1.5f);
+                    float cover = canvas.ShapeCoverage(shape, p, Vector2.zero, radius, 0f);
+                    Require(cover >= 0f && cover <= 1f, $"shape {shape} gave coverage {cover}");
+                    if (p.magnitude > radius * 1.15f)
+                    {
+                        Require(cover < 0.05f, $"shape {shape} covers {p} outside its radius ({cover})");
+                    }
+                    else if (p.magnitude <= radius && cover > 0.5f)
+                    {
+                        inside++;
+                    }
+                }
+
+                // 半径の円（標本の正方形の約 35 %）のうち、形が占める割合。細すぎても、円そのものでもいけません。
+                float share = inside / (samples * 0.349f);
+                Require(share > 0.2f && share < 0.9f, $"shape {shape} fills {share:P0} of its circle");
+            }
+
+            Require(canvas.ShapeCoverage(ShapeSquare, Vector2.zero, Vector2.zero, radius, 0f) > 0.99f, "the square is empty at its centre");
+            Require(canvas.ShapeCoverage(ShapeStar, Vector2.zero, Vector2.zero, radius, 0f) > 0.99f, "the star is empty at its centre");
+            Require(canvas.ShapeCoverage(ShapeHeart, Vector2.zero, Vector2.zero, radius, 0f) > 0.99f, "the heart is empty at its centre");
+            Require(canvas.ShapeCoverage(ShapeRing, Vector2.zero, Vector2.zero, radius, 0f) < 0.01f, "the ring is filled at its centre");
+            Require(canvas.ShapeCoverage(ShapeRing, new Vector2(0f, 0.75f * radius), Vector2.zero, radius, 0f) > 0.99f, "the ring has no band");
+        }
+
+        private static void StrokeCoversItsSegment()
+        {
+            var canvas = new LiquidBodyCanvas();
+            const float radius = 0.02f;
+            var end = new Vector2(0.3f, 0.1f);
+
+            for (int i = 0; i <= 10; i++)
+            {
+                Vector2 on = end * (i / 10f);
+                Require(canvas.ShapeCoverage(ShapeStroke, on, end, radius, 0f) > 0.99f, $"the stroke is open at {on}");
+            }
+
+            // 線に垂直な向きへ、太さの内側と外側。
+            var across = new Vector2(-0.1f, 0.3f) / new Vector2(-0.1f, 0.3f).magnitude;
+            Vector2 middle = end * 0.5f;
+            Require(canvas.ShapeCoverage(ShapeStroke, middle + across * (radius * 0.8f), end, radius, 0f) > 0.9f, "the stroke is thinner than its width");
+            Require(canvas.ShapeCoverage(ShapeStroke, middle + across * (radius * 1.2f), end, radius, 0f) < 0.05f, "the stroke is wider than its width");
+
+            // 端は丸く、終点の先へは半径までしか伸びません。
+            Vector2 along = end / end.magnitude;
+            Require(canvas.ShapeCoverage(ShapeStroke, end + along * (radius * 0.8f), end, radius, 0f) > 0.9f, "the stroke has no round cap");
+            Require(canvas.ShapeCoverage(ShapeStroke, end + along * (radius * 1.2f), end, radius, 0f) < 0.05f, "the stroke runs past its end");
+
+            // 終点が始点と同じなら円です。
+            Require(canvas.ShapeCoverage(ShapeStroke, new Vector2(radius * 0.8f, 0f), Vector2.zero, radius, 0f) > 0.9f, "a zero stroke is not a dot");
+            Require(canvas.ShapeCoverage(ShapeStroke, new Vector2(0f, radius * 1.2f), Vector2.zero, radius, 0f) < 0.05f, "a zero stroke is larger than a dot");
+            Require(IsFinite(canvas.ShapeCoverage(ShapeStroke, Vector2.zero, Vector2.zero, 0f, 0f)), "a zero radius gave a non-finite coverage");
+        }
+
+        private static void ShapeOutlines()
+        {
+            var canvas = new LiquidBodyCanvas();
+            const float r = 1f;
+
+            // 星：頂点の 1 つが上、谷が下。72 度回しても同じ形。
+            Require(canvas.ShapeCoverage(ShapeStar, new Vector2(0f, 0.7f), Vector2.zero, r, 0f) > 0.9f, "the star has no tip at the top");
+            Require(canvas.ShapeCoverage(ShapeStar, new Vector2(0f, -0.7f), Vector2.zero, r, 0f) < 0.05f, "the star has a tip at the bottom");
+            var random = new System.Random(5);
+            float turn = 2f * Mathf.PI / 5f;
+            for (int i = 0; i < 200; i++)
+            {
+                var p = new Vector2((float)random.NextDouble() * 2f - 1f, (float)random.NextDouble() * 2f - 1f);
+                var turned = new Vector2(Mathf.Cos(turn) * p.x - Mathf.Sin(turn) * p.y, Mathf.Sin(turn) * p.x + Mathf.Cos(turn) * p.y);
+                float a = canvas.ShapeCoverage(ShapeStar, p, Vector2.zero, r, 0f);
+                float b = canvas.ShapeCoverage(ShapeStar, turned, Vector2.zero, r, 0f);
+                Require(Mathf.Abs(a - b) < 1e-3f, $"the star differs after a fifth of a turn at {p}: {a} and {b}");
+
+                // ハート：左右対称。
+                float left = canvas.ShapeCoverage(ShapeHeart, p, Vector2.zero, r, 0f);
+                float right = canvas.ShapeCoverage(ShapeHeart, new Vector2(-p.x, p.y), Vector2.zero, r, 0f);
+                Require(Mathf.Abs(left - right) < 1e-4f, $"the heart is not symmetric at {p}");
+            }
+
+            // ハート：上の左右にふくらみ、下の左右は空く。
+            Require(canvas.ShapeCoverage(ShapeHeart, new Vector2(0.5f, 0.5f), Vector2.zero, r, 0f) > 0.9f, "the heart has no lobe");
+            Require(canvas.ShapeCoverage(ShapeHeart, new Vector2(0f, -0.5f), Vector2.zero, r, 0f) > 0.9f, "the heart has no body");
+            Require(canvas.ShapeCoverage(ShapeHeart, new Vector2(0.8f, -0.6f), Vector2.zero, r, 0f) < 0.2f, "the heart is filled beside its point");
+
+            // 四角：回すと角の位置が変わる。
+            var side = new Vector2(0.85f, 0f);
+            Require(canvas.ShapeCoverage(ShapeSquare, side, Vector2.zero, r, 0f) < 0.05f, "the square reaches past its side");
+            Require(canvas.ShapeCoverage(ShapeSquare, side, Vector2.zero, r, Mathf.PI / 4f) > 0.9f, "the turned square has no corner on the axis");
+
+            var half = new Vector3(2f, 1.5f, 3f);
+            Require(canvas.InsideExtents(new Vector3(1.9f, -1.4f, 2.9f), half, 0f), "a point inside the box is outside");
+            Require(!canvas.InsideExtents(new Vector3(2.1f, 0f, 0f), half, 0f), "a point past +X is inside");
+            Require(canvas.InsideExtents(new Vector3(2.1f, 0f, 0f), half, 0.2f), "the margin is ignored");
+            Require(!canvas.InsideExtents(new Vector3(0f, 1.6f, 0f), half, 0f), "a point past +Y is inside");
+            Require(!canvas.InsideExtents(new Vector3(0f, 0f, -3.1f), half, 0f), "a point past -Z is inside");
+        }
+
+        private static void ShapeShaderAgrees()
+        {
+            string shaders = Path.Combine(_packageDirectory, "Runtime", "Shaders");
+            string include = File.ReadAllText(Path.Combine(shaders, "SabaLiquidCanvas.cginc"));
+            string update = File.ReadAllText(Path.Combine(shaders, "SabaLiquidCanvasUpdate.shader"));
+
+            Require(include.Contains("#define SABA_LIQUID_SHAPE_FEATHER 0.08") && Mathf.Abs(ShapeFeather - 0.08f) < 1e-6f,
+                "the shape feather differs");
+            Require(include.Contains("max(abs(p.x), abs(p.y)) - 0.7;"), "the square differs");
+            Require(include.Contains("float2(0.3840, 0.9233)") && include.Contains("float sector = 1.2566371;"), "the star differs");
+            Require(include.Contains("float2(p.x * 1.3, p.y * 1.3 + 0.1)"), "the heart differs");
+            Require(include.Contains("abs(len - 0.75) - 0.22;"), "the ring differs");
+            Require(include.Contains("if (shape == 1)") && include.Contains("else if (shape == 3)")
+                && include.Contains("else if (shape == 4)"), "the shape numbers differ in the shader");
+            Require(ShapeStroke == 1 && ShapeSquare == 2 && ShapeStar == 3 && ShapeHeart == 4 && ShapeRing == 5,
+                "the shape numbers differ in the solver");
+            Require(update.Contains("float4 _StampEnd[SABA_LIQUID_MAX_STAMPS];"), "the update shader has no stroke end array");
+        }
+
         private static void Require(bool condition, string message)
         {
             if (!condition)
@@ -884,6 +1028,25 @@ namespace SabaProps.Liquid
         /// ターゲット番号は、0 以上がプレイヤー ID、-1 が無し、-2 以下がマネキンです。
         /// 命中は番号のまま同期されるため、重なると別の相手に付着が付きます。
         /// </summary>
+        internal static void SurfaceTargetsAreDistinct()
+        {
+            var pool = new LiquidCanvasPool();
+            LiquidBodyCanvas.Check(pool.SurfaceIndex(-1) < 0 && pool.SurfaceIndex(0) < 0 && pool.SurfaceIndex(57) < 0,
+                "none or a player reads as a surface");
+
+            for (int i = 0; i < 2000; i++)
+            {
+                int surface = pool.SurfaceTarget(i);
+                LiquidBodyCanvas.Check(surface <= SurfaceTargetBase, $"surface {i} has target {surface}");
+                LiquidBodyCanvas.Check(pool.SurfaceIndex(surface) == i, $"surface {i} did not round trip");
+                LiquidBodyCanvas.Check(pool.MannequinIndex(surface) < 0, $"surface {i} reads as a mannequin");
+
+                int mannequin = pool.MannequinTarget(i);
+                LiquidBodyCanvas.Check(pool.SurfaceIndex(mannequin) < 0, $"mannequin {i} reads as a surface");
+                LiquidBodyCanvas.Check(pool.MannequinIndex(mannequin) == i, $"mannequin {i} did not round trip");
+            }
+        }
+
         internal static void MannequinTargetsAreDistinct()
         {
             var pool = new LiquidCanvasPool();
@@ -1044,6 +1207,138 @@ namespace SabaProps.Liquid
                 Vector3 offset = landing - top;
                 float radial = new Vector3(offset.x, 0f, offset.z).magnitude;
                 LiquidBodyCanvas.Check(radial <= 0.35f + 1e-3f, $"drop lands {radial} m from the centre");
+            }
+        }
+    }
+
+    /// <summary>
+    /// Checks on the paint tool arithmetic in LiquidPaintToolSolver.cs.
+    /// </summary>
+    public partial class LiquidPaintTool
+    {
+        internal static void StrokeCodeRoundTrips()
+        {
+            var tool = new LiquidPaintTool();
+            Vector3[] axes =
+            {
+                Vector3.right, -Vector3.right, Vector3.up, -Vector3.up, Vector3.forward, -Vector3.forward,
+            };
+            foreach (Vector3 axis in axes)
+            {
+                Vector3 back = tool.UnpackDirection(tool.PackDirection(axis));
+                LiquidBodyCanvas.Check((back - axis).magnitude < 1e-5f, $"{axis} came back as {back}");
+            }
+
+            var random = new System.Random(11);
+            for (int i = 0; i < 500; i++)
+            {
+                var n = new Vector3((float)random.NextDouble() - 0.5f, (float)random.NextDouble() - 0.5f,
+                    (float)random.NextDouble() - 0.5f).normalized;
+                float angle = (float)random.NextDouble() * 20f - 10f;
+                int code = tool.PackStroke(n, angle);
+                LiquidBodyCanvas.Check(code >= 0 && code < (1 << StrokeCodeBits), $"the code {code} does not fit");
+                LiquidBodyCanvas.Check(Vector3.Dot(tool.UnpackDirection(code), n) > 0.995f, $"{n} came back off by more than 6 degrees");
+
+                // 回転は 1 周を AngleSteps に分けた刻みで戻ります。差は刻みの半分以内です。
+                float back = tool.StrokeAngle(code);
+                float turns = (back - angle) / (2f * Mathf.PI);
+                float difference = Mathf.Abs(turns - Mathf.Floor(turns + 0.5f));
+                LiquidBodyCanvas.Check(difference <= 0.5f / AngleSteps + 1e-4f, $"the turn {angle} came back as {back}");
+            }
+
+            LiquidBodyCanvas.Check((tool.UnpackDirection(tool.PackDirection(Vector3.zero)) - Vector3.up).magnitude < 1e-5f,
+                "a zero normal did not fall back to up");
+        }
+
+        internal static void ShapeAngleFollowsTheTool()
+        {
+            var tool = new LiquidPaintTool();
+            LiquidBodyCanvas.Check(tool.ShapeAngle(Vector3.right, new Vector3(-1f, 0.2f, 0.4f)) == 0f, "a stamp on a wall is turned");
+            LiquidBodyCanvas.Check(tool.ShapeAngle(Vector3.up, Vector3.down) == 0f, "a tool pointing straight down turned the stamp");
+
+            // 床では、形の上 (-sin a, cos a) がツールの水平の向きと一致します。
+            Vector3[] directions =
+            {
+                new Vector3(0f, -0.5f, 1f), new Vector3(1f, -0.5f, 0f), new Vector3(-1f, -1f, 0f), new Vector3(0.6f, -0.3f, -0.8f),
+            };
+            foreach (Vector3 direction in directions)
+            {
+                float a = tool.ShapeAngle(Vector3.up, direction);
+                var flat = new Vector3(direction.x, 0f, direction.z).normalized;
+                var shapeUp = new Vector3(-Mathf.Sin(a), 0f, Mathf.Cos(a));
+                LiquidBodyCanvas.Check((shapeUp - flat).magnitude < 1e-4f, $"pointing {direction}, the stamp's top faces {shapeUp}");
+            }
+        }
+
+        internal static void StrokeStartsWhereItShould()
+        {
+            var tool = new LiquidPaintTool();
+            Vector3 last = new Vector3(1f, 1f, 0f);
+            Vector3 near = new Vector3(1.1f, 1f, 0f);
+            Vector3 far = new Vector3(3f, 1f, 0f);
+
+            LiquidBodyCanvas.Check((tool.StrokeStart(true, true, last, near, MaxSegment) - last).magnitude < 1e-6f,
+                "a near point did not continue the line");
+            LiquidBodyCanvas.Check((tool.StrokeStart(false, true, last, near, MaxSegment) - near).magnitude < 1e-6f,
+                "the first point started from an old one");
+            LiquidBodyCanvas.Check((tool.StrokeStart(true, false, last, near, MaxSegment) - near).magnitude < 1e-6f,
+                "a line crossed from one target to another");
+            LiquidBodyCanvas.Check((tool.StrokeStart(true, true, last, far, MaxSegment) - far).magnitude < 1e-6f,
+                "a far point was joined by a line");
+        }
+    }
+
+    /// <summary>
+    /// Checks on the paint log arithmetic in LiquidPaintLogSolver.cs.
+    /// </summary>
+    public partial class LiquidPaintLog
+    {
+        internal static void EntriesRoundTrip()
+        {
+            var log = new LiquidPaintLog();
+            int strokeMask = (1 << LiquidPaintTool.StrokeCodeBits) - 1;
+            int[] strokes = { 0, 1, 12345, strokeMask };
+            foreach (int stroke in strokes)
+            {
+                for (int tool = 0; tool < MaxTools; tool += 9)
+                {
+                    for (int surface = 0; surface < MaxSurfaces; surface += 5)
+                    {
+                        int entry = log.PackEntry(stroke, tool, surface);
+                        LiquidBodyCanvas.Check(entry >= 0, $"entry for tool {tool}, surface {surface} is negative");
+                        LiquidBodyCanvas.Check(log.EntryStroke(entry) == stroke && log.EntryTool(entry) == tool
+                            && log.EntrySurface(entry) == surface, $"tool {tool}, surface {surface}, stroke {stroke} did not round trip");
+                    }
+                }
+            }
+
+            int last = log.PackEntry(strokeMask, MaxTools - 1, MaxSurfaces - 1);
+            LiquidBodyCanvas.Check(last > 0 && log.EntryTool(last) == MaxTools - 1 && log.EntrySurface(last) == MaxSurfaces - 1,
+                "the largest entry does not fit in a positive int");
+        }
+
+        internal static void RingKeepsTheNewestInOrder()
+        {
+            var log = new LiquidPaintLog();
+            const int capacity = 8;
+            int[] ring = new int[capacity];
+            int next = 0;
+            int count = 0;
+
+            for (int value = 1; value <= 21; value++)
+            {
+                ring[next] = value;
+                next = (next + 1) % capacity;
+                count = Mathf.Min(count + 1, capacity);
+
+                int oldest = Mathf.Max(1, value - capacity + 1);
+                for (int order = 0; order < count; order++)
+                {
+                    int index = log.RingIndex(next, count, capacity, order);
+                    LiquidBodyCanvas.Check(index >= 0 && index < capacity, $"index {index} is outside the ring");
+                    LiquidBodyCanvas.Check(ring[index] == oldest + order,
+                        $"after {value} entries, place {order} holds {ring[index]}, not {oldest + order}");
+                }
             }
         }
     }

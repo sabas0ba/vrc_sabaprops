@@ -37,11 +37,14 @@ namespace SabaProps.Liquid.Editors
         public const string NozzleStandName = "Liquid Nozzle Stand";
         public const string SprayGunName = "Liquid Spray Gun";
         public const string ResetPanelName = "Liquid Reset Panel";
+        public const string PenName = "Liquid Pen";
+        public const string StampName = "Liquid Stamp";
+        public const string EraserName = "Liquid Eraser";
 
         public static readonly string[] PrefabNames =
         {
             CupName, BucketName, FaucetName, ShowerName, UmbrellaName, WaterGunName, NozzleStandName, SprayGunName,
-            ResetPanelName,
+            ResetPanelName, PenName, StampName, EraserName,
         };
 
         public static string PrefabPath(string name)
@@ -70,6 +73,9 @@ namespace SabaProps.Liquid.Editors
             Save(BuildNozzleStand(LiquidNozzle.ModeContinuous), NozzleStandName);
             Save(BuildSprayGun(), SprayGunName);
             Save(CreateResetPanel(null, null, MaterialFolder), ResetPanelName);
+            Save(BuildPen(), PenName);
+            Save(BuildStamp(), StampName);
+            Save(BuildEraser(), EraserName);
             AssetDatabase.SaveAssets();
         }
 
@@ -99,6 +105,15 @@ namespace SabaProps.Liquid.Editors
 
         [MenuItem("GameObject/SabaProps/Liquid/Prefabs/Reset Panel", false, 48)]
         private static void PlaceResetPanel(MenuCommand command) { PlaceFromMenu(ResetPanelName, command); }
+
+        [MenuItem("GameObject/SabaProps/Liquid/Prefabs/Pen", false, 49)]
+        private static void PlacePen(MenuCommand command) { PlaceFromMenu(PenName, command); }
+
+        [MenuItem("GameObject/SabaProps/Liquid/Prefabs/Stamp", false, 50)]
+        private static void PlaceStamp(MenuCommand command) { PlaceFromMenu(StampName, command); }
+
+        [MenuItem("GameObject/SabaProps/Liquid/Prefabs/Eraser", false, 51)]
+        private static void PlaceEraser(MenuCommand command) { PlaceFromMenu(EraserName, command); }
 
         /// <summary>
         /// An instance of the named prefab under <paramref name="parent"/>. The
@@ -296,6 +311,35 @@ namespace SabaProps.Liquid.Editors
             return root;
         }
 
+        /// <summary>A pen that draws in black ink on whatever it points at.</summary>
+        public static GameObject BuildPen()
+        {
+            LiquidProfile ink = OwnProfile(null, LiquidSourceBuilder.BlackInkName);
+            ink.gameObject.name = LiquidSourceBuilder.BlackInkName;
+            GameObject root = LiquidPaintingBuilder.CreatePaintTool(PenName, LiquidPaintTool.ModePen, ink,
+                LiquidBodyCanvas.ShapeStroke, 0.02f, MaterialFolder);
+            ink.transform.SetParent(root.transform, false);
+            return root;
+        }
+
+        /// <summary>A stamp that leaves a red star.</summary>
+        public static GameObject BuildStamp()
+        {
+            LiquidProfile ink = OwnProfile(null, LiquidSourceBuilder.RedInkName);
+            ink.gameObject.name = LiquidSourceBuilder.RedInkName;
+            GameObject root = LiquidPaintingBuilder.CreatePaintTool(StampName, LiquidPaintTool.ModeStamp, ink,
+                LiquidBodyCanvas.ShapeStar, 0.12f, MaterialFolder);
+            ink.transform.SetParent(root.transform, false);
+            return root;
+        }
+
+        /// <summary>An eraser that removes pigment and liquid where it points.</summary>
+        public static GameObject BuildEraser()
+        {
+            return LiquidPaintingBuilder.CreatePaintTool(EraserName, LiquidPaintTool.ModeEraser, null,
+                LiquidBodyCanvas.ShapeStroke, 0.06f, MaterialFolder);
+        }
+
         // ------------------------------------------------------------------
         // Shared parts, also used by the interactive demo scene
         // ------------------------------------------------------------------
@@ -421,7 +465,8 @@ namespace SabaProps.Liquid.Editors
         }
 
         /// <summary>
-        /// A panel to clear liquid: yourself, the mannequins, or everyone. Each
+        /// A panel to clear liquid: yourself, the mannequins, everyone, or the
+        /// walls and floors (which also forgets what was drawn on them). Each
         /// button reaches everyone's client, so what is cleared is cleared for all.
         /// Stands on a post, facing -Z.
         /// </summary>
@@ -445,15 +490,17 @@ namespace SabaProps.Liquid.Editors
             panel.pool = pool;
             UdonSharpEditorUtility.CopyProxyToUdon(panel);
 
-            GameObject mine = Button(root.transform, "Clear Me", "Clear me", new Vector3(-0.15f, 1.22f, 0f), clear, panel,
+            GameObject mine = Button(root.transform, "Clear Me", "Clear me", new Vector3(-0.18f, 1.22f, 0f), clear, panel,
                 nameof(LiquidResetPanel.ClearMine));
-            GameObject mannequins = Button(root.transform, "Clear Mannequins", "Mannequins", new Vector3(0f, 1.22f, 0f), key, panel,
+            GameObject mannequins = Button(root.transform, "Clear Mannequins", "Mannequins", new Vector3(-0.06f, 1.22f, 0f), key, panel,
                 nameof(LiquidResetPanel.ClearMannequins));
-            GameObject everyone = Button(root.transform, "Clear Everyone", "Everyone", new Vector3(0.15f, 1.22f, 0f), key, panel,
+            GameObject everyone = Button(root.transform, "Clear Everyone", "Everyone", new Vector3(0.06f, 1.22f, 0f), key, panel,
                 nameof(LiquidResetPanel.ClearEveryone));
-            foreach (GameObject button in new[] { mine, mannequins, everyone })
+            GameObject surfaces = Button(root.transform, "Clear Walls", "Walls", new Vector3(0.18f, 1.22f, 0f), key, panel,
+                nameof(LiquidResetPanel.ClearSurfaces));
+            foreach (GameObject button in new[] { mine, mannequins, everyone, surfaces })
             {
-                button.transform.localScale = new Vector3(0.12f, 0.08f, 0.03f);
+                button.transform.localScale = new Vector3(0.1f, 0.08f, 0.03f);
             }
 
             Caption(root.transform, "Title", "Clear liquid", new Vector3(0f, 1.34f, -0.02f), 0.01f, TextAnchor.MiddleCenter);
@@ -561,7 +608,7 @@ namespace SabaProps.Liquid.Editors
             return text;
         }
 
-        private static TextMesh Caption(Transform parent, string name, string text, Vector3 position, float size, TextAnchor anchor)
+        internal static TextMesh Caption(Transform parent, string name, string text, Vector3 position, float size, TextAnchor anchor)
         {
             var go = new GameObject(name);
             go.transform.SetParent(parent, false);
@@ -632,6 +679,12 @@ namespace SabaProps.Liquid.Editors
         /// </summary>
         private static void MakePickup(GameObject root, string useText, LiquidNozzle nozzle)
         {
+            MakePickup(root, useText, nozzle, nameof(LiquidNozzle.Trigger));
+        }
+
+        /// <summary>The same, for any behaviour: <paramref name="useEvent"/> is called on the use button.</summary>
+        internal static void MakePickup(GameObject root, string useText, UdonSharpBehaviour target, string useEvent)
+        {
             var rigidbody = root.AddComponent<Rigidbody>();
             rigidbody.isKinematic = true;
             rigidbody.useGravity = false;
@@ -644,11 +697,11 @@ namespace SabaProps.Liquid.Editors
             VRCObjectSync sync = root.AddComponent<VRCObjectSync>();
             sync.AllowCollisionOwnershipTransfer = false;
 
-            if (nozzle != null)
+            if (target != null)
             {
                 LiquidButton relay = root.AddUdonSharpComponent<LiquidButton>();
-                relay.target = nozzle;
-                relay.eventName = nameof(LiquidNozzle.Trigger);
+                relay.target = target;
+                relay.eventName = useEvent;
                 relay.relayPickupUse = true;
                 UdonSharpEditorUtility.CopyProxyToUdon(relay);
             }
@@ -674,7 +727,7 @@ namespace SabaProps.Liquid.Editors
             return LiquidAssets.CreateOrLoadSurfaceMaterial(MaterialFolder + "/" + name + ".mat", colour, smoothness);
         }
 
-        private static GameObject Part(Transform parent, string name, PrimitiveType type, Vector3 position, Vector3 scale,
+        internal static GameObject Part(Transform parent, string name, PrimitiveType type, Vector3 position, Vector3 scale,
             Quaternion rotation, Material material, bool solid)
         {
             GameObject part = GameObject.CreatePrimitive(type);
@@ -692,7 +745,7 @@ namespace SabaProps.Liquid.Editors
             return part;
         }
 
-        private static void SetLayer(GameObject root, int layer)
+        internal static void SetLayer(GameObject root, int layer)
         {
             foreach (Transform t in root.GetComponentsInChildren<Transform>(true))
             {

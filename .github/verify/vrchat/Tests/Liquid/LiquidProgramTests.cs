@@ -216,14 +216,64 @@ namespace SabaProps.Liquid.WorldTests
         {
             IUdonProgram program = Compile<LiquidResetPanel>();
             List<string> exported = Exported(program);
-            foreach (string method in new[] { "ClearMine", "ClearMannequins", "ClearEveryone",
-                "ReceiveClearPlayer", "ReceiveClearMannequins", "ReceiveClearEveryone" })
+            foreach (string method in new[] { "ClearMine", "ClearMannequins", "ClearEveryone", "ClearSurfaces",
+                "ReceiveClearPlayer", "ReceiveClearMannequins", "ReceiveClearEveryone", "ReceiveClearSurfaces" })
             {
                 AssertExportsMethod(exported, method);
             }
 
             AssertSyncMode<LiquidResetPanel>(BehaviourSyncMode.NoVariableSync);
             AssertSyncedFields(program);
+        }
+
+        [Test]
+        public void PaintTool_SendsStrokesAsEventsWithoutSyncing()
+        {
+            IUdonProgram program = Compile<LiquidPaintTool>();
+            List<string> exported = Exported(program);
+            CollectionAssert.Contains(exported, "_update");
+            foreach (string method in new[] { "Trigger", "Release", "ReceiveStroke", "Draw", "GetStrokesReceived" })
+            {
+                AssertExportsMethod(exported, method);
+            }
+
+            // On a child of a pickup, next to nothing synced: VRCObjectSync owns the pickup's GameObject.
+            AssertSyncMode<LiquidPaintTool>(BehaviourSyncMode.NoVariableSync);
+            AssertSyncedFields(program);
+        }
+
+        [Test]
+        public void PaintLog_SyncsOnlyTheRecentStrokes()
+        {
+            IUdonProgram program = Compile<LiquidPaintLog>();
+            List<string> exported = Exported(program);
+            CollectionAssert.Contains(exported, "_update");
+            CollectionAssert.Contains(exported, "_onPreSerialization");
+            CollectionAssert.Contains(exported, "_onDeserialization");
+            CollectionAssert.Contains(exported, "_onPlayerJoined");
+            foreach (string method in new[] { "Record", "Forget", "GetCount", "GetReplayedCount" })
+            {
+                AssertExportsMethod(exported, method);
+            }
+
+            AssertSyncMode<LiquidPaintLog>(BehaviourSyncMode.Manual);
+            AssertSyncedFields(program, "_syncFrom", "_syncTo", "_syncEntry");
+        }
+
+        [Test]
+        public void CanvasAndPool_ExportTheWorldSurfaceApi()
+        {
+            List<string> canvas = Exported(Compile<LiquidBodyCanvas>());
+            foreach (string method in new[] { "QueueShape", "ContainsPoint", "IsWorldSurface" })
+            {
+                AssertExportsMethod(canvas, method);
+            }
+
+            List<string> pool = Exported(Compile<LiquidCanvasPool>());
+            foreach (string method in new[] { "SurfaceAt", "GetSurfaceCount", "GetSurfaceTarget", "IsSurfaceTarget", "ClearSurfaces" })
+            {
+                AssertExportsMethod(pool, method);
+            }
         }
 
         [Test]

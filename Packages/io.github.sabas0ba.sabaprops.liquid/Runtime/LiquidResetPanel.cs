@@ -57,6 +57,12 @@ namespace SabaProps.Liquid
             SendCustomNetworkEvent(NetworkEventTarget.All, nameof(ReceiveClearMannequins));
         }
 
+        /// <summary>ワールドの面（壁や床）の付着と描画を、全員の画面で消します。</summary>
+        public void ClearSurfaces()
+        {
+            SendCustomNetworkEvent(NetworkEventTarget.All, nameof(ReceiveClearSurfaces));
+        }
+
         /// <summary>全員とマネキンの付着を、全員の画面で消します。</summary>
         public void ClearEveryone()
         {
@@ -86,6 +92,15 @@ namespace SabaProps.Liquid
             if (pool != null)
             {
                 pool.ClearMannequins();
+            }
+        }
+
+        [NetworkCallable(MaxClearsPerSecond)]
+        public void ReceiveClearSurfaces()
+        {
+            if (pool != null)
+            {
+                pool.ClearSurfaces();
             }
         }
 

@@ -134,6 +134,7 @@ namespace SabaProps.Liquid.Editors
             LiquidPrefabBuilder.BuildAll();
             CreateComparison();
             LiquidInteractiveScene.Create();
+            LiquidPaintingScene.Create();
             Create();
             AssetDatabase.SaveAssets();
         }

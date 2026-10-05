@@ -162,6 +162,62 @@ float SabaLiquidStampFalloff(float distance, float radius)
     return t * t;
 }
 
+// 輪郭のはっきりした形。ペン、スタンプ、消しゴムが使います。返り値は被覆（内側で 1、外側で 0）です。
+//
+// offset は形の中心からの面内の位置（m）、end は線の終点までの面内のずれ（m、線以外では使いません）、
+// radius は形の半径（m）、angle は面内の回転（rad）です。形は半径 1 の円に収まるように定義します。
+//   1: 線（中心から end までの、太さ 2 * radius の線分。end が 0 なら円）
+//   2: 四角   3: 星   4: ハート   5: 輪
+// C# 側の LiquidBodyCanvas.ShapeCoverage と同じ定義です。
+#define SABA_LIQUID_SHAPE_FEATHER 0.08
+
+float SabaLiquidShapeCoverage(int shape, float2 offset, float2 end, float radius, float angle)
+{
+    float r = max(radius, 1e-4);
+    float d;
+    if (shape == 1)
+    {
+        float along = saturate(dot(offset, end) / max(dot(end, end), 1e-10));
+        d = length(offset - end * along) / r - 1.0;
+    }
+    else
+    {
+        float c = cos(angle);
+        float s = sin(angle);
+        float2 p = float2(c * offset.x + s * offset.y, c * offset.y - s * offset.x) / r;
+        float len = length(p);
+        if (shape == 2)
+        {
+            d = max(abs(p.x), abs(p.y)) - 0.7;
+        }
+        else if (shape == 3)
+        {
+            // 5 つの頂点を持つ星。頂点の 1 つが上を向きます。1 つの頂点と隣の谷の間の扇形へ折り畳み、
+            // 頂点 (1, 0) と谷 0.45 * (cos 36°, sin 36°) を結ぶ辺からの符号付き距離を取ります。
+            float sector = 1.2566371;
+            float folded = abs(frac(atan2(p.x, p.y + 1e-6) / sector + 0.5) - 0.5) * sector;
+            float2 q = len * float2(cos(folded), sin(folded));
+            d = dot(q - float2(1.0, 0.0), float2(0.3840, 0.9233));
+        }
+        else if (shape == 4)
+        {
+            // ハートの曲線 (x^2 + y^2 - 1)^3 = x^2 y^3 の内側。式の値を勾配の大きさで割り、輪郭からの距離に近づけます。
+            float2 h = float2(p.x * 1.3, p.y * 1.3 + 0.1);
+            float base = dot(h, h) - 1.0;
+            float value = base * base * base - h.x * h.x * h.y * h.y * h.y;
+            float2 slope = float2(6.0 * h.x * base * base - 2.0 * h.x * h.y * h.y * h.y,
+                                  6.0 * h.y * base * base - 3.0 * h.x * h.x * h.y * h.y);
+            d = clamp(value / max(length(slope), 1e-3) / 1.3, -1.0, 1.0);
+        }
+        else
+        {
+            d = abs(len - 0.75) - 0.22;
+        }
+    }
+
+    return 1.0 - smoothstep(-SABA_LIQUID_SHAPE_FEATHER, SABA_LIQUID_SHAPE_FEATHER, d);
+}
+
 float SabaLiquidHash(float2 p)
 {
     p = frac(p * float2(123.34, 456.21));

@@ -18,12 +18,13 @@ namespace SabaProps.Liquid.WorldTests
     /// reference that does not resolve.
     /// </para>
     /// <para>
-    /// Runs once for each of the two scenes the sample ships.
+    /// Runs once for each of the scenes the sample ships.
     /// </para>
     /// </summary>
     [TestFixture("Assets/SabaProps/Liquid/Samples/LiquidDemo.unity")]
     [TestFixture("Assets/SabaProps/Liquid/Samples/LiquidComparison.unity")]
     [TestFixture("Assets/SabaProps/Liquid/Samples/LiquidInteractive.unity")]
+    [TestFixture("Assets/SabaProps/Liquid/Samples/LiquidPainting.unity")]
     public class LiquidBundledSampleTests
     {
         private const string SampleSource = "Packages/io.github.sabas0ba.sabaprops.liquid/Samples~/LiquidDemo/Assets";

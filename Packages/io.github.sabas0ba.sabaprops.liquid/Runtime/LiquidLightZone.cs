@@ -175,6 +175,9 @@ namespace SabaProps.Liquid
             return t < litSeconds + blacklightSeconds ? 1 : 2;
         }
 
+        /// <summary>ワールドの面に、明かりの光を環境光として渡す割合。</summary>
+        private const float SurfaceLampShare = 0.7f;
+
         private void Update()
         {
             bool lampOn = IsLampOn();
@@ -198,38 +201,71 @@ namespace SabaProps.Liquid
             int count = pool.CollectTargetsInBox(transform, areaSize, affectPlayers, _targets, _centres, _tops);
             for (int i = 0; i < count; i++)
             {
-                LiquidBodyCanvas canvas = pool.CanvasForTarget(_targets[i]);
-                if (canvas == null)
+                Illuminate(pool.CanvasForTarget(_targets[i]), _centres[i], lampOn, blacklightOn, false);
+            }
+
+            // ワールドの面は、箱の中心がこの範囲の中にあるものを照らします。
+            int surfaces = pool.GetSurfaceCount();
+            Vector3 half = areaSize * 0.5f;
+            for (int i = 0; i < surfaces; i++)
+            {
+                LiquidBodyCanvas surface = pool.CanvasForTarget(pool.GetSurfaceTarget(i));
+                if (surface == null || surface.anchor == null)
                 {
                     continue;
                 }
 
-                Vector3 centre = _centres[i];
-                Color light = Color.black;
-                Vector3 towards = Vector3.up;
-                if (lampOn && lamp != null)
+                Vector3 centre = surface.anchor.position;
+                Vector3 local = transform.InverseTransformPoint(centre);
+                if (Mathf.Abs(local.x) <= half.x && Mathf.Abs(local.y) <= half.y && Mathf.Abs(local.z) <= half.z)
                 {
-                    Vector3 offset = lamp.transform.position - centre;
-                    towards = offset;
-                    light = LampColor(lamp, offset.magnitude);
+                    Illuminate(surface, centre, lampOn, blacklightOn, true);
                 }
-
-                Color ambient = darkAmbient;
-                if (lampOn)
-                {
-                    ambient += lampAmbient;
-                }
-
-                float ultraviolet = 0f;
-                if (blacklightOn && blacklight != null)
-                {
-                    ambient += blacklightAmbient;
-                    float distance = Vector3.Distance(blacklight.transform.position, centre);
-                    ultraviolet = ultravioletStrength * Attenuation(distance, blacklight.range);
-                }
-
-                canvas.ApplyLightEnvironment(towards, light, ambient, ultraviolet);
             }
+        }
+
+        /// <summary>
+        /// Canvas へ、この範囲の光を伝えます。体には、明かりを中心から見た向きの光源として渡します。
+        /// ワールドの面は箱の中で面ごとに明かりの向きが違い、1 つの向きでは表せないため、
+        /// 明かりを向きの無い光（環境光）として渡します。
+        /// </summary>
+        private void Illuminate(LiquidBodyCanvas canvas, Vector3 centre, bool lampOn, bool blacklightOn, bool diffuse)
+        {
+            if (canvas == null)
+            {
+                return;
+            }
+
+            Color light = Color.black;
+            Vector3 towards = Vector3.up;
+            if (lampOn && lamp != null)
+            {
+                Vector3 offset = lamp.transform.position - centre;
+                towards = offset;
+                light = LampColor(lamp, offset.magnitude);
+            }
+
+            Color ambient = darkAmbient;
+            if (lampOn)
+            {
+                ambient += lampAmbient;
+            }
+
+            float ultraviolet = 0f;
+            if (blacklightOn && blacklight != null)
+            {
+                ambient += blacklightAmbient;
+                float distance = Vector3.Distance(blacklight.transform.position, centre);
+                ultraviolet = ultravioletStrength * Attenuation(distance, blacklight.range);
+            }
+
+            if (diffuse)
+            {
+                ambient += light * SurfaceLampShare;
+                light = Color.black;
+            }
+
+            canvas.ApplyLightEnvironment(towards, light, ambient, ultraviolet);
         }
 
         private Color LampColor(Light source, float distance)

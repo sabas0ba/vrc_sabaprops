@@ -102,6 +102,14 @@ namespace SabaProps.Liquid
         [Tooltip("プレイヤーの代わりに追従する Transform（マネキンの腰）。設定するとプールを介さず常に有効になります。")]
         public Transform anchor;
 
+        [Header("ワールドの面")]
+        [Tooltip("体ではなく、ワールドの壁や床に付着を描く Canvas（Surface Canvas）かどうか。anchor を中心とする箱の中の面に描きます。")]
+        public bool worldSurface;
+
+        [Tooltip("Surface Canvas が、最後の付着からこの秒数を過ぎたら流下と乾燥の計算を止めます。液が乾ききる時間より長くします。")]
+        [Min(1f)]
+        public float surfaceIdleSeconds = 240f;
+
         [Tooltip("anchor から足裏までの距離（m）。命中判定のカプセルに使います。")]
         public float anchorFeetBelow = 0.95f;
 
@@ -183,6 +191,7 @@ namespace SabaProps.Liquid
         private Vector4[] _stampFilm = new Vector4[MaxStampsPerUpdate];
         private Vector4[] _stampShape = new Vector4[MaxStampsPerUpdate];
         private Vector4[] _stampGlow = new Vector4[MaxStampsPerUpdate];
+        private Vector4[] _stampEnd = new Vector4[MaxStampsPerUpdate];
         private int _stampCount;
 
         private float _lastUpdateTime;
@@ -261,6 +270,23 @@ namespace SabaProps.Liquid
         public bool IsMannequin()
         {
             return anchor != null;
+        }
+
+        /// <summary>ワールドの壁や床に描く Surface Canvas かどうか。</summary>
+        public bool IsWorldSurface()
+        {
+            return worldSurface && anchor != null;
+        }
+
+        /// <summary>ワールドの点が Canvas の箱の中にあるか。プールが、当たった面を受け持つ Surface Canvas を探すのに使います。</summary>
+        public bool ContainsPoint(Vector3 worldPoint)
+        {
+            if (!_active || !_frameValid)
+            {
+                return false;
+            }
+
+            return InsideExtents(ToCanvasLocalPoint(worldPoint, _origin, _right, _up, _forward), halfExtents, 0f);
         }
 
         /// <summary>マネキンの命中判定カプセルの下端（ワールド）。</summary>
@@ -503,6 +529,63 @@ namespace SabaProps.Liquid
                 EncodeEvaporation(profile.dryingSeconds, maxEvaporationRate));
             _stampShape[i] = new Vector4(seed, profile.edgeIrregularity, 0f, 0f);
             _stampGlow[i] = new Vector4(profile.fluorescence, profile.luminescence, 0f, 0f);
+            _stampEnd[i] = Vector4.zero;
+            _stampCount = i + 1;
+            _lastActivityTime = Time.time;
+        }
+
+        /// <summary>
+        /// 輪郭のはっきりした形を 1 つ積みます。ペン、スタンプ、消しゴムが使います。
+        /// <para>
+        /// shape は ShapeStroke などの形の番号です。線（ShapeStroke）は worldFrom から worldTo までを
+        /// 太さ 2 * radius で塗り、その他の形は worldFrom を中心に置きます。angle は面内の回転（rad）です。
+        /// profile が null なら何も塗らず、erase（0〜1）の強さで顔料と液膜を消します。
+        /// </para>
+        /// </summary>
+        public void QueueShape(Vector3 worldFrom, Vector3 worldTo, Vector3 worldNormal, float radius, LiquidProfile profile,
+            int shape, float angle, float erase)
+        {
+            if (!_active || !_frameValid || shape <= ShapeSplash)
+            {
+                return;
+            }
+
+            if (_stampCount >= MaxStampsPerUpdate)
+            {
+                AdvanceCanvas(Time.time - _lastUpdateTime);
+            }
+
+            Vector3 local = ToCanvasLocalPoint(worldFrom, _origin, _right, _up, _forward);
+            Vector3 end = shape == ShapeStroke
+                ? ToCanvasLocalPoint(worldTo, _origin, _right, _up, _forward) - local
+                : Vector3.zero;
+            Vector3 normal = ToCanvasLocalDirection(worldNormal, _right, _up, _forward).normalized;
+            float wipe = Mathf.Clamp01(erase);
+
+            int i = _stampCount;
+            _stampPos[i] = new Vector4(local.x, local.y, local.z, Mathf.Max(radius, 1e-3f));
+            if (profile != null)
+            {
+                Color color = profile.pigmentColor.linear;
+                _stampNormal[i] = new Vector4(normal.x, normal.y, normal.z, profile.pigmentAmount);
+                _stampColor[i] = new Vector4(color.r, color.g, color.b, profile.filmAmount);
+                _stampFilm[i] = new Vector4(
+                    Mathf.Max(profile.washStrength, wipe * EraseWash),
+                    profile.smoothness,
+                    profile.viscosity,
+                    EncodeEvaporation(profile.dryingSeconds, maxEvaporationRate));
+                _stampGlow[i] = new Vector4(profile.fluorescence, profile.luminescence, 0f, 0f);
+            }
+            else
+            {
+                _stampNormal[i] = new Vector4(normal.x, normal.y, normal.z, 0f);
+                _stampColor[i] = Vector4.zero;
+                _stampFilm[i] = new Vector4(wipe * EraseWash, 0f, 0f, 0f);
+                _stampGlow[i] = Vector4.zero;
+            }
+
+            _stampShape[i] = new Vector4(0f, 0f, shape, angle);
+            _stampEnd[i] = new Vector4(end.x, end.y, end.z, wipe * EraseWash);
             _stampCount = i + 1;
             _lastActivityTime = Time.time;
         }
@@ -516,7 +599,8 @@ namespace SabaProps.Liquid
         /// </summary>
         public void ApplyImmersion(float surfaceWorldY, LiquidProfile profile, float deltaSeconds)
         {
-            if (!_active || !_frameValid || profile == null)
+            // 体を伝って下を濡らす近似は、壁や床には当てはまりません。
+            if (!_active || !_frameValid || profile == null || worldSurface)
             {
                 return;
             }
@@ -672,7 +756,7 @@ namespace SabaProps.Liquid
         /// </summary>
         public void WashBelow(float worldY, float amount)
         {
-            if (!_active || !_frameValid)
+            if (!_active || !_frameValid || worldSurface)
             {
                 return;
             }
@@ -741,8 +825,33 @@ namespace SabaProps.Liquid
             float elapsed = Time.time - _lastUpdateTime;
             if (elapsed >= updateInterval)
             {
-                AdvanceCanvas(elapsed);
+                if (IsIdleSurface())
+                {
+                    AdvanceEnvironment(Mathf.Clamp(elapsed, 0f, 1f));
+                }
+                else
+                {
+                    AdvanceCanvas(elapsed);
+                }
             }
+        }
+
+        /// <summary>
+        /// Surface Canvas が、入力が途絶えて乾ききった後かどうか。Surface Canvas は広く解像度も高いため、
+        /// 変化の無い間は RenderTexture の更新を省きます。
+        /// </summary>
+        private bool IsIdleSurface()
+        {
+            return worldSurface && _stampCount == 0 && Time.time - _lastActivityTime > surfaceIdleSeconds;
+        }
+
+        /// <summary>RenderTexture を進めずに、範囲の Source から受けた状態（光、湿度など）だけを進めます。</summary>
+        private void AdvanceEnvironment(float dt)
+        {
+            _lastUpdateTime = Time.time;
+            AdvanceSnow(dt);
+            AdvanceHumidity(dt);
+            AdvanceLight(dt);
         }
 
         /// <summary>
@@ -798,6 +907,7 @@ namespace SabaProps.Liquid
             updateMaterial.SetVectorArray("_StampFilm", _stampFilm);
             updateMaterial.SetVectorArray("_StampShape", _stampShape);
             updateMaterial.SetVectorArray("_StampGlow", _stampGlow);
+            updateMaterial.SetVectorArray("_StampEnd", _stampEnd);
             updateMaterial.SetVector("_HalfExtents", new Vector4(halfExtents.x, halfExtents.y, halfExtents.z, 0f));
             updateMaterial.SetVector("_GravityCanvas", new Vector4(gravity.x, gravity.y, gravity.z, 0f));
             updateMaterial.SetFloat("_Inset", atlasInset);

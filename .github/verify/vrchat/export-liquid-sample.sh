@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
 # Regenerates the liquid package's bundled sample (Samples~/LiquidDemo, with the
-# demo, comparison and interactive scenes) and its Prefabs folder from the
+# demo, comparison, interactive and painting scenes) and its Prefabs folder from the
 # generators, in the world verification project.
 #
 # The sample is generated rather than hand-edited: this script replaces the
@@ -53,7 +53,7 @@ echo "generating the sample scene in $PROJECT"
     -logFile "$(to_native "$LOG")"
 
 GENERATED="$PROJECT/Assets/SabaProps/Liquid"
-for scene in LiquidDemo LiquidComparison LiquidInteractive; do
+for scene in LiquidDemo LiquidComparison LiquidInteractive LiquidPainting; do
     [ -f "$GENERATED/Samples/$scene.unity" ] || { echo "error: $scene was not generated; see $LOG" >&2; exit 1; }
 done
 

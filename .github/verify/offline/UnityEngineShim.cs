@@ -130,6 +130,9 @@ namespace UnityEngine
         public static Vector2 operator +(Vector2 a, Vector2 b) => new Vector2(a.x + b.x, a.y + b.y);
         public static Vector2 operator -(Vector2 a, Vector2 b) => new Vector2(a.x - b.x, a.y - b.y);
         public static Vector2 operator *(Vector2 a, float s) => new Vector2(a.x * s, a.y * s);
+        public static Vector2 operator *(float s, Vector2 a) => new Vector2(a.x * s, a.y * s);
+        public static Vector2 operator /(Vector2 a, float s) => new Vector2(a.x / s, a.y / s);
+        public static float Dot(Vector2 a, Vector2 b) => a.x * b.x + a.y * b.y;
 
         public override string ToString() => $"({x}, {y})";
     }

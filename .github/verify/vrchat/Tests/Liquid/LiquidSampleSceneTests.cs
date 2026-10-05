@@ -145,7 +145,7 @@ namespace SabaProps.Liquid.WorldTests
         }
 
         /// <summary>
-        /// The scene has a reset panel near the spawn, and each of its three
+        /// The scene has a reset panel near the spawn, and each of its four
         /// buttons calls an existing method on it.
         /// </summary>
         internal static void AssertResetPanel(Vector3 spawn)
@@ -156,7 +156,11 @@ namespace SabaProps.Liquid.WorldTests
 
             LiquidButton[] buttons = panels[0].GetComponentsInChildren<LiquidButton>();
             CollectionAssert.AreEquivalent(
-                new[] { nameof(LiquidResetPanel.ClearMine), nameof(LiquidResetPanel.ClearMannequins), nameof(LiquidResetPanel.ClearEveryone) },
+                new[]
+                {
+                    nameof(LiquidResetPanel.ClearMine), nameof(LiquidResetPanel.ClearMannequins),
+                    nameof(LiquidResetPanel.ClearEveryone), nameof(LiquidResetPanel.ClearSurfaces),
+                },
                 System.Array.ConvertAll(buttons, b => b.eventName));
             foreach (LiquidButton button in buttons)
             {

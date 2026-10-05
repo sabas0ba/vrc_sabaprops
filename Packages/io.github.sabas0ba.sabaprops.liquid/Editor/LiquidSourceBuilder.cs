@@ -34,6 +34,21 @@ namespace SabaProps.Liquid.Editors
         public const string FluorescentPinkName = "Fluorescent Pink Paint";
         public const string FluorescentGreenName = "Fluorescent Green Paint";
         public const string LuminousPaintName = "Luminous Paint";
+        public const string BlackInkName = "Black Ink";
+        public const string RedInkName = "Red Ink";
+        public const string BlueInkName = "Blue Ink";
+        public const string YellowInkName = "Yellow Ink";
+        public const string WhiteInkName = "White Ink";
+        public const string FluorescentPinkInkName = "Fluorescent Pink Ink";
+        public const string FluorescentGreenInkName = "Fluorescent Green Ink";
+        public const string LuminousInkName = "Luminous Ink";
+
+        /// <summary>Ink for the pens and stamps: opaque, stays where it is put, never runs.</summary>
+        public static readonly string[] InkNames =
+        {
+            BlackInkName, RedInkName, BlueInkName, YellowInkName, WhiteInkName,
+            FluorescentPinkInkName, FluorescentGreenInkName, LuminousInkName,
+        };
 
         /// <summary>Paint from black to white, for seeing how pigment lightness reads on a body.</summary>
         public static readonly string[] GreyscalePaintNames =
@@ -150,9 +165,12 @@ namespace SabaProps.Liquid.Editors
             {
                 case FluorescentPinkName:
                 case FluorescentGreenName:
+                case FluorescentPinkInkName:
+                case FluorescentGreenInkName:
                     profile.fluorescence = 1f;
                     return;
                 case LuminousPaintName:
+                case LuminousInkName:
                     profile.luminescence = 1f;
                     return;
             }
@@ -201,6 +219,30 @@ namespace SabaProps.Liquid.Editors
                 case MudName:
                     Set(profile, new Color(0.44f, 0.31f, 0.19f), 0.9f, 0.8f, 0.6f, 0.85f, 180f, 0f, 0.35f);
                     return;
+                case BlackInkName:
+                    SetInk(profile, new Color(0.03f, 0.03f, 0.03f));
+                    return;
+                case RedInkName:
+                    SetInk(profile, new Color(0.8f, 0.05f, 0.06f));
+                    return;
+                case BlueInkName:
+                    SetInk(profile, new Color(0.05f, 0.2f, 0.8f));
+                    return;
+                case YellowInkName:
+                    SetInk(profile, new Color(0.97f, 0.8f, 0.08f));
+                    return;
+                case WhiteInkName:
+                    SetInk(profile, new Color(0.96f, 0.96f, 0.95f));
+                    return;
+                case FluorescentPinkInkName:
+                    SetInk(profile, new Color(1f, 0.16f, 0.55f));
+                    return;
+                case FluorescentGreenInkName:
+                    SetInk(profile, new Color(0.45f, 1f, 0.12f));
+                    return;
+                case LuminousInkName:
+                    SetInk(profile, new Color(0.72f, 0.95f, 0.62f));
+                    return;
                 case SlimeName:
                     Set(profile, new Color(0.22f, 0.8f, 0.3f), 0.45f, 1f, 1f, 0.92f, 0f, 0f, 0.2f);
                     return;
@@ -211,6 +253,15 @@ namespace SabaProps.Liquid.Editors
                     Set(profile, Color.white, 0f, 1f, 0.92f, 0.1f, 90f, 0.5f, 0.6f);
                     return;
             }
+        }
+
+        /// <summary>
+        /// Ink: opaque pigment in a thin film that does not run (full viscosity)
+        /// and dries in seconds, so a line stays where it was drawn.
+        /// </summary>
+        private static void SetInk(LiquidProfile profile, Color colour)
+        {
+            Set(profile, colour, 1f, 0.12f, 0.6f, 1f, 15f, 0f, 0f);
         }
 
         private static void Set(LiquidProfile profile, Color colour, float pigment, float film, float smoothness,

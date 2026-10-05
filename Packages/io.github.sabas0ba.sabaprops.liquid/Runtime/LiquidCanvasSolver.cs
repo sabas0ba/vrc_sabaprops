@@ -315,6 +315,90 @@ namespace SabaProps.Liquid
             return t * t;
         }
 
+        /// <summary>形の番号：輪郭の不規則な飛沫。Source の付着が使います。</summary>
+        public const int ShapeSplash = 0;
+
+        /// <summary>形の番号：線。中心から終点までの線分で、終点が中心と同じなら円です。</summary>
+        public const int ShapeStroke = 1;
+
+        /// <summary>形の番号：四角。</summary>
+        public const int ShapeSquare = 2;
+
+        /// <summary>形の番号：星。</summary>
+        public const int ShapeStar = 3;
+
+        /// <summary>形の番号：ハート。</summary>
+        public const int ShapeHeart = 4;
+
+        /// <summary>形の番号：輪。</summary>
+        public const int ShapeRing = 5;
+
+        /// <summary>消しゴムの強さ 1 に対する洗浄量。輪郭の内側を 1 回で消しきる値にします。</summary>
+        public const float EraseWash = 4f;
+
+        /// <summary>形の輪郭をぼかす幅（半径に対する割合）。シェーダの SABA_LIQUID_SHAPE_FEATHER と一致させます。</summary>
+        public const float ShapeFeather = 0.08f;
+
+        /// <summary>
+        /// 輪郭のはっきりした形の被覆。内側で 1、外側で 0。SabaLiquidShapeCoverage と同じ定義です。
+        /// <para>
+        /// offset は形の中心からの面内の位置（m）、end は線の終点までの面内のずれ（m）、
+        /// angle は面内の回転（rad）です。形は半径 radius の円に収まります。
+        /// </para>
+        /// </summary>
+        private float ShapeCoverage(int shape, Vector2 offset, Vector2 end, float radius, float angle)
+        {
+            float r = Mathf.Max(radius, 1e-4f);
+            float d;
+            if (shape == ShapeStroke)
+            {
+                float along = Mathf.Clamp01(Vector2.Dot(offset, end) / Mathf.Max(Vector2.Dot(end, end), 1e-10f));
+                d = (offset - end * along).magnitude / r - 1f;
+            }
+            else
+            {
+                float c = Mathf.Cos(angle);
+                float s = Mathf.Sin(angle);
+                Vector2 p = new Vector2(c * offset.x + s * offset.y, c * offset.y - s * offset.x) / r;
+                float len = p.magnitude;
+                if (shape == ShapeSquare)
+                {
+                    d = Mathf.Max(Mathf.Abs(p.x), Mathf.Abs(p.y)) - 0.7f;
+                }
+                else if (shape == ShapeStar)
+                {
+                    const float sector = 1.2566371f;
+                    float turn = Mathf.Atan2(p.x, p.y + 1e-6f) / sector + 0.5f;
+                    float folded = Mathf.Abs(turn - Mathf.Floor(turn) - 0.5f) * sector;
+                    Vector2 q = len * new Vector2(Mathf.Cos(folded), Mathf.Sin(folded));
+                    d = Vector2.Dot(q - new Vector2(1f, 0f), new Vector2(0.3840f, 0.9233f));
+                }
+                else if (shape == ShapeHeart)
+                {
+                    Vector2 h = new Vector2(p.x * 1.3f, p.y * 1.3f + 0.1f);
+                    float b = Vector2.Dot(h, h) - 1f;
+                    float value = b * b * b - h.x * h.x * h.y * h.y * h.y;
+                    Vector2 slope = new Vector2(6f * h.x * b * b - 2f * h.x * h.y * h.y * h.y,
+                        6f * h.y * b * b - 3f * h.x * h.x * h.y * h.y);
+                    d = Mathf.Clamp(value / Mathf.Max(slope.magnitude, 1e-3f) / 1.3f, -1f, 1f);
+                }
+                else
+                {
+                    d = Mathf.Abs(len - 0.75f) - 0.22f;
+                }
+            }
+
+            return 1f - Smoothstep(-ShapeFeather, ShapeFeather, d);
+        }
+
+        /// <summary>点が箱の中（余白つき）にあるか。local は箱の軸に沿った中心からの位置（m）です。</summary>
+        private bool InsideExtents(Vector3 local, Vector3 half, float margin)
+        {
+            return Mathf.Abs(local.x) <= half.x + margin
+                && Mathf.Abs(local.y) <= half.y + margin
+                && Mathf.Abs(local.z) <= half.z + margin;
+        }
+
         /// <summary>
         /// 水平な液面の高さを、Canvas の正規化 y へ変換します。
         /// <para>

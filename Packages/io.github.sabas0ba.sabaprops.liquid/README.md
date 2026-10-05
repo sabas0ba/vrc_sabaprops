@@ -11,21 +11,24 @@ Projector で描画します。
 
 現在は開発中です。アバターの全身に付着を描く Body Canvas と、浸漬（プール・泥沼）、
 シャワー・水道、水鉄砲、自動散布の Source、液体を受けるマネキン、それらを並べたサンプルを含みます。
-ワールド表面への付着はまだ含みません。
+ワールドの壁や床にも、範囲（Surface Canvas）を置けば同じ付着を描けます。向けた先に描くペン、スタンプ、
+消しゴムも含みます。
 方針と制約は [設計](Documentation~/design.md) に、サンプルの内容と見どころは [サンプルの導入とレビュー](Documentation~/demo.md) にまとめています。
 
 ## サンプル
 
-Package Manager の Samples から **Liquid Demo World** を取り込むと、次の 2 つのワールドが開けます。
-どちらも VRChat Worlds SDK の `VRCSceneDescriptor` とスポーン地点を含み、そのままアップロードできます。
+Package Manager の Samples から **Liquid Demo World** を取り込むと、次の 4 つのワールドが開けます。
+どれも VRChat Worlds SDK の `VRCSceneDescriptor` とスポーン地点を含み、そのままアップロードできます。
 中身はこのパッケージの生成器が作ったもので、`Tools > SabaProps > Liquid` の
-`Create Sample Scene` と `Create Comparison Scene` で同じものを作り直せます。
+`Create Sample Scene`、`Create Comparison Scene`、`Create Interactive Scene`、`Create Painting Scene` で
+同じものを作り直せます。
 
 | シーン | 内容 |
 |---|---|
 | `Assets/SabaProps/Liquid/Samples/LiquidDemo.unity` | 自分で試す場所、服を着た人型、Source の比較、雨と雪の区画 |
 | `Assets/SabaProps/Liquid/Samples/LiquidComparison.unity` | 液体、受け手の素材、体の色、液体の色の比較 |
 | `Assets/SabaProps/Liquid/Samples/LiquidInteractive.unity` | 操作できるノズル、粘性ごとのパーティクル、サウナと浴室と湿った空気、暗い部屋の蛍光と蓄光、Prefab |
+| `Assets/SabaProps/Liquid/Samples/LiquidPainting.unity` | 壁と床への付着、ペンとスタンプと消しゴム、蛍光と蓄光のインク、素材の違う壁、雨の敷石 |
 
 マネキンはそれぞれ Canvas の RenderTexture を持つため、比較の列は別のシーンに分けています。
 
@@ -64,9 +67,25 @@ Package Manager の Samples から **Liquid Demo World** を取り込むと、�
 | 奥（浴室） | シャワーが出ている間は湿度が上がり、湯気が立ち、鏡が曇ります。止まると晴れていきます |
 | 奥の中央（湿った空気） | 乾いた空気と湿度 70 % の空気で、1 分ごとにかける水の乾き方を比べます |
 | 奥の右（暗い部屋） | 普通の塗料、蛍光塗料（桃、緑）、蓄光塗料。点灯、紫外線のみ、消灯を繰り返し、入口の Lamp / UV / Auto で切り替えられます |
-| 手前（Prefab） | コップ、バケツ、水鉄砲、水道、シャワー、ノズル台、雨の中の傘 |
+| 手前（Prefab） | コップ、バケツ、水鉄砲、ペン、スタンプ、消しゴム、水道、シャワー、ノズル台、雨の中の傘。ペン類はマネキンと他の人に描けます |
 | スポーンのすぐ左前（ノズルの棚） | すべての液体の持ち運べるノズル。上のタンクが中身の色を示し、蛍光塗料は光り、蓄光塗料はほのかに光ります |
 | 左手前（かけ合い） | 持ち運べるノズル 3 種（押す間の水、1 回の赤い塗料、切り替えの青い塗料）。置き場の操作盤で設定を変え、互いにかけ合い、鏡で確かめます |
+
+### LiquidPainting
+
+`Tools > SabaProps > Liquid > Create Painting Scene` で作り直せます。どの区画も Surface Canvas の箱の中にあり、
+液体は体ではなく壁、床、家具に付きます。
+
+| 場所 | 内容 |
+|---|---|
+| スポーンの前（道具の台） | ペン 5 色、スタンプ 5 種（星、ハート、四角、輪、円）、消しゴム 2 種。持って壁や床に向け、使用ボタンで描きます |
+| 正面（スタジオ） | 三方の壁、床、台、マネキン。描いた線と形は、後から入った人にも直近 1000 件まで伝わります |
+| 右（噴射器の棚） | 水、塗料 3 色、蛍光塗料、スライムの持ち運べるノズル。かけた液は壁を流れ落ちます |
+| 右奥（暗いスタジオ） | 蛍光と蓄光のインクのペン。点灯、紫外線のみ、消灯を繰り返し、入口の Lamp / UV / Auto で切り替えられます |
+| 左奥（壁の比較） | タイルの壁とコンクリートの壁に、同じ水、塗料、スライムを吹き付けます。タイルでは水滴になって流れ、コンクリートでは染みて暗くなります |
+| 左手前（雨の敷石） | 35 秒降って 40 秒止む雨。雨粒が敷石と腰掛けに落ち、屋根の下は乾いたままです |
+
+スポーン横の操作盤の Walls で、壁と床の付着と描いたものを全員の画面で消せます。
 
 ### LiquidComparison
 
@@ -93,6 +112,8 @@ VCC でこのパッケージを追加すると、依存する VRChat Worlds SDK 
 | `LiquidImmersionVolume` | 浸漬の Source。トリガーに入ったプレイヤーを液面の高さまで濡らす・汚す。波の上下に対応 |
 | `LiquidShower` | 流下の Source。固定シャワー、水道、手に持つシャワーヘッド。着水点より下を濡らして洗う |
 | `LiquidWaterGun` | 遠距離の流下の Source。所有者が命中を判定し、全員へ送る |
+| `LiquidPaintTool` | ペン、スタンプ、消しゴム。向けた先のワールドの面、マネキン、プレイヤーに描く。1 区間ごとにイベントで全員へ送る |
+| `LiquidPaintLog` | ワールドの面への描画の履歴。後から入った人へ直近の描画を渡す |
 | `LiquidSprayer` | 自動散布の Source。サーバー時刻に合わせて液体を放ち続ける。同期なし |
 | `LiquidWeather` | 降下の Source。箱の範囲に雨または雪を周期的に降らせる。屋根の下には降らない。雪は上を向いた面に積もり、止むと溶けて濡れる。地面のマテリアルの濡れと積雪も更新する。同期なし |
 | `LiquidTurntable` | サーバー時刻に合わせて回る台 |
