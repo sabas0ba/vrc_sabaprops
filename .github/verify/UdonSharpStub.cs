@@ -107,6 +107,7 @@ namespace UdonSharp
         public virtual void OnPreSerialization() { }
 
         public virtual void OnPlayerJoined(VRC.SDKBase.VRCPlayerApi player) { }
+        public virtual void OnPlayerRespawn(VRC.SDKBase.VRCPlayerApi player) { }
 
         public virtual void OnPlayerLeft(VRC.SDKBase.VRCPlayerApi player) { }
 
