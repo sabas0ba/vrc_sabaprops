@@ -22,6 +22,37 @@ namespace SabaProps.Capture.WorldTests
         {
             CaptureSampleScene.Create();
             EditorSceneManager.OpenScene(CaptureSampleScene.ScenePath);
+            AssertWiring(CaptureSampleScene.SampleFolder);
+        }
+
+        /// <summary>
+        /// The copy in Samples~, imported the way the Package Manager does it. It ships
+        /// without the per-project serialized program references, so this also checks that
+        /// opening the scene is enough for the SDK to restore them.
+        /// </summary>
+        [Test]
+        public void ShippedSample_ImportsAndIsWiredLikeAGeneratedOne()
+        {
+            string scenePath = CaptureSampleBundle.Import();
+            EditorSceneManager.OpenScene(scenePath);
+            AssertWiring(System.IO.Path.GetDirectoryName(scenePath).Replace('\\', '/'));
+
+            foreach (string dependency in AssetDatabase.GetDependencies(scenePath, true))
+            {
+                Assert.That(dependency, Does.Not.Contain("Samples~"),
+                    "the imported scene still points into the package's hidden sample folder");
+            }
+
+            foreach (UdonBehaviour udon in Object.FindObjectsOfType<UdonBehaviour>())
+            {
+                Object serialized = new SerializedObject(udon).FindProperty("serializedProgramAsset").objectReferenceValue;
+                Assert.That(serialized, Is.Not.Null,
+                    $"{udon.name}: the SDK did not restore the serialized program when the scene was opened");
+            }
+        }
+
+        private static void AssertWiring(string sampleFolder)
+        {
 
             CaptureRecorder textureRecorder = Recorder(CaptureSampleScene.TextureRecorderName);
             CaptureRecorder cameraRecorder = Recorder(CaptureSampleScene.CameraRecorderName);
@@ -32,7 +63,8 @@ namespace SabaProps.Capture.WorldTests
 
             Assert.That(live.enabled, Is.True);
             Assert.That(live.targetTexture, Is.Not.Null);
-            Assert.That(AssetDatabase.GetAssetPath(live.targetTexture), Is.EqualTo(CaptureSampleScene.LiveTexturePath));
+            Assert.That(AssetDatabase.GetAssetPath(live.targetTexture),
+                Is.EqualTo(sampleFolder + "/" + System.IO.Path.GetFileName(CaptureSampleScene.LiveTexturePath)));
             Assert.That(timelapse.enabled, Is.False, "the timelapse camera must only render when the recorder asks");
             Assert.That(timelapse.targetTexture, Is.Null);
 

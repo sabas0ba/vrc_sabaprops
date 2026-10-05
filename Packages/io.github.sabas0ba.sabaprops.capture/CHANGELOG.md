@@ -6,7 +6,7 @@
 
 ### Added
 
-- サンプルシーンを生成するメニュー `Tools > SabaProps > Capture > Create Sample Scene`。RenderTexture 入力で間引く Recorder と、Camera 入力で上書きする Recorder を、それぞれの再生パネルとともに配置します。
+- サンプル `Capture Demo World`。RenderTexture 入力で間引く Recorder と、Camera 入力で上書きする Recorder を、それぞれの再生パネルとともに配置したシーンです。Package Manager の `Samples` から取り込めます。同じシーンを生成するメニュー `Tools > SabaProps > Capture > Create Sample Scene` も追加しました。
 - VRChat クライアント上で確認する項目をまとめた [Build & Test での確認手順](Documentation~/build-and-test.md)。
 
 ### Fixed

@@ -15,6 +15,13 @@
   "vpmDependencies": {
     "com.vrchat.worlds": "3.10.x"
   },
+  "samples": [
+    {
+      "displayName": "Capture Demo World",
+      "description": "RenderTexture 入力で間引く Recorder と、Camera 入力で上書きする Recorder を、それぞれの再生パネルとともに配置した VRChat World 用のサンプルシーン。",
+      "path": "Samples~/CaptureDemo"
+    }
+  ],
   "keywords": [
     "vrchat",
     "world",

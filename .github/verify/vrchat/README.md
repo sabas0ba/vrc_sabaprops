@@ -118,7 +118,7 @@ docs.microsoft.com の URL 到達性を検証するもの）ため、終了コ�
 | `SabaProps.Foliage.CITests` | EditMode | シーンが正しく作られているか。SDK の有無で期待値が切り替わります |
 | `SabaProps.Foliage.WorldTests` | PlayMode | ClientSim でワールドとして実行し、プレイヤーが Spawn するか |
 | `SabaProps.StageCam.WorldTests` | EditMode | リグと操作パネルの Udon コンパイル、保存後の UI イベント接続、カメラ設定の独立性、サンプル構成を検証。`TestResults/stagecam-panel.png` にレイアウト確認画像を出力 |
-| `SabaProps.Capture.WorldTests` | EditMode | Recorder と Player の Udon コンパイル、公開イベントとフィールド、再生パネルの UI イベント接続を検証。Recorder を実物の RenderTexture で動かし、Blit による複製と満杯時の 3 種類の動作を確認。サンプルシーンを保存後に開き直して配線を検証し、ClientSim で実行して Udon VM 上の撮影・間引き・停止・解放を確認。`TestResults/capture-sample.png` に配置確認画像を出力 |
+| `SabaProps.Capture.WorldTests` | EditMode | Recorder と Player の Udon コンパイル、公開イベントとフィールド、再生パネルの UI イベント接続を検証。Recorder を実物の RenderTexture で動かし、Blit による複製と満杯時の 3 種類の動作を確認。生成したサンプルシーンと、`Samples~` に同梱したシーンの両方について、配線を検証し、ClientSim で実行して Udon VM 上の撮影・間引き・停止・解放を確認。`TestResults/capture-sample.png` と `capture-sample-shipped.png` に配置確認画像を出力 |
 | `SabaProps.SoftProps.WorldTests` | EditMode + Playへの遷移 | Prefab生成、同梱デモのimport・参照・比較台、ClientSimでのCollider接触・復元・自動運動・立位荷重 |
 | `SabaProps.Tablet.WorldTests` | EditMode | 全コンポーネントの Udon コンパイル、サンプルシーンの全ボタンがエクスポート済みのイベントを呼ぶこと、ミラーの排他、テレポート地点の番号、Build の再実行で生成物が重複しないことを検証 |
 | `SabaProps.PutItems.Tests` | EditMode | 吸着対象と Pickup の設定、同梱デモの構成を検証 |
@@ -183,6 +183,28 @@ SDK の有無を見て期待値を切り替えるため、同じテストが両�
 ClientSim の起動時 `NullReferenceException` で落ちることがあります。2 回目以降は通ります。
 初回インポートで API Updater がアセンブリを差し替える間に起動順が崩れるためで、
 このリポジトリのコードとは関係ありません。
+
+## Capture の同梱サンプルを作り直すには
+
+`io.github.sabas0ba.sabaprops.capture` の `Samples~/CaptureDemo` は、生成メニュー
+(`CaptureSampleScene.Create`) の出力を書き出したものです。手で編集せず、生成器を変更した後に
+次の手順で作り直します。
+
+```sh
+./.github/verify/vrchat/assemble.sh build/WorldProjectCI
+"<Unity>" -batchmode -quit -projectPath build/WorldProjectCI \
+  -executeMethod SabaProps.Capture.WorldTests.CaptureSampleBundle.Export
+cp -r build/WorldProjectCI/Packages/io.github.sabas0ba.sabaprops.capture/Samples~ \
+      Packages/io.github.sabas0ba.sabaprops.capture/
+```
+
+書き出しは、検証プロジェクト内のパッケージの複製へ行います。最後の `cp` でリポジトリへ戻します。
+既に同梱しているアセットの GUID は引き継ぐため、差分は生成器が変えた部分だけになります。
+
+シーン内の `serializedProgramAsset` への参照は、書き出し時に外します。参照先はプロジェクトごとに
+生成されるアセットで、その GUID は利用者のプロジェクトには存在しません。SDK はシーンを開いた時点で
+プログラムソースから参照を張り直します。`ShippedSample_ImportsAndIsWiredLikeAGeneratedOne` が
+これを確かめます。
 
 ## SDK のバージョンを上げるには
 

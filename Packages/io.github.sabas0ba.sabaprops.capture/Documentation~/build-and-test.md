@@ -12,7 +12,7 @@
 ## 準備
 
 1. VRChat Worlds SDK 3.10.x を導入したワールドプロジェクトに、このパッケージを追加します
-2. `Tools > SabaProps > Capture > Create Sample Scene` でサンプルシーンを生成します
+2. Package Manager の `Samples > Capture Demo World > Import` でサンプルを取り込み、`CaptureDemo.unity` を開きます
 3. VRChat SDK の Build & Test を実行します
 
 サンプルシーンは、2 通りの入力をそれぞれ別の Recorder で撮影します。どちらも 1 秒間隔、384 x 216、最大 8 枚で、起動時に撮影を始めます。

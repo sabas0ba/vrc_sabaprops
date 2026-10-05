@@ -24,7 +24,9 @@ VCC でこのパッケージを追加すると、依存する VRChat Worlds SDK 
 
 ### サンプルシーン
 
-`Tools > SabaProps > Capture > Create Sample Scene` で、被写体、2 台のカメラ、2 つの Recorder とその再生パネル、VRChat の Spawn を生成します。保存先は `Assets/SabaProps/Capture/Samples/CaptureDemo.unity` です。RenderTexture、マテリアル、アニメーションも同じフォルダに生成します。
+Package Manager でこのパッケージを選び、`Samples > Capture Demo World > Import` を実行します。取り込み先は `Assets/Samples/SabaProps Capture/<バージョン>/Capture Demo World/` で、その中の `CaptureDemo.unity` を開きます。シーン、RenderTexture、マテリアル、アニメーションを同梱しています。
+
+シーンには、被写体、2 台のカメラ、2 つの Recorder とその再生パネル、VRChat の Spawn を配置しています。
 
 | Recorder | 入力 | 満杯時の動作 |
 | --- | --- | --- |
@@ -35,7 +37,7 @@ VCC でこのパッケージを追加すると、依存する VRChat Worlds SDK 
 
 撮影と再生は Unity Editor の Play (ClientSim) でも動作します。VRChat クライアント上での確認は [Build & Test での確認手順](Documentation~/build-and-test.md) を参照してください。
 
-生成し直すと同名のシーンを上書きします。編集を残す場合は別名で保存してください。
+同じ内容のシーンは `Tools > SabaProps > Capture > Create Sample Scene` でも生成できます。保存先は `Assets/SabaProps/Capture/Samples/CaptureDemo.unity` で、同梱のシーンはこのメニューの出力です。生成し直すと同名のシーンを上書きします。編集を残す場合は別名で保存してください。
 
 ### 配置
 

@@ -5,6 +5,7 @@ using SabaProps.Capture.Editors;
 using UdonSharp.Compiler;
 using UdonSharpEditor;
 using UnityEditor;
+using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.TestTools;
 using VRC.SDK3.ClientSim;
@@ -28,7 +29,7 @@ namespace SabaProps.Capture.WorldTests
     /// Quest or about the client's own Blit path; see Documentation~/build-and-test.md.
     /// </para>
     /// <para>
-    /// One test, not several: entering and leaving play mode is per-fixture state.
+    /// Run twice: once on a scene generated on the spot, once on the copy shipped in Samples~.
     /// </para>
     /// </summary>
     public class CaptureSampleWorldTests
@@ -63,10 +64,29 @@ namespace SabaProps.Capture.WorldTests
         [UnityTest]
         public IEnumerator Sample_RecordsThinsStopsAndReleasesThroughUdon()
         {
+            return RunWorld(false);
+        }
+
+        /// <summary>The copy a user gets from Samples~, rather than one generated just now.</summary>
+        [UnityTest]
+        public IEnumerator ShippedSample_RecordsThinsStopsAndReleasesThroughUdon()
+        {
+            return RunWorld(true);
+        }
+
+        private IEnumerator RunWorld(bool shipped)
+        {
             _restoreOptionsEnabled = EditorSettings.enterPlayModeOptionsEnabled;
             _restoreOptions = EditorSettings.enterPlayModeOptions;
 
-            CaptureSampleScene.Create();
+            if (shipped)
+            {
+                EditorSceneManager.OpenScene(CaptureSampleBundle.Import());
+            }
+            else
+            {
+                CaptureSampleScene.Create();
+            }
 
             EditorSettings.enterPlayModeOptionsEnabled = true;
             EditorSettings.enterPlayModeOptions = EnterPlayModeOptions.DisableDomainReload;
@@ -151,7 +171,7 @@ namespace SabaProps.Capture.WorldTests
             yield return null;
             Assert.That(texturePanel.display.texture, Is.Not.Null, "the panel shows no frame");
             Assert.That(texturePanel.statusLabel.text, Does.StartWith("REC"));
-            SaveOverview("capture-sample.png");
+            SaveOverview(shipped ? "capture-sample-shipped.png" : "capture-sample.png");
             // A capture that lands between the operation and the player's next Update must
             // not pull the playhead back to the frame that was on screen before.
             texturePlayer.SendCustomEvent("_First");
