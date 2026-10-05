@@ -6,10 +6,9 @@
 
 ## [Unreleased]
 
-### Changed
+## [0.1.0] - 2026-10-05
 
-- Apache-2.0 の宣言、公式ライセンスURL、同梱するライセンス全文と README の表記を統一。
-
+最初の実行可能な版です。以下の Changed と Fixed は、開発中の版からの変更です。
 
 ### Added
 
@@ -88,8 +87,14 @@
 - `LiquidDemoMovement`: サンプルのワールドで移動速度を上げ（歩行 4、走行 8、横移動 4 m/s）、ジャンプできるようにする
 - サンプルに `LiquidPainting.unity` を追加（`Tools > SabaProps > Liquid > Create Painting Scene`）
 
+- 利用方法の文書（`Documentation~/authoring.md`）とサンプルの手引き（`Documentation~/demo.md`）
+
 ### Changed
 
+- Apache-2.0 の宣言、公式ライセンスURL、同梱するライセンス全文と README の表記を統一
+- README を入口として再構成し、Prefab とメニューの使い方を利用方法の文書へ移した
+- Surface Canvas の寸法変更後、`Register Paint Tools and Surfaces` で Projector の投影範囲を箱に合わせ直すようにした
+- 持ち運べる噴射器の付着を、見た目の噴射に合わせて広く多くした（断面 0.2 m、2.5 L/s）
 - 顔料の付着を、中心が不透明で縁だけ薄くなる形に変更。黒や濃い色の塗料が半透明に見えていた
 - 水鉄砲の同期変数をやめ、放水の開始と停止をイベントで送るように変更。VRCObjectSync と Manual sync の干渉を避けるため
 - 付着した面の奥行きの許容値を 0.08 m から 0.12 m に変更

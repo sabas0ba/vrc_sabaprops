@@ -1,158 +1,104 @@
 # SabaProps Liquid
 
 ワールド側から、アバターとワールドの表面へ液体の付着を描画する Udon パッケージです。
-水、塗料、泥、粘性の高い液体などが表面に付着し、垂れ、乾き、洗い流される様子を
-Projector で描画します。
+水、塗料、泥、粘性の高い液体などが表面に付着し、垂れ、乾き、洗い流される様子を Projector で描画します。
 
-- アバター（ローカル／リモート／鏡像）とワールド表面の両方に付着を描画
-- 液体の見た目はマテリアルとプロファイルで定義
-- プール、海、雨、シャワー、水鉄砲、筆、ペンなどの発生源（Source）から付着と洗浄を行う
-- 対象は PC のみ
+- アバター（ローカル、リモート、鏡像）と、ワールドの壁や床の両方に描画します。アバター側の対応は不要です
+- 液体の見た目は液体の定義（色、粘性、乾燥時間など）で、付き方は受け手の素材（布、革、肌、タイルなど）で変わります
+- プール、シャワー、水鉄砲、噴射器、雨と雪、湿度などの発生源（Source）と、向けた先に描くペン、スタンプ、消しゴムを含みます
+- 同期するのは描画に必要な入力だけです。演出のためのパッケージで、勝敗や得点などの仕組みは含みません
+- 対象は PC のみです
 
-現在は開発中です。アバターの全身に付着を描く Body Canvas と、浸漬（プール・泥沼）、
-シャワー・水道、水鉄砲、自動散布の Source、液体を受けるマネキン、それらを並べたサンプルを含みます。
-ワールドの壁や床にも、範囲（Surface Canvas）を置けば同じ付着を描けます。向けた先に描くペン、スタンプ、
-消しゴムも含みます。
-方針と制約は [設計](Documentation~/design.md) に、サンプルの内容と見どころは [サンプルの導入とレビュー](Documentation~/demo.md) にまとめています。
+![壁に描いた線とスタンプ](Documentation~/images/painting-studio.png)
 
-## サンプル
+## ドキュメント
 
-Package Manager の Samples から **Liquid Demo World** を取り込むと、次の 4 つのワールドが開けます。
-どれも VRChat Worlds SDK の `VRCSceneDescriptor` とスポーン地点を含み、そのままアップロードできます。
-中身はこのパッケージの生成器が作ったもので、`Tools > SabaProps > Liquid` の
-`Create Sample Scene`、`Create Comparison Scene`、`Create Interactive Scene`、`Create Painting Scene` で
-同じものを作り直せます。
-
-| シーン | 内容 |
+| 文書 | 内容 |
 |---|---|
-| `Assets/SabaProps/Liquid/Samples/LiquidDemo.unity` | 自分で試す場所、服を着た人型、Source の比較、雨と雪の区画 |
-| `Assets/SabaProps/Liquid/Samples/LiquidComparison.unity` | 液体、受け手の素材、体の色、液体の色の比較 |
-| `Assets/SabaProps/Liquid/Samples/LiquidInteractive.unity` | 操作できるノズル、粘性ごとのパーティクル、サウナと浴室と湿った空気、暗い部屋の蛍光と蓄光、Prefab |
-| `Assets/SabaProps/Liquid/Samples/LiquidPainting.unity` | 壁と床への付着、ペンとスタンプと消しゴム、蛍光と蓄光のインク、素材の違う壁、雨の敷石 |
-
-マネキンはそれぞれ Canvas の RenderTexture を持つため、比較の列は別のシーンに分けています。
-
-### LiquidDemo
-
-中央は自分で試す場所です。
-
-| 場所 | 内容 |
-|---|---|
-| 左 | プール。スロープから入ると、浸かった高さまで濡れ、出ると上から乾いていきます |
-| 右 | 泥沼。泥の表面より床が 0.45 m 低く、足が沈みます。沈んだ高さまで泥が付き、水で洗うまで残ります |
-| 奥 | シャワー。Interact で放水を切り替えます。当たった所から下が濡れ、泥が洗い流されます |
-| 右手前 | 水道。手を差し出すと手が濡れます。Interact で開閉します |
-| 左手前 | 水鉄砲 2 丁。持って使用ボタンを押している間放水し、命中は全員に同期されます |
-| 正面奥 | 鏡。自分のアバターへの付着を確認できます |
-
-左右の列と鏡の奥は、回転台の上のマネキンに液体をかけ続けて比べる場所です。サーバー時刻に
-合わせて自動で動くため、操作しなくても変化が見え、全員に同じ様子が見えます。
-
-| 場所 | 内容 |
-|---|---|
-| 左（服を着た人型） | Tシャツとジーンズ、雨合羽とゴム長靴、ニットと短パンの 3 通りの服装に、水と泥、水と塗料をかけます。上着、ズボン、靴、髪、肌で付き方が変わります |
-| 右（Source の比較） | 周期的に放水するシャワー、液面が上下する水槽と泥の槽、水流、上からの滴り、明るい体と暗い体の違い |
-| 鏡の奥の左（雨） | 40 秒降って 50 秒止む雨。体と地面が濡れ、地面には水たまりができ、止むと乾きます。屋根の下の人型は濡れません |
-| 鏡の奥の右（雪） | 60 秒降って 60 秒止む雪。上を向いた面（頭、肩、足先、屋根、地面）に積もり、止むと溶けて濡れ、乾きます |
-
-### LiquidInteractive
-
-`Tools > SabaProps > Liquid > Create Interactive Scene` で作り直せます。
-
-| 場所 | 内容 |
-|---|---|
-| 左手前（ノズル台） | 1 回（Fire）、定期、連続（Start / Stop）の 3 つのノズル。操作盤の +/- で量、距離、速さ、断面を変えられます |
-| 右手前（粘性の比較） | 水、ジュース、塗料、泥、スライム、シロップ。飛沫、塊、糸を引く様子を比べます |
-| 奥の左（サウナ） | 湿度 97 %。湯気と霧が立ちこめ、壁に露が付き、体に汗のような水滴が出て垂れます。範囲内の体は衣服を着ていないものとして扱います |
-| 奥（浴室） | シャワーが出ている間は湿度が上がり、湯気が立ち、鏡が曇ります。止まると晴れていきます |
-| 奥の中央（湿った空気） | 乾いた空気と湿度 70 % の空気で、1 分ごとにかける水の乾き方を比べます |
-| 奥の右（暗い部屋） | 普通の塗料、蛍光塗料（桃、緑）、蓄光塗料。点灯、紫外線のみ、消灯を繰り返し、入口の Lamp / UV / Auto で切り替えられます |
-| 手前（Prefab） | コップ、バケツ、水鉄砲、ペン、スタンプ、消しゴム、水道、シャワー、ノズル台、雨の中の傘。ペン類はマネキンと他の人に描けます |
-| スポーンのすぐ左前（ノズルの棚） | すべての液体の持ち運べるノズル。上のタンクが中身の色を示し、蛍光塗料は光り、蓄光塗料はほのかに光ります |
-| 左手前（かけ合い） | 持ち運べるノズル 3 種（押す間の水、1 回の赤い塗料、切り替えの青い塗料）。置き場の操作盤で設定を変え、互いにかけ合い、鏡で確かめます |
-
-### LiquidPainting
-
-`Tools > SabaProps > Liquid > Create Painting Scene` で作り直せます。どの区画も Surface Canvas の箱の中にあり、
-液体は体ではなく壁、床、家具に付きます。
-
-| 場所 | 内容 |
-|---|---|
-| スポーンの前（道具の台） | ペン 5 色、スタンプ 5 種（星、ハート、四角、輪、円）、消しゴム 2 種。持って壁や床に向け、使用ボタンで描きます |
-| 正面（スタジオ） | 三方の壁、床、台、マネキン。描いた線と形は、後から入った人にも直近 1000 件まで伝わります |
-| 右（噴射器の棚） | 水、塗料 3 色、蛍光塗料、スライムの持ち運べるノズル。かけた液は壁を流れ落ちます |
-| 右奥（暗いスタジオ） | 蛍光と蓄光のインクのペン。点灯、紫外線のみ、消灯を繰り返し、入口の Lamp / UV / Auto で切り替えられます |
-| 左奥（壁の比較） | タイルの壁とコンクリートの壁に、同じ水、塗料、スライムを吹き付けます。タイルでは水滴になって流れ、コンクリートでは染みて暗くなります |
-| 左手前（雨の敷石） | 35 秒降って 40 秒止む雨。雨粒が敷石と腰掛けに落ち、屋根の下は乾いたままです |
-
-スポーン横の操作盤の Walls で、壁と床の付着と描いたものを全員の画面で消せます。
-
-### LiquidComparison
-
-| 列 | 内容 |
-|---|---|
-| 左（液体の比較） | 水、ジュース、塗料、泥、スライム、シロップを、同じ設定の Sprayer でかけます |
-| 奥の 1 列目（受け手の素材） | 柔らかい布、硬い布、革、髪、肌、樹脂と、髪・肌・衣服を部位で分けた体に、同じ水と塗料をかけます |
-| 2 列目（体の色） | 白、灰、黒、赤、青、肌色の体に、同じ水と泥をかけます |
-| 3 列目（液体の色） | 黒から白まで 5 段階の塗料と、赤・青・黄・白を同時にかけた明るい体と黒い体 |
-
----
+| [利用方法](Documentation~/authoring.md) | 自分のワールドへの組み込み、Prefab、壁と床、描画ツール、環境、同期、メモリの目安 |
+| [サンプルの導入とレビュー](Documentation~/demo.md) | 同梱の 4 つのワールドの内容と確認項目 |
+| [設計](Documentation~/design.md) | 方式、制約とその理由、未確定事項 |
+| [変更履歴](CHANGELOG.md) | バージョンごとの変更点 |
 
 ## 導入
 
-VCC でこのパッケージを追加すると、依存する VRChat Worlds SDK も一緒に解決されます。
+VCC でこのパッケージを追加すると、依存する VRChat Worlds SDK（3.10.x）も一緒に解決されます。
+
+最小の構成は次のとおりです。詳細は [利用方法](Documentation~/authoring.md) を参照してください。
+
+1. Hierarchy の右クリックから `SabaProps > Liquid > Prefabs` の Source（Shower、Spray Gun など）を置きます。
+   Canvas Pool が無ければ同時に作成されます
+2. ワールドの主光源に `Liquid Lighting` を付けます
+3. 壁や床にも付着させる場合は、`SabaProps > Liquid > Surface Canvas (Walls and Floor)` を範囲に置きます
+
+## サンプル
+
+Package Manager の Samples から **Liquid Demo World** を取り込むと、`Assets/SabaProps/Liquid/Samples` に
+次の 4 つのワールドが入ります。どれも `VRCSceneDescriptor` とスポーン地点を含み、そのままアップロードできます。
+`Tools > SabaProps > Liquid` の各メニューで、同じものを作り直せます。
+
+| シーン | 内容 |
+|---|---|
+| `LiquidDemo.unity` | 自分で試す場所（プール、泥沼、シャワー、水道、水鉄砲、鏡）、服を着た人型、Source の比較、雨と雪 |
+| `LiquidComparison.unity` | 液体、受け手の素材、体の色、液体の色の比較 |
+| `LiquidInteractive.unity` | 操作できるノズル、粘性ごとのパーティクル、サウナと浴室、暗い部屋の蛍光と蓄光、Prefab、かけ合い |
+| `LiquidPainting.unity` | 壁と床への付着、ペンとスタンプと消しゴム、蛍光と蓄光のインク、素材の違う壁、雨の敷石 |
+
+各区画の内容と画像は [サンプルの導入とレビュー](Documentation~/demo.md) にあります。
 
 ## 構成
 
+### Canvas
+
 | コンポーネント | 役割 |
 |---|---|
-| `LiquidBodyCanvas` | 1 人のプレイヤーの全身に付着を描く。体の動きに追従し、付着を RenderTexture に蓄える |
-| `LiquidCanvasPool` | 付着の入力を受けたプレイヤーに Body Canvas を割り当てる |
-| `LiquidProfile` | 液体の定義。顔料の色と量、液膜の量・平滑度・粘性・乾燥時間、洗浄の強さ |
-| `LiquidImmersionVolume` | 浸漬の Source。トリガーに入ったプレイヤーを液面の高さまで濡らす・汚す。波の上下に対応 |
-| `LiquidShower` | 流下の Source。固定シャワー、水道、手に持つシャワーヘッド。着水点より下を濡らして洗う |
-| `LiquidWaterGun` | 遠距離の流下の Source。所有者が命中を判定し、全員へ送る |
-| `LiquidPaintTool` | ペン、スタンプ、消しゴム。向けた先のワールドの面、マネキン、プレイヤーに描く。1 区間ごとにイベントで全員へ送る |
-| `LiquidPaintLog` | ワールドの面への描画の履歴。後から入った人へ直近の描画を渡す |
-| `LiquidSprayer` | 自動散布の Source。サーバー時刻に合わせて液体を放ち続ける。同期なし |
-| `LiquidWeather` | 降下の Source。箱の範囲に雨または雪を周期的に降らせる。屋根の下には降らない。雪は上を向いた面に積もり、止むと溶けて濡れる。地面のマテリアルの濡れと積雪も更新する。同期なし |
-| `LiquidTurntable` | サーバー時刻に合わせて回る台 |
+| `LiquidBodyCanvas` | 付着を RenderTexture に蓄え、Projector で描く。プレイヤー、マネキン、ワールドの面（Surface Canvas）で共通 |
+| `LiquidCanvasPool` | 付着を受けたプレイヤーへ Canvas を割り当てる。Source の光線が当たる相手（プレイヤー、マネキン、ワールドの面）を探す |
+| `LiquidProfile` | 液体の定義。顔料の色と量、液膜の量、艶、粘性、乾燥時間、洗浄の強さ、蛍光、蓄光 |
+| `LiquidSurfaceProfile` | 受け手の素材の定義。吸水性、撥水性、艶、流れにくさ、にじみ、毛束、水滴の大きさ |
 | `LiquidLighting` | ワールドの主光源を付着のシェーダへ渡す。ワールドに 1 つ置く |
-| `LiquidNozzle` | 液体を放つ汎用の Source。1 回、定期、連続、押す間の放ち方と、量、距離、速さ、断面の設定を持ち、操作盤から変えられる。Pickup に付けて持ち運べ、放出の状態を同期する |
-| `LiquidHumidity` | 湿度の Source。乾きを遅らせ、閾値を超えると体に結露と垂れる水滴を生じさせる。シャワーとの連動、湯気、霧、面の曇り。裸が自然な場所では、範囲内の体の衣服の部位を肌として扱える |
-| `LiquidLightZone` | 暗い部屋の照明と紫外線（ブラックライト）を付着に伝える。蛍光と蓄光の顔料が光る |
-| `LiquidUmbrella` | 雨と雪を遮る傘。傘の下の相手には天候の Source が降らせない |
-| `LiquidResetPanel` | 付着を消す操作盤の受け口。自分、マネキン、全員を全クライアントで消す |
-| `LiquidButton` | Interact や Pickup の使用ボタンで、別の behaviour のイベントを呼ぶボタン |
-| `LiquidSurfaceProfile` | 液体を受ける素材の定義。吸水性、撥水性、艶、流れにくさ、にじみ、毛束。部位（衣服、髪、肌）ごとに Canvas に設定する |
 
-Hierarchy の `SabaProps > Liquid` から配置できます。
+### Source
 
-| メニュー | 配置されるもの |
+| コンポーネント | 役割 |
 |---|---|
-| Canvas Pool | Canvas 12 個分のプール。Canvas ごとの Projector マテリアルは `Assets/SabaProps/Liquid/Materials` に生成されます |
-| Pool Volume (Water) / Mud Volume | 上面を液面とするトリガーの箱 |
-| Shower | 高さ 2.2 m の下向きのシャワー。Interact で放水を切り替えます |
-| Water Gun | Pickup の水鉄砲。使用ボタンを押している間放水します |
-| Rain Area / Snow Area | 10 m 四方、高さ 6 m の範囲に雨または雪を降らせる Source と、降る様子のパーティクル。地面を濡らすには `SabaProps/Liquid/Weather Surface` のマテリアルを `groundMaterials` に設定します |
-| Prefabs > Cup / Bucket / Faucet / Shower / Umbrella / Water Gun / Nozzle Stand | パッケージの `Prefabs` にある Prefab。シーンにプールが無ければ作成します |
+| `LiquidImmersionVolume` | プール、浴槽、泥沼。入った体を液面の高さまで濡らし、汚す |
+| `LiquidShower` | シャワーと水道。当たった所から下を濡らして洗う |
+| `LiquidWaterGun` | 水鉄砲。所有者が命中を判定し、全員へ送る |
+| `LiquidNozzle` | 汎用の放出口。1 回、定期、連続、押している間。量、距離、速さ、断面を操作盤から変えられる |
+| `LiquidSprayer` | サーバー時刻に合わせて放ち続ける自動散布。同期なし |
+| `LiquidWeather` | 範囲に雨または雪を降らせる。屋根と傘の下には降らない。雪は積もり、溶けて濡れる |
+| `LiquidHumidity` | 湿度。乾きを遅らせ、結露と垂れる水滴を生じさせる。湯気、霧、面の曇り |
+| `LiquidPaintTool` | ペン、スタンプ、消しゴム。向けた先のワールドの面、マネキン、プレイヤーに描く |
 
-Prefab はそれぞれ自分の液体の定義を子に持ち、プールは実行時に名前（`Liquid Canvas Pool`）で探します。
-液体を変えるには、Prefab の子の `Liquid` の値を変えます。
+### 環境と操作
 
-| Prefab | 使い方 |
+| コンポーネント | 役割 |
 |---|---|
-| Liquid Cup / Liquid Bucket | 持って使用ボタンで、中身を前へ投げかけます。コップは少量、バケツは 5 L を一度に |
-| Liquid Faucet | 流しと蛇口。Interact で開閉し、差し出した手を濡らします |
-| Liquid Shower | 高さ 2.2 m の固定シャワー。Interact で切り替えます |
-| Liquid Umbrella | 持つか立てておくと、傘の下には雨と雪が降りません |
-| Liquid Water Gun | 持って使用ボタンを押している間、放水します |
-| Liquid Nozzle Stand | 操作盤付きのノズル。量、距離、速さ、断面を変え、Start / Stop で出し続けます |
-| Liquid Spray Gun | 持ち運べる放水具。使用ボタンを押している間だけ放水し、放水の状態は全員に同期されます |
-| Liquid Reset Panel | 付着を消す操作盤。自分、マネキン、全員の 3 つのボタンがあり、消去は全員の画面に反映されます |
+| `LiquidLightZone` | 屋内や暗い部屋の照明と紫外線を付着に伝える。蛍光と蓄光の顔料が光る |
+| `LiquidUmbrella` | 雨と雪を遮る傘 |
+| `LiquidPaintLog` | 壁と床への描画の履歴。後から入った人へ直近の描画を渡す |
+| `LiquidResetPanel` | 付着を消す操作盤。自分、マネキン、全員、壁と床 |
+| `LiquidButton` | Interact や Pickup の使用ボタンで、別の behaviour のイベントを呼ぶ |
+| `LiquidTurntable` | サーバー時刻に合わせて回る台（サンプル用） |
+| `LiquidDemoMovement` | 移動速度を上げ、ジャンプできるようにする（サンプル用） |
 
-Source を配置すると、シーンにプールが無ければ作成し、水と泥のプロファイルを
-`Liquid Profiles` の下にまとめて作成します。
+### Prefab
+
+`Prefabs` に、そのまま置ける Source と道具があります。Hierarchy の `SabaProps > Liquid > Prefabs` から配置できます。
+
+Liquid Cup、Liquid Bucket、Liquid Faucet、Liquid Shower、Liquid Water Gun、Liquid Spray Gun、
+Liquid Nozzle Stand、Liquid Umbrella、Liquid Pen、Liquid Stamp、Liquid Eraser、Liquid Reset Panel
+
+使い方は [利用方法](Documentation~/authoring.md) の「Source を置く」を参照してください。
+
+## 制限
+
+- PC のみを対象としています
+- Canvas 1 つは約 240 × 解像度² バイトの RenderTexture を使います。同時に付着を表示できる人数は、プールの Canvas の数（既定 12）です
+- 付着の途中の状態は同期しません。後から入った人に伝わるのは、Source の状態と、壁と床への直近の描画だけです
+- 受け手の素材はアバターの実際のマテリアルではなく、体の部位の位置からの推定です
+- 複数人での動作は、ClientSim では確認できない部分があります。公開前に VRChat の Build & Test で確認してください
 
 ## ライセンス
 

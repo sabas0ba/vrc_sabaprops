@@ -33,7 +33,7 @@ https://sabas0ba.github.io/vrc_sabaprops/index.json
 | `io.github.sabas0ba.sabaprops.putitems` | SabaProps Put Items | Pickup を手放した位置の近くにある机・壁へ位置と姿勢を補正。Object Sync 接続と独自同期向けの計算 API を提供。 |
 | `io.github.sabas0ba.sabaprops.tablet` | SabaProps Tablet | キー・頭上からの取り出し・アイテムの Interact で呼び出すタブレット型 UI。物理ボタンでミラー・コライダー・エフェクトの切り替え、テレポート、任意の Udon イベント呼び出しを行う。 |
 | `io.github.sabas0ba.sabaprops.flock` | SabaProps Flock | 鳥 27 種・魚・水生生物 41 種の群れを、Shader が時刻から計算する固定配置を含む 13 種の群れの動きで配置。Silhouette / Low / High の 3 段階 LOD。 |
-| `io.github.sabas0ba.sabaprops.liquid` | SabaProps Liquid | アバターとワールドの表面へ液体の付着を Projector で描画する PC 向け Udon パッケージ。開発中。 |
+| `io.github.sabas0ba.sabaprops.liquid` | SabaProps Liquid | アバターとワールドの壁や床へ液体の付着を Projector で描画する PC 向け Udon パッケージ。発生源（プール、シャワー、噴射器、雨と雪など）とペン、スタンプ、消しゴムを含む。 |
 
 各パッケージの詳細は `Packages/<package-id>/README.md` を参照してください。
 
@@ -52,7 +52,7 @@ Flock は Hierarchy の `SabaProps > Flock` から群れを追加し、Inspector
 
 Put Items は `Tools > SabaProps > Put Items > Open Demo Scene` から、食卓と冷蔵庫を含む完成済み Scene を開けます。食器の机への吸着、メモやアクセサリーの冷蔵庫への貼り付け、おぼん・皿・料理の入れ子追従を確認できます。[デモの操作手順](Packages/io.github.sabas0ba.sabaprops.putitems/Documentation~/demo-review.md)と[配置・同期の設定](Packages/io.github.sabas0ba.sabaprops.putitems/Documentation~/authoring.md)を参照してください。
 
-Liquid は `Tools > SabaProps > Liquid > Create Sample Scene` で、プール・泥沼・シャワー・水道・水鉄砲・鏡を並べたワールドを生成します。鏡の前で、自分のアバターが濡れる・泥が付く・洗い流される様子を確認できます。[パッケージの説明](Packages/io.github.sabas0ba.sabaprops.liquid/README.md)を参照してください。
+Liquid は `Tools > SabaProps > Liquid` の `Create Sample Scene`、`Create Comparison Scene`、`Create Interactive Scene`、`Create Painting Scene` で、4 つのワールドを生成します。鏡の前で自分のアバターが濡れる・泥が付く・洗い流される様子、噴射器でのかけ合い、壁と床へのペンやスタンプでの描画を確認できます。[利用方法](Packages/io.github.sabas0ba.sabaprops.liquid/Documentation~/authoring.md)と[サンプルの内容](Packages/io.github.sabas0ba.sabaprops.liquid/Documentation~/demo.md)を参照してください。
 
 ---
 
