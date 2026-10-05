@@ -37,11 +37,17 @@ VRChat World向けの画面全体エフェクトです。雨、雪、高速移�
 
 配置、パラメータ、実行時の操作、制約は[配置と調整](Documentation~/authoring.md)を参照してください。
 
-## GrabPass版とLite版
+## Udon Demo と描画画像
 
 Udon から操作する World のデモは、Package Manager の Samples → **Udon Driver** を Import し、
 インポート先の `Demo/ScreenFxUdonDemo.unity` を開いてください。コピー用の操作リグと Trigger リグの Prefab、
 オンオフ・プリセット切替・パラメータ調整のパネルを同梱しています。手順と Udon の呼び出し例はサンプル内の `README.md` にあります。
+
+![Unity で描画した Udon Demo の操作パネルと Trigger 領域](Documentation~/images/udon-demo.png)
+
+[デモの導入・操作・コピー手順](Documentation~/demo.md)と、[全 24 プリセットの描画比較](Documentation~/rendering.md)を参照してください。画像は Unity の実描画です。撮影条件と検証範囲は各ページに記載しています。
+
+## GrabPass版とLite版
 
 | | GrabPass版 | Lite版 |
 | --- | --- | --- |

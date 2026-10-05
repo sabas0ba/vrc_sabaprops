@@ -75,6 +75,8 @@ VRChatでは、影を落とすリアルタイムのDirectional LightがWorldに�
 
 Package Managerの`Samples`から`Udon Driver`をimportすると、`ScreenFxDriver`が追加されます。VRChat Worlds SDKが必要です。
 
+操作パネル付き Scene とコピー用 Prefab も含まれます。画像、導入手順、他の UdonSharp から呼び出すコード例は[Udon Demo の導入と再利用](demo.md)を参照してください。
+
 | field | 内容 |
 | --- | --- |
 | `Target` | 操作するScreen FX VolumeのRenderer |
@@ -83,8 +85,14 @@ Package Managerの`Samples`から`Udon Driver`をimportすると、`ScreenFxDriv
 | `Fade Seconds` | Weightが0から1へ変化する秒数 |
 | `Activate On Trigger` | DriverのTrigger Colliderへ利用者が入っている間だけ適用する |
 | `Speed Linked` | 移動速度が`Speed Minimum`から`Speed Maximum`へ上がるにつれてWeightを上げる |
+| `Presets` / `Lite Presets` | 切替用 Material の配列。空の場合は Target の Material を使用 |
+| `Preset Names` / `Preset Index` | 表示名と選択するプリセットのインデックス |
+| `Use Lite` | Lite 側の Material 配列を使用 |
+| `Auto Off Seconds` | ON から自動停止までの秒数。0 は無制限、デモは 20 秒 |
 
-公開イベントは`_FadeIn`、`_FadeOut`、`_Toggle`です。SabaProps Tabletの`CustomEvent`項目や他のUdonから呼び出せます。Weightが0の間はRendererを無効化するため、GrabPass版でも待機中の負荷はありません。
+公開イベントは`_FadeIn`、`_FadeOut`、`_Toggle`、`_StopImmediately`、`_NextPreset`、`_PreviousPreset`、`_ResetPreset`、`_ToggleLite`です。SabaProps Tabletの`CustomEvent`項目や他のUdonから呼び出せます。Weightが0の間はRendererを無効化するため、GrabPass版でも待機中の画面コピーは発生しません。
+
+UdonSharp からは `SelectPreset(int)`、`SetWeight(float)`、`SetFloat(string, float)`、`GetFloat(string)`、`GetPresetName()` も使用できます。Driver ごとに実行時 Material を生成し、元の Material アセットと他の Driver を変更しません。
 
 Speedプリセットを移動速度へ連動させる場合は、`Follow Local Player`と`Speed Linked`を有効にし、`Target Weight`を1にします。
 
