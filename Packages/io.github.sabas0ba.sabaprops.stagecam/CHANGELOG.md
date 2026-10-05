@@ -4,16 +4,13 @@
 フォーマットは [Keep a Changelog](https://keepachangelog.com/ja/1.1.0/) に、
 バージョニングは [Semantic Versioning](https://semver.org/lang/ja/) に従います。
 
-## [0.1.1] - 2026-09-23
-
-- VRChat Worlds SDK の依存範囲を 3.10.x に変更し、3.10 系の既存 SDK と競合しないように修正。
-
 ## [Unreleased]
+
+## [0.2.0] - 2026-10-05
 
 ### Changed
 
 - Apache-2.0 の宣言、公式ライセンスURL、同梱するライセンス全文と README の表記を統一。
-
 
 ### Added
 
@@ -23,6 +20,12 @@
 - Pickup 可能なクレーンカメラに、本体・レンズ・ファインダーの表示モデル。
 - カメラリグを配置する GameObject メニュー。
 - デモ保存後の参照とスクリーンの向きを実物の Unity で検証する EditMode テスト。
+
+## [0.1.1] - 2026-09-23
+
+### Fixed
+
+- VRChat Worlds SDK の依存範囲を 3.10.x に変更し、3.10 系の既存 SDK と競合しないように修正。
 
 ## [0.1.0] - 2026-09-07
 
