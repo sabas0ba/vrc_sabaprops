@@ -115,7 +115,7 @@ namespace SabaProps.BodyContact.Editors
             Canvas canvas = canvasObject.AddComponent<Canvas>();
             canvas.renderMode = RenderMode.WorldSpace;
             var canvasRect = (RectTransform)canvasObject.transform;
-            canvasRect.sizeDelta = new Vector2(520f, 280f);
+            canvasRect.sizeDelta = new Vector2(700f, 350f);
 
             var labelObject = new GameObject("Status");
             labelObject.transform.SetParent(canvasObject.transform, false);

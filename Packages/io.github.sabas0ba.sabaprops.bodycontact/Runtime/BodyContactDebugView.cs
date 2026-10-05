@@ -367,7 +367,10 @@ namespace SabaProps.BodyContact
                 + "\ncyan limbs: deep VR contact / dim: occluded"
                 + (source.pull == null ? "" : "\npull permission " + (source.pull.allowBeingPulled ? "ON" : "OFF")
                     + (source.pull.pullingLocal ? " / being pulled" : (source.pull.active ? " / session active" : " / idle"))
-                    + "\nJump: release pull");
+                    + "\n" + source.pull.GrabInputStatus()
+                    + "\nJump: release pull")
+                + "\nlimb tolerance " + (source.limbTolerance * 1000f).ToString("F0") + " mm"
+                + " / step " + (source.appliedStep.magnitude * 1000f).ToString("F2") + " mm";
         }
     }
 }

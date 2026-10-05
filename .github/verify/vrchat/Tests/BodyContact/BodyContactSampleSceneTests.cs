@@ -87,13 +87,12 @@ namespace SabaProps.BodyContact.WorldTests
             foreach (int index in new[] { 3, 4 })
             {
                 Transform dummy = system.dummies[index];
-                Animation animation = dummy.GetComponent<Animation>();
-                Assert.That(animation, Is.Not.Null);
-                Assert.That(animation.playAutomatically, Is.True);
-                Assert.That(animation.cullingType, Is.EqualTo(AnimationCullingType.AlwaysAnimate));
-                AnimationClip clip = animation.clip;
+                Animator animator = dummy.GetComponent<Animator>();
+                Assert.That(animator, Is.Not.Null);
+                Assert.That(animator.cullingMode, Is.EqualTo(AnimatorCullingMode.AlwaysAnimate));
+                AnimationClip clip = animator.runtimeAnimatorController.animationClips[0];
                 Assert.That(clip, Is.Not.Null);
-                Assert.That(clip.legacy, Is.True);
+                Assert.That(clip.legacy, Is.False);
                 Assert.That(clip.wrapMode, Is.EqualTo(WrapMode.Loop));
                 clip.SampleAnimation(dummy.gameObject, 0f);
                 Vector3 start = dummy.position;

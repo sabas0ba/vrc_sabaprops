@@ -37,6 +37,14 @@ namespace SabaProps.BodyContact
         [HideInInspector] public Vector3 grabPoint;
         [HideInInspector] public Vector3 targetPoint;
         [HideInInspector] public bool pullingLocal;
+        [HideInInspector] public int grabInputCount;
+        [HideInInspector] public string grabStatus = "No Grab input yet";
+
+        public string GrabInputStatus()
+        {
+            return "Grab events " + grabInputCount + " L:" + (_leftHeld ? "ON" : "OFF")
+                + " R:" + (_rightHeld ? "ON" : "OFF") + " / " + grabStatus;
+        }
 
         private bool _leftHeld;
         private bool _rightHeld;
@@ -46,6 +54,7 @@ namespace SabaProps.BodyContact
 
         public override void InputGrab(bool value, UdonInputEventArgs args)
         {
+            grabInputCount++;
             int hand = args.handType == HandType.LEFT ? 0 : 1;
             bool wasHeld = hand == 0 ? _leftHeld : _rightHeld;
             if (hand == 0) _leftHeld = value; else _rightHeld = value;
@@ -56,7 +65,8 @@ namespace SabaProps.BodyContact
                 if (active && grabberId == local.playerId && grabbingHand == hand) _ReleasePull();
                 return;
             }
-            if (!wasHeld && local.IsUserInVR()) TryBegin(local, hand);
+            if (!local.IsUserInVR()) { grabStatus = "VR required to grab"; return; }
+            if (!wasHeld) TryBegin(local, hand);
         }
 
         public override void InputJump(bool value, UdonInputEventArgs args)
@@ -79,6 +89,7 @@ namespace SabaProps.BodyContact
             if (!Utilities.IsValid(local) || !active) return;
             if (local.playerId != grabberId && local.playerId != targetId) return;
             _rejectedStart = startedAt;
+            grabStatus = "Session released";
             // 対象側にも所有権移譲を許可し、解除を永続的な同期状態として伝えます。
             if (!Networking.IsOwner(gameObject)) Networking.SetOwner(local, gameObject);
             if (Networking.IsOwner(gameObject)) ClearSession();
@@ -172,9 +183,10 @@ namespace SabaProps.BodyContact
 
         private void TryBegin(VRCPlayerApi local, int hand)
         {
-            if (!CanRun() || HasLiveSession()) return;
+            if (!CanRun()) { grabStatus = "Contact disabled or suspended"; return; }
+            if (HasLiveSession()) { grabStatus = "Session busy"; return; }
             VRC_Pickup held = local.GetPickupInHand(hand == 0 ? VRC_Pickup.PickupHand.Left : VRC_Pickup.PickupHand.Right);
-            if (Utilities.IsValid(held)) return;
+            if (Utilities.IsValid(held)) { grabStatus = "Hand holds a Pickup"; return; }
             Vector3 palm = HandPosition(local, hand);
             VRCPlayerApi[] players = new VRCPlayerApi[VRCPlayerApi.GetPlayerCount()];
             VRCPlayerApi.GetPlayers(players);
@@ -203,9 +215,9 @@ namespace SabaProps.BodyContact
                     }
                 }
             }
-            if (bestPlayer < 0) return;
+            if (bestPlayer < 0) { grabStatus = "No player forearm in range"; return; }
             Networking.SetOwner(local, gameObject);
-            if (!Networking.IsOwner(gameObject)) return;
+            if (!Networking.IsOwner(gameObject)) { grabStatus = "Ownership unavailable"; return; }
             grabberId = local.playerId;
             targetId = bestPlayer;
             grabbingHand = hand;
@@ -215,6 +227,7 @@ namespace SabaProps.BodyContact
             startedAt = Networking.GetServerTimeInSeconds();
             heartbeat = startedAt;
             active = true;
+            grabStatus = "Session started (target permission required)";
             _nextHeartbeat = Time.time + 0.3f;
             RequestSerialization();
         }

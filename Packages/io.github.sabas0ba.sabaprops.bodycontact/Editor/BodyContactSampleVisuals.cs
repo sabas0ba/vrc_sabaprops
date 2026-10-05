@@ -1,4 +1,5 @@
 using UnityEditor;
+using UnityEditor.Animations;
 using UnityEngine;
 
 namespace SabaProps.BodyContact.Editors
@@ -83,7 +84,7 @@ namespace SabaProps.BodyContact.Editors
                 AssetDatabase.CreateAsset(clip, path);
             }
             clip.ClearCurves();
-            clip.legacy = true;
+            clip.legacy = false;
             clip.wrapMode = WrapMode.Loop;
             clip.name = name;
             // 始点と終点の位置・速度を揃え、ループ境界での瞬間移動を避けます。
@@ -92,13 +93,26 @@ namespace SabaProps.BodyContact.Editors
                     new Keyframe(4f, 0f, -0.6f, -0.6f), new Keyframe(6f, -0.8f), new Keyframe(8f, 0f, 0.6f, 0.6f))
                 : new AnimationCurve(new Keyframe(0f, 0f, 45f, 45f), new Keyframe(2f, 60f),
                     new Keyframe(4f, 0f, -45f, -45f), new Keyframe(6f, -60f), new Keyframe(8f, 0f, 45f, 45f));
-            clip.SetCurve("", typeof(Transform), translate ? "localPosition.x" : "localEulerAnglesRaw.y", curve);
+            AnimationUtility.SetEditorCurve(clip,
+                EditorCurveBinding.FloatCurve("", typeof(Transform), translate ? "m_LocalPosition.x" : "localEulerAnglesRaw.y"), curve);
+            var settings = AnimationUtility.GetAnimationClipSettings(clip);
+            settings.loopTime = true;
+            AnimationUtility.SetAnimationClipSettings(clip, settings);
             EditorUtility.SetDirty(clip);
-            Animation animation = dummy.AddComponent<Animation>();
-            animation.AddClip(clip, name);
-            animation.clip = clip;
-            animation.playAutomatically = true;
-            animation.cullingType = AnimationCullingType.AlwaysAnimate;
+            // Worldで許可されているAnimatorを使います。Legacy Animationは実クライアントで動きません。
+            string controllerPath = Folder + "/" + name + ".controller";
+            AnimatorController controller = AssetDatabase.LoadAssetAtPath<AnimatorController>(controllerPath);
+            if (controller == null) controller = AnimatorController.CreateAnimatorControllerAtPath(controllerPath);
+            AnimatorStateMachine machine = controller.layers[0].stateMachine;
+            AnimatorState state = machine.defaultState;
+            if (state == null) state = machine.AddState("Motion");
+            state.motion = clip;
+            machine.defaultState = state;
+            EditorUtility.SetDirty(controller);
+            Animator animator = dummy.AddComponent<Animator>();
+            animator.runtimeAnimatorController = controller;
+            animator.applyRootMotion = false;
+            animator.cullingMode = AnimatorCullingMode.AlwaysAnimate;
         }
 
         public static void Label(Transform parent, string name, string text, Vector3 position)
