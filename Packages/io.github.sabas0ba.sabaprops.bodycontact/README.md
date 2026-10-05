@@ -81,6 +81,17 @@ Gizmoの接触表示は許容幅内でも出ます。`separation` が補正量�
 
 `BodyContactPull` の同期は、対象ID、左右の手・前腕、保持位置、開始時刻、有効期限の更新です。手の位置はVRChat標準のアバター同期から取得するため、通信遅延による位置のずれは残ります。許可・解除、壁際、長時間静止、通信遅延下での2クライアント検証が必要です。
 
+### 負荷の切り分け
+
+検証シーンのSpawn後方に `GIZMO`、`HUD`、`CONTACT + PULL` の切替ボタンがあります。
+Gizmo OFFは線の生成と描画、HUD OFFは数値表示と頭部追従を停止します。
+CONTACT + PULL OFFは接触補正と引っ張りを停止し、保持中なら解除します。
+まずGizmo、次にHUD、最後に接触処理を止め、同じ位置・視線で比較してください。
+
+デバッグ形状は既定で20 Hz（`Geometry Interval = 0.05`秒）で更新します。
+接触・引っ張りとHUDの頭部追従は毎フレームです。Gizmoだけは最大約1更新間隔遅れて表示されます。
+形状更新の削減率はFPSの改善率を意味しません。VRChat実クライアントで負荷を確認してください。
+
 ### 外部から呼べるイベント
 
 | 対象 | イベント | 内容 |
@@ -90,7 +101,8 @@ Gizmoの接触表示は許容幅内でも出ます。`separation` が補正量�
 | `Body Contact System` | `_ToggleEnabled` | `Contact Enabled` を切り替えます。プレイヤーごとの無効化設定に使います |
 | `Body Contact Pull` | `_TogglePullPermission` | 自分が引かれる許可を切り替えます。OFF時は保持も解除します |
 | `Body Contact Pull` | `_ReleasePull` | 自分が関係する引っ張りを解除します |
-| `Body Contact Debug View` | `_Show` / `_Hide` / `_ToggleVisible` | デバッグ表示を切り替えます |
+| `Body Contact Debug View` | `_Show` / `_Hide` / `_ToggleVisible` | Gizmoの線を切り替えます。HUDは独立しています |
+| `Body Contact Debug View` | `_ToggleHud` | HUDを切り替えます |
 | `Body Contact Debug View` | `_ToggleInactiveLimbs` | 押し戻し対象外の腕・脚の線を切り替えます |
 
 ## パラメータ

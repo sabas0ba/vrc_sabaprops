@@ -14,8 +14,8 @@ namespace SabaProps.BodyContact
     /// 原点へ戻しますが、親のスケールは変更しません。
     /// </para>
     /// <para>
-    /// 描画は BodyContactSystem が 1 フレームの処理を終えた直後に呼び出します。非表示の間は
-    /// 何も計算しません。
+    /// BodyContactSystem が各フレームの処理後に呼び出します。形状は指定間隔で更新し、
+    /// HUDの頭部追従は毎フレーム更新します。線とHUDは個別に停止できます。
     /// </para>
     /// </summary>
     [AddComponentMenu("SabaProps/Body Contact Debug View")]
@@ -44,6 +44,9 @@ namespace SabaProps.BodyContact
         [Header("表示")]
         [Tooltip("起動時に表示します。")]
         public bool visible = true;
+        public bool hudVisible = true;
+        [Tooltip("デバッグ形状の更新間隔。接触判定とHUDの頭部追従には影響しません。")]
+        public float geometryInterval = 0.05f;
 
         [Tooltip("押し戻し対象外の腕・脚を灰色で表示します。")]
         public bool showInactiveLimbs = true;
@@ -68,6 +71,7 @@ namespace SabaProps.BodyContact
         private int _lineCount;
         private int _previousLineCount;
         private float _nextLabelTime;
+        private float _nextGeometryTime;
         private bool _initialized;
 
         private void Start()
@@ -94,6 +98,12 @@ namespace SabaProps.BodyContact
             ApplyVisibility();
         }
 
+        public void _ToggleHud()
+        {
+            hudVisible = !hudVisible;
+            ApplyVisibility();
+        }
+
         public void _ToggleInactiveLimbs()
         {
             showInactiveLimbs = !showInactiveLimbs;
@@ -102,10 +112,14 @@ namespace SabaProps.BodyContact
         /// <summary>BodyContactSystem が 1 フレームの処理を終えた直後に呼びます。</summary>
         public void _Refresh()
         {
-            if (!visible || source == null)
+            if (source == null)
             {
                 return;
             }
+
+            if (hudVisible) RefreshHud();
+            if (!visible || Time.time < _nextGeometryTime) return;
+            _nextGeometryTime = Time.time + Mathf.Max(0.01f, geometryInterval);
 
             Initialize();
             if (_mesh == null)
@@ -120,7 +134,6 @@ namespace SabaProps.BodyContact
             if (source.pull != null && source.pull.HasLiveSession())
                 AddLine(source.pull.targetPoint, source.pull.grabPoint, new Color(1f, 0.5f, 0.1f, 1f));
             Upload();
-            RefreshHud();
         }
 
         // ------------------------------------------------------------------
@@ -301,7 +314,7 @@ namespace SabaProps.BodyContact
 
             if (hudRoot != null)
             {
-                hudRoot.gameObject.SetActive(visible);
+                hudRoot.gameObject.SetActive(hudVisible);
             }
         }
 

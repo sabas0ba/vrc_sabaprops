@@ -1,4 +1,5 @@
 using UnityEditor;
+using UdonSharp.Compiler;
 using UdonSharpEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -60,6 +61,8 @@ namespace SabaProps.BodyContact.Editors
                 return;
             }
 
+            // 新しいフィールドを保存する前に、Udonの変数定義を最新にします。
+            UdonSharpCompilerV1.CompileSync(new UdonSharpCompileOptions { IsEditorBuild = true });
             Scene scene = Create();
             if (!scene.IsValid())
             {
@@ -117,6 +120,9 @@ namespace SabaProps.BodyContact.Editors
 
             CreatePullControl(system.pull, "Pull Permission", new Vector3(-1.5f, 1f, -1f), false);
             CreatePullControl(system.pull, "Release Pull", new Vector3(1.5f, 1f, -1f), true);
+            CreatePullControl(system.pull, "Gizmo", new Vector3(-1.5f, 1f, -3.5f), false, 1);
+            CreatePullControl(system.pull, "HUD", new Vector3(0f, 1f, -3.5f), false, 2);
+            CreatePullControl(system.pull, "Contact Processing", new Vector3(1.5f, 1f, -3.5f), false, 3);
             CreateTestStation(system);
 
             BuildWorld(camera);
@@ -177,7 +183,7 @@ namespace SabaProps.BodyContact.Editors
             }
         }
 
-        private static void CreatePullControl(BodyContactPull pull, string name, Vector3 position, bool release)
+        private static void CreatePullControl(BodyContactPull pull, string name, Vector3 position, bool release, int mode = 0)
         {
             GameObject button = GameObject.CreatePrimitive(PrimitiveType.Cube);
             button.name = name;
@@ -186,6 +192,8 @@ namespace SabaProps.BodyContact.Editors
             BodyContactPullControl control = button.AddUdonSharpComponent<BodyContactPullControl>();
             control.pull = pull;
             control.releaseOnly = release;
+            control.controlMode = mode;
+            control.debugView = pull.source.debugView;
             var labelRoot = new GameObject(name + " Label");
             labelRoot.transform.position = position + Vector3.up * 0.4f;
             labelRoot.transform.localScale = Vector3.one * 0.002f;
@@ -200,6 +208,7 @@ namespace SabaProps.BodyContact.Editors
             label.alignment = TextAnchor.MiddleCenter;
             label.raycastTarget = false;
             label.text = release ? "RELEASE PULL\nJump also releases" : "ALLOW BEING PULLED: OFF\nInteract to toggle";
+            if (mode != 0) label.text = name.ToUpperInvariant() + ": ON\nInteract to toggle";
             RectTransform rect = (RectTransform)label.transform;
             rect.anchorMin = Vector2.zero;
             rect.anchorMax = Vector2.one;

@@ -27,8 +27,20 @@ namespace SabaProps.BodyContact
         /// <summary>u と v が張る平面上の、center を中心とする円周上の点。index は CircleSegments で 1 周します。</summary>
         private Vector3 CirclePoint(Vector3 center, Vector3 u, Vector3 v, float radius, int index)
         {
-            float angle = 2f * Mathf.PI * index / CircleSegments;
-            return center + (u * Mathf.Cos(angle) + v * Mathf.Sin(angle)) * radius;
+            // 固定8分割の単位円。Udon内で頂点ごとに三角関数を呼ばないようにします。
+            int i = index % CircleSegments;
+            float x = 0f;
+            float y = 0f;
+            const float diagonal = 0.70710678f;
+            if (i == 0) x = 1f;
+            else if (i == 1) { x = diagonal; y = diagonal; }
+            else if (i == 2) y = 1f;
+            else if (i == 3) { x = -diagonal; y = diagonal; }
+            else if (i == 4) x = -1f;
+            else if (i == 5) { x = -diagonal; y = -diagonal; }
+            else if (i == 6) y = -1f;
+            else { x = diagonal; y = -diagonal; }
+            return center + (u * x + v * y) * radius;
         }
     }
 }

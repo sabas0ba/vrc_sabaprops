@@ -173,7 +173,7 @@ namespace SabaProps.BodyContact.WorldTests
             Assert.That(system.pull.gameObject, Is.Not.SameAs(system.gameObject));
             Assert.That(system.pull.allowBeingPulled, Is.False);
             BodyContactPullControl[] controls = Object.FindObjectsOfType<BodyContactPullControl>();
-            Assert.That(controls.Length, Is.EqualTo(2));
+            Assert.That(controls.Length, Is.EqualTo(5));
             foreach (BodyContactPullControl control in controls)
             {
                 Assert.That(control.pull, Is.SameAs(system.pull));
