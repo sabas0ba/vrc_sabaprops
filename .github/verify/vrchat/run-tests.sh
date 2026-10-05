@@ -16,6 +16,14 @@
 #
 # UNITY may also be a Unity Hub install root, in which case the editor matching
 # ProjectVersion.txt is used.
+#
+# UNITY_EXTRA_ARGS is passed to both editor sessions, split on whitespace. Its
+# reason to exist is --burst-disable-compilation: on a Windows host whose
+# application control policy refuses to load the DLLs Burst generates (error
+# code 4551 in unity.log), Burst logs the failure as a script compile error,
+# and UdonSharp then refuses to compile at all. Every test that needs an Udon
+# program fails with "All Unity C# compiler errors must be resolved", although
+# no C# error exists. Nothing under test here depends on Burst.
 set -euo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -57,6 +65,8 @@ LOG="$PROJECT/unity.log"
 mkdir -p "$PROJECT/TestResults"
 rm -f "$RESULTS" "$LOG"
 
+read -r -a EXTRA_ARGS <<< "${UNITY_EXTRA_ARGS:-}"
+
 to_native() {
     if command -v cygpath >/dev/null 2>&1; then
         cygpath -wa "$1"
@@ -74,7 +84,7 @@ rm -f "$SETUP_LOG"
 echo "configuring $PROJECT for VRChat"
 
 if ! "$UNITY_BIN" \
-    -batchmode -quit \
+    -batchmode -quit ${EXTRA_ARGS[@]+"${EXTRA_ARGS[@]}"} \
     -projectPath "$(to_native "$PROJECT")" \
     -executeMethod SabaProps.Foliage.WorldSetup.FoliageWorldProjectSetup.ConfigureForVrchat \
     -logFile "$(to_native "$SETUP_LOG")"; then
@@ -126,7 +136,7 @@ echo "running tests in $PROJECT"
 # status means something.
 set +e
 "$UNITY_BIN" \
-    -batchmode \
+    -batchmode ${EXTRA_ARGS[@]+"${EXTRA_ARGS[@]}"} \
     -projectPath "$(to_native "$PROJECT")" \
     -runTests -testPlatform EditMode \
     -testFilter "$TEST_FILTER" \

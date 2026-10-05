@@ -179,6 +179,21 @@ ClientSim の起動時 `NullReferenceException` で落ちることがありま�
 初回インポートで API Updater がアセンブリを差し替える間に起動順が崩れるためで、
 このリポジトリのコードとは関係ありません。
 
+## Burst の DLL が読み込めない場合
+
+Windows のアプリケーション制御ポリシーが、Burst の生成した DLL の読み込みを拒否することがあります。
+`unity.log` に `Unexpected error in Burst compilation` と `error code 4551` が出ます。
+Burst はこの失敗をスクリプトのコンパイルエラーとして記録するため、UdonSharp が Udon のコンパイルを
+中止し、Udon プログラムを必要とするテストがすべて
+`All Unity C# compiler errors must be resolved before running an UdonSharp compile.` で失敗します。
+C# のコンパイルエラーは実際には存在しません。
+
+この場合は Burst のコンパイルを無効にして実行します。ここで検証する対象は Burst に依存しません。
+
+```sh
+UNITY_EXTRA_ARGS=--burst-disable-compilation ./.github/verify/vrchat/run-tests.sh
+```
+
 ## SDK のバージョンを上げるには
 
 [`packages.lock`](packages.lock) の該当行のバージョン・SHA256・URL を、
