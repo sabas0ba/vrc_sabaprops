@@ -50,6 +50,14 @@ namespace SabaProps.BodyContact.Editors
             var root = new GameObject("Body Contact");
             BodyContactSystem system = root.AddUdonSharpComponent<BodyContactSystem>();
 
+            // NoneとManualの同期モードを別GameObjectへ分離します。
+            var pullObject = new GameObject("Body Pull Session");
+            pullObject.transform.SetParent(root.transform, false);
+            BodyContactPull pull = pullObject.AddUdonSharpComponent<BodyContactPull>();
+            pull.source = system;
+            system.pull = pull;
+            UdonSharpEditorUtility.CopyProxyToUdon(pull);
+
             var lines = new GameObject("Debug Lines");
             lines.transform.SetParent(root.transform, false);
             MeshFilter filter = lines.AddComponent<MeshFilter>();
@@ -107,7 +115,7 @@ namespace SabaProps.BodyContact.Editors
             Canvas canvas = canvasObject.AddComponent<Canvas>();
             canvas.renderMode = RenderMode.WorldSpace;
             var canvasRect = (RectTransform)canvasObject.transform;
-            canvasRect.sizeDelta = new Vector2(520f, 220f);
+            canvasRect.sizeDelta = new Vector2(520f, 280f);
 
             var labelObject = new GameObject("Status");
             labelObject.transform.SetParent(canvasObject.transform, false);
@@ -157,6 +165,21 @@ namespace SabaProps.BodyContact.Editors
             if (!AssetDatabase.IsValidFolder(parent + "/" + name))
             {
                 AssetDatabase.CreateFolder(parent, name);
+            }
+        }
+
+        [MenuItem("Tools/SabaProps/Body Contact/Connect Scene Stations", false, 2)]
+        public static void ConnectSceneStations()
+        {
+            BodyContactSystem system = Object.FindObjectOfType<BodyContactSystem>();
+            if (system == null) return;
+            foreach (VRC.SDK3.Components.VRCStation station in Object.FindObjectsOfType<VRC.SDK3.Components.VRCStation>(true))
+            {
+                BodyContactStationRelay relay = station.GetComponent<BodyContactStationRelay>();
+                if (relay == null) relay = station.gameObject.AddUdonSharpComponent<BodyContactStationRelay>();
+                relay.source = system;
+                UdonSharpEditorUtility.CopyProxyToUdon(relay);
+                EditorUtility.SetDirty(relay);
             }
         }
     }

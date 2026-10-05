@@ -80,6 +80,11 @@ namespace UdonSharp
         public virtual void Interact() { }
 
         public virtual void InputGrab(bool value, VRC.Udon.Common.UdonInputEventArgs args) { }
+        public virtual void InputJump(bool value, VRC.Udon.Common.UdonInputEventArgs args) { }
+        public virtual bool OnOwnershipRequest(VRC.SDKBase.VRCPlayerApi requester, VRC.SDKBase.VRCPlayerApi newOwner) { return true; }
+        public virtual void OnStationEntered(VRC.SDKBase.VRCPlayerApi player) { }
+        public virtual void OnStationExited(VRC.SDKBase.VRCPlayerApi player) { }
+        public virtual void OnAvatarChanged(VRC.SDKBase.VRCPlayerApi player) { }
 
         public virtual void PostLateUpdate() { }
 

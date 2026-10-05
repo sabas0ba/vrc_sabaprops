@@ -117,6 +117,8 @@ namespace SabaProps.BodyContact
             DrawBodies();
             DrawProbes();
             DrawSeparation();
+            if (source.pull != null && source.pull.HasLiveSession())
+                AddLine(source.pull.targetPoint, source.pull.grabPoint, new Color(1f, 0.5f, 0.1f, 1f));
             Upload();
             RefreshHud();
         }
@@ -140,13 +142,14 @@ namespace SabaProps.BodyContact
                 int offset = body * partCount;
                 for (int part = 0; part < partCount; part++)
                 {
-                    bool inactive = part >= BodyContactSystem.PartLeftUpperArm;
+                    bool limb = part >= BodyContactSystem.PartLeftUpperArm;
+                    bool inactive = limb && (!source.limbContactsEnabled || source.activeProbeCount <= BodyContactSystem.CoreProbeCount);
                     if (inactive && !showInactiveLimbs) continue;
                     float radius = source.partRadii[offset + part];
                     if (radius > 0f)
                     {
                         AddCapsule(source.partA[offset + part], source.partB[offset + part], radius,
-                            inactive ? inactiveLimbColor : color);
+                            inactive ? inactiveLimbColor : (limb && state == BodyContactSystem.BodyArmed ? new Color(0.2f, 0.8f, 1f, 1f) : color));
                     }
                 }
             }
@@ -361,7 +364,10 @@ namespace SabaProps.BodyContact
                 + (source.blockedByWorld ? "  blocked by world" : "")
                 + "\nmode " + (source.moveMode == BodyContactSystem.MoveByVelocity ? "velocity" : "teleport")
                 + (source.IsSuspended() ? "  suspended" : "")
-                + "\ngray limbs: no push / dim lines: occluded";
+                + "\ncyan limbs: deep VR contact / dim: occluded"
+                + (source.pull == null ? "" : "\npull permission " + (source.pull.allowBeingPulled ? "ON" : "OFF")
+                    + (source.pull.pullingLocal ? " / being pulled" : (source.pull.active ? " / session active" : " / idle"))
+                    + "\nJump: release pull");
         }
     }
 }

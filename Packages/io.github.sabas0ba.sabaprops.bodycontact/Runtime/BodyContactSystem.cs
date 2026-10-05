@@ -45,6 +45,11 @@ namespace SabaProps.BodyContact
         [Tooltip("VR で手と足の侵入も判定します。オフの場合と Desktop では頭と体幹だけを判定します。")]
         public bool limbProbesInVR = true;
 
+        [Tooltip("VRの手足から相手の腕・脚への深い接触を補正します。")]
+        public bool limbContactsEnabled = true;
+        public float limbTolerance = 0.05f;
+        public BodyContactPull pull;
+
         [Tooltip("位置を動かす手段。0 は TeleportTo、1 は SetVelocity。1 は比較検証用です。")]
         public int moveMode = MoveByTeleport;
 
@@ -106,6 +111,7 @@ namespace SabaProps.BodyContact
         private Vector3[] _joints = new Vector3[JointCount];
         private bool[] _jointValid = new bool[JointCount];
         private bool _suspended;
+        private int _stationCount;
         private Vector3 _lastStep;
         private Vector3 _lastPushVelocity;
         private int _reversals;
@@ -119,6 +125,19 @@ namespace SabaProps.BodyContact
         public void _Suspend()
         {
             _suspended = true;
+            if (pull != null) pull._ReleasePull();
+        }
+
+        public void _StationEntered()
+        {
+            _stationCount++;
+            if (pull != null) pull._ReleasePull();
+        }
+
+        public void _StationExited()
+        {
+            _stationCount = Mathf.Max(0, _stationCount - 1);
+            DisarmAll();
         }
 
         /// <summary>一時停止を解除します。重なっている相手は、離れるまで通り抜けを許可します。</summary>
@@ -131,12 +150,13 @@ namespace SabaProps.BodyContact
         public void _ToggleEnabled()
         {
             contactEnabled = !contactEnabled;
+            if (!contactEnabled && pull != null) pull._ReleasePull();
             DisarmAll();
         }
 
         public bool IsSuspended()
         {
-            return _suspended;
+            return _suspended || _stationCount > 0;
         }
 
         // ------------------------------------------------------------------
@@ -157,6 +177,8 @@ namespace SabaProps.BodyContact
         {
             if (Utilities.IsValid(player) && player.isLocal)
             {
+                _stationCount = 0;
+                if (pull != null) pull._ReleasePull();
                 DisarmAll();
             }
         }
@@ -175,8 +197,10 @@ namespace SabaProps.BodyContact
         {
             VRCPlayerApi local = Networking.LocalPlayer;
             ClearFrameOutputs();
-            if (!Utilities.IsValid(local) || !contactEnabled || _suspended)
+            if (pull != null) pull._Tick();
+            if (!Utilities.IsValid(local) || !contactEnabled || IsSuspended())
             {
+                if (Utilities.IsValid(local)) ReleasePushVelocity(local);
                 bodyCount = 0;
                 RefreshDebugView();
                 return;
@@ -214,7 +238,7 @@ namespace SabaProps.BodyContact
                 {
                     FillStandardJoints(root, dummy.rotation, eyeHeight, _joints, _jointValid);
                     FillParts(_joints, _jointValid, eyeHeight, radiusScale, partA, partB, partRadii, body * PartCount);
-                    combined = SolveGated(body, true, 1f, ownRoot - root, combined, deltaTime);
+                    combined = SolveGated(body, true, 1f, ownRoot - root, combined, deltaTime, -1);
                 }
                 else
                 {
@@ -239,7 +263,7 @@ namespace SabaProps.BodyContact
                     ReadPlayerJoints(player, eyeHeight);
                     FillParts(_joints, _jointValid, eyeHeight, radiusScale, partA, partB, partRadii, body * PartCount);
                     float share = CoreYieldShare(ownSpeed, HorizontalSpeed(player.GetVelocity()));
-                    combined = SolveGated(body, false, share, ownRoot - root, combined, deltaTime);
+                    combined = SolveGated(body, false, share, ownRoot - root, combined, deltaTime, player.playerId);
                 }
                 else
                 {
@@ -254,7 +278,13 @@ namespace SabaProps.BodyContact
 
             Vector3 step = StepTowards(
                 combined, ResponseFactor(responseSeconds, deltaTime), Mathf.Max(0f, maxSpeed) * deltaTime);
+            if (pull != null)
+            {
+                step = pull.CombineSteps(step, pull.pullStep);
+                step = Vector3.ClampMagnitude(step, Mathf.Max(0f, maxSpeed) * deltaTime);
+            }
             ApplyStep(local, step, ownEyeHeight, deltaTime);
+            if (blockedByWorld && pull != null) pull._BlockedByWorld();
             CountReversals(appliedStep);
             RefreshDebugView();
         }
@@ -264,7 +294,7 @@ namespace SabaProps.BodyContact
         // ------------------------------------------------------------------
 
         private Vector3 SolveGated(
-            int body, bool isStatic, float coreYieldShare, Vector3 fallbackDirection, Vector3 combined, float deltaTime)
+            int body, bool isStatic, float coreYieldShare, Vector3 fallbackDirection, Vector3 combined, float deltaTime, int otherPlayerId)
         {
             int offset = body * PartCount;
             bool touching = CoreContactDepth(probePositions, probeRadii, partA, partB, partRadii, offset) > 0f;
@@ -278,11 +308,12 @@ namespace SabaProps.BodyContact
             }
 
             bodyStates[body] = BodyArmed;
-            return SolveBody(
+            int ignoredHand = pull != null && otherPlayerId >= 0 ? pull.IgnoredHandProbe(otherPlayerId) : -1;
+            return SolveBodyWithLimbs(
                 probePositions, probeRadii, activeProbeCount,
                 partA, partB, partRadii, offset,
                 isStatic, coreYieldShare, tolerance, fallbackDirection,
-                combined, probeDepths, probeContacts);
+                combined, probeDepths, probeContacts, limbContactsEnabled, limbTolerance, ignoredHand);
         }
 
         private bool InRange(Vector3 ownRoot, float ownEyeHeight, Vector3 root, float eyeHeight)
@@ -443,10 +474,19 @@ namespace SabaProps.BodyContact
         }
 
         // 押し戻しでプレイヤーが壁の向こうへ出ないよう、膝と胸の高さで進行方向を調べます。
-        private bool HitsWorld(Vector3 root, Vector3 step, float eyeHeight)
+        public bool HitsWorld(Vector3 root, Vector3 step, float eyeHeight)
         {
+            if (step.sqrMagnitude < 1e-10f) return false;
             float distance = step.magnitude + 0.14f * eyeHeight;
             Vector3 direction = step.normalized;
+            if (pull != null && pull.pullingLocal)
+            {
+                // 引かれている間は中心線だけでなく体幅も調べ、壁の端を横切る移動も止めます。
+                float radius = Mathf.Max(0.05f, eyeHeight * 0.1f);
+                if (Physics.CapsuleCast(root + Vector3.up * (radius + 0.02f),
+                    root + Vector3.up * Mathf.Max(radius + 0.02f, eyeHeight * 0.9f), radius,
+                    direction, step.magnitude + 0.02f, worldCollisionMask, QueryTriggerInteraction.Ignore)) return true;
+            }
             return Physics.Raycast(
                        root + Vector3.up * (0.25f * eyeHeight), direction, distance,
                        worldCollisionMask, QueryTriggerInteraction.Ignore)

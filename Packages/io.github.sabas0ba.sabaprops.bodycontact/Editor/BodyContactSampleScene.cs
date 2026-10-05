@@ -1,4 +1,5 @@
 using UnityEditor;
+using UdonSharpEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -112,7 +113,11 @@ namespace SabaProps.BodyContact.Editors
             BodyContactSampleVisuals.Label(signs.transform, "Small label", "SMALL / 0.6x", SmallDummyPosition + Vector3.up * 1.5f);
             BodyContactSampleVisuals.Label(signs.transform, "Moving label", "TRANSLATE / +/-0.8 m / 8 s", MovingDummyPosition + Vector3.up * 2.1f);
             BodyContactSampleVisuals.Label(signs.transform, "Turning label", "TURN / +/-60 deg / 8 s", TurningDummyPosition + Vector3.up * 2.1f);
-            BodyContactSampleVisuals.Label(signs.transform, "Grid legend", "FLOOR: 1 m squares / 10 cm subdivisions\nGOLD: head + torso / GRAY: limbs (no push)", new Vector3(0f, 2.8f, 8f));
+            BodyContactSampleVisuals.Label(signs.transform, "Grid legend", "FLOOR: 1 m squares / 10 cm subdivisions\nLIMBS: deep VR contact / PULL: hold Grab on forearm", new Vector3(0f, 2.8f, 8f));
+
+            CreatePullControl(system.pull, "Pull Permission", new Vector3(-1.5f, 1f, -1f), false);
+            CreatePullControl(system.pull, "Release Pull", new Vector3(1.5f, 1f, -1f), true);
+            CreateTestStation(system);
 
             BuildWorld(camera);
 
@@ -170,6 +175,59 @@ namespace SabaProps.BodyContact.Editors
             {
                 descriptor.ReferenceCamera = referenceCamera.gameObject;
             }
+        }
+
+        private static void CreatePullControl(BodyContactPull pull, string name, Vector3 position, bool release)
+        {
+            GameObject button = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            button.name = name;
+            button.transform.position = position;
+            button.transform.localScale = new Vector3(0.8f, 0.3f, 0.15f);
+            BodyContactPullControl control = button.AddUdonSharpComponent<BodyContactPullControl>();
+            control.pull = pull;
+            control.releaseOnly = release;
+            var labelRoot = new GameObject(name + " Label");
+            labelRoot.transform.position = position + Vector3.up * 0.4f;
+            labelRoot.transform.localScale = Vector3.one * 0.002f;
+            Canvas canvas = labelRoot.AddComponent<Canvas>();
+            canvas.renderMode = RenderMode.WorldSpace;
+            ((RectTransform)labelRoot.transform).sizeDelta = new Vector2(480f, 160f);
+            var labelObject = new GameObject("Text");
+            labelObject.transform.SetParent(labelRoot.transform, false);
+            UnityEngine.UI.Text label = labelObject.AddComponent<UnityEngine.UI.Text>();
+            label.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            label.fontSize = 24;
+            label.alignment = TextAnchor.MiddleCenter;
+            label.raycastTarget = false;
+            label.text = release ? "RELEASE PULL\nJump also releases" : "ALLOW BEING PULLED: OFF\nInteract to toggle";
+            RectTransform rect = (RectTransform)label.transform;
+            rect.anchorMin = Vector2.zero;
+            rect.anchorMax = Vector2.one;
+            rect.offsetMin = Vector2.zero;
+            rect.offsetMax = Vector2.zero;
+            control.label = label;
+            UdonSharpEditorUtility.CopyProxyToUdon(control);
+        }
+
+        private static void CreateTestStation(BodyContactSystem system)
+        {
+            GameObject seat = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            seat.name = "Pull Test Station";
+            seat.transform.position = new Vector3(5.5f, 0.45f, -1f);
+            seat.transform.localScale = new Vector3(0.8f, 0.15f, 0.8f);
+            VRCStation station = seat.AddComponent<VRCStation>();
+            var enter = new GameObject("Seat entry");
+            enter.transform.SetParent(seat.transform, false);
+            enter.transform.position = new Vector3(5.5f, 0.55f, -1f);
+            var exit = new GameObject("Seat exit");
+            exit.transform.SetParent(seat.transform, false);
+            exit.transform.position = new Vector3(5.5f, 0.05f, -2f);
+            station.stationEnterPlayerLocation = enter.transform;
+            station.stationExitPlayerLocation = exit.transform;
+            BodyContactStationRelay relay = seat.AddUdonSharpComponent<BodyContactStationRelay>();
+            relay.source = system;
+            relay.interactToSit = true;
+            UdonSharpEditorUtility.CopyProxyToUdon(relay);
         }
 
         private static void EnsureFolder(string folderPath)
