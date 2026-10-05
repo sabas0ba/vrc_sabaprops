@@ -2,7 +2,7 @@
 
 VRChat 向けのアセットを **VCC (VRChat Creator Companion) / VPM** で配布するためのリポジトリです。
 
-複数パッケージの集合体として育てていく前提の構成になっています。第一弾として、GPU インスタンシング前提の軽量な草木配置パッケージ **SabaProps Foliage** を収録しています。
+草木配置の **SabaProps Foliage**、樹木生成の **SabaProps Trees**、水面・雨・霧・水中表現の **SabaProps Water**、PC VRChat 向け接触変形家具の **SabaProps Soft Props**、演者を追うカメラリグの **SabaProps Stage Cam**、Pickup の配置補正を行う **SabaProps Put Items**、ミラーやコライダーを操作するタブレット型 UI の **SabaProps Tablet**、鳥の群れや魚群を中景から遠景に配置する **SabaProps Flock** を収録しています。
 
 ---
 
@@ -25,7 +25,14 @@ https://sabas0ba.github.io/vrc_sabaprops/index.json
 
 | Package ID | 名前 | 概要 |
 | --- | --- | --- |
-| `io.github.sabas0ba.sabaprops.foliage` | SabaProps Foliage | GPU インスタンシング対応の草木スキャッタリングツール。グラスシード／ひまわりをプロシージャル生成し、大量配置しても軽量。 |
+| `io.github.sabas0ba.sabaprops.water` | SabaProps Water | 水たまり・川・湖・海、衝突splash付きの雨、霧・雲、水中effectをbakeするShader／Editor tool。 |
+| `io.github.sabas0ba.sabaprops.foliage` | SabaProps Foliage | GPU インスタンシング対応の草木スキャッタリングツール。草花 8 種と壁上から垂らすツタをプロシージャル生成。 |
+| `io.github.sabas0ba.sabaprops.trees` | SabaProps Trees | 再帰枝ジェネレータから樹木と 3 段階 LOD を生成。共有サーフェス散布 API を使う Tree Field に対応。 |
+| `io.github.sabas0ba.sabaprops.softprops` | SabaProps Soft Props | World Contactsでユーザーの接触を検知し、ふとん、ベッド、ソファー、クッションを最大8点で変形するPC向けprop集。 |
+| `io.github.sabas0ba.sabaprops.stagecam` | SabaProps Stage Cam | 特定のプレイヤーの部位を追う Udon カメラリグ。Pickup による構図補正と自動カメラワークに対応。 |
+| `io.github.sabas0ba.sabaprops.putitems` | SabaProps Put Items | Pickup を手放した位置の近くにある机・壁へ位置と姿勢を補正。Object Sync 接続と独自同期向けの計算 API を提供。 |
+| `io.github.sabas0ba.sabaprops.tablet` | SabaProps Tablet | キー・頭上からの取り出し・アイテムの Interact で呼び出すタブレット型 UI。物理ボタンでミラー・コライダー・エフェクトの切り替え、テレポート、任意の Udon イベント呼び出しを行う。 |
+| `io.github.sabas0ba.sabaprops.flock` | SabaProps Flock | 鳥 27 種・魚・水生生物 41 種の群れを、Shader が時刻から計算する固定配置を含む 13 種の群れの動きで配置。Silhouette / Low / High の 3 段階 LOD。 |
 | `io.github.sabas0ba.sabaprops.llama` | [SabaProps Llama](Packages/io.github.sabas0ba.sabaprops.llama/README.md) | 小型Llama系モデルの重みtexture変換とワールド内GPU推論。実験段階、学習済み重みは別途必要。 |
 
 各パッケージの詳細は `Packages/<package-id>/README.md` を参照してください。
@@ -34,6 +41,17 @@ https://sabas0ba.github.io/vrc_sabaprops/index.json
 地面・ライト・カメラと 2 種類の出力モードのフィールドを含むデモシーンが、ビルド済みの状態で生成されます。
 VRChat Worlds SDK が入っているプロジェクトでは `VRCSceneDescriptor` と Spawn も配置され、そのままアップロードできます。
 
+Water packageは`Tools > SabaProps > Water > Create Default Assets`でMaterialとprofileを作成し、
+Hierarchyの`SabaProps > Water`／`SabaProps > Weather`から各propを配置できます。
+
+Soft Propsは `Tools > SabaProps > Soft Props > Generate All Prefabs` で4種の家具Prefabと、指／棒／板の接触比較Prefabを生成します。
+
+レビュー用の完成済みsceneは `Tools > SabaProps > Soft Props > Open Demo Scene` から開けます。家具、肌Materialの接触試験台、指・棒・板の自動上下比較3台、形状別の静的比較、照明、床、VRChat Spawnを同梱しています。[デモのレビュー手順](Packages/io.github.sabas0ba.sabaprops.softprops/Documentation~/demo-review.md)と[更新・配布手順](Packages/io.github.sabas0ba.sabaprops.softprops/Documentation~/upgrading.md)を参照してください。
+
+Flock は Hierarchy の `SabaProps > Flock` から群れを追加し、Inspector で種を選びます。全種の一覧は `Tools > SabaProps > Flock > Create Species Gallery Scene` で生成できます。[利用方法](Packages/io.github.sabas0ba.sabaprops.flock/Documentation~/authoring.md)と[収録種](Packages/io.github.sabas0ba.sabaprops.flock/Documentation~/elements.md)を参照してください。
+
+Put Items は `Tools > SabaProps > Put Items > Open Demo Scene` から、食卓と冷蔵庫を含む完成済み Scene を開けます。食器の机への吸着、メモやアクセサリーの冷蔵庫への貼り付け、おぼん・皿・料理の入れ子追従を確認できます。[デモの操作手順](Packages/io.github.sabas0ba.sabaprops.putitems/Documentation~/demo-review.md)と[配置・同期の設定](Packages/io.github.sabas0ba.sabaprops.putitems/Documentation~/authoring.md)を参照してください。
+
 ---
 
 ## リポジトリ構成
@@ -41,10 +59,41 @@ VRChat Worlds SDK が入っているプロジェクトでは `VRCSceneDescriptor
 ```
 .
 ├── Packages/                       # 配布する VPM パッケージ群（1 フォルダ = 1 パッケージ）
-│   └── io.github.sabas0ba.sabaprops.foliage/
-│       ├── package.json            # VPM マニフェスト
-│       ├── Runtime/                # シーンに残る最小限のコンポーネントとシェーダー
-│       ├── Editor/                 # 生成・配置ツール（ビルドには含まれない）
+│   ├── io.github.sabas0ba.sabaprops.foliage/
+│   │   ├── package.json            # VPM マニフェスト
+│   │   ├── Runtime/                # シーンに残る最小限のコンポーネントとシェーダー
+│   │   ├── Editor/                 # 生成・配置ツール（ビルドには含まれない）
+│   │   └── Documentation~/
+│   ├── io.github.sabas0ba.sabaprops.trees/
+│   │   ├── package.json
+│   │   ├── Runtime/                # TreeSpecies とパラメータ
+│   │   └── Editor/                 # 再帰枝、LOD Mesh、LODGroup 生成
+│   ├── io.github.sabas0ba.sabaprops.water/
+│   ├── io.github.sabas0ba.sabaprops.softprops/
+│   │   ├── package.json            # VPM マニフェスト
+│   │   ├── Runtime/                # Udon controllerと変形shader
+│   │   ├── Editor/                 # Mesh／Material／Prefab生成器
+│   │   └── Documentation~/
+│   ├── io.github.sabas0ba.sabaprops.stagecam/
+│   │   ├── package.json            # VRChat Worlds SDK に依存
+│   │   ├── Runtime/                # UdonSharp のカメラリグと幾何ソルバ
+│   │   ├── Editor/                 # リグとサンプルシーンの生成器
+│   │   └── Samples~/              # VRChat World のサンプル
+│   ├── io.github.sabas0ba.sabaprops.putitems/
+│   │   ├── Runtime/                # 吸着計算・Object Sync 接続・追従状態
+│   │   ├── Editor/                 # デモ Scene と Udon program の導入
+│   │   ├── Samples~/KitchenDemo/   # 同梱 Scene と依存アセット
+│   │   └── Documentation~/
+│   ├── io.github.sabas0ba.sabaprops.tablet/
+│   │   ├── Runtime/                # UdonSharp の本体・ボタン・切り替え・召喚トリガ
+│   │   ├── Authoring/              # Editor 専用の構成データと Theme
+│   │   ├── Editor/                 # 生成器、Setup Window、サンプルシーン
+│   │   ├── Samples~/               # Stage Cam 連携の実装例
+│   │   └── Documentation~/
+│   ├── io.github.sabas0ba.sabaprops.llama/
+│   └── io.github.sabas0ba.sabaprops.flock/
+│       ├── Runtime/                # 種のプリセット、運動の基準実装、群れのShader
+│       ├── Editor/                 # 個体形状と群れMeshの生成器、ギャラリーScene
 │       └── Documentation~/
 ├── Website/                        # GitHub Pages で公開するリスティングサイト
 ├── source.json                     # VPM リスティングのメタ情報
@@ -63,8 +112,12 @@ VRChat Worlds SDK が入っているプロジェクトでは `VRCSceneDescriptor
 ### 1. Unity プロジェクトで編集する
 
 このリポジトリ自体は Unity プロジェクトではありません。開発時は VCC で作った Unity プロジェクトの
-`Packages/` 配下にこのリポジトリの `Packages/io.github.sabas0ba.sabaprops.foliage` をシンボリックリンク（または
-クローンごと配置）してください。
+`Packages/` 配下に、このリポジトリの `Packages/<package-id>` をシンボリックリンク（または
+クローンごと配置）してください。編集するパッケージの分だけ張ります。
+
+`io.github.sabas0ba.sabaprops.stagecam` と `io.github.sabas0ba.sabaprops.tablet` は Udon を使うため、リンク先のプロジェクトには
+VRChat Worlds SDK が入っている必要があります。`io.github.sabas0ba.sabaprops.foliage` の方は
+SDK が無くても動きます。
 
 ```bash
 # 例: macOS / Linux
@@ -85,17 +138,18 @@ Unity が生成した `.meta` ファイルは **必ずコミット**してくだ
 
 1. `Packages/<pkg>/package.json` の `version` を上げる
 2. `Packages/<pkg>/CHANGELOG.md` を更新する
-3. コミットして `v<version>` のタグを打つ
+3. コミットして `<package-id>/v<version>` のタグを打つ
 
 ```bash
-git tag v0.1.0
-git push origin v0.1.0
+git tag io.github.sabas0ba.sabaprops.foliage/v0.4.0
+git push origin io.github.sabas0ba.sabaprops.foliage/v0.4.0
 ```
 
 `build-release.yml` が zip を作って Release を発行し、続けて `build-listing.yml` が
 `index.json` を再生成して GitHub Pages に反映します。
 
-> 複数パッケージになったら、タグは `io.github.sabas0ba.sabaprops.foliage/v0.2.0` の形式でも受け付けます。
+> パッケージ ID を含まない `v0.1.0` の形式は、パッケージが 1 つしか無かった頃の名残です。
+> 2 つ以上ある現在はどれを指すか決まらないため、`build-release.yml` がエラーで止まります。
 
 ### 3. 手動でリスティングだけ作り直す
 
@@ -182,6 +236,10 @@ Markdown 変換は `build_listing.py` と同じ方針で自前実装です。CI 
 | Editor アセンブリ | コンパイル。UnityEngine の API 使用は実物に対して検証されます |
 | シェーダー | `shader_feature` の全 4 組み合わせで HLSL として型チェック |
 | **メッシュ生成** | **実際に実行**して形状を検査（下記） |
+| Stage Cam の Runtime | **実物の VRChat SDK アセンブリ**（`packages.lock` が固定した `VRCSDKBase.dll`）に対してコンパイル |
+| **Stage Cam の追従計算** | **実際に実行**して幾何の性質を検査（下記） |
+| Tablet の Runtime / Authoring / Editor | 実物の VRChat SDK アセンブリ（`VRCSDKBase.dll`、`VRCSDK3.dll`、`VRC.Udon.Common.dll`）に対してコンパイル。TextMeshPro は手書きのスタブ |
+| **Tablet の判定と生成** | 召喚位置、指先の押下の状態遷移、取り出し位置、プレイヤー選択、ボタン配置、角丸メッシュの閉包性と面の向きを**実際に実行**して検査 |
 | **ドキュメントの図** | 生成器を実行し直し、committed の図と一致するかを検査 |
 | ドキュメント | サイトの生成、未変換の記法・壊れたリンク・存在しない画像の検出 |
 | マニフェスト | `package.json` の必須項目、フォルダ名との一致、CHANGELOG のバージョン記載、`source.json` への登録、`.meta` の欠落 |
@@ -205,11 +263,44 @@ Markdown 変換は `build_listing.py` と同じ方針で自前実装です。CI 
 過去に実際にあった不具合（花びらが花芯から分離する、風の位相が部位ごとに割れる）を注入すると、
 この層だけで検出できることを確認済みです。
 
+#### 追従計算の実行検査
+
+`StageCamSolver.cs` は `StageCamRig` の部分クラスですが、基底型も VRChat の `using` も
+持たないため**単独でコンパイルできます**。これを同じシムの上に載せて、カメラの追従計算
+そのものを Unity 無しで走らせます。検査側も同じクラスの部分クラスとして書いてあるので、
+ソルバのメソッドを `private` のまま検査できます。
+
+| 検査 | 内容 |
+| --- | --- |
+| 平滑化 | フレームを分割しても追従の速さが変わらないこと、退化入力で行き過ぎないこと |
+| 角度の補間 | 360 度の折り返しを最短方向へ跨ぐこと |
+| デッドゾーン | 閾値内で静止すること、閾値を跨いだ瞬間に飛ばないこと |
+| ボーンのフォールバック | 欠損ボーンから次の候補へ落ち、最後まで落ちても破綻しないこと |
+| 軌道 | 方位・仰角によらず指定した距離を保つこと |
+| 注視 | 被写体を画面中央に置くこと、地平線が傾かないこと |
+| Pickup 補正 | world 姿勢と軌道パラメータの往復で元の姿勢が復元されること |
+| 自動フレーミング | 身長に距離が比例すること、距離と画面占有率が互いの逆関数であること |
+| 自動カメラワーク | 値域・周期性・対称性、および折り返しと周期の境目で速度がゼロに落ちること |
+| 退化入力 | 距離ゼロ、真上・真下からのアングル、視線が上方向と平行な場合に NaN が出ないこと |
+
+こちらも故障注入で確認済みです。平滑化を線形に、注視の合成順を入れ替えて roll を混ぜ、
+デッドゾーンを素通しにする 3 つの変更を入れると、それぞれ対応する検査だけが落ちます。
+
 ### 検証できないこと
 
 - **UnityEditor の API シグネチャ。** `UnityEditor.dll` は再配布できないため、
   `.github/verify/UnityEditorStub.cs` が手書きのスタブとして代役を務めています。
   スタブと実装が同じ勘違いをしていれば、このチェックは通ってしまいます。
+- **UdonSharp の API シグネチャと、UdonSharp が C# に課す制約。** `UdonSharpBehaviour` は
+  Worlds パッケージ内のソースで、`VRC.Udon` と OdinSerializer とコンパイラライブラリを
+  引き連れています。この層で組み直すものではないため、`.github/verify/UdonSharpStub.cs` が
+  代役です。`VRCPlayerApi` / `Networking` / `Utilities` / `VRC_Pickup` は実物の
+  `VRCSDKBase.dll` に対して検証されます。Editor 側のプロキシ操作と UI イベントの受信先は
+  `.github/verify/UdonSharpEditorStub.cs` で置き換えます。
+  **UdonSharp が実際に Udon アセンブリへ変換できるかは、この層では一切分かりません。**
+- **uGUI の API とイベント接続。** `.github/verify/UnityUiStub.cs` はオフライン用の手書き定義です。
+  実物の UI に対するコンパイル、保存後のボタン接続と Udon の公開イベント、カメラごとの
+  設定独立性は VRChat SDK を含む Unity EditMode テストで確認します。
 - **サーフェスシェーダーの生成結果。** `#pragma surface` の設定を Unity が受け付けるか、
   生成されたバリアントがコンパイルできるかは検証していません。チェックしているのは
   シェーダー自身のコード（`vert` / `surf` / ライティング関数と `SabaFoliageCore.cginc`）だけです。
@@ -264,9 +355,14 @@ Unity のバージョンは `.github/verify/CIProject/ProjectSettings/ProjectVer
 
 ## 検証 (VRChat Worlds SDK)
 
-サンプルシーンの `VRCSceneDescriptor` 配置はリフレクションで SDK を参照しているため、
-SDK が無い環境ではコンパイルエラーにならず、検証されないまま通ります。
-この分岐を実際に実行するための手順が `.github/verify/vrchat/` にあります。
+SDK が実際に入っていないと検証できないものがあります。Foliage サンプルシーンの
+`VRCSceneDescriptor` 配置はリフレクションで SDK を参照しているため、SDK が無い環境では
+コンパイルエラーにならず検証されないまま通ります。そして
+`io.github.sabas0ba.sabaprops.stagecam` は **UdonSharp が受け付けるかどうかが、
+C# としてコンパイルが通ることと無関係**です。
+
+Soft Props の接触動作と Udon コンパイルにも SDK が必要です。これらを実際に
+検証するための手順が `.github/verify/vrchat/` にあります。
 
 ```sh
 ./.github/verify/vrchat/run-tests.sh
@@ -283,4 +379,4 @@ SDK の取得はコンテナ内で行い、ローカルの VCC / ALCOM のキャ
 
 ## ライセンス
 
-MIT License. 詳細は [LICENSE](LICENSE) を参照してください。
+Apache License 2.0. 詳細は [LICENSE](LICENSE) を参照してください。

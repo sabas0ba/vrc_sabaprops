@@ -32,6 +32,10 @@
 
 図の一覧（どのパラメータをどの値で並べるか）は `DumpFigures.cs` の `Main` にあります。追加するときはそこに 1 行足してください。
 
+図は `Figure.Package` で指定したパッケージの `Documentation~/images/generated/` に書き出されます。指定がなければ Foliage です。`render.sh` はパッケージごとに `render_figures.py --package` を実行し、それぞれの committed の図と照合します。
+
+Flock の図 (`flock-*`) は `Layout = "Specimens"` です。体の大きさが種によって数十倍違うため、各タイルを同じ大きさに正規化して描き、地面の円とスケールバーは付けません。実際の体長はラベルの 2 行目に記載します。
+
 `verify.sh` が `--check` を実行するので、生成器を変えて図を作り直し忘れると Pull Request が落ちます。
 図を意図的に変えた場合は `render.sh` を実行して結果をコミットしてください。
 

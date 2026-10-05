@@ -18,6 +18,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("shader", help="path to the .shader file")
     parser.add_argument("output", help="path to write the extracted body to")
+    parser.add_argument("--block", type=int, help="index of the pass to extract")
     args = parser.parse_args()
 
     try:
@@ -32,14 +33,18 @@ def main() -> int:
         print(f"error: no CGPROGRAM block in {args.shader}", file=sys.stderr)
         return 1
 
-    if len(blocks) > 1:
+    if len(blocks) > 1 and args.block is None:
         print(f"error: {len(blocks)} CGPROGRAM blocks found; the harness expects one", file=sys.stderr)
         return 1
 
     lines = []
     pragmas = 0
 
-    for line in blocks[0].splitlines():
+    block_index = args.block if args.block is not None else 0
+    if not 0 <= block_index < len(blocks):
+        print(f"error: block {block_index} is out of range", file=sys.stderr)
+        return 1
+    for line in blocks[block_index].splitlines():
         if line.strip().startswith("#pragma"):
             pragmas += 1
             lines.append("// " + line.strip())

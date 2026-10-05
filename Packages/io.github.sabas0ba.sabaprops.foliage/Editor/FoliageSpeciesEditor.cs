@@ -18,6 +18,7 @@ namespace SabaProps.Foliage.Editors
             "weed",
             "grain",
             "dandelion",
+            "vine",
             "seasonPalette",
             "generatedMesh",
         };

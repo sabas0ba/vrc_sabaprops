@@ -1,0 +1,48 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5d516835dd2344de94b15701125dd584, type: 3}
+  m_Name: Honey Bear
+  m_EditorClassIdentifier:
+  bodySize: {x: 0.3, y: 0.21}
+  bodyThickness: 0.012
+  cornerRadius: 0.035
+  bezel: 0.011
+  headerHeight: 0.03
+  columns: 4
+  rows: 3
+  spacing: 0.006
+  buttonHeight: 0.005
+  buttonCornerRadius: 0.021
+  pressTravel: 0.003
+  pokeDepth: 0.025
+  handle: 1
+  handleSize: {x: 0.11, y: 0.016, z: 0.014}
+  smoothness: 0.20
+  decoration: 3
+  bodyColor: {r: 0.788235, g: 0.564706, b: 0.34902, a: 1}
+  screenColor: {r: 1, g: 0.960784, b: 0.87451, a: 1}
+  buttonColor: {r: 0.976471, g: 0.898039, b: 0.72549, a: 1}
+  buttonActiveColor: {r: 0.917647, g: 0.752941, b: 0.392157, a: 1}
+  buttonPressedColor: {r: 0.862745, g: 0.670588, b: 0.278431, a: 1}
+  headerButtonColor: {r: 0.937255, g: 0.854902, b: 0.666667, a: 1}
+  labelColor: {r: 0.095307, g: 0.045186, b: 0.015996, a: 1}
+  decorationColor: {r: 0.717647, g: 0.47451, b: 0.262745, a: 1}
+  decorationInnerColor: {r: 0.917647, g: 0.74902, b: 0.552941, a: 1}
+  shader: {fileID: 0}
+  bodyMaterial: {fileID: 0}
+  screenMaterial: {fileID: 0}
+  buttonMaterial: {fileID: 0}
+  buttonActiveMaterial: {fileID: 0}
+  buttonPressedMaterial: {fileID: 0}
+  bodyMesh: {fileID: 0}
+  buttonMesh: {fileID: 0}
+  font: {fileID: 0}

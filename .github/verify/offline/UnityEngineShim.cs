@@ -45,6 +45,20 @@ namespace UnityEngine
     [AttributeUsage(AttributeTargets.Field)]
     public sealed class SerializeField : Attribute { }
 
+    [AttributeUsage(AttributeTargets.Field)]
+    public sealed class HideInInspector : Attribute { }
+
+    [AttributeUsage(AttributeTargets.Class)]
+    public sealed class DisallowMultipleComponent : Attribute { }
+
+    [AttributeUsage(AttributeTargets.Class, AllowMultiple = true)]
+    public sealed class RequireComponent : Attribute
+    {
+        public RequireComponent(Type requiredComponent) { }
+        public RequireComponent(Type requiredComponent, Type requiredComponent2) { }
+        public RequireComponent(Type requiredComponent, Type requiredComponent2, Type requiredComponent3) { }
+    }
+
     [AttributeUsage(AttributeTargets.Class)]
     public sealed class CreateAssetMenuAttribute : Attribute
     {
@@ -79,10 +93,21 @@ namespace UnityEngine
         public static float Cos(float v) => (float)Math.Cos(v);
         public static float Tan(float v) => (float)Math.Tan(v);
         public static float Acos(float v) => (float)Math.Acos(Clamp(v, -1f, 1f));
+        public static float Asin(float v) => (float)Math.Asin(Clamp(v, -1f, 1f));
+        public static float Atan2(float y, float x) => (float)Math.Atan2(y, x);
+        public static float Exp(float v) => (float)Math.Exp(v);
+        public static float Floor(float v) => (float)Math.Floor(v);
         public static float Pow(float v, float p) => (float)Math.Pow(v, p);
 
         public static float Repeat(float t, float length) =>
             Clamp(t - (float)Math.Floor(t / length) * length, 0f, length);
+
+        /// <summary>Shortest signed difference between two angles in degrees, in [-180, 180].</summary>
+        public static float DeltaAngle(float current, float target)
+        {
+            float delta = Repeat(target - current, 360f);
+            return delta > 180f ? delta - 360f : delta;
+        }
 
         public static int FloorToInt(float v) => (int)Math.Floor(v);
         public static int CeilToInt(float v) => (int)Math.Ceiling(v);
@@ -96,6 +121,9 @@ namespace UnityEngine
         public Vector2(float x, float y) { this.x = x; this.y = y; }
 
         public static Vector2 zero => new Vector2(0f, 0f);
+
+        public float sqrMagnitude => x * x + y * y;
+        public float magnitude => Mathf.Sqrt(sqrMagnitude);
 
         public static Vector2 operator +(Vector2 a, Vector2 b) => new Vector2(a.x + b.x, a.y + b.y);
         public static Vector2 operator -(Vector2 a, Vector2 b) => new Vector2(a.x - b.x, a.y - b.y);
@@ -143,6 +171,8 @@ namespace UnityEngine
             a.y * b.z - a.z * b.y,
             a.z * b.x - a.x * b.z,
             a.x * b.y - a.y * b.x);
+
+        public static float Distance(Vector3 a, Vector3 b) => (a - b).magnitude;
 
         public static Vector3 Lerp(Vector3 a, Vector3 b, float t)
         {
@@ -496,6 +526,13 @@ namespace UnityEngine
 
     public class Material : Object { }
 
+    public class Component : Object { }
+    public class Behaviour : Component { }
+    public class MonoBehaviour : Behaviour { }
+    public class Collider : Component { }
+    public class MeshFilter : Component { }
+    public class MeshRenderer : Component { }
+
     public class ScriptableObject : Object
     {
         public static T CreateInstance<T>() where T : ScriptableObject, new() => new T();
@@ -526,6 +563,17 @@ namespace UnityEngine
                 GetUVs(0, list);
                 return list.ToArray();
             }
+        }
+
+        public void Clear()
+        {
+            _uvs.Clear();
+            vertices = new Vector3[0];
+            normals = new Vector3[0];
+            colors = new Color[0];
+            triangles = new int[0];
+            indexFormat = Rendering.IndexFormat.UInt16;
+            bounds = new Bounds(Vector3.zero, Vector3.zero);
         }
 
         public void SetVertices(List<Vector3> value)

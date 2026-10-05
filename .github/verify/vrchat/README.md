@@ -1,11 +1,62 @@
 # VRChat ワールド検証プロジェクト
 
-`Create Sample Scene` は、VRChat Worlds SDK が入っているプロジェクトでのみ
-`VRCSceneDescriptor` と Spawn を配置します。この分岐はリフレクションで
-SDK を参照しているため、SDK が無い環境ではコンパイルエラーにならず、
-何も検証されないまま通ってしまいます。
+SDK が実際に入っていないと検証できない対象があります。
 
-ここにあるのは、その分岐を実際に実行するためのプロジェクト組み立て手順です。
+**Foliage のサンプルシーン。** `Create Sample Scene` は、VRChat Worlds SDK が
+入っているプロジェクトでのみ `VRCSceneDescriptor` と Spawn を配置します。この分岐は
+リフレクションで SDK を参照しているため、SDK が無い環境ではコンパイルエラーに
+ならず、何も検証されないまま通ってしまいます。
+
+**Stage Cam の UdonSharp コンパイル。** `io.github.sabas0ba.sabaprops.stagecam` は
+Udon です。オフライン層は Roslyn で C# としてコンパイルするだけなので、UdonSharp が
+その C# を受け付けるかも、パッケージが UdonSharp の要求するアセットを同梱しているかも
+分かりません。実際、この層を通したことで 2 つの同梱漏れが見つかっています
+（`UdonSharpAssemblyDefinition` と `UdonSharpProgramAsset`）。
+
+**Soft Props の接触動作と UdonSharp コンパイル。** 実際の SDK と ClientSim で
+World Contacts、Pickup、家具の変形と復元を確認します。
+
+ここにあるのは、これらを実行するためのプロジェクト組み立て手順です。
+
+**Tablet の検証。** 次の指定でタブレットのテストだけを実行できます。
+
+```sh
+TEST_FILTER=SabaProps.Tablet.WorldTests ./.github/verify/vrchat/run-tests.sh
+```
+
+検証スクリプトは Unity が解決した公式 TextMeshPro パッケージの Essential Resources を
+プロジェクトへ展開します。ClientSim の新 Input System とタブレットの旧キー入力を
+併用するため、セットアップで Active Input Handling を Both にし、別セッションでテストします。
+ClientSim テストは実際の Udon を介して召喚、収納、ページ送り、ミラー切替、登録地点への
+移動を確認し、`TestResults/tablet-clientsim.png` に表示画像を保存します。
+選択プレイヤーへの移動候補は Unity Physics の独立したテストで検証します。
+ベッドの 5 面の向きと Collider の独立切替、PostEffect の 3 スライダーから
+Animator／Volume weight への反映と Volume の ON/OFF も検査します。
+`TestResults/tablet-bed-mirrors.png` と `tablet-post-effects.png` に各ページの表示画像を保存します。
+11 種の Theme について、装飾に Collider がないこと、既存のページとボタンを保持すること、
+編集用コピーが元のプリセットを変更しないことも検査します。
+セットアップ用ログは `SETUP_LOG` で出力先を指定できます。
+ClientSim で通常のデモに加えて展示 World を実行し、全テーマの召喚・ページ送り・World のミラー操作を検査します。
+展示 World のローカル Build & Test は `SabaProps.Tablet.WorldTests.TabletBuildAndTest.RunGallery` で実行できます。
+
+文書の画像は、Windows で組み立て済みの専用プロジェクトを GUI で起動し、
+`-executeMethod SabaProps.Tablet.WorldTests.TabletDocumentationCapture.Run` を指定して再撮影できます。
+`-batchmode` は指定しません。操作ページ・World の画像と、Setup Window・Theme Presets・Inspector GUI を
+`TestResults/Documentation/` に保存し、撮影後に Editor を終了します。
+開始時にサンプルシーンを生成するため、作業中のプロジェクトではなく独立した検証プロジェクトを使ってください。
+画像を確認してからパッケージの `Documentation~/images/` に取り込みます。
+
+ローカル VRChat Build & Test は生成済みプロジェクトで次のメソッドを実行します。
+非同期処理完了時に Editor を終了するため、`-quit` は指定しません。
+
+```sh
+Unity -batchmode -projectPath /path/to/WorldProject \
+  -executeMethod SabaProps.Tablet.WorldTests.TabletBuildAndTest.Run \
+  -logFile /path/to/WorldProject/tablet-build-test.log
+```
+
+このメソッドはワールドをアップロードしません。VRChat クライアントでの手動操作、
+複数プレイヤー、VR の指先押下と頭上 Grab は別途確認してください。
 
 ## 方針
 
@@ -50,7 +101,7 @@ Unity は Unity Hub の既定の場所から `ProjectVersion.txt` に一致す�
 初回は SDK が要求する UPM パッケージ（burst、collections、cinemachine 等）を
 Unity がレジストリから取得するため、数分かかります。
 
-テストは `SabaProps.Foliage.CITests` に絞って実行します。
+テストは `SabaProps.Foliage.CITests`、`SabaProps.Foliage.WorldTests`、`SabaProps.SoftProps.WorldTests`、`SabaProps.StageCam.WorldTests`、`SabaProps.Tablet.WorldTests`、`SabaProps.PutItems.Tests` に絞って実行します。
 SDK 自身のテストアセンブリも同じプロジェクトに存在しますが、
 本パッケージとは無関係な理由で 2 件失敗する（ランダム生成の JSON ファズケースと、
 docs.microsoft.com の URL 到達性を検証するもの）ため、終了コードを意味のあるものにするためです。
@@ -61,9 +112,29 @@ docs.microsoft.com の URL 到達性を検証するもの）ため、終了コ�
 | --- | --- | --- |
 | `SabaProps.Foliage.CITests` | EditMode | シーンが正しく作られているか。SDK の有無で期待値が切り替わります |
 | `SabaProps.Foliage.WorldTests` | PlayMode | ClientSim でワールドとして実行し、プレイヤーが Spawn するか |
+| `SabaProps.StageCam.WorldTests` | EditMode | リグと操作パネルの Udon コンパイル、保存後の UI イベント接続、カメラ設定の独立性、サンプル構成を検証。`TestResults/stagecam-panel.png` にレイアウト確認画像を出力 |
+| `SabaProps.SoftProps.WorldTests` | EditMode + Playへの遷移 | Prefab生成、同梱デモのimport・参照・比較台、ClientSimでのCollider接触・復元・自動運動・立位荷重 |
+| `SabaProps.Tablet.WorldTests` | EditMode | 全コンポーネントの Udon コンパイル、サンプルシーンの全ボタンがエクスポート済みのイベントを呼ぶこと、ミラーの排他、テレポート地点の番号、Build の再実行で生成物が重複しないことを検証 |
+| `SabaProps.PutItems.Tests` | EditMode | 吸着対象と Pickup の設定、同梱デモの構成を検証 |
 
-`WorldTests` は SDK を参照するため CI プロジェクト側には置けません。`Tests/` にあり、
-`assemble.sh` がワールドプロジェクトへコピーします。
+Soft Propsの実行テストは指・棒・板の100 mmおよび0.5 mmの空隙、20 mmの侵入、離脱後の復元、自動上下運動、ローカルプレイヤーのFutonへの接地を検証します。VRChat実clientの手・胴体・リモートプレイヤーの接触を保証するテストではありません。
+
+Soft Propsの関連テストは次の5件です。`Tests/`内のテストを同じSDK付きprojectで実行します。
+
+| テスト | 確認する内容 |
+| --- | --- |
+| `Generator_CreatesInteractivePropsAndContactProbeTest` | 家具・probeの生成とUdon programのcompile |
+| `BundledDemo_ImportsWithoutGeneratorAndHasReviewStations` | デモのimport、参照、13 controller、3 Pickup、3 AUTO台 |
+| `Colliders_RequirePenetration_AutomationMoves_PlayerLoadsFuton` | ClientSim上の接触前非圧縮、押下、復元、自動運動、ローカル立位荷重 |
+| `DemoProgramMigration_PreservesGuids_AndFurnitureSurvivesDemoRemoval` | 旧programのGUID維持、デモ削除後の家具参照維持、再import時のprogram重複防止 |
+| `AssignSender_ClearsPreviousPlayerOwnership` | Senderへのslot割り当て時に旧playerとtimestampを解除する単体検証 |
+
+最後のテストではSDKオブジェクトを所有者識別用の参照として使用するだけで、SDKの接触イベントやlive Senderの挙動は模擬しません。`SoftPropsLifetimeTests`は検証project内のデモを移動・削除・再importするため、利用者が編集中のworldではなく独立した検証projectで実行してください。
+
+SDK を参照するテストは CI プロジェクト側には置けません。`Tests/` にあり、
+`assemble.sh` がワールドプロジェクトへコピーします。**アセンブリごとにサブフォルダを
+分けてあります。** Unity は 1 つのフォルダに asmdef が 2 つあると、そのフォルダだけでなく
+プロジェクト全体のコンパイルを失敗させます。
 
 ClientSim は VRChat クライアントのエディタ内ランタイムです。`VRCSceneDescriptor` を読んで
 ローカルプレイヤーを生成するため、descriptor の設定が間違っていればプレイヤーは出ません。
@@ -75,8 +146,16 @@ SDK 側の起動順の問題でこちらから直せないため、ワールド�
 
 ## これで検証できること
 
-`FoliageVrcWorld` が SDK を見つけ、`VRCWorld` ルートと Spawn を作り、
-`VRCSceneDescriptor` を実際に AddComponent できること。
+`StageCamRig` が UdonSharp を通ること。オフライン層の Roslyn コンパイルは
+UdonSharp の制約（ジェネリクス・インターフェース・ユーザー定義 struct・
+同期できない型）を何も見ないため、ここが唯一の判定です。あわせて、
+`_postLateUpdate` などのイベントと Inspector のフィールドが Udon 側に出ていること、
+そしてパッケージが同梱する `UdonSharpAssemblyDefinition` と `UdonSharpProgramAsset` が
+**clean なプロジェクトで足りていること**を確認します。後者は利用者が VCC で
+導入した状態そのものです。
+
+`FoliageVrcWorld` と `WaterVrcWorld` が SDK を見つけ、`VRCWorld` ルートと Spawn を作り、
+`VRCSceneDescriptor` を実際に AddComponent できること。Water Gallery では Reference Camera も検証します。
 `FoliageSampleSceneTests.SampleScene_MatchesTheVrchatSdkThatIsInstalled` が
 SDK の有無を見て期待値を切り替えるため、同じテストが両方の環境で意味を持ちます。
 
@@ -87,6 +166,17 @@ SDK の有無を見て期待値を切り替えるため、同じテストが両�
 
 実機の VRChat へアップロードした結果。ビルド＆アップロードには VRChat アカウントでの
 ログインが必要で、自動化の対象外です。
+
+**Stage Cam が実際に追従すること。** ClientSim は `PostLateUpdate` を発火しません
+（SDK 3.10.4 の ClientSim ランタイムにこのイベントを送る経路がありません）。
+また ClientSim が生成するのはローカルプレイヤーだけなので、リモートプレイヤーの
+ボーン補間も再現できません。追従計算そのものはオフライン層が実行して検査しており、
+ここで確かめられるのはイベントがエクスポートされていることまでです。
+
+なお `--clean` の直後の 1 回目のセッションでは、`FoliageDemoWorldTests` が
+ClientSim の起動時 `NullReferenceException` で落ちることがあります。2 回目以降は通ります。
+初回インポートで API Updater がアセンブリを差し替える間に起動順が崩れるためで、
+このリポジトリのコードとは関係ありません。
 
 ## SDK のバージョンを上げるには
 
@@ -101,3 +191,5 @@ GameCI のイメージを使えば Unity もコンテナ化できますが、ラ
 `.github/workflows/unity.yml` と同じ構成にしてください。
 またコンテナへ 8 GB 程度のメモリ割り当てが要ります
 （podman machine の既定は小さいことが多いので、`podman machine set --memory` で拡張が必要です）。
+
+Put Items 単体の準備・検証手順は [PUT_ITEMS.md](PUT_ITEMS.md) を参照してください。

@@ -1,0 +1,62 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!21 &2100000
+Material:
+  serializedVersion: 8
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: ReferenceRod
+  m_Shader: {fileID: 4800000, guid: 3e41e8332f764154add2a8281725467b, type: 3}
+  m_Parent: {fileID: 0}
+  m_ModifiedSerializedProperties: 0
+  m_ValidKeywords: []
+  m_InvalidKeywords: []
+  m_LightmapFlags: 4
+  m_EnableInstancingVariants: 0
+  m_DoubleSidedGI: 0
+  m_CustomRenderQueue: -1
+  stringTagMap: {}
+  disabledShaderPasses: []
+  m_LockedProperties:
+  m_SavedProperties:
+    serializedVersion: 3
+    m_TexEnvs:
+    - _MainTex:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    m_Ints: []
+    m_Floats:
+    - _ContactRadius: 0.24
+    - _Hardness: 0.3
+    - _LateralSpread: 0.65
+    - _MaximumIndent: 0.09
+    - _RimLift: 0.004
+    - _Smoothness: 0.045
+    - _SurfaceGrainScale: 145
+    - _SurfaceGrainStrength: 0.032
+    - _WeaveContrast: 0
+    - _WeaveScale: 72
+    - _WrinkleFrequency: 18
+    - _WrinkleStrength: 0.0035
+    m_Colors:
+    - _Color: {r: 0.86, g: 0.67, b: 0.55, a: 1}
+    - _Contact0: {r: 0, g: 0.08, b: 0, a: 0.7}
+    - _Contact1: {r: 0, g: 0, b: 0, a: 0}
+    - _Contact2: {r: 0, g: 0, b: 0, a: 0}
+    - _Contact3: {r: 0, g: 0, b: 0, a: 0}
+    - _Contact4: {r: 0, g: 0, b: 0, a: 0}
+    - _Contact5: {r: 0, g: 0, b: 0, a: 0}
+    - _Contact6: {r: 0, g: 0, b: 0, a: 0}
+    - _Contact7: {r: 0, g: 0, b: 0, a: 0}
+    - _ContactShape0: {r: 1, g: 0, b: 0.22, a: 0.045}
+    - _ContactShape1: {r: 1, g: 0, b: 0, a: 0.055}
+    - _ContactShape2: {r: 1, g: 0, b: 0, a: 0.055}
+    - _ContactShape3: {r: 1, g: 0, b: 0, a: 0.055}
+    - _ContactShape4: {r: 1, g: 0, b: 0, a: 0.055}
+    - _ContactShape5: {r: 1, g: 0, b: 0, a: 0.055}
+    - _ContactShape6: {r: 1, g: 0, b: 0, a: 0.055}
+    - _ContactShape7: {r: 1, g: 0, b: 0, a: 0.055}
+  m_BuildTextureStacks: []

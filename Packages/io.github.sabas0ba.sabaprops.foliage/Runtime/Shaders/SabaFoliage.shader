@@ -117,7 +117,15 @@ Shader "SabaProps/Foliage"
             float3 rootOS = v.texcoord3.xyz;
             float stiffness = v.texcoord3.w;
             float elementSeed = v.color.a;
-            float heightRatio = saturate(v.texcoord.y);
+            float encodedBend = v.texcoord.y;
+            float surfaceConstraint = step(0.5, -encodedBend);
+            float heightRatio = saturate(lerp(
+                encodedBend,
+                -encodedBend - 1.0,
+                surfaceConstraint));
+            // Restore the regular UV before the surface shader interpolates it
+            // for texture sampling.
+            v.texcoord.y = heightRatio;
 
             float3 rootWS = mul(unity_ObjectToWorld, float4(rootOS, 1.0)).xyz;
 
@@ -142,7 +150,17 @@ Shader "SabaProps/Foliage"
                 _WindDirection.xz, _WindStrength, _WindSpeed,
                 _WindWaveLength, _WindTurbulence, _WindGust);
 
-            v.vertex.xyz += mul((float3x3)unity_WorldToObject, windWS);
+            // Surface-grown foliage uses its vertex normal as the supporting
+            // surface normal and enables clipping through encoded UV0.y.
+            // Remove only displacement into that surface; tangential and
+            // outward movement remain, so the leaves still sway without
+            // crossing a wall or floor. Ordinary foliage keeps UV0.y in 0..1.
+            float3 windOS = mul((float3x3)unity_WorldToObject, windWS);
+            float3 surfaceNormalOS = normalize(v.normal);
+            float inwardWind = min(0.0, dot(windOS, surfaceNormalOS));
+            windOS -= surfaceNormalOS * inwardWind * surfaceConstraint;
+
+            v.vertex.xyz += windOS;
 
             // Bake the per-instance tint into the interpolated vertex colour so
             // the fragment stage stays as cheap as possible.

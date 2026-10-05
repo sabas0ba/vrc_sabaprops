@@ -30,6 +30,20 @@ if [ "$#" -lt 1 ]; then
     exit 2
 fi
 
+# A repository development container may provide the pinned interpreter
+# directly from its Nix profile. This opt-in path avoids starting a nested
+# container while preserving the digest-pinned image as the default everywhere
+# else. The caller is responsible for selecting the interpreter explicitly.
+if [ -n "${SABAPROPS_PYTHON_INTERPRETER:-}" ]; then
+    command -v "$SABAPROPS_PYTHON_INTERPRETER" >/dev/null 2>&1 \
+        || {
+            echo "error: SABAPROPS_PYTHON_INTERPRETER does not resolve to an executable" >&2
+            exit 1
+        }
+    cd "$REPO"
+    exec "$SABAPROPS_PYTHON_INTERPRETER" "$@"
+fi
+
 ENGINE="${CONTAINER_ENGINE:-}"
 if [ -z "$ENGINE" ]; then
     for candidate in podman docker; do

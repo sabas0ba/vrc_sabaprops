@@ -1,26 +1,39 @@
-/* Palette shared by the listing page and the generated documentation, so the
-   two halves of the site cannot drift apart. */
+/* Palette shared by the listing page and the generated documentation. */
 :root {
   color-scheme: light dark;
-  --bg: #f7f8f6;
+  --bg: #f4f7f6;
   --surface: #ffffff;
-  --border: #e0e3dd;
-  --text: #1b1f19;
-  --muted: #5d6659;
-  --accent: #3f7d33;
+  --surface-raised: #ffffff;
+  --border: #d8e1df;
+  --text: #182426;
+  --muted: #5c6c6d;
+  --accent: #176b70;
+  --accent-strong: #0e5156;
+  --accent-soft: #e4f2f1;
+  --warm: #b65f32;
+  --warm-soft: #fff0e8;
   --accent-text: #ffffff;
-  --code-bg: #eceee9;
+  --code-bg: #edf2f1;
+  --hero: #eaf4f3;
+  --shadow: 0 14px 40px rgba(24, 48, 51, 0.08);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #141713;
-    --surface: #1d211b;
-    --border: #2f3529;
-    --text: #e8ebe5;
-    --muted: #9aa494;
-    --accent: #7cbf65;
-    --accent-text: #10140f;
-    --code-bg: #262b22;
+    --bg: #10191a;
+    --surface: #172324;
+    --surface-raised: #1c2b2c;
+    --border: #304344;
+    --text: #e5eeee;
+    --muted: #a6b8b8;
+    --accent: #6dc5c3;
+    --accent-strong: #98e0dc;
+    --accent-soft: #1d3b3c;
+    --warm: #ee9a6b;
+    --warm-soft: #3b2822;
+    --accent-text: #082426;
+    --code-bg: #203031;
+    --hero: #153133;
+    --shadow: 0 16px 42px rgba(0, 0, 0, 0.25);
   }
 }

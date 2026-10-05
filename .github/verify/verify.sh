@@ -1,16 +1,27 @@
 #!/usr/bin/env bash
 #
-# Verify the package without a Unity installation.
+# Verify the packages without a Unity installation.
 #
 # What this proves:
-#   * the Runtime assembly compiles against REAL UnityEngine reference
+#   * the foliage Runtime assembly compiles against REAL UnityEngine reference
 #     assemblies (Unity's own UnityEngine.Modules NuGet package)
-#   * the Editor assembly compiles, with its UnityEngine usage checked against
-#     those same real assemblies
+#   * the foliage Editor assembly compiles, with its UnityEngine usage checked
+#     against those same real assemblies
 #   * the shader's HLSL type-checks in all four shader_feature combinations
 #   * mesh generation RUNS, and the geometry it produces holds up: topology,
 #     finiteness, determinism, the UV3/COLOR channels the shader reads, and the
 #     wind-joint rules that stop a plant coming apart. See offline/.
+#   * the stage camera Runtime compiles against the REAL VRChat SDK assemblies
+#     that vrchat/packages.lock pins, so VRCPlayerApi, Networking, Utilities and
+#     VRC_Pickup are checked against what the SDK actually ships
+#   * the stage camera solver RUNS: distance invariance, roll-free aiming, the
+#     pickup round trip, frame rate independence of the smoothing, the deadzone
+#     contract, bone fallback, framing, and the continuity of the automatic
+#     camera move. See offline/OfflineStageCamTests.cs.
+#   * the tablet Runtime, Authoring and Editor assemblies compile against the
+#     same pinned SDK, and its solvers RUN: summon pose, finger press state
+#     machine, page wrapping, reach anchor, player cycling, the button grid and
+#     the rounded meshes. See offline/OfflineTabletTests.cs.
 #   * the documentation figures still match what the generators produce, and
 #     the site renders, with no raw Markdown left in the text, no broken
 #     internal links and no missing images
@@ -18,6 +29,11 @@
 # What this does NOT prove:
 #   * UnityEditor API signatures. UnityEditor.dll is not redistributable, so
 #     `UnityEditorStub.cs` stands in for it and is written by hand.
+#   * UdonSharp API signatures, and every rule UdonSharp imposes on the C# it
+#     will accept. UdonSharpBehaviour is source inside the Worlds package and
+#     pulls in a graph this tier has no business rebuilding, so
+#     `UdonSharpStub.cs` stands in for it. Whether UdonSharp compiles the
+#     behaviour to Udon at all is only ever settled in vrchat/.
 #   * that Unity's surface shader generator accepts the #pragma configuration,
 #     or that the generated variants compile. Only the shader's own code is
 #     checked here.
@@ -30,19 +46,29 @@
 #
 # Requirements: dotnet SDK 8+, glslangValidator, curl, unzip, and podman or
 # docker. Python is not required on the host: every script that needs it runs
-# in the pinned container that .github/scripts/run.sh starts.
+# in the pinned container that .github/scripts/run.sh starts. The container
+# also downloads the pinned VRChat SDK used to compile the stage camera.
+# An isolated repository development container may instead set
+# SABAPROPS_PYTHON_INTERPRETER to its pinned Nix interpreter.
 set -euo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO="$(cd "$HERE/../.." && pwd)"
-PACKAGE="${1:-$REPO/Packages/io.github.sabas0ba.sabaprops.foliage}"
+FOLIAGE_PACKAGE="${1:-$REPO/Packages/io.github.sabas0ba.sabaprops.foliage}"
+WATER_PACKAGE="$REPO/Packages/io.github.sabas0ba.sabaprops.water"
+STAGECAM="$REPO/Packages/io.github.sabas0ba.sabaprops.stagecam"
+TREE_PACKAGE="${TREE_PACKAGE:-$REPO/Packages/io.github.sabas0ba.sabaprops.trees}"
+FLOCK_PACKAGE="$REPO/Packages/io.github.sabas0ba.sabaprops.flock"
+TABLET="$REPO/Packages/io.github.sabas0ba.sabaprops.tablet"
 
 WORK="${VERIFY_WORK_DIR:-$REPO/.verify}"
 REFS="$WORK/refs"
 OUT="$WORK/out"
+VPM="$WORK/vpm"
 
 UNITY_REFS_VERSION="2021.3.33"
 NETFX_REFS_VERSION="1.0.3"
+NETSTANDARD_REFS_VERSION="2.1.0"
 
 mkdir -p "$REFS" "$OUT"
 
@@ -74,6 +100,12 @@ fetch_nupkg() {
 fetch_nupkg unityengine.modules "$UNITY_REFS_VERSION" "$REFS/unity"
 fetch_nupkg microsoft.netframework.referenceassemblies.net472 "$NETFX_REFS_VERSION" "$REFS/netfx"
 
+# The VRChat SDK assemblies target netstandard 2.1, so the stage camera package
+# cannot be compiled against the .NET Framework references the foliage package
+# uses. The whole facade set is needed, not just netstandard.dll: VRCSDKBase
+# reaches types through mscorlib and the other facades in the same pack.
+fetch_nupkg netstandard.library.ref "$NETSTANDARD_REFS_VERSION" "$REFS/netstandard21"
+
 # UnityEngine.Modules stores its entries with mode 000, and unzip faithfully
 # reproduces that. Root does not care, an ordinary CI user cannot read a single
 # DLL. Applied outside fetch_nupkg so a restored cache is fixed up too.
@@ -81,9 +113,11 @@ chmod -R u+rwX "$REFS"
 
 UNITY_DIR="$REFS/unity/lib/net35"
 NETFX_DIR="$REFS/netfx/build/.NETFramework/v4.7.2"
+NETSTANDARD_DIR="$REFS/netstandard21/ref/netstandard2.1"
 
 [ -f "$UNITY_DIR/UnityEngine.CoreModule.dll" ] || fail "UnityEngine reference assemblies missing"
 [ -f "$NETFX_DIR/mscorlib.dll" ] || fail ".NET Framework reference assemblies missing"
+[ -f "$NETSTANDARD_DIR/netstandard.dll" ] || fail "netstandard 2.1 reference assemblies missing"
 
 # `dotnet --list-sdks` prints "<version> [<sdk root>]"; that root is the only
 # reliable way to find Roslyn across distro packages and setup-dotnet installs.
@@ -101,40 +135,92 @@ UNITY_ARGS=()
 for dll in "$UNITY_DIR"/*.dll; do UNITY_ARGS+=(-r:"$dll"); done
 
 # CS1701/1702: assembly version unification between net35 and net472 refs.
+# shellcheck disable=SC2054
 COMMON=(-nostdlib+ -noconfig -langversion:9.0 -nowarn:1701,1702 -target:library -nologo)
 
 csc() { dotnet "$CSC_DLL" "$@"; }
 
-# All Python in this repository runs in a pinned container; see run.sh.
-PYTHON="$REPO/.github/scripts/run.sh"
+# CI and host runs use the digest-pinned Python container. A separately pinned
+# development container can name the interpreter from its own immutable Nix
+# closure to avoid nesting another container engine.
+PYTHON="${VERIFY_PYTHON:-$REPO/.github/scripts/run.sh}"
 
 # ---------------------------------------------------------------------------
 log "Compiling Runtime assembly (real UnityEngine references)"
 # ---------------------------------------------------------------------------
-mapfile -t RUNTIME_SOURCES < <(find "$PACKAGE/Runtime" -name '*.cs' | sort)
-[ "${#RUNTIME_SOURCES[@]}" -gt 0 ] || fail "no Runtime sources found under $PACKAGE"
+mapfile -t RUNTIME_SOURCES < <(find "$FOLIAGE_PACKAGE/Runtime" -name '*.cs' | sort)
+[ "${#RUNTIME_SOURCES[@]}" -gt 0 ] || fail "no Runtime sources found under $FOLIAGE_PACKAGE"
 
 csc "${COMMON[@]}" "${BCL[@]}" "${UNITY_ARGS[@]}" \
     -out:"$OUT/SabaProps.Foliage.Runtime.dll" "${RUNTIME_SOURCES[@]}"
 echo "ok: ${#RUNTIME_SOURCES[@]} file(s)"
 
+if [ -d "$TREE_PACKAGE/Runtime" ]; then
+    mapfile -t TREE_RUNTIME_SOURCES < <(find "$TREE_PACKAGE/Runtime" -name '*.cs' | sort)
+    csc "${COMMON[@]}" "${BCL[@]}" "${UNITY_ARGS[@]}" \
+        -r:"$OUT/SabaProps.Foliage.Runtime.dll" \
+        -out:"$OUT/SabaProps.Trees.Runtime.dll" "${TREE_RUNTIME_SOURCES[@]}"
+    echo "ok: ${#TREE_RUNTIME_SOURCES[@]} tree runtime file(s)"
+fi
+
 # ---------------------------------------------------------------------------
 log "Compiling UnityEditor stub"
 # ---------------------------------------------------------------------------
 csc "${COMMON[@]}" "${BCL[@]}" "${UNITY_ARGS[@]}" \
-    -out:"$OUT/UnityEditor.dll" "$HERE/UnityEditorStub.cs"
+    -out:"$OUT/UnityEditor.dll" "$HERE/UnityEditorStub.cs" "$HERE/UnityEditorAnimationsStub.cs"
 echo "ok"
 
 # ---------------------------------------------------------------------------
 log "Compiling Editor assembly (real UnityEngine references + stub)"
 # ---------------------------------------------------------------------------
-mapfile -t EDITOR_SOURCES < <(find "$PACKAGE/Editor" -name '*.cs' | sort)
-[ "${#EDITOR_SOURCES[@]}" -gt 0 ] || fail "no Editor sources found under $PACKAGE"
+mapfile -t EDITOR_SOURCES < <(find "$FOLIAGE_PACKAGE/Editor" -name '*.cs' | sort)
+[ "${#EDITOR_SOURCES[@]}" -gt 0 ] || fail "no Editor sources found under $FOLIAGE_PACKAGE"
 
 csc "${COMMON[@]}" "${BCL[@]}" "${UNITY_ARGS[@]}" \
     -r:"$OUT/SabaProps.Foliage.Runtime.dll" -r:"$OUT/UnityEditor.dll" \
     -out:"$OUT/SabaProps.Foliage.Editor.dll" "${EDITOR_SOURCES[@]}"
 echo "ok: ${#EDITOR_SOURCES[@]} file(s)"
+
+if [ -d "$TREE_PACKAGE/Editor" ]; then
+    mapfile -t TREE_EDITOR_SOURCES < <(find "$TREE_PACKAGE/Editor" -name '*.cs' | sort)
+    csc "${COMMON[@]}" "${BCL[@]}" "${UNITY_ARGS[@]}" \
+        -r:"$OUT/SabaProps.Foliage.Runtime.dll" \
+        -r:"$OUT/SabaProps.Foliage.Editor.dll" \
+        -r:"$OUT/SabaProps.Trees.Runtime.dll" \
+        -r:"$OUT/UnityEditor.dll" \
+        -out:"$OUT/SabaProps.Trees.Editor.dll" "${TREE_EDITOR_SOURCES[@]}"
+    echo "ok: ${#TREE_EDITOR_SOURCES[@]} tree editor file(s)"
+fi
+
+# ---------------------------------------------------------------------------
+log "Compiling Water assemblies (real UnityEngine references + stub)"
+# ---------------------------------------------------------------------------
+mapfile -t WATER_RUNTIME_SOURCES < <(find "$WATER_PACKAGE/Runtime" -name '*.cs' | sort)
+mapfile -t WATER_EDITOR_SOURCES < <(find "$WATER_PACKAGE/Editor" -name '*.cs' | sort)
+[ "${#WATER_RUNTIME_SOURCES[@]}" -gt 0 ] || fail "no Runtime sources found under $WATER_PACKAGE"
+[ "${#WATER_EDITOR_SOURCES[@]}" -gt 0 ] || fail "no Editor sources found under $WATER_PACKAGE"
+
+csc "${COMMON[@]}" "${BCL[@]}" "${UNITY_ARGS[@]}" \
+    -out:"$OUT/SabaProps.Water.Runtime.dll" "${WATER_RUNTIME_SOURCES[@]}"
+csc "${COMMON[@]}" "${BCL[@]}" "${UNITY_ARGS[@]}" \
+    -r:"$OUT/SabaProps.Water.Runtime.dll" -r:"$OUT/UnityEditor.dll" \
+    -out:"$OUT/SabaProps.Water.Editor.dll" "${WATER_EDITOR_SOURCES[@]}"
+echo "ok: ${#WATER_RUNTIME_SOURCES[@]} Runtime, ${#WATER_EDITOR_SOURCES[@]} Editor file(s)"
+
+# ---------------------------------------------------------------------------
+log "Compiling Flock assemblies (real UnityEngine references + stub)"
+# ---------------------------------------------------------------------------
+mapfile -t FLOCK_RUNTIME_SOURCES < <(find "$FLOCK_PACKAGE/Runtime" -name '*.cs' | sort)
+mapfile -t FLOCK_EDITOR_SOURCES < <(find "$FLOCK_PACKAGE/Editor" -name '*.cs' | sort)
+[ "${#FLOCK_RUNTIME_SOURCES[@]}" -gt 0 ] || fail "no Runtime sources found under $FLOCK_PACKAGE"
+[ "${#FLOCK_EDITOR_SOURCES[@]}" -gt 0 ] || fail "no Editor sources found under $FLOCK_PACKAGE"
+
+csc "${COMMON[@]}" "${BCL[@]}" "${UNITY_ARGS[@]}" \
+    -out:"$OUT/SabaProps.Flock.Runtime.dll" "${FLOCK_RUNTIME_SOURCES[@]}"
+csc "${COMMON[@]}" "${BCL[@]}" "${UNITY_ARGS[@]}" \
+    -r:"$OUT/SabaProps.Flock.Runtime.dll" -r:"$OUT/UnityEditor.dll" \
+    -out:"$OUT/SabaProps.Flock.Editor.dll" "${FLOCK_EDITOR_SOURCES[@]}"
+echo "ok: ${#FLOCK_RUNTIME_SOURCES[@]} Runtime, ${#FLOCK_EDITOR_SOURCES[@]} Editor file(s)"
 
 # ---------------------------------------------------------------------------
 log "Compiling the documentation capture tool"
@@ -155,6 +241,16 @@ else
     echo "skipped: no capture tool"
 fi
 
+FLOCK_CAPTURE="$REPO/.github/figures/capture/flock/FlockDocsCapture.cs"
+if [ -f "$FLOCK_CAPTURE" ]; then
+    csc "${COMMON[@]}" "${BCL[@]}" "${UNITY_ARGS[@]}" \
+        -r:"$OUT/SabaProps.Flock.Runtime.dll" \
+        -r:"$OUT/SabaProps.Flock.Editor.dll" \
+        -r:"$OUT/UnityEditor.dll" \
+        -out:"$OUT/SabaProps.Flock.DocsCapture.dll" "$FLOCK_CAPTURE"
+    echo "ok: Flock capture tool"
+fi
+
 # ---------------------------------------------------------------------------
 log "Compiling CI EditMode tests"
 # ---------------------------------------------------------------------------
@@ -167,6 +263,8 @@ if [ -d "$TEST_DIR" ]; then
         csc "${COMMON[@]}" "${BCL[@]}" "${UNITY_ARGS[@]}" \
             -r:"$OUT/SabaProps.Foliage.Runtime.dll" \
             -r:"$OUT/SabaProps.Foliage.Editor.dll" \
+            -r:"$OUT/SabaProps.Trees.Runtime.dll" \
+            -r:"$OUT/SabaProps.Trees.Editor.dll" \
             -r:"$OUT/UnityEditor.dll" \
             -out:"$OUT/SabaProps.Foliage.CITests.dll" "${TEST_SOURCES[@]}"
         echo "ok: ${#TEST_SOURCES[@]} file(s)"
@@ -177,10 +275,164 @@ else
     echo "skipped: no CI project"
 fi
 
+WATER_TEST_DIR="$HERE/CIProject/Assets/WaterTests"
+if [ -d "$WATER_TEST_DIR" ]; then
+    mapfile -t WATER_TEST_SOURCES < <(find "$WATER_TEST_DIR" -name '*.cs' | sort)
+    if [ "${#WATER_TEST_SOURCES[@]}" -gt 0 ]; then
+        csc "${COMMON[@]}" "${BCL[@]}" "${UNITY_ARGS[@]}" \
+            -r:"$OUT/SabaProps.Water.Runtime.dll" \
+            -r:"$OUT/SabaProps.Water.Editor.dll" \
+            -r:"$OUT/UnityEditor.dll" \
+            -out:"$OUT/SabaProps.Water.CITests.dll" "${WATER_TEST_SOURCES[@]}"
+        echo "ok: ${#WATER_TEST_SOURCES[@]} Water test file(s)"
+    fi
+fi
+
+FLOCK_TEST_DIR="$HERE/CIProject/Assets/FlockTests"
+if [ -d "$FLOCK_TEST_DIR" ]; then
+    mapfile -t FLOCK_TEST_SOURCES < <(find "$FLOCK_TEST_DIR" -name '*.cs' | sort)
+    if [ "${#FLOCK_TEST_SOURCES[@]}" -gt 0 ]; then
+        csc "${COMMON[@]}" "${BCL[@]}" "${UNITY_ARGS[@]}" \
+            -r:"$OUT/SabaProps.Flock.Runtime.dll" \
+            -r:"$OUT/SabaProps.Flock.Editor.dll" \
+            -r:"$OUT/UnityEditor.dll" \
+            -out:"$OUT/SabaProps.Flock.CITests.dll" "${FLOCK_TEST_SOURCES[@]}"
+        echo "ok: ${#FLOCK_TEST_SOURCES[@]} Flock test file(s)"
+    fi
+fi
+
+# ---------------------------------------------------------------------------
+log "Fetching the pinned VRChat SDK"
+# ---------------------------------------------------------------------------
+# io.github.sabas0ba.sabaprops.stagecam is Udon, so unlike the foliage package
+# it cannot be compiled without the SDK. The download is the same pinned,
+# hash-checked, containerised one the world tests use; see vrchat/fetch.sh.
+if [ -d "$VPM/com.vrchat.base" ] && [ -d "$VPM/com.vrchat.worlds" ]; then
+    echo "cached: com.vrchat.base, com.vrchat.worlds"
+else
+    "$HERE/vrchat/fetch.sh" "$VPM"
+fi
+
+SDK_PLUGINS="$VPM/com.vrchat.base/Runtime/VRCSDK/Plugins"
+[ -f "$SDK_PLUGINS/VRCSDKBase.dll" ] || fail "VRCSDKBase.dll missing from the fetched SDK"
+
+# The SDK targets netstandard 2.1, so this compile swaps the .NET Framework
+# references above for the netstandard facade set. The Unity references stay
+# the same.
+NETSTANDARD_ARGS=()
+for dll in "$NETSTANDARD_DIR"/*.dll; do NETSTANDARD_ARGS+=(-r:"$dll"); done
+
+# ---------------------------------------------------------------------------
+log "Compiling UdonSharp stub"
+# ---------------------------------------------------------------------------
+# The stub's event signatures name VRCPlayerApi, so it is built against the
+# real SDK too: a rename there fails here rather than in Unity.
+# VRC.Udon.Common carries UdonInputEventArgs, which the InputGrab event names.
+UDON_COMMON="$VPM/com.vrchat.worlds/Runtime/Udon/External/VRC.Udon.Common.dll"
+[ -f "$UDON_COMMON" ] || fail "VRC.Udon.Common.dll missing from the fetched SDK"
+
+csc "${COMMON[@]}" "${NETSTANDARD_ARGS[@]}" "${UNITY_ARGS[@]}" \
+    -r:"$SDK_PLUGINS/VRCSDKBase.dll" -r:"$UDON_COMMON" \
+    -out:"$OUT/UdonSharp.Runtime.dll" "$HERE/UdonSharpStub.cs"
+echo "ok"
+
+# ---------------------------------------------------------------------------
+log "Compiling stage camera Runtime (real VRChat SDK references + stub)"
+# ---------------------------------------------------------------------------
+# VRCPlayerApi, Networking, Utilities and VRC_Pickup are checked against the
+# shipping VRCSDKBase.dll. UdonSharpBehaviour and uGUI use hand-written stubs;
+# actual UI APIs and persistent event targets are verified in the Unity tests.
+csc "${COMMON[@]}" "${NETSTANDARD_ARGS[@]}" "${UNITY_ARGS[@]}" \
+    -out:"$OUT/UnityEngine.UI.dll" "$HERE/UnityUiStub.cs"
+
+mapfile -t STAGECAM_SOURCES < <(find "$STAGECAM/Runtime" -name '*.cs' | sort)
+[ "${#STAGECAM_SOURCES[@]}" -gt 0 ] || fail "no Runtime sources found under $STAGECAM"
+
+csc "${COMMON[@]}" "${NETSTANDARD_ARGS[@]}" "${UNITY_ARGS[@]}" \
+    -r:"$SDK_PLUGINS/VRCSDKBase.dll" -r:"$OUT/UdonSharp.Runtime.dll" -r:"$OUT/UnityEngine.UI.dll" \
+    -out:"$OUT/SabaProps.StageCam.Runtime.dll" "${STAGECAM_SOURCES[@]}"
+echo "ok: ${#STAGECAM_SOURCES[@]} file(s)"
+
+# ---------------------------------------------------------------------------
+log "Compiling UdonSharp editor stub"
+# ---------------------------------------------------------------------------
+csc "${COMMON[@]}" "${NETSTANDARD_ARGS[@]}" "${UNITY_ARGS[@]}" \
+    -r:"$OUT/UdonSharp.Runtime.dll" \
+    -out:"$OUT/UdonSharp.Editor.dll" "$HERE/UdonSharpEditorStub.cs"
+echo "ok"
+
+# ---------------------------------------------------------------------------
+log "Compiling stage camera Editor (real VRCSDK3 references + stubs)"
+# ---------------------------------------------------------------------------
+# The sample scene builder. VRCSceneDescriptor and VRCPickup come from the real
+# VRCSDK3.dll, so a rename there fails here. UnityEditor and the UdonSharp
+# editor half are the hand-written stubs.
+mapfile -t STAGECAM_EDITOR_SOURCES < <(find "$STAGECAM/Editor" -name '*.cs' | sort)
+[ "${#STAGECAM_EDITOR_SOURCES[@]}" -gt 0 ] || fail "no Editor sources found under $STAGECAM"
+
+SDK3_PLUGINS="$VPM/com.vrchat.worlds/Runtime/VRCSDK/Plugins"
+[ -f "$SDK3_PLUGINS/VRCSDK3.dll" ] || fail "VRCSDK3.dll missing from the fetched SDK"
+
+# A second UnityEditor stub build: the one above is compiled against the .NET
+# Framework references the foliage package uses, and mixing those with the
+# netstandard facades this package needs duplicates System.Object.
+csc "${COMMON[@]}" "${NETSTANDARD_ARGS[@]}" "${UNITY_ARGS[@]}" \
+    -out:"$OUT/UnityEditor.NetStandard.dll" "$HERE/UnityEditorStub.cs" "$HERE/UnityEditorAnimationsStub.cs"
+
+csc "${COMMON[@]}" "${NETSTANDARD_ARGS[@]}" "${UNITY_ARGS[@]}" \
+    -r:"$SDK_PLUGINS/VRCSDKBase.dll" -r:"$SDK3_PLUGINS/VRCSDK3.dll" \
+    -r:"$OUT/UdonSharp.Runtime.dll" -r:"$OUT/UdonSharp.Editor.dll" \
+    -r:"$OUT/UnityEditor.NetStandard.dll" -r:"$OUT/SabaProps.StageCam.Runtime.dll" \
+    -r:"$OUT/UnityEngine.UI.dll" \
+    -out:"$OUT/SabaProps.StageCam.Editor.dll" "${STAGECAM_EDITOR_SOURCES[@]}"
+echo "ok: ${#STAGECAM_EDITOR_SOURCES[@]} file(s)"
+
+# ---------------------------------------------------------------------------
+log "Compiling tablet assemblies (real VRChat SDK references + stubs)"
+# ---------------------------------------------------------------------------
+# Runtime is Udon, Authoring holds the editor-only definition component and the
+# theme, Editor builds the tablet from them. TextMeshPro is source inside a
+# Unity package, so like uGUI it is a hand-written stub; everything from VRChat
+# is the real SDK. The StageCam integration sample is compiled against the stage
+# camera Runtime built above, since that is the package it drives.
+csc "${COMMON[@]}" "${NETSTANDARD_ARGS[@]}" "${UNITY_ARGS[@]}" \
+    -out:"$OUT/Unity.TextMeshPro.dll" "$HERE/TextMeshProStub.cs"
+
+mapfile -t TABLET_RUNTIME_SOURCES < <(find "$TABLET/Runtime" -name '*.cs' | sort)
+mapfile -t TABLET_AUTHORING_SOURCES < <(find "$TABLET/Authoring" -name '*.cs' | sort)
+mapfile -t TABLET_EDITOR_SOURCES < <(find "$TABLET/Editor" -name '*.cs' | sort)
+[ "${#TABLET_RUNTIME_SOURCES[@]}" -gt 0 ] || fail "no Runtime sources found under $TABLET"
+
+TABLET_REFS=(-r:"$SDK_PLUGINS/VRCSDKBase.dll" -r:"$UDON_COMMON" -r:"$OUT/UdonSharp.Runtime.dll" -r:"$OUT/Unity.TextMeshPro.dll")
+
+csc "${COMMON[@]}" "${NETSTANDARD_ARGS[@]}" "${UNITY_ARGS[@]}" "${TABLET_REFS[@]}" \
+    -out:"$OUT/SabaProps.Tablet.Runtime.dll" "${TABLET_RUNTIME_SOURCES[@]}"
+csc "${COMMON[@]}" "${NETSTANDARD_ARGS[@]}" "${UNITY_ARGS[@]}" "${TABLET_REFS[@]}" \
+    -out:"$OUT/SabaProps.Tablet.Authoring.dll" "${TABLET_AUTHORING_SOURCES[@]}"
+csc "${COMMON[@]}" "${NETSTANDARD_ARGS[@]}" "${UNITY_ARGS[@]}" "${TABLET_REFS[@]}" \
+    -r:"$SDK3_PLUGINS/VRCSDK3.dll" -r:"$OUT/UdonSharp.Editor.dll" -r:"$OUT/UnityEditor.NetStandard.dll" \
+    -r:"$OUT/SabaProps.Tablet.Runtime.dll" -r:"$OUT/SabaProps.Tablet.Authoring.dll" \
+    -out:"$OUT/SabaProps.Tablet.Editor.dll" "${TABLET_EDITOR_SOURCES[@]}"
+echo "ok: ${#TABLET_RUNTIME_SOURCES[@]} Runtime, ${#TABLET_AUTHORING_SOURCES[@]} Authoring, ${#TABLET_EDITOR_SOURCES[@]} Editor file(s)"
+
+TABLET_STAGECAM_SAMPLE="$TABLET/Samples~/StageCamIntegration"
+mapfile -t TABLET_SAMPLE_RUNTIME < <(find "$TABLET_STAGECAM_SAMPLE" -name '*.cs' -not -path '*/Editor/*' | sort)
+mapfile -t TABLET_SAMPLE_EDITOR < <(find "$TABLET_STAGECAM_SAMPLE" -name '*.cs' -path '*/Editor/*' | sort)
+csc "${COMMON[@]}" "${NETSTANDARD_ARGS[@]}" "${UNITY_ARGS[@]}" "${TABLET_REFS[@]}" \
+    -r:"$OUT/SabaProps.Tablet.Runtime.dll" -r:"$OUT/SabaProps.StageCam.Runtime.dll" -r:"$OUT/UnityEngine.UI.dll" \
+    -out:"$OUT/SabaProps.Tablet.StageCamSample.dll" "${TABLET_SAMPLE_RUNTIME[@]}"
+csc "${COMMON[@]}" "${NETSTANDARD_ARGS[@]}" "${UNITY_ARGS[@]}" "${TABLET_REFS[@]}" \
+    -r:"$SDK3_PLUGINS/VRCSDK3.dll" -r:"$OUT/UdonSharp.Editor.dll" -r:"$OUT/UnityEditor.NetStandard.dll" \
+    -r:"$OUT/SabaProps.Tablet.Runtime.dll" -r:"$OUT/SabaProps.Tablet.Authoring.dll" -r:"$OUT/SabaProps.Tablet.Editor.dll" \
+    -r:"$OUT/SabaProps.StageCam.Runtime.dll" -r:"$OUT/SabaProps.StageCam.Editor.dll" -r:"$OUT/UnityEngine.UI.dll" \
+    -r:"$OUT/SabaProps.Tablet.StageCamSample.dll" \
+    -out:"$OUT/SabaProps.Tablet.StageCamSample.Editor.dll" "${TABLET_SAMPLE_EDITOR[@]}"
+echo "ok: ${#TABLET_SAMPLE_RUNTIME[@]} sample Runtime, ${#TABLET_SAMPLE_EDITOR[@]} sample Editor file(s)"
+
 # ---------------------------------------------------------------------------
 log "Type-checking shader HLSL"
 # ---------------------------------------------------------------------------
-SHADER_DIR="$PACKAGE/Runtime/Shaders"
+SHADER_DIR="$FOLIAGE_PACKAGE/Runtime/Shaders"
 SHADER="$SHADER_DIR/SabaFoliage.shader"
 [ -f "$SHADER" ] || fail "shader not found at $SHADER"
 
@@ -214,6 +466,59 @@ for variant in "${variants[@]}"; do
     fi
 done
 
+# Soft PropsはVRChat/Udon型を参照するためC#のoffline compile対象には
+# 入れないが、shader本体は同じglslang経路で検査できる。
+SOFT_SHADER_DIR="$REPO/Packages/io.github.sabas0ba.sabaprops.softprops/Runtime/Shaders"
+SOFT_SHADER="$SOFT_SHADER_DIR/SabaSoftSurface.shader"
+if [ -f "$SOFT_SHADER" ]; then
+    "$PYTHON" .github/verify/extract_shader_body.py \
+        "$SOFT_SHADER" "$OUT/soft_shader_body.hlsl"
+    cp "$HERE/soft_shader_harness.hlsl" "$OUT/soft_shader_harness.hlsl"
+
+    if glslangValidator -D -e main -S vert --target-env vulkan1.0 \
+        -o "$OUT/soft_shader.spv" \
+        -I"$SOFT_SHADER_DIR" -I"$OUT" "$OUT/soft_shader_harness.hlsl" >/dev/null; then
+        echo "ok: SabaProps/Soft Surface"
+    else
+        glslangValidator -D -e main -S vert --target-env vulkan1.0 \
+            -o "$OUT/soft_shader.spv" \
+            -I"$SOFT_SHADER_DIR" -I"$OUT" "$OUT/soft_shader_harness.hlsl" || true
+        fail "soft surface shader failed"
+    fi
+fi
+
+# The flock shader is a plain vertex/fragment pair rather than a surface
+# shader, so Unity's own includes are replaced by the stubs in unity_stubs/.
+FLOCK_SHADER_DIR="$FLOCK_PACKAGE/Runtime/Shaders"
+"$PYTHON" .github/verify/extract_shader_body.py \
+    "$FLOCK_SHADER_DIR/SabaFlock.shader" "$OUT/flock_shader_body.hlsl" --block 0
+cp "$HERE/flock_shader_harness.hlsl" "$OUT/flock_shader_harness.hlsl"
+flock_shader_check() {
+    glslangValidator -D -e main -S vert --target-env vulkan1.0 \
+        -o "$OUT/flock_shader.spv" \
+        -I"$HERE/unity_stubs" -I"$FLOCK_SHADER_DIR" -I"$OUT" "$@" "$OUT/flock_shader_harness.hlsl"
+}
+if flock_shader_check >/dev/null; then
+    echo "ok: SabaProps/Flock/Swarm"
+else
+    flock_shader_check || true
+    fail "flock shader failed"
+fi
+if flock_shader_check -DVERTEXLIGHT_ON >/dev/null; then
+    echo "ok: SabaProps/Flock/Swarm vertex lights"
+else
+    flock_shader_check -DVERTEXLIGHT_ON || true
+    fail "flock vertex-light shader failed"
+fi
+"$PYTHON" .github/verify/extract_shader_body.py \
+    "$FLOCK_SHADER_DIR/SabaFlock.shader" "$OUT/flock_shader_body.hlsl" --block 1
+if flock_shader_check >/dev/null; then
+    echo "ok: SabaProps/Flock/Swarm ForwardAdd"
+else
+    flock_shader_check || true
+    fail "flock additive shader failed"
+fi
+
 # ---------------------------------------------------------------------------
 log "Running mesh generation (no Unity)"
 # ---------------------------------------------------------------------------
@@ -231,8 +536,12 @@ mkdir -p "$OFFLINE_OUT"
 # `dotnet --list-runtimes` prints "<name> <version> [<path>]"; the last
 # Microsoft.NETCore.App entry is the newest installed shared framework, and its
 # assemblies are what this executable both compiles against and runs on.
+#
+# Matched with sed rather than split on whitespace: the bracketed path contains
+# a space on a default Windows install (C:\Program Files\dotnet\shared\...)
+# and a field split silently produced "C:\Program/10.0.10" there.
 RUNTIME_DIR="$(dotnet --list-runtimes \
-    | awk '/^Microsoft.NETCore.App /{ gsub(/[][]/, "", $3); dir=$3 "/" $2 } END { print dir }')"
+    | sed -n 's/^Microsoft\.NETCore\.App \([^ ]*\) \[\(.*\)\]$/\2\/\1/p' | tail -1)"
 [ -d "$RUNTIME_DIR" ] || fail "could not locate a Microsoft.NETCore.App shared framework"
 
 RUNTIME_ARGS=()
@@ -245,12 +554,15 @@ csc -nologo -langversion:9.0 -target:exe -nostdlib+ -noconfig \
     -out:"$OFFLINE_OUT/OfflineMeshTests.dll" \
     "$OFFLINE/UnityEngineShim.cs" \
     "$OFFLINE/OfflineMeshTests.cs" \
-    "$PACKAGE/Runtime/FoliageRandom.cs" \
-    "$PACKAGE/Runtime/FoliageSeason.cs" \
-    "$PACKAGE/Runtime/FoliageSpecies.cs" \
-    "$PACKAGE/Editor/FoliageMeshBuffer.cs" \
-    "$PACKAGE/Editor/FoliageMeshBuilder.cs" \
-    "$PACKAGE/Editor/FoliageSeasonPass.cs"
+    "$FOLIAGE_PACKAGE/Runtime/FoliageRandom.cs" \
+    "$FOLIAGE_PACKAGE/Runtime/FoliageSeason.cs" \
+    "$FOLIAGE_PACKAGE/Runtime/FoliageSpecies.cs" \
+    "$FOLIAGE_PACKAGE/Runtime/SurfaceGrowth.cs" \
+    "$FOLIAGE_PACKAGE/Editor/FoliageMeshBuffer.cs" \
+    "$FOLIAGE_PACKAGE/Editor/FoliageMeshBuilder.cs" \
+    "$FOLIAGE_PACKAGE/Editor/FoliageSeasonPass.cs" \
+    "$FOLIAGE_PACKAGE/Editor/SurfaceGrowthGraphBuilder.cs" \
+    "$FOLIAGE_PACKAGE/Editor/SurfaceGrowthMeshBuilder.cs"
 
 cat > "$OFFLINE_OUT/OfflineMeshTests.runtimeconfig.json" <<'JSON'
 {
@@ -263,6 +575,77 @@ cat > "$OFFLINE_OUT/OfflineMeshTests.runtimeconfig.json" <<'JSON'
 JSON
 
 dotnet "$OFFLINE_OUT/OfflineMeshTests.dll" || fail "offline mesh checks failed"
+
+# ---------------------------------------------------------------------------
+log "Running the stage camera solver (no Unity)"
+# ---------------------------------------------------------------------------
+# StageCamSolver.cs is a partial of StageCamRig that declares no base type and
+# no VRChat references, so it compiles on its own against the shim. The checks
+# are another partial of the same class, which is how they reach its private
+# members without widening them in the shipped package.
+csc_exe() {
+    dotnet "$CSC_DLL" -nologo -langversion:9.0 -target:exe -nostdlib+ -noconfig \
+        "${RUNTIME_ARGS[@]}" "$@"
+}
+
+csc_exe -out:"$OFFLINE_OUT/OfflineStageCamTests.dll" \
+    "$OFFLINE/UnityEngineShim.cs" \
+    "$OFFLINE/OfflineStageCamTests.cs" \
+    "$STAGECAM/Runtime/StageCamSolver.cs"
+
+cp "$OFFLINE_OUT/OfflineMeshTests.runtimeconfig.json" \
+   "$OFFLINE_OUT/OfflineStageCamTests.runtimeconfig.json"
+
+dotnet "$OFFLINE_OUT/OfflineStageCamTests.dll" || fail "offline stage camera checks failed"
+
+# ---------------------------------------------------------------------------
+log "Running the flock generators and motion (no Unity)"
+# ---------------------------------------------------------------------------
+# Every file except the MonoBehaviour and the UnityEditor-facing tools. The
+# motion checks run the C# reference that SabaFlockMotion.cginc mirrors; see
+# offline/OfflineFlockTests.cs for what that does and does not prove.
+FLOCK_OFFLINE_SOURCES=()
+for file in "$FLOCK_PACKAGE"/Runtime/*.cs "$FLOCK_PACKAGE"/Editor/*.cs; do
+    case "$(basename "$file")" in
+        FlockSwarm.cs | FlockSwarmEditor.cs | FlockMenu.cs | FlockAssetLibrary.cs | FlockSwarmBuilder.cs | FlockGallery.cs | FlockSampleScene.cs | FlockWorldSample.cs | FlockComparisonScene.cs | FlockLightingPreview.cs) ;;
+        *) FLOCK_OFFLINE_SOURCES+=("$file") ;;
+    esac
+done
+
+csc_exe -out:"$OFFLINE_OUT/OfflineFlockTests.dll" \
+    -r:"$RUNTIME_DIR/System.Text.RegularExpressions.dll" \
+    "$OFFLINE/UnityEngineShim.cs" \
+    "$OFFLINE/OfflineFlockTests.cs" \
+    "${FLOCK_OFFLINE_SOURCES[@]}"
+
+cp "$OFFLINE_OUT/OfflineMeshTests.runtimeconfig.json" \
+   "$OFFLINE_OUT/OfflineFlockTests.runtimeconfig.json"
+
+dotnet "$OFFLINE_OUT/OfflineFlockTests.dll" \
+    "$FLOCK_PACKAGE/Runtime/FlockMotion.cs" \
+    "$FLOCK_PACKAGE/Runtime/Shaders/SabaFlockMotion.cginc" \
+    "$FLOCK_PACKAGE/Documentation~/elements.md" \
+    || fail "offline flock checks failed"
+
+# ---------------------------------------------------------------------------
+log "Running the tablet solvers and generators (no Unity)"
+# ---------------------------------------------------------------------------
+# The same partial-class arrangement as the stage camera: each *Solver.cs file
+# is a partial of its behaviour with no base type and no VRChat references.
+# The layout and the mesh builder are plain C# over UnityEngine value types.
+csc_exe -out:"$OFFLINE_OUT/OfflineTabletTests.dll" \
+    "$OFFLINE/UnityEngineShim.cs" \
+    "$OFFLINE/OfflineTabletTests.cs" \
+    "$TABLET/Runtime/TabletControllerSolver.cs" \
+    "$TABLET/Runtime/TabletTeleportSolver.cs" \
+    "$TABLET/Runtime/TabletReachTriggerSolver.cs" \
+    "$TABLET/Authoring/TabletLayout.cs" \
+    "$TABLET/Editor/TabletMeshBuilder.cs"
+
+cp "$OFFLINE_OUT/OfflineMeshTests.runtimeconfig.json" \
+   "$OFFLINE_OUT/OfflineTabletTests.runtimeconfig.json"
+
+dotnet "$OFFLINE_OUT/OfflineTabletTests.dll" || fail "offline tablet checks failed"
 
 # ---------------------------------------------------------------------------
 log "Checking the documentation figures"
@@ -293,6 +676,9 @@ rm -rf "$OUT/site/docs"
 # ---------------------------------------------------------------------------
 log "Validating manifests"
 # ---------------------------------------------------------------------------
-"$PYTHON" .github/scripts/check_package.py "$REPO" "$PACKAGE"
+for package_dir in "$REPO"/Packages/*; do
+    [ -d "$package_dir" ] || continue
+    "$PYTHON" .github/scripts/check_package.py "$REPO" "$package_dir"
+done
 
 log "All checks passed"

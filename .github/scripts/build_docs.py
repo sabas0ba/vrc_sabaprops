@@ -69,8 +69,8 @@ def render_inline(text: str, links: Rewriter) -> str:
     def image(match: re.Match) -> str:
         alt, target = match.group(1), match.group(2)
         return stash(
-            f'<img src="{html.escape(links.image(target), quote=True)}" '
-            f'alt="{html.escape(alt, quote=True)}" loading="lazy">'
+            f'<img class="doc-image" src="{html.escape(links.image(target), quote=True)}" '
+            f'alt="{html.escape(alt, quote=True)}" loading="lazy" decoding="async">'
         )
 
     text = _IMAGE.sub(image, text)
@@ -350,8 +350,60 @@ class Page:
     title: str
     section: str
     package_dir: str
+    order: int
 
 
+PAGE_METADATA = {
+    "README.md": (0, "全体説明"),
+    "demo-review.md": (10, "Demo"),
+    "demo.md": (10, "Demo"),
+    "sample-gallery.md": (10, "Demo"),
+    "authoring.md": (20, "利用方法"),
+    "placement-workflow.md": (20, "利用方法"),
+    "tree-authoring.md": (20, "利用方法"),
+    "elements.md": (25, "要素別リファレンス"),
+    "parameters.md": (30, "パラメータ詳細"),
+    "design.md": (30, "設計詳細"),
+    "architecture.md": (30, "設計詳細"),
+    "performance.md": (31, "性能詳細"),
+    "troubleshooting.md": (40, "トラブルシュート"),
+    "upgrading.md": (50, "更新方法"),
+    "roadmap.md": (60, "ロードマップ"),
+    "CHANGELOG.md": (100, "変更履歴"),
+}
+
+
+PACKAGE_ELEMENTS = {
+    "io.github.sabas0ba.sabaprops.foliage": [
+        ("Grass Clump", "elements.html", "grass-clump"),
+        ("Clover", "elements.html", "clover"),
+        ("Sunflower", "elements.html", "sunflower"),
+        ("Reed", "elements.html", "reed"),
+        ("Small Flower", "elements.html", "small-flower"),
+        ("Weed", "elements.html", "weed"),
+        ("Grain", "elements.html", "grain"),
+        ("Dandelion", "elements.html", "dandelion"),
+        ("Surface Vine", "elements.html", "surface-vine"),
+        ("Rhizome Patch", "elements.html", "rhizome-patch"),
+    ],
+    "io.github.sabas0ba.sabaprops.trees": [
+        ("ケヤキ", "elements.html", "ケヤキ"),
+        ("イロハモミジ", "elements.html", "イロハモミジ"),
+        ("スギ", "elements.html", "スギ"),
+        ("シラカバ", "elements.html", "シラカバ"),
+        ("アカマツ", "elements.html", "アカマツ"),
+        ("ヒノキ", "elements.html", "ヒノキ"),
+        ("ソメイヨシノ", "elements.html", "ソメイヨシノ"),
+        ("イチョウ", "elements.html", "イチョウ"),
+    ],
+    "io.github.sabas0ba.sabaprops.water": [
+        ("水面", "elements.html", "水面"),
+        ("雨", "elements.html", "雨"),
+        ("霧と雲", "elements.html", "霧と雲"),
+        ("水中", "elements.html", "水中"),
+        ("濡れた表面", "elements.html", "濡れた表面"),
+    ],
+}
 def discover(repo: str) -> tuple[list[Page], list[dict]]:
     """Pages to render, and the package metadata behind them."""
     pages: list[Page] = []
@@ -370,8 +422,8 @@ def discover(repo: str) -> tuple[list[Page], list[dict]]:
         packages.append({"id": package_id, "manifest": manifest})
 
         candidates = [
-            ("README.md", "index.html", display),
-            ("CHANGELOG.md", "changelog.html", "変更履歴"),
+            ("README.md", "index.html"),
+            ("CHANGELOG.md", "changelog.html"),
         ]
 
         docs_dir = os.path.join(packages_dir, package_id, "Documentation~")
@@ -379,12 +431,14 @@ def discover(repo: str) -> tuple[list[Page], list[dict]]:
             for name in sorted(os.listdir(docs_dir)):
                 if name.endswith(".md"):
                     candidates.append(
-                        (os.path.join("Documentation~", name), name[:-3] + ".html", name[:-3])
+                        (os.path.join("Documentation~", name), name[:-3] + ".html")
                     )
 
-        for relative, output, title in candidates:
+        for relative, output in candidates:
             source = os.path.join(packages_dir, package_id, relative)
             if os.path.isfile(source):
+                name = os.path.basename(relative)
+                order, title = PAGE_METADATA.get(name, (70, name[:-3].replace("-", " ")))
                 pages.append(
                     Page(
                         source=source,
@@ -392,9 +446,11 @@ def discover(repo: str) -> tuple[list[Page], list[dict]]:
                         title=title,
                         section=display,
                         package_dir=os.path.join(packages_dir, package_id),
+                        order=order,
                     )
                 )
 
+    pages.sort(key=lambda page: (page.section.casefold(), page.order, page.title.casefold()))
     return pages, packages
 
 
@@ -481,14 +537,22 @@ TEMPLATE = """<!doctype html>
 </head>
 <body>
 <a class="skip" href="#content">本文へ</a>
+<header class="sitebar">
+  <div class="sitebar-inner">
+    <a class="brand" href="{root}index.html"><span class="brand-mark" aria-hidden="true">S</span>{site_name}</a>
+    <div class="site-links"><a href="{root}index.html">サイトトップ</a><a href="{repo_url}">GitHub</a></div>
+  </div>
+</header>
 <div class="shell">
+<aside class="sidebar">
 <nav aria-label="ドキュメント">
-  <a class="brand" href="{root}index.html">{site_name}</a>
   {nav}
 </nav>
+</aside>
 <main id="content">
+{breadcrumb}
 {toc}
-<article>
+<article class="doc-article">
 {body}
 </article>
 <footer>
@@ -496,26 +560,69 @@ TEMPLATE = """<!doctype html>
 </footer>
 </main>
 </div>
+<script>
+(function () {{
+  var input = document.getElementById('docs-filter');
+  if (!input) return;
+  var groups = Array.prototype.slice.call(document.querySelectorAll('.nav-group'));
+  input.addEventListener('input', function () {{
+    var query = input.value.trim().toLowerCase();
+    groups.forEach(function (group) {{
+      var links = Array.prototype.slice.call(group.querySelectorAll('a'));
+      var match = !query || links.some(function (link) {{ return link.textContent.toLowerCase().indexOf(query) !== -1; }});
+      group.hidden = !match;
+      if (query && match) group.open = true;
+    }});
+  }});
+}})();
+</script>
 </body>
 </html>
 """
 
 
-def build_nav(pages: list[Page], current: Page, root: str) -> str:
+def build_nav(pages: list[Page], current: Page | None, root: str) -> str:
     sections: dict[str, list[Page]] = {}
     for page in pages:
         sections.setdefault(page.section, []).append(page)
 
-    parts = []
+    parts = [
+        '<label class="nav-filter"><span>ページを検索</span>'
+        '<input id="docs-filter" type="search" placeholder="見出し・ページ名" autocomplete="off"></label>'
+    ]
     for section, entries in sections.items():
-        parts.append(f"<p class=\"nav-section\">{html.escape(section)}</p><ul>")
+        is_open = current is not None and any(entry is current for entry in entries)
+        parts.append(f'<details class="nav-group"{" open" if is_open else ""}>')
+        parts.append(f'<summary>{html.escape(section)}</summary><ul>')
         for entry in entries:
             href = root + "docs/" + entry.output.replace(os.sep, "/")
-            active = ' class="active"' if entry is current else ""
+            active = ' aria-current="page" class="active"' if entry is current else ""
             parts.append(f'<li><a href="{href}"{active}>{html.escape(entry.title)}</a></li>')
-        parts.append("</ul>")
+            package_id = entry.output.split(os.sep, 1)[0]
+            if entry.title == "要素別リファレンス" and package_id in PACKAGE_ELEMENTS:
+                parts.append('<li class="nav-elements"><span>収録要素</span><ul>')
+                for label, target, anchor in PACKAGE_ELEMENTS[package_id]:
+                    element_href = root + "docs/" + package_id + "/" + target + "#" + anchor
+                    parts.append(
+                        f'<li><a href="{html.escape(element_href, quote=True)}">'
+                        f'{html.escape(label)}</a></li>'
+                    )
+                parts.append("</ul></li>")
+        parts.append("</ul></details>")
 
     return "".join(parts)
+
+
+def build_breadcrumb(page: Page, root: str) -> str:
+    return (
+        '<nav class="breadcrumbs" aria-label="現在位置">'
+        f'<a href="{root}docs/index.html">ドキュメント</a>'
+        '<span aria-hidden="true">/</span>'
+        f'<span>{html.escape(page.section)}</span>'
+        '<span aria-hidden="true">/</span>'
+        f'<span aria-current="page">{html.escape(page.title)}</span>'
+        '</nav>'
+    )
 
 
 def build_toc(document: Document) -> str:
@@ -580,6 +687,7 @@ def main() -> int:
             site_name=html.escape(site_name),
             nav=build_nav(pages, page, root),
             toc=build_toc(document),
+            breadcrumb=build_breadcrumb(page, root),
             body=document.body,
             repo_url=html.escape(repo_url, quote=True),
             source=html.escape(
@@ -623,6 +731,7 @@ def _write_index(
         cards.append(
             "<li>"
             f'<a href="{html.escape(href, quote=True)}">'
+            f'<span class="card-kicker">{html.escape(package["id"].rsplit(".", 1)[-1])}</span>'
             f'<span class="card-title">{html.escape(manifest.get("displayName", package["id"]))}</span>'
             f'<span class="card-id">{html.escape(package["id"])}</span>'
             f'<span class="card-desc">{html.escape(manifest.get("description", ""))}</span>'
@@ -631,7 +740,7 @@ def _write_index(
 
     body = (
         "<h1>ドキュメント</h1>"
-        "<p>収録パッケージの説明です。リポジトリ内の Markdown をそのまま公開しています。</p>"
+        "<p>パッケージごとの導入手順、構成、パラメータ、図解をまとめています。まず用途に近いパッケージを選択してください。</p>"
         '<ul class="cards">' + "".join(cards) + "</ul>"
     )
 
@@ -639,8 +748,9 @@ def _write_index(
         title=html.escape(f"ドキュメント | {site_name}"),
         root="../",
         site_name=html.escape(site_name),
-        nav=build_nav(pages, pages[0], "../"),
+        nav=build_nav(pages, None, "../"),
         toc="",
+        breadcrumb="",
         body=body,
         repo_url=html.escape(repo_url, quote=True),
         source="README.md",
@@ -656,190 +766,72 @@ def _write_stylesheet(docs_root: str) -> None:
         handle.write(DOCS_CSS)
 
 
-DOCS_CSS = """/* Generated by .github/scripts/build_docs.py. The palette lives in
-   ../assets/tokens.css, shared with the listing page. */
+DOCS_CSS = """/* Generated by .github/scripts/build_docs.py. */
 * { box-sizing: border-box; }
-
-body {
-  margin: 0;
-  background: var(--bg);
-  color: var(--text);
-  font-family: system-ui, -apple-system, "Segoe UI", "Hiragino Sans", "Noto Sans JP", sans-serif;
-  line-height: 1.75;
-}
-
-.skip {
-  position: absolute;
-  left: -9999px;
-}
-
-.skip:focus {
-  left: 1rem;
-  top: 1rem;
-  padding: 0.5rem 1rem;
-  background: var(--accent);
-  color: var(--accent-text);
-  border-radius: 6px;
-  z-index: 10;
-}
-
-.shell {
-  display: grid;
-  grid-template-columns: minmax(0, 15rem) minmax(0, 1fr);
-  gap: 2.5rem;
-  max-width: 72rem;
-  margin: 0 auto;
-  padding: 2rem 1.25rem 4rem;
-}
-
-nav {
-  position: sticky;
-  top: 2rem;
-  align-self: start;
-  max-height: calc(100vh - 4rem);
-  overflow-y: auto;
-  font-size: 0.92rem;
-}
-
-.brand {
-  display: block;
-  font-weight: 700;
-  font-size: 1.1rem;
-  color: var(--text);
-  text-decoration: none;
-  margin-bottom: 1.5rem;
-}
-
-.nav-section {
-  margin: 1.25rem 0 0.4rem;
-  font-size: 0.78rem;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--muted);
-}
-
-nav ul, .toc ul {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-
-nav li a {
-  display: block;
-  padding: 0.25rem 0.6rem;
-  margin-left: -0.6rem;
-  border-radius: 6px;
-  color: var(--muted);
-  text-decoration: none;
-}
-
-nav li a:hover { background: var(--code-bg); color: var(--text); }
-nav li a.active { background: var(--accent); color: var(--accent-text); }
-
+body { margin: 0; background: var(--bg); color: var(--text); font-family: system-ui, -apple-system, "Segoe UI", "Hiragino Sans", "Noto Sans JP", sans-serif; line-height: 1.75; }
+.skip { position: absolute; left: -9999px; }
+.skip:focus { left: 1rem; top: 1rem; z-index: 10; padding: .5rem 1rem; border-radius: 6px; background: var(--accent); color: var(--accent-text); }
+.sitebar { border-bottom: 1px solid var(--border); background: var(--surface); }
+.sitebar-inner { display: flex; min-height: 4.5rem; align-items: center; justify-content: space-between; gap: 1.5rem; max-width: 72rem; margin: 0 auto; padding: 0 1.25rem; }
+.brand { display: inline-flex; align-items: center; gap: .65rem; color: var(--text); font-weight: 750; text-decoration: none; }
+.brand-mark { display: grid; width: 2rem; height: 2rem; place-items: center; border-radius: .65rem; background: var(--accent); color: var(--accent-text); font-size: .85rem; }
+.site-links { display: flex; flex-wrap: wrap; gap: 1rem; font-size: .88rem; }
+.site-links a { color: var(--muted); text-decoration: none; }
+.site-links a:hover { color: var(--accent); }
+.shell { display: grid; grid-template-columns: minmax(0, 15rem) minmax(0, 1fr); gap: 2.75rem; max-width: 72rem; margin: 0 auto; padding: 2.25rem 1.25rem 5rem; }
+.sidebar { min-width: 0; }
+.sidebar > nav { position: sticky; top: 1.5rem; max-height: calc(100vh - 3rem); overflow-y: auto; font-size: .9rem; }
+.nav-filter { display: flex; flex-direction: column; gap: .25rem; margin-bottom: 1.25rem; color: var(--muted); font-size: .75rem; }
+.nav-filter input { width: 100%; min-height: 2.3rem; padding: .45rem .6rem; border: 1px solid var(--border); border-radius: .4rem; background: var(--surface); color: var(--text); font: inherit; }
+.nav-filter input:focus { outline: 2px solid var(--accent); outline-offset: 2px; }
+.nav-group { margin: .35rem 0; border-bottom: 1px solid var(--border); }
+.nav-group summary { padding: .45rem .25rem; cursor: pointer; color: var(--text); font-weight: 700; list-style-position: inside; }
+.nav-group summary::marker { color: var(--accent); }
+.nav-group ul { margin: .2rem 0 .6rem; padding: 0; list-style: none; }
+.nav-group li a { display: block; margin: .1rem 0; padding: .28rem .55rem; border-radius: .35rem; color: var(--muted); text-decoration: none; }
+.nav-group li a:hover { background: var(--code-bg); color: var(--text); }
+.nav-group li a.active { background: var(--accent); color: var(--accent-text); }
+.nav-elements { margin: .25rem 0 .45rem .55rem; padding-left: .55rem; border-left: 1px solid var(--border); }
+.nav-elements > span { display: block; padding: .2rem 0; color: var(--muted); font-size: .72rem; font-weight: 700; letter-spacing: .06em; }
+.nav-group .nav-elements ul { margin: 0; }
+.nav-group .nav-elements li a { padding-top: .18rem; padding-bottom: .18rem; font-size: .82rem; }
 main { min-width: 0; }
-
-article > *:first-child { margin-top: 0; }
-
-h1, h2, h3, h4 { line-height: 1.35; margin: 2rem 0 0.75rem; }
-h1 { font-size: 1.9rem; }
-h2 { font-size: 1.4rem; border-bottom: 1px solid var(--border); padding-bottom: 0.35rem; }
-h3 { font-size: 1.15rem; }
-
+.breadcrumbs { display: flex; flex-wrap: wrap; gap: .45rem; margin-bottom: 1.25rem; color: var(--muted); font-size: .8rem; }
+.breadcrumbs a { color: var(--accent); text-decoration: none; }
+.doc-article > *:first-child { margin-top: 0; }
+h1, h2, h3, h4 { line-height: 1.35; margin: 2.25rem 0 .8rem; }
+h1 { font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.035em; }
+h2 { padding-bottom: .4rem; border-bottom: 1px solid var(--border); font-size: 1.5rem; }
+h3 { font-size: 1.18rem; }
 a { color: var(--accent); }
-
-code {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 0.9em;
-  background: var(--code-bg);
-  padding: 0.15em 0.4em;
-  border-radius: 4px;
-}
-
-pre {
-  background: var(--code-bg);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 0.9rem 1rem;
-  overflow-x: auto;
-}
-
-pre code { background: none; padding: 0; }
-
-blockquote {
-  margin: 1.25rem 0;
-  padding: 0.1rem 1rem;
-  border-left: 3px solid var(--accent);
-  color: var(--muted);
-}
-
-hr { border: 0; border-top: 1px solid var(--border); margin: 2.5rem 0; }
-
-/* Figures are SVG and scale to whatever width is left, but never past their
-   natural size: past it the labels grow larger than the body text. */
-figure {
-  margin: 1.5rem 0;
-  overflow-x: auto;
-}
-
-figure img {
-  display: block;
-  max-width: 100%;
-  height: auto;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-}
-
-.table-scroll { overflow-x: auto; margin: 1.25rem 0; }
-
-table { border-collapse: collapse; width: 100%; font-size: 0.94rem; }
-th, td { border: 1px solid var(--border); padding: 0.5rem 0.7rem; text-align: left; vertical-align: top; }
+.doc-article > p:first-of-type { color: var(--muted); font-size: 1.05rem; }
+code { padding: .15em .4em; border-radius: 4px; background: var(--code-bg); font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .9em; }
+pre { overflow-x: auto; padding: 1rem 1.1rem; border: 1px solid var(--border); border-radius: .65rem; background: var(--code-bg); }
+pre code { padding: 0; background: none; }
+blockquote { margin: 1.35rem 0; padding: .2rem 1rem; border-left: 3px solid var(--warm); color: var(--muted); background: var(--warm-soft); }
+hr { margin: 2.75rem 0; border: 0; border-top: 1px solid var(--border); }
+.doc-image { display: block; max-width: 100%; height: auto; margin: 1.5rem auto; border: 1px solid var(--border); border-radius: .65rem; background: var(--surface-raised); box-shadow: 0 8px 24px rgba(0, 0, 0, .05); }
+.table-scroll { margin: 1.35rem 0; overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: .94rem; }
+th, td { padding: .55rem .7rem; border: 1px solid var(--border); text-align: left; vertical-align: top; }
 th { background: var(--code-bg); }
-
-.toc {
-  float: right;
-  margin: 0 0 1.5rem 1.5rem;
-  padding: 0.75rem 1rem;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: var(--surface);
-  font-size: 0.88rem;
-  max-width: 18rem;
-}
-
+.toc { float: right; max-width: 19rem; margin: 0 0 1.5rem 1.5rem; padding: .85rem 1rem; border: 1px solid var(--border); border-radius: .65rem; background: var(--surface); font-size: .86rem; box-shadow: var(--shadow); }
+.toc .nav-section { margin: 0 0 .4rem; color: var(--muted); font-size: .75rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+.toc ul { margin: 0; padding: 0; list-style: none; }
 .toc a { color: var(--muted); text-decoration: none; }
 .toc a:hover { color: var(--text); }
 .toc .level-3 { padding-left: 1rem; }
-
-.cards { list-style: none; padding: 0; display: grid; gap: 1rem; }
-
-.cards a {
-  display: block;
-  padding: 1rem 1.2rem;
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  background: var(--surface);
-  text-decoration: none;
-  color: var(--text);
-}
-
-.cards a:hover { border-color: var(--accent); }
-.card-title { display: block; font-weight: 700; }
-.card-id { display: block; font-size: 0.85rem; color: var(--muted); font-family: ui-monospace, monospace; }
-.card-desc { display: block; margin-top: 0.5rem; color: var(--muted); }
-
-footer {
-  margin-top: 3rem;
-  padding-top: 1rem;
-  border-top: 1px solid var(--border);
-  font-size: 0.88rem;
-  color: var(--muted);
-}
-
-@media (max-width: 52rem) {
-  .shell { grid-template-columns: minmax(0, 1fr); gap: 1rem; }
-  nav { position: static; max-height: none; }
-  .toc { float: none; max-width: none; margin-left: 0; }
-}
+.cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; margin: 2rem 0; padding: 0; list-style: none; }
+.cards a { display: block; min-height: 11rem; padding: 1.25rem; border: 1px solid var(--border); border-radius: .8rem; background: var(--surface); color: var(--text); text-decoration: none; transition: border-color .14s ease, box-shadow .14s ease, transform .14s ease; }
+.cards a:hover { border-color: var(--accent); box-shadow: var(--shadow); transform: translateY(-2px); }
+.card-kicker { display: block; margin-bottom: .5rem; color: var(--accent); font-size: .76rem; font-weight: 750; letter-spacing: .08em; text-transform: uppercase; }
+.card-title { display: block; font-weight: 750; }
+.card-id { display: block; margin-top: .2rem; color: var(--muted); font-family: ui-monospace, monospace; font-size: .77rem; overflow-wrap: anywhere; }
+.card-desc { display: block; margin-top: .7rem; color: var(--muted); font-size: .9rem; }
+footer { margin-top: 3.5rem; padding-top: 1rem; border-top: 1px solid var(--border); color: var(--muted); font-size: .85rem; }
+footer a { color: var(--muted); }
+[hidden] { display: none !important; }
+@media (max-width: 52rem) { .shell { grid-template-columns: minmax(0, 1fr); gap: 1rem; } .sidebar > nav { position: static; max-height: none; } .cards { grid-template-columns: 1fr; } .toc { float: none; max-width: none; margin-left: 0; } }
 """
 
 

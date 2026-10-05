@@ -1,0 +1,6 @@
+{
+  "name": "SabaProps.PutItems.Editor",
+  "references": ["SabaProps.PutItems.Runtime", "UdonSharp.Runtime", "UdonSharp.Editor", "VRC.Udon", "VRC.Udon.Editor"],
+  "includePlatforms": ["Editor"],
+  "autoReferenced": true
+}
