@@ -1,0 +1,27 @@
+{
+  "name": "io.github.sabas0ba.sabaprops.bodycontact",
+  "displayName": "SabaProps Body Contact",
+  "version": "0.1.0",
+  "unity": "2022.3",
+  "description": "プレイヤー同士の体の貫通を抑える Udon コンポーネント。相手の頭・体幹・四肢を部位ごとに判定し、自分の体が侵入した分だけ自分の位置を戻します。同期は行わず、World 内で形状と接触を確認できるデバッグ表示を備えます。",
+  "author": {
+    "name": "sabas0ba",
+    "url": "https://github.com/sabas0ba"
+  },
+  "license": "Apache-2.0",
+  "licensesUrl": "https://www.apache.org/licenses/LICENSE-2.0",
+  "documentationUrl": "https://github.com/sabas0ba/vrc_sabaprops/blob/main/Packages/io.github.sabas0ba.sabaprops.bodycontact/README.md",
+  "changelogUrl": "https://github.com/sabas0ba/vrc_sabaprops/blob/main/Packages/io.github.sabas0ba.sabaprops.bodycontact/CHANGELOG.md",
+  "vpmDependencies": {
+    "com.vrchat.worlds": "3.10.x"
+  },
+  "keywords": [
+    "vrchat",
+    "world",
+    "udon",
+    "udonsharp",
+    "avatar",
+    "collision",
+    "contact"
+  ]
+}

@@ -1,0 +1,161 @@
+using UdonSharpEditor;
+using UnityEditor;
+using UnityEngine;
+using UnityEngine.UI;
+
+namespace SabaProps.BodyContact.Editors
+{
+    /// <summary>シーンへ Body Contact System と検証用の構成を配置するメニュー。</summary>
+    public static class BodyContactMenu
+    {
+        private const string AssetFolder = "Assets/SabaProps/BodyContact";
+        private const string LineMaterialPath = AssetFolder + "/BodyContactDebugLine.mat";
+
+        [MenuItem("GameObject/SabaProps/Body Contact System", false, 10)]
+        public static void CreateSystemFromMenu()
+        {
+            GameObject root = CreateSystem();
+            Undo.RegisterCreatedObjectUndo(root, "Create Body Contact System");
+            Selection.activeGameObject = root;
+        }
+
+        [MenuItem("GameObject/SabaProps/Body Contact Dummy", false, 11)]
+        public static void CreateDummyFromMenu()
+        {
+            BodyContactSystem system = Object.FindObjectOfType<BodyContactSystem>();
+            if (system == null)
+            {
+                Debug.LogWarning("[SabaProps Body Contact] 先に Body Contact System を配置してください。");
+                return;
+            }
+
+            GameObject dummy = AddDummy(system, new Vector3(0f, 0f, 1.5f));
+            Undo.RegisterCreatedObjectUndo(dummy, "Create Body Contact Dummy");
+            Selection.activeGameObject = dummy;
+        }
+
+        [MenuItem("Tools/SabaProps/Body Contact/Documentation", false, 100)]
+        public static void OpenDocumentation()
+        {
+            Application.OpenURL(
+                "https://github.com/sabas0ba/vrc_sabaprops/blob/main/Packages/io.github.sabas0ba.sabaprops.bodycontact/README.md");
+        }
+
+        /// <summary>
+        /// System、線のデバッグ表示、数値表示を作成して接続します。
+        /// 線のメッシュは頂点をワールド座標で持つため、全体をシーンのルートの原点に置きます。
+        /// </summary>
+        public static GameObject CreateSystem()
+        {
+            var root = new GameObject("Body Contact");
+            BodyContactSystem system = root.AddUdonSharpComponent<BodyContactSystem>();
+
+            var lines = new GameObject("Debug Lines");
+            lines.transform.SetParent(root.transform, false);
+            MeshFilter filter = lines.AddComponent<MeshFilter>();
+            MeshRenderer renderer = lines.AddComponent<MeshRenderer>();
+            renderer.sharedMaterial = LoadOrCreateLineMaterial();
+            renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            renderer.receiveShadows = false;
+
+            var hud = new GameObject("Debug HUD");
+            hud.transform.SetParent(root.transform, false);
+            Text label = CreateLabel(hud.transform);
+
+            BodyContactDebugView view = lines.AddUdonSharpComponent<BodyContactDebugView>();
+            view.source = system;
+            view.lineFilter = filter;
+            view.lineRenderer = renderer;
+            view.statusLabel = label;
+            view.hudRoot = hud.transform;
+            UdonSharpEditorUtility.CopyProxyToUdon(view);
+
+            system.debugView = view;
+            UdonSharpEditorUtility.CopyProxyToUdon(system);
+            return root;
+        }
+
+        /// <summary>標準体型の固定ダミーを追加し、System の dummies へ登録します。</summary>
+        public static GameObject AddDummy(BodyContactSystem system, Vector3 position)
+        {
+            var dummy = new GameObject("Body Contact Dummy");
+            dummy.transform.SetParent(system.transform, false);
+            dummy.transform.position = position;
+
+            int count = system.dummies == null ? 0 : system.dummies.Length;
+            var next = new Transform[count + 1];
+            for (int i = 0; i < count; i++)
+            {
+                next[i] = system.dummies[i];
+            }
+
+            next[count] = dummy.transform;
+            system.dummies = next;
+            UdonSharpEditorUtility.CopyProxyToUdon(system);
+            EditorUtility.SetDirty(system);
+            return dummy;
+        }
+
+        // ワールド空間の Canvas。1 px を 1 mm とし、視点の前 0.6 m に置いて読める大きさにします。
+        private static Text CreateLabel(Transform parent)
+        {
+            var canvasObject = new GameObject("Canvas");
+            canvasObject.transform.SetParent(parent, false);
+            canvasObject.transform.localScale = new Vector3(0.001f, 0.001f, 0.001f);
+
+            Canvas canvas = canvasObject.AddComponent<Canvas>();
+            canvas.renderMode = RenderMode.WorldSpace;
+            var canvasRect = (RectTransform)canvasObject.transform;
+            canvasRect.sizeDelta = new Vector2(420f, 170f);
+
+            var labelObject = new GameObject("Status");
+            labelObject.transform.SetParent(canvasObject.transform, false);
+            Text label = labelObject.AddComponent<Text>();
+            label.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            label.fontSize = 22;
+            label.color = Color.white;
+            label.alignment = TextAnchor.UpperLeft;
+            label.raycastTarget = false;
+            label.text = "Body Contact";
+
+            var labelRect = (RectTransform)labelObject.transform;
+            labelRect.anchorMin = Vector2.zero;
+            labelRect.anchorMax = Vector2.one;
+            labelRect.offsetMin = Vector2.zero;
+            labelRect.offsetMax = Vector2.zero;
+            return label;
+        }
+
+        // 頂点カラーをそのまま出す Unity 標準シェーダーを使い、専用シェーダーを同梱しません。
+        private static Material LoadOrCreateLineMaterial()
+        {
+            Material material = AssetDatabase.LoadAssetAtPath<Material>(LineMaterialPath);
+            if (material != null)
+            {
+                return material;
+            }
+
+            Shader shader = Shader.Find("Sprites/Default");
+            if (shader == null)
+            {
+                Debug.LogWarning("[SabaProps Body Contact] Sprites/Default シェーダーが見つからないため、線のマテリアルを作成できません。");
+                return null;
+            }
+
+            EnsureFolder("Assets", "SabaProps");
+            EnsureFolder("Assets/SabaProps", "BodyContact");
+            material = new Material(shader);
+            material.name = "BodyContactDebugLine";
+            AssetDatabase.CreateAsset(material, LineMaterialPath);
+            return material;
+        }
+
+        private static void EnsureFolder(string parent, string name)
+        {
+            if (!AssetDatabase.IsValidFolder(parent + "/" + name))
+            {
+                AssetDatabase.CreateFolder(parent, name);
+            }
+        }
+    }
+}
