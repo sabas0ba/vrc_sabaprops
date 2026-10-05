@@ -65,6 +65,8 @@ GrabPass版はPC向けです。Android向けWorldではLite版を使用してく
 
 Shaderのコンパイル、プリセットとShader propertyの整合、Unity EditorでのCamera描画結果は自動テストで確認しています。VRChat実機での両眼表示、鏡、他のOverlay Shaderとの描画順は環境に依存するため、Worldごとに確認してください。
 
+2026-10-05 に利用者から VR でのデモ確認で問題なしとの報告を受けています。自動検証と手動確認の範囲は[デモの検証記録](Documentation~/demo.md#検証範囲)を参照してください。
+
 ## ライセンス
 
 Apache License 2.0。詳細は[LICENSE.md](LICENSE.md)を参照してください。

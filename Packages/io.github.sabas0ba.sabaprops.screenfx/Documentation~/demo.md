@@ -85,4 +85,6 @@ Udon Graph や UI からは、Driver の backing UdonBehaviour へ `SendCustomEv
 
 2026-10-05 に Unity 2022.3.22f1 / Worlds SDK 3.10.4 で実 Udon コンパイルと 3 テストが成功しました。配布 Scene/Prefab の参照、サンプル外のプロジェクトアセット依存がないこと、ClientSim のボタン操作・Material の独立性・リセット・切替・自動停止・Trigger の入退場を確認しています。
 
-VRChat クライアント内の両眼表示、鏡、複数参加者、Android の描画と負荷は未検証です。実行手順は[World 検証の README](../../../.github/verify/vrchat/README.md)を参照してください。
+同日に利用者が VR でデモを確認し、確認した範囲で問題なしとの報告を受けています。使用機器・確認した全プリセット・計測値の記録はないため、全環境での動作保証や性能検証とは区別します。鏡、複数参加者、Android の描画と負荷は個別の確認記録がありません。
+
+自動検証の実行手順は[World 検証の README](../../../.github/verify/vrchat/README.md)を参照してください。
