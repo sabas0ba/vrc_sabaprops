@@ -62,5 +62,6 @@
   残らないようにするための意図した挙動です
 - リモートプレイヤーの姿勢には 100〜200 ms 程度の遅延があります。VRChat の仕組み上の制約です
 
-[Unreleased]: https://github.com/sabas0ba/vrc_sabaprops/compare/io.github.sabas0ba.sabaprops.stagecam/v0.1.0...HEAD
+[Unreleased]: https://github.com/sabas0ba/vrc_sabaprops/compare/io.github.sabas0ba.sabaprops.stagecam/v0.2.0...HEAD
+[0.2.0]: https://github.com/sabas0ba/vrc_sabaprops/releases/tag/io.github.sabas0ba.sabaprops.stagecam/v0.2.0
 [0.1.0]: https://github.com/sabas0ba/vrc_sabaprops/releases/tag/io.github.sabas0ba.sabaprops.stagecam/v0.1.0
