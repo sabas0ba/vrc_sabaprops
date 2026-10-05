@@ -11,6 +11,7 @@
         "VRC.Udon",
         "VRC.Udon.Editor",
         "VRC.SDKBase",
+        "VRC.ClientSim",
         "UnityEngine.TestRunner",
         "UnityEditor.TestRunner"
     ],

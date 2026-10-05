@@ -22,6 +22,21 @@ VCC でこのパッケージを追加すると、依存する VRChat Worlds SDK 
 
 ## 使い方
 
+### サンプルシーン
+
+`Tools > SabaProps > Capture > Create Sample Scene` で、被写体、2 台のカメラ、2 つの Recorder とその再生パネル、VRChat の Spawn を生成します。保存先は `Assets/SabaProps/Capture/Samples/CaptureDemo.unity` です。RenderTexture、マテリアル、アニメーションも同じフォルダに生成します。
+
+| Recorder | 入力 | 満杯時の動作 |
+| --- | --- | --- |
+| `Texture Recorder` | `Live Camera` が常時描画している RenderTexture。同じ映像を奥のスクリーンにも表示します | 間引き |
+| `Camera Recorder` | 無効にした `Timelapse Camera`。撮影時にだけ描画します | 上書き |
+
+どちらも起動時に撮影を始め、1 秒間隔で 8 枚まで保持します。約 8 秒で満杯になるため、間引きと上書きの違いを 2 枚のパネルで見比べられます。被写体の球は 20 秒で 1 周します。
+
+撮影と再生は Unity Editor の Play (ClientSim) でも動作します。VRChat クライアント上での確認は [Build & Test での確認手順](Documentation~/build-and-test.md) を参照してください。
+
+生成し直すと同名のシーンを上書きします。編集を残す場合は別名で保存してください。
+
 ### 配置
 
 `GameObject > SabaProps > Capture Recorder with Playback Panel` で、Recorder と再生パネルをまとめて配置します。Recorder だけを置く場合は `GameObject > SabaProps > Capture Recorder`、既存の Recorder に再生パネルを足す場合は `GameObject > SabaProps > Capture Playback Panel` を使います。

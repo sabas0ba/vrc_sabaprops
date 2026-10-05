@@ -118,7 +118,7 @@ docs.microsoft.com の URL 到達性を検証するもの）ため、終了コ�
 | `SabaProps.Foliage.CITests` | EditMode | シーンが正しく作られているか。SDK の有無で期待値が切り替わります |
 | `SabaProps.Foliage.WorldTests` | PlayMode | ClientSim でワールドとして実行し、プレイヤーが Spawn するか |
 | `SabaProps.StageCam.WorldTests` | EditMode | リグと操作パネルの Udon コンパイル、保存後の UI イベント接続、カメラ設定の独立性、サンプル構成を検証。`TestResults/stagecam-panel.png` にレイアウト確認画像を出力 |
-| `SabaProps.Capture.WorldTests` | EditMode | Recorder と Player の Udon コンパイル、公開イベントとフィールド、再生パネルの UI イベント接続を検証。Recorder を実物の RenderTexture で動かし、Blit による複製と満杯時の 3 種類の動作を確認 |
+| `SabaProps.Capture.WorldTests` | EditMode | Recorder と Player の Udon コンパイル、公開イベントとフィールド、再生パネルの UI イベント接続を検証。Recorder を実物の RenderTexture で動かし、Blit による複製と満杯時の 3 種類の動作を確認。サンプルシーンを保存後に開き直して配線を検証し、ClientSim で実行して Udon VM 上の撮影・間引き・停止・解放を確認。`TestResults/capture-sample.png` に配置確認画像を出力 |
 | `SabaProps.SoftProps.WorldTests` | EditMode + Playへの遷移 | Prefab生成、同梱デモのimport・参照・比較台、ClientSimでのCollider接触・復元・自動運動・立位荷重 |
 | `SabaProps.Tablet.WorldTests` | EditMode | 全コンポーネントの Udon コンパイル、サンプルシーンの全ボタンがエクスポート済みのイベントを呼ぶこと、ミラーの排他、テレポート地点の番号、Build の再実行で生成物が重複しないことを検証 |
 | `SabaProps.PutItems.Tests` | EditMode | 吸着対象と Pickup の設定、同梱デモの構成を検証 |

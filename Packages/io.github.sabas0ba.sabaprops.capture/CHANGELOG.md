@@ -6,7 +6,12 @@
 
 ### Added
 
+- サンプルシーンを生成するメニュー `Tools > SabaProps > Capture > Create Sample Scene`。RenderTexture 入力で間引く Recorder と、Camera 入力で上書きする Recorder を、それぞれの再生パネルとともに配置します。
 - VRChat クライアント上で確認する項目をまとめた [Build & Test での確認手順](Documentation~/build-and-test.md)。
+
+### Fixed
+
+- 追従を解除した状態で、撮影の直後に `FIRST`、コマ送り、タイムラインのドラッグを行うと、操作が無視されて直前に表示していた画像へ戻る問題を修正。
 
 ### Changed
 
