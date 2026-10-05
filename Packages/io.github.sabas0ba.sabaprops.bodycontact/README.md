@@ -20,6 +20,23 @@ VCC でこのパッケージを追加すると、依存する VRChat Worlds SDK 
 
 ## 使い方
 
+### 検証用シーン
+
+`Tools > SabaProps > Body Contact > Create Sample Scene` で、床・壁・Spawn・Body Contact System と
+3 体の固定ダミーを含むシーンを生成します。保存先は `Assets/SabaProps/BodyContact/Samples/BodyContactDemo.unity`
+です。そのまま VRChat SDK の Build & Test で起動できます。
+
+| ダミー | 位置 | 用途 |
+| --- | --- | --- |
+| `Dummy Open` | 正面 | 歩いて入る、手を押し込む、の基本動作 |
+| `Dummy Wall` | 右。手前に壁 | 壁とダミーの間に立ち、押し戻しが壁で止まることの確認 |
+| `Dummy Small` | 左。0.6 倍 | 寸法が体格に比例することの確認 |
+
+ダミーには表示用のモデルがありません。形状はデバッグ表示の線で確認します。
+生成し直すと同名のシーンを上書きします。
+
+### 既存のシーンへ配置
+
 1. `GameObject > SabaProps > Body Contact System` を実行します。`Body Contact` がシーンのルートの原点に作成されます
 2. 動作を 1 人で確認する場合は `GameObject > SabaProps > Body Contact Dummy` で固定ダミーを追加し、位置を調整します
 3. Build & Test で確認します
@@ -99,12 +116,12 @@ Editor では、`Body Contact` を選択するとダミーの形状が Gizmos �
 
 ### 1. 位置を動かす手段
 
-固定ダミーを置き、Build & Test を 1 クライアントで起動します。
+検証用シーンを Build & Test で 1 クライアント起動します。
 
 1. ダミーへ歩いて入り、通り抜けられないことを確認します
 2. VR でダミーの体幹へ手を押し込み、視点が滑らかに後退することを確認します
 3. `Move Mode` を 1 に変えて同じ操作を行い、視点の滑らかさと、落下アニメーションの誤発動の有無を比較します
-4. 壁を背にしてダミーへ手を押し込み、壁を抜けないこと、`blocked by world` が表示されることを確認します
+4. `Dummy Wall` と壁の間に立ってダミーへ手を押し込み、壁を抜けないこと、`blocked by world` が表示されることを確認します
 
 ### 2. リモートプレイヤーとの接触
 

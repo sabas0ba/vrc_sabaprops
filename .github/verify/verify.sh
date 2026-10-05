@@ -440,7 +440,8 @@ log "Compiling body contact assemblies (real VRChat SDK references + stubs)"
 # ---------------------------------------------------------------------------
 # VRCPlayerApi, Networking, Utilities and VRC_SceneDescriptor come from the real
 # VRCSDKBase.dll, so the bone, tracking and TeleportTo calls are checked against
-# what the SDK ships. UdonSharpBehaviour and uGUI are the hand-written stubs.
+# what the SDK ships. The sample scene builder takes VRCSceneDescriptor from the
+# real VRCSDK3.dll. UdonSharpBehaviour and uGUI are the hand-written stubs.
 mapfile -t BODYCONTACT_RUNTIME_SOURCES < <(find "$BODYCONTACT/Runtime" -name '*.cs' | sort)
 mapfile -t BODYCONTACT_EDITOR_SOURCES < <(find "$BODYCONTACT/Editor" -name '*.cs' | sort)
 [ "${#BODYCONTACT_RUNTIME_SOURCES[@]}" -gt 0 ] || fail "no Runtime sources found under $BODYCONTACT"
@@ -451,6 +452,7 @@ BODYCONTACT_REFS=(-r:"$SDK_PLUGINS/VRCSDKBase.dll" -r:"$OUT/UdonSharp.Runtime.dl
 csc "${COMMON[@]}" "${NETSTANDARD_ARGS[@]}" "${UNITY_ARGS[@]}" "${BODYCONTACT_REFS[@]}" \
     -out:"$OUT/SabaProps.BodyContact.Runtime.dll" "${BODYCONTACT_RUNTIME_SOURCES[@]}"
 csc "${COMMON[@]}" "${NETSTANDARD_ARGS[@]}" "${UNITY_ARGS[@]}" "${BODYCONTACT_REFS[@]}" \
+    -r:"$SDK3_PLUGINS/VRCSDK3.dll" \
     -r:"$OUT/UdonSharp.Editor.dll" -r:"$OUT/UnityEditor.NetStandard.dll" \
     -r:"$OUT/SabaProps.BodyContact.Runtime.dll" \
     -out:"$OUT/SabaProps.BodyContact.Editor.dll" "${BODYCONTACT_EDITOR_SOURCES[@]}"

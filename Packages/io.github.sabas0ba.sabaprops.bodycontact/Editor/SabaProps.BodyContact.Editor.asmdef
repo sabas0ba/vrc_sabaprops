@@ -5,6 +5,7 @@
         "SabaProps.BodyContact.Runtime",
         "UnityEngine.UI",
         "VRC.SDKBase",
+        "VRC.SDK3",
         "VRC.Udon",
         "UdonSharp.Runtime",
         "UdonSharp.Editor"
