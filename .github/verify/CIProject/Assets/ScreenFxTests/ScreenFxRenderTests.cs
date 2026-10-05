@@ -1,4 +1,5 @@
 using NUnit.Framework;
+using System.IO;
 using SabaProps.ScreenFx.Editors;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -13,7 +14,9 @@ namespace SabaProps.ScreenFx.CITests
     /// </summary>
     public class ScreenFxRenderTests
     {
-        private const int Size = 128;
+        // 出力先を指定した実行では、目視確認用に解像度を上げる。
+        private static string PreviewDirectory => System.Environment.GetEnvironmentVariable("SABAPROPS_SCREENFX_CAPTURE");
+        private static int Size => string.IsNullOrEmpty(PreviewDirectory) ? 128 : 512;
 
         private Camera _camera;
         private RenderTexture _target;
@@ -98,12 +101,14 @@ namespace SabaProps.ScreenFx.CITests
         [Test]
         public void EveryPreset_ChangesTheFrame([Values(false, true)] bool lite)
         {
+            SavePreview("Baseline", _baseline);
             foreach (ScreenFxPreset preset in ScreenFxPresets.All)
             {
                 GameObject volume = CreateVolume(preset, lite, Vector3.zero);
                 try
                 {
                     Color[] frame = Capture();
+                    SavePreview(preset.id + (lite ? "-Lite" : "-Standard"), frame);
                     AssertFinite(frame, preset.id);
                     Assert.Greater(
                         Difference(frame, _baseline), 0.004f,
@@ -237,6 +242,27 @@ namespace SabaProps.ScreenFx.CITests
         }
 
         private static float Brightness(Color pixel) => (pixel.r + pixel.g + pixel.b) / 3f;
+
+        private static void SavePreview(string name, Color[] frame)
+        {
+            if (string.IsNullOrEmpty(PreviewDirectory))
+            {
+                return;
+            }
+
+            Directory.CreateDirectory(PreviewDirectory);
+            var image = new Texture2D(Size, Size, TextureFormat.RGBA32, false);
+            try
+            {
+                image.SetPixels(frame);
+                image.Apply();
+                File.WriteAllBytes(Path.Combine(PreviewDirectory, name + ".png"), image.EncodeToPNG());
+            }
+            finally
+            {
+                Object.DestroyImmediate(image);
+            }
+        }
 
         private static float MeanBrightness(Color[] frame)
         {
