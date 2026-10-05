@@ -4,8 +4,13 @@
 
 ## [Unreleased]
 
+### Added
+
+- VRChat クライアント上で確認する項目をまとめた [Build & Test での確認手順](Documentation~/build-and-test.md)。
+
 ### Changed
 
+- README に、Stage Cam の映像を記録する手順、再生パネルの状態表示、Player の設定、他の Udon から使えるイベントとメソッドの一覧を追記。
 - Apache-2.0 の宣言、公式ライセンスURL、同梱するライセンス全文と README の表記を統一。
 
 ## [0.1.0] - 2026-09-24

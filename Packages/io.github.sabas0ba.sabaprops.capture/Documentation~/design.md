@@ -62,3 +62,5 @@ Stage Cam と同じく、UdonSharp は `UdonSharpBehaviour` を継承したク�
 
 - `VRCGraphics.Blit`、`Camera.Render()`、実行時の `RenderTexture` 生成が VRChat クライアント上で想定どおり動くこと。関数名が Udon に公開されていることは SDK の DLL で確認し、UdonSharp でコンパイルできることは `.github/verify/vrchat/` で確認しますが、実行結果は Build & Test でしか確かめられません。
 - Quest 上での Blit の成否と VRAM の実使用量。
+
+これらを手動で確かめる手順は [Build & Test での確認手順](build-and-test.md) にまとめています。

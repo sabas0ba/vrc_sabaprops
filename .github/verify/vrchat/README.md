@@ -13,6 +13,11 @@ Udon です。オフライン層は Roslyn で C# としてコンパイルする
 分かりません。実際、この層を通したことで 2 つの同梱漏れが見つかっています
 （`UdonSharpAssemblyDefinition` と `UdonSharpProgramAsset`）。
 
+**Capture の UdonSharp コンパイルと RenderTexture への複製。** `io.github.sabas0ba.sabaprops.capture` も
+Udon です。Stage Cam と同じ理由で UdonSharp のコンパイルをここで確かめます。あわせて、Recorder を
+実物の RenderTexture に対して動かし、`VRCGraphics.Blit` が保存枠へ画像を複製することと、
+満杯時の動作を確かめます。オフライン層は RenderTexture を持たないため、計算部分しか実行できません。
+
 **Soft Props の接触動作と UdonSharp コンパイル。** 実際の SDK と ClientSim で
 World Contacts、Pickup、家具の変形と復元を確認します。
 

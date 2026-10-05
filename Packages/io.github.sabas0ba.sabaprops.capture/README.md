@@ -35,6 +35,20 @@ VCC でこのパッケージを追加すると、依存する VRChat Worlds SDK 
 
 両方を指定した場合は `Source Camera` を使います。
 
+`Capture Playback Panel` は、シーン内の Recorder を 1 つ探して再生パネルへ接続します。Recorder が無い状態で実行すると、撮影を操作する 4 つのボタン (`REC / PAUSE`、`SHOT`、`CLEAR`、`RELEASE VRAM`) は生成されません。先に Recorder を置いてください。
+
+再生パネルは Water レイヤー (4) に置かれます。Stage Cam のスクリーンと同じレイヤーです。`Source Camera` の `Culling Mask` から Water を外すと、撮影した画像に再生パネルが映り込みません。
+
+### Stage Cam の映像を記録する
+
+1. Stage Cam の Camera が `Target Texture` に使っている RenderTexture を確認します。Stage Cam のデモシーンでは `Assets/SabaProps/StageCam/Samples/` の `FaceCam.renderTexture` と `CraneCam.renderTexture` です
+2. Recorder の `Source Texture` にその RenderTexture を割り当てます。`Source Camera` は空のままにします
+3. `Frame Width` と `Frame Height` を、入力の RenderTexture と同じ縦横比にします
+
+`Source Texture` からの撮影は、入力の全体を保存枠の全体へ写します。縦横比が違うと画像が引き伸ばされます。`Source Camera` からの撮影は保存枠の縦横比で描画するため、引き伸ばしは起きません。
+
+この構成では Recorder はカメラを追加で描画しません。Stage Cam が描いた結果を、撮影時に複製するだけです。
+
 ### 撮影の設定
 
 | 項目 | 既定値 | 内容 |
@@ -89,15 +103,62 @@ Quest など VRAM の少ない環境では、`Memory Budget Megabytes` で上限
 
 追従を解除している間に上書きや間引きで画像の順番が変わった場合、表示中の画像と同じ時刻に最も近い画像へ移ります。
 
-再生パネルの表示先は `Display` (RawImage) と `Display Renderer` (任意の Renderer) のどちらでも構いません。Renderer へは `MaterialPropertyBlock` で `Texture Property Name` に渡すため、共有マテリアルは書き換えません。
+`SHOT` は撮影時計の現在値を画像の時刻として記録します。一時停止中は撮影時計が止まっているため、その間に複数回撮った画像は同じ時刻になります。間引きモードで満杯のときに `SHOT` を押すと、先に間引きが行われ、撮影間隔が 2 倍になります。停止モードで満杯のときは撮りません。
+
+パネル右上の状態表示は 0.5 秒ごとに更新されます。
+
+| 表示 | 内容 |
+| --- | --- |
+| `REC` / `PAUSED` / `FULL` | 撮影中、一時停止中、満杯の状態で停止中 |
+| 時刻 | 撮影開始からの経過時間。一時停止中は進みません |
+| `n / m frames` | 保持している枚数と、保持できる枚数 |
+| `every x s` | 現在の撮影間隔。間引きのたびに 2 倍になります |
+| `x MB` | 確保済みの保存枠の VRAM。Camera 入力の中間バッファは含みません |
+| `LATEST` / `PLAY x8` / `HOLD` | 最新へ追従中、再生中とその速度 (枚/s)、特定の画像を表示中 |
+
+その下の表示は、表示中の画像の番号、保持枚数、撮影時刻です。画像が無い間は `NO FRAMES` を表示します。
+
+#### Player の設定
+
+| 項目 | 既定値 | 内容 |
+| --- | --- | --- |
+| `Recorder` | メニューが設定 | 画像を読む Recorder |
+| `Display` | メニューが設定 | 画像を表示する RawImage |
+| `Display Renderer` | なし | 画像を表示する Renderer。ワールドに置いたスクリーンへ出す場合に使います |
+| `Texture Property Name` | `_MainTex` | `Display Renderer` のマテリアルで画像を受け取るプロパティ名 |
+| `Thumbnails` | メニューが 8 枚設定 | タイムラインに並べる RawImage。枚数がこれより多い場合は、最古と最新を両端に含む等間隔で選びます |
+| `Timeline` | メニューが設定 | 0 から 1 の Slider。`On Value Changed` から `_OnScrub` を呼びます |
+| `Playback Rate` | 8 | 再生速度 (枚/s)。`SLOWER` / `FASTER` で 0.5〜60 の範囲で変わります |
+| `Loop` | オン | 最後まで再生したら先頭へ戻ります。コマ送りも端で反対側へ回ります。オフにすると端で止まります |
+
+`Display` と `Display Renderer` は両方を指定できます。Renderer へは `MaterialPropertyBlock` で渡すため、共有マテリアルは書き換えません。保存内容が空になった場合、Renderer には直前の画像が残ります。
 
 ### 他の Udon から操作する
 
-Recorder は次のイベントを受け付けます。いずれもアンダースコアで始まるため、ネットワークイベントとしては呼べません。
+Recorder と Player は次のイベントを受け付けます。いずれもアンダースコアで始まるため、ネットワークイベントとしては呼べません。
 
-`_StartRecording`、`_StopRecording`、`_ToggleRecording`、`_CaptureNow`、`_Clear`、`_ReleaseFrames`
+| 対象 | イベント |
+| --- | --- |
+| Recorder | `_StartRecording`、`_StopRecording`、`_ToggleRecording`、`_CaptureNow`、`_Clear`、`_ReleaseFrames` |
+| Player | `_Play`、`_Pause`、`_TogglePlay`、`_StepForward`、`_StepBackward`、`_First`、`_Latest`、`_Faster`、`_Slower`、`_OnScrub` |
 
-保持している画像は `GetFrameCount()`、`GetFrame(int)`、`GetFrameTime(int)`、`FindFrameAt(double)` で読めます。順番は古い方から数えます。
+Recorder の状態は次のメソッドで読めます。画像の順番は古い方から数え、0 が最古です。
+
+| メソッド | 戻り値 |
+| --- | --- |
+| `GetFrameCount()` | 保持している枚数 |
+| `GetCapacity()` | 保持できる枚数。`Max Frames` と `Memory Budget Megabytes` から決まります |
+| `GetFrame(int)` | 指定した順番の RenderTexture。範囲外は `null` |
+| `GetFrameTime(int)` | 指定した順番の画像を撮った時刻 (撮影開始からの秒)。範囲外は -1 |
+| `FindFrameAt(double)` | 指定した時刻に最も近い画像の順番。空なら -1 |
+| `IsRecording()` | 撮影中かどうか |
+| `IsFull()` | 保持枚数が上限に達しているかどうか |
+| `GetCurrentInterval()` | 現在の撮影間隔 (s) |
+| `GetElapsed()` | 撮影開始からの経過時間 (s) |
+| `GetAllocatedMegabytes()` | 確保済みの保存枠の VRAM (MB) |
+| `GetRevision()` | 保存内容か撮影状態が変わるたびに増える番号 |
+
+`GetFrame` が返す RenderTexture は Recorder の保存枠そのものです。上書きや間引きで、同じ RenderTexture が別の画像を指すようになります。保持する側は `GetRevision()` の変化を見て取得し直してください。
 
 ## 制限
 
@@ -113,7 +174,9 @@ Recorder は次のイベントを受け付けます。いずれもアンダー�
 | `.github/verify/verify.sh` | Runtime と Editor が実物の VRChat SDK に対してコンパイルできること。撮影周期、枚数の計算、リングバッファ、間引き、再生位置の計算を実行して検査すること |
 | `.github/verify/vrchat/` | UdonSharp が 2 つの挙動を Udon へコンパイルできること。再生パネルの UI イベントが UdonBehaviour へ接続されていること |
 
-`VRCGraphics.Blit`、`Camera.Render()`、実行時の `RenderTexture` 生成が VRChat クライアント上で想定どおり動くことは、自動では確かめられません。Build & Test で確認してください。
+`.github/verify/vrchat/` の層は、Recorder を Unity Editor 上で実物の RenderTexture に対して動かし、`VRCGraphics.Blit` による複製と満杯時の 3 種類の動作も確かめます。
+
+`VRCGraphics.Blit`、`Camera.Render()`、実行時の `RenderTexture` 生成が VRChat クライアント上で想定どおり動くことは、自動では確かめられません。[Build & Test での確認手順](Documentation~/build-and-test.md) に従って確認してください。
 
 設計の判断は [Documentation~/design.md](Documentation~/design.md) にまとめています。
 
