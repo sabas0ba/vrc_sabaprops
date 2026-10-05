@@ -213,3 +213,7 @@ SDK型はreflectionで参照するため、本package自体にはVPM依存を追
 
 詳細は[設計と制約](Documentation~/architecture.md)、[配置・調整手順](Documentation~/authoring.md)、
 [Water Feature Gallery](Documentation~/sample-gallery.md)を参照してください。
+
+## ライセンス
+
+本パッケージは Apache License 2.0 で提供します。全文は [LICENSE.md](LICENSE.md) を参照してください。外部依存・モデル・素材には、それぞれの配布元のライセンスが適用されます。

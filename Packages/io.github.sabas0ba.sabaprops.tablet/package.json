@@ -8,8 +8,8 @@
     "name": "sabas0ba",
     "url": "https://github.com/sabas0ba"
   },
-  "license": "MIT",
-  "licensesUrl": "https://github.com/sabas0ba/vrc_sabaprops/blob/main/LICENSE",
+  "license": "Apache-2.0",
+  "licensesUrl": "https://www.apache.org/licenses/LICENSE-2.0",
   "documentationUrl": "https://github.com/sabas0ba/vrc_sabaprops/blob/main/Packages/io.github.sabas0ba.sabaprops.tablet/README.md",
   "changelogUrl": "https://github.com/sabas0ba/vrc_sabaprops/blob/main/Packages/io.github.sabas0ba.sabaprops.tablet/CHANGELOG.md",
   "vpmDependencies": {
