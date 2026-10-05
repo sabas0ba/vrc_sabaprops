@@ -248,6 +248,9 @@ namespace UnityEditor
     public static class PrefabUtility
     {
         public static GameObject SaveAsPrefabAsset(GameObject instanceRoot, string assetPath) => null;
+        public static UnityEngine.Object InstantiatePrefab(UnityEngine.Object assetComponentOrGameObject) => null;
+        public static bool IsPartOfPrefabInstance(UnityEngine.Object componentOrGameObject) => false;
+        public static void RecordPrefabInstancePropertyModifications(UnityEngine.Object targetObject) { }
     }
 
     public static class Selection

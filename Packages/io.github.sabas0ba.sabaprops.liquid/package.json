@@ -1,0 +1,35 @@
+{
+  "name": "io.github.sabas0ba.sabaprops.liquid",
+  "displayName": "SabaProps Liquid",
+  "version": "0.1.0",
+  "unity": "2022.3",
+  "description": "ワールド側から、アバターとワールドの壁や床へ水・塗料・泥などの液体の付着を Projector で描画する PC 向け Udon パッケージ。プール、シャワー、噴射器、雨と雪、湿度などの発生源と、ペン、スタンプ、消しゴムを含みます。",
+  "author": {
+    "name": "sabas0ba",
+    "url": "https://github.com/sabas0ba"
+  },
+  "license": "Apache-2.0",
+  "licensesUrl": "https://www.apache.org/licenses/LICENSE-2.0",
+  "documentationUrl": "https://github.com/sabas0ba/vrc_sabaprops/blob/main/Packages/io.github.sabas0ba.sabaprops.liquid/README.md",
+  "changelogUrl": "https://github.com/sabas0ba/vrc_sabaprops/blob/main/Packages/io.github.sabas0ba.sabaprops.liquid/CHANGELOG.md",
+  "vpmDependencies": {
+    "com.vrchat.worlds": "3.10.x"
+  },
+  "samples": [
+    {
+      "displayName": "Liquid Demo World",
+      "description": "VRChat World 用の 4 つのサンプルシーン。自分で試すデモ（プール、泥沼、シャワー、水鉄砲、鏡、雨と雪）、液体と素材の比較、操作できるノズルと湿度と暗い部屋、壁と床に描くペンとスタンプと消しゴム。比較の列はサーバー時刻に合わせて自動で動きます。",
+      "path": "Samples~/LiquidDemo"
+    }
+  ],
+  "keywords": [
+    "vrchat",
+    "world",
+    "udon",
+    "udonsharp",
+    "projector",
+    "liquid",
+    "water",
+    "decal"
+  ]
+}

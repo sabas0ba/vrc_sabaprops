@@ -21,7 +21,7 @@ set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO="$(cd "$HERE/../../.." && pwd)"
 PROJECT="${1:-$REPO/build/WorldProject}"
-TEST_FILTER="${TEST_FILTER:-SabaProps.Foliage.CITests;SabaProps.Foliage.WorldTests;SabaProps.SoftProps.WorldTests;SabaProps.StageCam.WorldTests;SabaProps.Tablet.WorldTests;SabaProps.PutItems.Tests}"
+TEST_FILTER="${TEST_FILTER:-SabaProps.Foliage.CITests;SabaProps.Foliage.WorldTests;SabaProps.SoftProps.WorldTests;SabaProps.StageCam.WorldTests;SabaProps.Tablet.WorldTests;SabaProps.PutItems.Tests;SabaProps.Liquid.WorldTests}"
 
 VERSION="$(sed -n 's/^m_EditorVersion: *//p' "$REPO/.github/verify/CIProject/ProjectSettings/ProjectVersion.txt")"
 [ -n "$VERSION" ] || { echo "error: could not read the editor version from ProjectVersion.txt" >&2; exit 1; }
