@@ -505,6 +505,9 @@ namespace SabaProps.Liquid.Editors
             {
                 camera.transform.SetPositionAndRotation(new Vector3(0f, 2f, -9f), Quaternion.Euler(8f, 0f, 0f));
                 camera.farClipPlane = 200f;
+                // Clear the eye buffers even when the client's skybox does not render.
+                camera.clearFlags = CameraClearFlags.SolidColor;
+                camera.backgroundColor = new Color(0.19215687f, 0.3019608f, 0.4745098f, 1f);
             }
         }
 

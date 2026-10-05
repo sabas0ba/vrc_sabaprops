@@ -91,6 +91,7 @@
 
 ### Changed
 
+- サンプルの参照カメラを `Solid Color` に変更し、Skybox の描画に依存せず毎フレーム背景を消去するようにした
 - Apache-2.0 の宣言、公式ライセンスURL、同梱するライセンス全文と README の表記を統一
 - README を入口として再構成し、Prefab とメニューの使い方を利用方法の文書へ移した
 - Surface Canvas の寸法変更後、`Register Paint Tools and Surfaces` で Projector の投影範囲を箱に合わせ直すようにした
