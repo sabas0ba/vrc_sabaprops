@@ -50,14 +50,6 @@ namespace SabaProps.BodyContact.Editors
             var root = new GameObject("Body Contact");
             BodyContactSystem system = root.AddUdonSharpComponent<BodyContactSystem>();
 
-            // NoneとManualの同期モードを別GameObjectへ分離します。
-            var pullObject = new GameObject("Body Pull Session");
-            pullObject.transform.SetParent(root.transform, false);
-            BodyContactPull pull = pullObject.AddUdonSharpComponent<BodyContactPull>();
-            pull.source = system;
-            system.pull = pull;
-            UdonSharpEditorUtility.CopyProxyToUdon(pull);
-
             var lines = new GameObject("Debug Lines");
             lines.transform.SetParent(root.transform, false);
             MeshFilter filter = lines.AddComponent<MeshFilter>();

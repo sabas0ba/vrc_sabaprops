@@ -3,7 +3,7 @@
   "displayName": "SabaProps Body Contact",
   "version": "0.1.0",
   "unity": "2022.3",
-  "description": "プレイヤー同士の体の貫通を抑える Udon コンポーネント。相手の頭・体幹・四肢を部位ごとに判定し、自分の体が侵入した分だけ自分の位置を戻します。同期は行わず、World 内で形状と接触を確認できるデバッグ表示を備えます。",
+  "description": "プレイヤー同士の体の貫通を抑える Udon コンポーネント。相手の頭・体幹を判定し、自分の体が侵入した分だけ自分の位置を戻します。同期は行わず、World 内で形状と接触を確認できるデバッグ表示を備えます。",
   "author": {
     "name": "sabas0ba",
     "url": "https://github.com/sabas0ba"

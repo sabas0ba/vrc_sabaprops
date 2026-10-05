@@ -39,11 +39,11 @@ namespace SabaProps.BodyContact.Editors
         /// <summary>プレイヤーの出現位置。ダミーの列を正面に見ます。</summary>
         public static readonly Vector3 SpawnPosition = new Vector3(0f, 0.05f, -2f);
 
-        /// <summary>周囲に何もないダミー。歩いて入る、手を押し込む、の基本動作を確認します。</summary>
+        /// <summary>周囲に何もないダミー。頭・体幹の接触を確認します。</summary>
         public static readonly Vector3 OpenDummyPosition = new Vector3(0f, 0f, 2f);
 
         /// <summary>
-        /// 手前に壁があるダミー。壁とダミーの間に立って手を押し込み、押し戻しが壁で止まることを確認します。
+        /// 手前に壁があるダミー。壁とダミーの間で体幹を接触させ、押し戻しが壁で止まることを確認します。
         /// </summary>
         public static readonly Vector3 WallDummyPosition = new Vector3(3.5f, 0f, 2f);
 
@@ -116,13 +116,11 @@ namespace SabaProps.BodyContact.Editors
             BodyContactSampleVisuals.Label(signs.transform, "Small label", "SMALL / 0.6x", SmallDummyPosition + Vector3.up * 1.5f);
             BodyContactSampleVisuals.Label(signs.transform, "Moving label", "TRANSLATE / +/-0.8 m / 8 s", MovingDummyPosition + Vector3.up * 2.1f);
             BodyContactSampleVisuals.Label(signs.transform, "Turning label", "TURN / +/-60 deg / 8 s", TurningDummyPosition + Vector3.up * 2.1f);
-            BodyContactSampleVisuals.Label(signs.transform, "Grid legend", "FLOOR: 1 m squares / 10 cm subdivisions\nLIMBS: deep VR contact\nPULL: PLAYERS ONLY / enable target permission, then Grab forearm", new Vector3(0f, 2.8f, 8f));
+            BodyContactSampleVisuals.Label(signs.transform, "Grid legend", "FLOOR: 1 m squares / 10 cm subdivisions\nCONTACT: HEAD / BODY ONLY", new Vector3(0f, 2.8f, 8f));
 
-            CreatePullControl(system.pull, "Pull Permission", new Vector3(-1.5f, 1f, -1f), false);
-            CreatePullControl(system.pull, "Release Pull", new Vector3(1.5f, 1f, -1f), true);
-            CreatePullControl(system.pull, "Gizmo", new Vector3(-1.5f, 1f, -3.5f), false, 1);
-            CreatePullControl(system.pull, "HUD", new Vector3(0f, 1f, -3.5f), false, 2);
-            CreatePullControl(system.pull, "Contact Processing", new Vector3(1.5f, 1f, -3.5f), false, 3);
+            CreateControl(system, "Gizmo", new Vector3(-1.5f, 1f, -3.5f), 1);
+            CreateControl(system, "HUD", new Vector3(0f, 1f, -3.5f), 2);
+            CreateControl(system, "Contact", new Vector3(1.5f, 1f, -3.5f), 3);
             CreateTestStation(system);
 
             BuildWorld(camera);
@@ -183,17 +181,16 @@ namespace SabaProps.BodyContact.Editors
             }
         }
 
-        private static void CreatePullControl(BodyContactPull pull, string name, Vector3 position, bool release, int mode = 0)
+        private static void CreateControl(BodyContactSystem system, string name, Vector3 position, int mode)
         {
             GameObject button = GameObject.CreatePrimitive(PrimitiveType.Cube);
             button.name = name;
             button.transform.position = position;
             button.transform.localScale = new Vector3(0.8f, 0.3f, 0.15f);
-            BodyContactPullControl control = button.AddUdonSharpComponent<BodyContactPullControl>();
-            control.pull = pull;
-            control.releaseOnly = release;
+            BodyContactControl control = button.AddUdonSharpComponent<BodyContactControl>();
+            control.source = system;
             control.controlMode = mode;
-            control.debugView = pull.source.debugView;
+            control.debugView = system.debugView;
             var labelRoot = new GameObject(name + " Label");
             labelRoot.transform.position = position + Vector3.up * 0.4f;
             labelRoot.transform.localScale = Vector3.one * 0.002f;
@@ -207,7 +204,6 @@ namespace SabaProps.BodyContact.Editors
             label.fontSize = 24;
             label.alignment = TextAnchor.MiddleCenter;
             label.raycastTarget = false;
-            label.text = release ? "RELEASE PULL\nJump also releases" : "ALLOW BEING PULLED: OFF\nInteract to toggle";
             if (mode != 0) label.text = name.ToUpperInvariant() + ": ON\nInteract to toggle";
             RectTransform rect = (RectTransform)label.transform;
             rect.anchorMin = Vector2.zero;
@@ -221,7 +217,7 @@ namespace SabaProps.BodyContact.Editors
         private static void CreateTestStation(BodyContactSystem system)
         {
             GameObject seat = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            seat.name = "Pull Test Station";
+            seat.name = "Contact Test Station";
             seat.transform.position = new Vector3(5.5f, 0.45f, -1f);
             seat.transform.localScale = new Vector3(0.8f, 0.15f, 0.8f);
             VRCStation station = seat.AddComponent<VRCStation>();

@@ -72,7 +72,6 @@ namespace SabaProps.BodyContact.WorldTests
             foreach (string field in new[]
                      {
                          "contactEnabled",
-                         "limbProbesInVR",
                          "moveMode",
                          "radiusScale",
                          "tolerance",
@@ -104,13 +103,9 @@ namespace SabaProps.BodyContact.WorldTests
         }
 
         [Test]
-        public void PullAndControls_CompileWithNetworkAndInputEvents()
+        public void ControlsAndStation_CompileWithTheirEvents()
         {
-            IUdonProgram program = Compile<BodyContactPull>();
-            var exported = new List<string>(program.EntryPoints.GetExportedSymbols());
-            foreach (string name in new[] { "_inputGrab", "_inputJump", "_onDeserialization", "_onOwnershipTransferred", "_onOwnershipRequest", "_Tick", "_ReleasePull", "_TogglePullPermission" })
-                CollectionAssert.Contains(exported, name);
-            Compile<BodyContactPullControl>();
+            Compile<BodyContactControl>();
             IUdonProgram station = Compile<BodyContactStationRelay>();
             var stationEvents = new List<string>(station.EntryPoints.GetExportedSymbols());
             CollectionAssert.Contains(stationEvents, "_onStationEntered");

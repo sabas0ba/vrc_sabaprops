@@ -462,19 +462,6 @@ namespace SabaProps.BodyContact
             bool targetIsStatic, float coreYieldShare, float tolerance, Vector3 fallbackDirection,
             Vector3 combined, float[] probeDepths, Vector3[] probeContacts)
         {
-            return SolveBodyWithLimbs(probePositions, probeRadii, probeCount, partA, partB, partRadii,
-                partOffset, targetIsStatic, coreYieldShare, tolerance, fallbackDirection, combined,
-                probeDepths, probeContacts, false, tolerance, -1);
-        }
-
-        /// <summary>VR手足から四肢への深い接触を、体幹とは別の許容幅で補正します。</summary>
-        public Vector3 SolveBodyWithLimbs(
-            Vector3[] probePositions, float[] probeRadii, int probeCount,
-            Vector3[] partA, Vector3[] partB, float[] partRadii, int partOffset,
-            bool targetIsStatic, float coreYieldShare, float tolerance, Vector3 fallbackDirection,
-            Vector3 combined, float[] probeDepths, Vector3[] probeContacts,
-            bool limbContacts, float limbTolerance, int ignoredHandProbe)
-        {
             for (int probe = 0; probe < probeCount; probe++)
             {
                 float probeRadius = probeRadii[probe];
@@ -495,10 +482,7 @@ namespace SabaProps.BodyContact
                     }
 
                     bool limb = PartIsLimb(part);
-                    if (limb && probe == ignoredHandProbe) continue;
-                    float weight = limb && limbContacts && probeIsLimb
-                        ? (targetIsStatic ? 1f : Mathf.Clamp01(coreYieldShare))
-                        : YieldWeight(probeIsLimb, limb, targetIsStatic, coreYieldShare);
+                    float weight = YieldWeight(probeIsLimb, limb, targetIsStatic, coreYieldShare);
                     if (weight <= 0f)
                     {
                         continue;
@@ -517,7 +501,7 @@ namespace SabaProps.BodyContact
                         probeContacts[probe] = closest;
                     }
 
-                    float effective = EffectiveDepth(depth, limb ? limbTolerance : tolerance);
+                    float effective = EffectiveDepth(depth, tolerance);
                     if (effective <= 0f)
                     {
                         continue;

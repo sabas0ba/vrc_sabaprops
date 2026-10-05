@@ -49,7 +49,7 @@ namespace SabaProps.BodyContact
         public float geometryInterval = 0.05f;
 
         [Tooltip("押し戻し対象外の腕・脚を灰色で表示します。")]
-        public bool showInactiveLimbs = true;
+        public bool showInactiveLimbs = false;
 
         [Tooltip("数値表示を更新する間隔 (秒)。")]
         public float labelInterval = 0.2f;
@@ -131,8 +131,6 @@ namespace SabaProps.BodyContact
             DrawBodies();
             DrawProbes();
             DrawSeparation();
-            if (source.pull != null && source.pull.HasLiveSession())
-                AddLine(source.pull.targetPoint, source.pull.grabPoint, new Color(1f, 0.5f, 0.1f, 1f));
             Upload();
         }
 
@@ -156,13 +154,13 @@ namespace SabaProps.BodyContact
                 for (int part = 0; part < partCount; part++)
                 {
                     bool limb = part >= BodyContactSystem.PartLeftUpperArm;
-                    bool inactive = limb && (!source.limbContactsEnabled || source.activeProbeCount <= BodyContactSystem.CoreProbeCount);
+                    bool inactive = limb;
                     if (inactive && !showInactiveLimbs) continue;
                     float radius = source.partRadii[offset + part];
                     if (radius > 0f)
                     {
                         AddCapsule(source.partA[offset + part], source.partB[offset + part], radius,
-                            inactive ? inactiveLimbColor : (limb && state == BodyContactSystem.BodyArmed ? new Color(0.2f, 0.8f, 1f, 1f) : color));
+                            inactive ? inactiveLimbColor : color);
                     }
                 }
             }
@@ -349,14 +347,12 @@ namespace SabaProps.BodyContact
 
             int contacts = 0;
             int validProbes = 0;
-            int validLimbs = 0;
             float deepest = 0f;
             for (int probe = 0; probe < source.activeProbeCount; probe++)
             {
                 if (source.probeRadii[probe] > 0f)
                 {
                     validProbes++;
-                    if (probe >= BodyContactSystem.CoreProbeCount) validLimbs++;
                 }
                 float depth = source.probeDepths[probe];
                 if (depth > 0f) contacts++;
@@ -368,7 +364,7 @@ namespace SabaProps.BodyContact
 
             statusLabel.text =
                 "VR " + (Utilities.IsValid(local) && local.IsUserInVR() ? "ON" : "OFF")
-                + "  probes " + validProbes + "/" + source.activeProbeCount + "  limbs " + validLimbs + "/4"
+                + "  head/body probes " + validProbes + "/" + source.activeProbeCount
                 + "\nbodies " + source.bodyCount + "  in range " + inRange + "  pass-through " + passThrough
                 + "\ncontacts " + contacts + "  depth " + (deepest * 1000f).ToString("F0") + " mm"
                 + "\nseparation " + (source.separation.magnitude * 1000f).ToString("F0") + " mm"
@@ -377,12 +373,7 @@ namespace SabaProps.BodyContact
                 + (source.blockedByWorld ? "  blocked by world" : "")
                 + "\nmode " + (source.moveMode == BodyContactSystem.MoveByVelocity ? "velocity" : "teleport")
                 + (source.IsSuspended() ? "  suspended" : "")
-                + "\ncyan limbs: deep VR contact / dim: occluded"
-                + (source.pull == null ? "" : "\npull permission " + (source.pull.allowBeingPulled ? "ON" : "OFF")
-                    + (source.pull.pullingLocal ? " / being pulled" : (source.pull.active ? " / session active" : " / idle"))
-                    + "\n" + source.pull.GrabInputStatus()
-                    + "\nJump: release pull")
-                + "\nlimb tolerance " + (source.limbTolerance * 1000f).ToString("F0") + " mm"
+                + "\nHEAD / BODY ONLY"
                 + " / step " + (source.appliedStep.magnitude * 1000f).ToString("F2") + " mm";
         }
     }
