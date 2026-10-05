@@ -221,8 +221,10 @@ namespace SabaProps.Liquid.Editors
         /// (created when missing) lists the tools in that order, so a drawing
         /// recorded on one client replays with the same tool on another.
         /// <para>
-        /// Run again after adding or removing a canvas or a tool. Returns null,
-        /// and changes nothing, when the scene has neither.
+        /// Also fits every Surface Canvas's projector to its box.
+        /// Run again after adding or removing a canvas or a tool, or after
+        /// resizing a canvas. Returns null, and changes nothing, when the scene
+        /// has neither.
         /// </para>
         /// </summary>
         public static LiquidPaintLog Register(LiquidCanvasPool pool)
@@ -265,6 +267,18 @@ namespace SabaProps.Liquid.Editors
                 tools[i].toolIndex = i < LiquidPaintLog.MaxTools ? i : -1;
                 tools[i].pool = pool;
                 Apply(tools[i]);
+            }
+
+            // A projector cannot be resized at run time, so it is fitted to the canvas box here: after
+            // changing a Surface Canvas's halfExtents, registering again is what resizes its projector.
+            foreach (LiquidBodyCanvas surface in surfaces)
+            {
+                if (surface.projectorObject != null && surface.projectorMaterial != null)
+                {
+                    LiquidCanvasPoolBuilder.ConfigureProjector(surface.projectorObject, surface.halfExtents,
+                        surface.projectorMaterial, 0, ~SurfaceLayers);
+                    EditorUtility.SetDirty(surface.projectorObject);
+                }
             }
 
             log.pool = pool;
