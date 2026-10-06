@@ -27,6 +27,7 @@ SOFT_PROPS_PACKAGE="$REPO/Packages/io.github.sabas0ba.sabaprops.softprops"
 PUT_ITEMS_PACKAGE="$REPO/Packages/io.github.sabas0ba.sabaprops.putitems"
 TABLET_PACKAGE="$REPO/Packages/io.github.sabas0ba.sabaprops.tablet"
 TREES_PACKAGE="$REPO/Packages/io.github.sabas0ba.sabaprops.trees"
+LLAMA_PACKAGE="$REPO/Packages/io.github.sabas0ba.sabaprops.llama"
 
 PROJECT="${1:-$REPO/build/WorldProject}"
 VPM="${VPM_DIR:-$REPO/build/vpm}"
@@ -56,6 +57,7 @@ cp "$CIPROJECT/ProjectSettings/ProjectVersion.txt" "$PROJECT/ProjectSettings/"
 cp "$HERE/manifest.json" "$PROJECT/Packages/manifest.json"
 
 replace "$CIPROJECT/Assets/Tests" "$PROJECT/Assets/Tests"
+replace "$CIPROJECT/Assets/LlamaTests" "$PROJECT/Assets/LlamaTests"
 
 # Tests that need the SDK, so they cannot live in the CI project. One
 # subdirectory per assembly: Unity refuses a folder holding two asmdefs, and
@@ -74,6 +76,7 @@ replace "$HERE/Setup" "$PROJECT/Assets/WorldSetup"
 # Embedded packages resolve against the working tree and pull their own
 # registry dependencies, so nothing has to be listed in manifest.json.
 replace "$PACKAGE" "$PROJECT/Packages/io.github.sabas0ba.sabaprops.foliage"
+replace "$LLAMA_PACKAGE" "$PROJECT/Packages/io.github.sabas0ba.sabaprops.llama"
 replace "$WATER_PACKAGE" "$PROJECT/Packages/io.github.sabas0ba.sabaprops.water"
 
 # The stage camera package is Udon, so this project is the only place it can be

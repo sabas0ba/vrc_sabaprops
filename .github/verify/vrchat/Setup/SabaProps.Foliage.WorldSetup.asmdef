@@ -3,7 +3,8 @@
     "rootNamespace": "SabaProps.Foliage.WorldSetup",
     "references": [
         "VRC.ClientSim.Editor",
-        "SabaProps.Foliage.Editor"
+        "SabaProps.Foliage.Editor",
+        "SabaProps.Llama.Editor"
     ],
     "includePlatforms": [
         "Editor"
