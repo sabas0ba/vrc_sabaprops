@@ -16,8 +16,14 @@ namespace SabaProps.BodyContact
         private float _nextLabelTime;
         private string _lastLabel;
 
+        private void Start()
+        {
+            if (source != null && source.startupDiagnostics) Debug.Log("[BodyContact] Control Start; mode=" + controlMode);
+        }
+
         public override void Interact()
         {
+            if (source != null && source.startupDiagnostics) Debug.Log("[BodyContact] Control Interact; mode=" + controlMode);
             if (controlMode == 1 && debugView != null) debugView._ToggleVisible();
             else if (controlMode == 2 && debugView != null) debugView._ToggleHud();
             else if (controlMode == 3 && source != null) source._ToggleEnabled();
@@ -32,6 +38,8 @@ namespace SabaProps.BodyContact
             else if (controlMode == 2 && debugView != null) text = "HUD: " + (debugView.hudVisible ? "ON" : "OFF");
             else if (controlMode == 3 && source != null) text = "CONTACT: " + (source.contactEnabled ? "ON" : "OFF");
             if (text == _lastLabel) return;
+            if (_lastLabel == null && source != null && source.startupDiagnostics)
+                Debug.Log("[BodyContact] Control first Update; mode=" + controlMode);
             _lastLabel = text;
             label.text = text;
         }

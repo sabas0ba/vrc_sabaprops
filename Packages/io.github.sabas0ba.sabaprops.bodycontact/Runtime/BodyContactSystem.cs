@@ -41,6 +41,14 @@ namespace SabaProps.BodyContact
         [Header("動作")]
         [Tooltip("オフにすると判定も移動も行いません。")]
         public bool contactEnabled = true;
+        [Tooltip("起動と最初の更新をログへ記録します。サンプルの診断用です。")]
+        public bool startupDiagnostics;
+        private bool _reportedPostLateUpdate;
+
+        private void Start()
+        {
+            if (startupDiagnostics) Debug.Log("[BodyContact] System Start; build=core-startup-1");
+        }
 
         [Tooltip("位置を動かす手段。0 は TeleportTo、1 は SetVelocity。1 は比較検証用です。")]
         public int moveMode = MoveByTeleport;
@@ -174,6 +182,11 @@ namespace SabaProps.BodyContact
         // ボーンは IK の後で読む必要があるため、Update ではなく PostLateUpdate で処理します。
         public override void PostLateUpdate()
         {
+            if (!_reportedPostLateUpdate)
+            {
+                _reportedPostLateUpdate = true;
+                if (startupDiagnostics) Debug.Log("[BodyContact] First PostLateUpdate; localPlayer=" + Utilities.IsValid(Networking.LocalPlayer));
+            }
             _Step();
         }
 

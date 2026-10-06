@@ -76,6 +76,7 @@ namespace SabaProps.BodyContact
 
         private void Start()
         {
+            if (source != null && source.startupDiagnostics) Debug.Log("[BodyContact] DebugView Start");
             Initialize();
             ApplyVisibility();
         }

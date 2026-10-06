@@ -96,6 +96,7 @@ namespace SabaProps.BodyContact.Editors
 
             GameObject root = BodyContactMenu.CreateSystem();
             BodyContactSystem system = root.GetComponent<BodyContactSystem>();
+            system.startupDiagnostics = true;
             BodyContactMenu.AddDummy(system, OpenDummyPosition).name = OpenDummyName;
             BodyContactMenu.AddDummy(system, WallDummyPosition).name = WallDummyName;
 
@@ -116,7 +117,7 @@ namespace SabaProps.BodyContact.Editors
             BodyContactSampleVisuals.Label(signs.transform, "Small label", "SMALL / 0.6x", SmallDummyPosition + Vector3.up * 1.5f);
             BodyContactSampleVisuals.Label(signs.transform, "Moving label", "TRANSLATE / +/-0.8 m / 8 s", MovingDummyPosition + Vector3.up * 2.1f);
             BodyContactSampleVisuals.Label(signs.transform, "Turning label", "TURN / +/-60 deg / 8 s", TurningDummyPosition + Vector3.up * 2.1f);
-            BodyContactSampleVisuals.Label(signs.transform, "Grid legend", "FLOOR: 1 m squares / 10 cm subdivisions\nCONTACT: HEAD / BODY ONLY", new Vector3(0f, 2.8f, 8f));
+            BodyContactSampleVisuals.Label(signs.transform, "Grid legend", "CORE STARTUP 1\nFLOOR: 1 m squares / 10 cm subdivisions\nCONTACT: HEAD / BODY ONLY", new Vector3(0f, 2.8f, 8f));
 
             CreateControl(system, "Gizmo", new Vector3(-1.5f, 1f, -3.5f), 1);
             CreateControl(system, "HUD", new Vector3(0f, 1f, -3.5f), 2);
@@ -204,7 +205,7 @@ namespace SabaProps.BodyContact.Editors
             label.fontSize = 24;
             label.alignment = TextAnchor.MiddleCenter;
             label.raycastTarget = false;
-            if (mode != 0) label.text = name.ToUpperInvariant() + ": ON\nInteract to toggle";
+            label.text = name.ToUpperInvariant() + ": WAITING FOR UDON";
             RectTransform rect = (RectTransform)label.transform;
             rect.anchorMin = Vector2.zero;
             rect.anchorMax = Vector2.one;

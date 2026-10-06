@@ -62,6 +62,11 @@ VRChat Worlds SDKとUdonSharpを備えたUnityプロジェクトへパッケー�
 
 ## 診断表示
 
+サンプルの操作ボタンは保存時に `WAITING FOR UDON` と表示し、通常のUpdateが動くと `ON` に変わります。
+サンプルでは `Startup Diagnostics` を有効にし、`[BodyContact]` を接頭辞としてSystem/View/ControlのStart、
+最初のPostLateUpdateとControlのUpdate、Interactをログに記録します。通常配置のシステムでは既定OFFです。
+これらは起動経路を調べる診断であり、HUD非表示の原因を修正するものではありません。
+
 - 頭・体幹を緑、有効な通り抜け状態を黄、接触点を赤で表示します。
 - 対象外の腕・脚の線は既定で非表示です。Show Inactive Limbsで灰色表示できます。
 - Gizmoの形状更新は既定20 Hz、HUDの頭部追従と接触補正は毎フレームです。

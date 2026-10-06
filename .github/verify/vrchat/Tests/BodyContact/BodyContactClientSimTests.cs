@@ -89,7 +89,10 @@ namespace SabaProps.BodyContact.WorldTests
             }
             for (int frame = 0; frame < 600 && Networking.LocalPlayer == null; frame++) yield return null;
             Assert.That(Networking.LocalPlayer, Is.Not.Null);
-            for (int frame = 0; frame < 120; frame++) yield return null;
+            // EditMode coroutine iterations are not player frames. Wait in game time so
+            // ClientSim and Udon Start can finish without invoking their events manually.
+            float startupDeadline = Time.time + 1f;
+            while (Time.time < startupDeadline) yield return null;
             foreach (ClientSimMenu menu in Resources.FindObjectsOfTypeAll<ClientSimMenu>())
                 if (menu.gameObject.scene.IsValid()) menu.CloseMenu();
             LogAssert.ignoreFailingMessages = false;
@@ -107,6 +110,20 @@ namespace SabaProps.BodyContact.WorldTests
             MeshRenderer renderer = (MeshRenderer)view.GetProgramVariable("lineRenderer");
             Assert.That(hud.gameObject.activeInHierarchy, Is.True);
             Assert.That(renderer.enabled, Is.True);
+            foreach (string controlName in new[] { "Gizmo", "HUD", "Contact" })
+            {
+                UdonBehaviour button = GameObject.Find(controlName).GetComponent<UdonBehaviour>();
+                Text buttonLabel = (Text)button.GetProgramVariable("label");
+                string expected = controlName.ToUpperInvariant();
+                Assert.That(buttonLabel.text, Is.EqualTo(expected + ": ON"),
+                    controlName + " must update its label automatically before any custom event");
+                button.Interact();
+                float labelDeadline = Time.time + 0.4f;
+                while (Time.time < labelDeadline) yield return null;
+                Assert.That(buttonLabel.text, Is.EqualTo(expected + ": OFF"),
+                    "Interact and automatic Update must both work");
+                button.Interact();
+            }
             // ClientSim does not dispatch PostLateUpdate; execute the same body through the Udon VM.
             system.SendCustomEvent("_postLateUpdate");
             float nextRefresh = Time.time + 0.3f;
