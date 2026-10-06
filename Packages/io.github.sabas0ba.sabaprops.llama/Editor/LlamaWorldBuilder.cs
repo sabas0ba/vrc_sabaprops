@@ -10,7 +10,8 @@ namespace SabaProps.Llama
     public static class LlamaWorldBuilder
     {
         public const string RuntimePath = "Assets/SabaPropsLlama/Runtime/SabaLlamaRunner.cs";
-        private const string PackagePath = "Packages/io.github.sabas0ba.sabaprops.llama";
+        public const string RunnerName = "SabaLlama - Interact to generate or stop";
+        private const string PackagePath ="Packages/io.github.sabas0ba.sabaprops.llama";
 
         private static Type FindType(string name)
         {
@@ -62,7 +63,7 @@ namespace SabaProps.Llama
                 null, new[] { typeof(GameObject), typeof(Type) }, null);
             if (runnerType == null || add == null) throw new InvalidOperationException("runtimeをimportし、コンパイル完了後に再実行してください。");
             var root = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            root.name = "SabaLlama - Interact to generate or stop";
+            root.name = RunnerName;
             try
             {
                 var runner = (Component)add.Invoke(null, new object[] { root, runnerType });
@@ -94,6 +95,14 @@ namespace SabaProps.Llama
                 // The world template owns the EventSystem; don't replace its VRChat input modules.
                 Type uiShape = FindType("VRC.SDK3.Components.VRCUiShape") ?? FindType("VRC.SDKBase.VRC_UiShape");
                 if (uiShape != null) canvasObject.AddComponent(uiShape);
+
+                // The output text is white; without a panel it is unreadable against a bright world.
+                var panelObject = new GameObject("Background", typeof(RectTransform), typeof(Image));
+                panelObject.transform.SetParent(canvasObject.transform, false);
+                var panel = panelObject.GetComponent<Image>();
+                panel.color = new Color(0.07f, 0.08f, 0.10f, 0.92f);
+                panel.raycastTarget = false;
+                panel.rectTransform.sizeDelta = rect.sizeDelta;
 
                 Text MakeText(string name, Vector2 position, Vector2 size)
                 {

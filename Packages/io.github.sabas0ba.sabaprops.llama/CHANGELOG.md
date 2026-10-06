@@ -5,6 +5,12 @@
 ### Changed
 
 - Apache-2.0 の宣言、公式ライセンスURL、同梱するライセンス全文と README の表記を統一。
+- World Runnerの出力Canvasに暗色の背景パネルを追加。明るい背景で白い出力文字が読めなかったため。
+
+### Fixed
+
+- `LlamaWorldBuilder`の`PackageInfo`曖昧参照によりUnity Editorでコンパイルできなかった問題を修正。
+- `SabaLlamaRunner.OnAsyncGpuReadbackComplete`が基底メンバーを隠蔽していた問題を修正。
 
 ### Added
 
