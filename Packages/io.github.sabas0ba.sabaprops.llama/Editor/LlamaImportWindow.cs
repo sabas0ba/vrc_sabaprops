@@ -16,6 +16,13 @@ namespace SabaProps.Llama
         [MenuItem("Tools/SabaProps/Llama/Import Model")]
         public static void Open() { GetWindow<LlamaImportWindow>(false, "SabaProps Llama", true); }
 
+        public static LlamaImportWindow Open(LlamaModelAsset model)
+        {
+            var window = GetWindow<LlamaImportWindow>(false, "SabaProps Llama", true);
+            window.selected = model;
+            return window;
+        }
+
         private void OnGUI()
         {
             EditorGUILayout.HelpBox("PCワールド向け実験実装。Llama GGUF（F32/F16/Q4_0/Q8_0）またはllama2.c FP32 v0に対応。量子化重みもFP32へ展開します。", MessageType.Info);

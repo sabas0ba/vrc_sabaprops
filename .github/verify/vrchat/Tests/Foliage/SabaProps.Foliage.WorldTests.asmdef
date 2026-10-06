@@ -6,7 +6,6 @@
         "SabaProps.Foliage.Editor",
         "SabaProps.Water.Runtime",
         "SabaProps.Water.Editor",
-        "SabaProps.Llama.Editor",
         "UnityEngine.TestRunner",
         "UnityEditor.TestRunner",
         "VRC.ClientSim"

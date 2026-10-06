@@ -101,7 +101,7 @@ Unity は Unity Hub の既定の場所から `ProjectVersion.txt` に一致す�
 初回は SDK が要求する UPM パッケージ（burst、collections、cinemachine 等）を
 Unity がレジストリから取得するため、数分かかります。
 
-テストは `SabaProps.Foliage.CITests`、`SabaProps.Foliage.WorldTests`、`SabaProps.SoftProps.WorldTests`、`SabaProps.StageCam.WorldTests`、`SabaProps.Tablet.WorldTests`、`SabaProps.PutItems.Tests` に絞って実行します。
+テストは `SabaProps.Foliage.CITests`、`SabaProps.Foliage.WorldTests`、`SabaProps.SoftProps.WorldTests`、`SabaProps.StageCam.WorldTests`、`SabaProps.Tablet.WorldTests`、`SabaProps.PutItems.Tests`、`SabaProps.Llama.CITests`、`SabaProps.Llama.WorldTests` に絞って実行します。
 SDK 自身のテストアセンブリも同じプロジェクトに存在しますが、
 本パッケージとは無関係な理由で 2 件失敗する（ランダム生成の JSON ファズケースと、
 docs.microsoft.com の URL 到達性を検証するもの）ため、終了コードを意味のあるものにするためです。
@@ -116,6 +116,38 @@ docs.microsoft.com の URL 到達性を検証するもの）ため、終了コ�
 | `SabaProps.SoftProps.WorldTests` | EditMode + Playへの遷移 | Prefab生成、同梱デモのimport・参照・比較台、ClientSimでのCollider接触・復元・自動運動・立位荷重 |
 | `SabaProps.Tablet.WorldTests` | EditMode | 全コンポーネントの Udon コンパイル、サンプルシーンの全ボタンがエクスポート済みのイベントを呼ぶこと、ミラーの排他、テレポート地点の番号、Build の再実行で生成物が重複しないことを検証 |
 | `SabaProps.PutItems.Tests` | EditMode | 吸着対象と Pickup の設定、同梱デモの構成を検証 |
+| `SabaProps.Llama.CITests` | EditMode | 未学習 fixture の全 logit を GPU と CPU 参照で比較。実 graphics device が必要 |
+| `SabaProps.Llama.WorldTests` | EditMode + Playへの遷移 | runner の client 向け Udon コンパイル、ClientSim での生成・停止・無効化後の再実行を CPU 参照の文字列と比較 |
+
+### Llama の実行テスト
+
+`LlamaWorldRunTests` は Import ウィンドウと同じ手順（変換、アセット保存、World Runner 作成）でシーンを作り、
+Udon の Interact イベントだけで runner を操作します。次の 3 経路で、表示された文字列が CPU 参照の greedy 生成と一致することを検査します。
+
+1. 完全な生成
+2. 生成中に停止し、再実行
+3. 生成中に GameObject を無効化し、有効化してから再実行
+
+未学習 fixture は常に実行します。学習済みモデルは `SABAPROPS_LLAMA_GGUF` に GGUF のパスを指定した場合のみ実行し、
+未指定なら skip します。
+
+```sh
+bash .github/verify/llama/fetch-model.sh stories260K
+SABAPROPS_LLAMA_GGUF="$(cygpath -wa .verify/llama/models/stories260K.gguf)" \
+  TEST_FILTER=SabaProps.Llama.WorldTests ./.github/verify/vrchat/run-tests.sh
+```
+
+描画結果は `TestResults/llama-world-fixture.png` と `llama-world-gguf.png` に保存します。
+待機の上限はフレーム数ではなく実時間です。バッチ実行の Editor は毎秒数千フレーム進みますが、readback の完了は GPU 側の進行によります。
+ClientSim での実行であり、VRChat クライアントでの速度と動作は別途確認してください。
+
+Import ウィンドウの画像は、Windows で次のメソッドを GUI 起動（`-batchmode` なし）で実行して撮影します。
+`TestResults/Documentation/import-window.png` に保存し、撮影後に Editor を終了します。
+
+```sh
+Unity -projectPath /path/to/WorldProject \
+  -executeMethod SabaProps.Llama.WorldTests.LlamaDocumentationCapture.Run
+```
 
 Soft Propsの実行テストは指・棒・板の100 mmおよび0.5 mmの空隙、20 mmの侵入、離脱後の復元、自動上下運動、ローカルプレイヤーのFutonへの接地を検証します。VRChat実clientの手・胴体・リモートプレイヤーの接触を保証するテストではありません。
 
