@@ -2,7 +2,11 @@
 
 VRChatのPCワールドで、小型Llama系モデルをfragment shaderにより推論する実験パッケージです。Unity Editor拡張で重みをtextureへ変換し、UdonSharpが推論passとテキスト入出力を制御します。外部サーバー、native DLL、compute shaderは使用しません。
 
-**初期実装です。Unity Editor・UdonSharp・VRChat実機での動作確認と、学習済みモデルでの速度・品質測定は未完了です。会話できる学習済みモデルは同梱していません。** 数値比較テストの存在と実行済みの結果は区別してください。
+**初期実装です。Unity EditorとClientSimでの生成は確認済みですが、VRChatクライアントでの動作確認と、学習済みモデルでの速度・品質測定は未完了です。会話できる学習済みモデルは同梱していません。** 数値比較テストの存在と実行済みの結果は区別してください。
+
+![World RunnerがStories260Kで入力の続きを生成した表示](Documentation~/images/world-runner.png)
+
+Unity 2022.3.22f1のClientSimで、Stories260K（Context 64、maxNewTokens 24）に`Once upon a time`を入力した結果です。上段が入力欄、下段が出力です。表示された文字列はCPU参照のgreedy生成と一致しています。VRChatクライアントでの描画ではありません。
 
 ## 対応範囲
 
@@ -24,6 +28,9 @@ GGUFはコンテナー形式であり、すべてのモデルへの対応を意�
 
 1. VRChat Worlds SDKを導入済みのUnityプロジェクトに本パッケージを追加します。VPM配布前はリポジトリ内の`Packages/io.github.sabas0ba.sabaprops.llama`を、プロジェクトの`Packages`へコピーします。
 2. `Tools > SabaProps > Llama > Import Model`を開きます。
+
+   ![Import Modelウィンドウ。変換済みモデルを選択するとpass数と容量を表示する](Documentation~/images/import-window.png)
+
 3. GGUFを指定します（内蔵tokenizerを使うので別ファイルは不要）。legacy `.bin`の場合のみ対応するtokenizer.binも指定します。Contextと重みの出典・ライセンスを入力します。Editor内のダウンロード機能はありません。
 4. 「検査してtextureへ変換」を実行します。出力は`Assets/SabaPropsLlama/ImportedModel...`です。既存の出力を上書きせず、新しいフォルダーを作成します。
 5. 「VRChat runtimeをimport」を実行し、Unity・UdonSharpのコンパイルが終わるまで待ちます。これは初回のみ必要です。既存runtimeを編集している場合は自動上書きしません。
@@ -152,7 +159,11 @@ Nixを利用しない場合は.NET SDK 8以降とglslangValidatorを用意し、
 3. 実際の学習済みcheckpointでCPUとの一致を確認し、FPS・tokens/s・VRAM・日本語品質を記録すること。
 4. VRChat upload後も同じ動作になること。
 
-World検証経路の`LlamaUdonTests`はclient向けUdonコンパイルを強制し、実行programが生成されたことを検査します。コンパイル成功だけでは、実機のGPU実行・入力操作まで確認したことにはなりません。
+World検証経路の`LlamaUdonTests`はclient向けUdonコンパイルを強制し、実行programが生成されたことを検査します。
+
+`LlamaWorldRunTests`はClientSim上でrunnerをUdonのInteractイベントだけで操作し、完全な生成、生成中の停止後の再実行、GameObjectの無効化・有効化後の再実行の各経路で、表示文字列がCPU参照のgreedy生成と一致することを検査します。未学習fixtureは常に実行し、学習済みモデルは環境変数`SABAPROPS_LLAMA_GGUF`にGGUFを指定した場合のみ実行します。手順は`.github/verify/vrchat/README.md`を参照してください。
+
+上記1は、この検査とUnity 2022.3.22f1・Direct3D 11・SDK 3.10.4で確認済みです。2はClientSim上のUdonイベントによる確認のみで、入力欄への実際の入力とBuild & Testは未確認です。3のうちStories260KでのCPUとの一致は確認済み、FPS・tokens/s・VRAM・日本語品質は未測定です。4は未確認です。ClientSimはVRChatクライアントではないため、実機の描画・入力・速度は別途確認が必要です。
 
 ## 参照した仕様
 
