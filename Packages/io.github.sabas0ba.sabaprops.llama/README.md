@@ -45,7 +45,7 @@ GGUFはコンテナー形式であり、すべてのモデルへの対応を意�
 
 初回は **stories260K.gguf** を使用してください。約1.19 MB、dimension 64・5 layers・512語彙で、導入・英語completionの確認に向いた小さいモデルです。日本語チャット用モデルではありません。次に **stories15M-q4_0.gguf**（約19.1 MB、dimension 288・6 layers・32000語彙）で量子化入力と負荷を確認できます。
 
-配布元は [ggml-orgのtinyllamas](https://huggingface.co/ggml-org/models-moved/tree/499bc8821c6b12b4e53c5bffcb21ec206f212d81/tinyllamas)。元モデルは [karpathy/tinyllamas](https://huggingface.co/karpathy/tinyllamas)（モデルカードの表記はMIT）です。ダウンロード時に元モデルのライセンスと配布元も確認し、ワールドに含める重みの出典を記録してください。本リポジトリには重みを再配布しません。
+配布元は [ggml-orgのtinyllamas](https://huggingface.co/ggml-org/models-moved/tree/499bc8821c6b12b4e53c5bffcb21ec206f212d81/tinyllamas)。元モデルは [karpathy/tinyllamas](https://huggingface.co/karpathy/tinyllamas)（モデルカードの表記はMIT）です。GGUFへ変換したファイルを置く配布元リポジトリにはライセンス表記がなく、llama.cppのCI用で本番利用を想定しない旨が記載されています（2026-10-06確認）。学習データのTinyStoriesはCDLA-Sharing-1.0です。ダウンロード時に元モデルのライセンスと配布元も確認し、ワールドに含める重みの出典を記録してください。本リポジトリには重みを再配布しません。
 
 ### 取得（Windows PowerShell）
 
@@ -172,8 +172,8 @@ World検証経路の`LlamaUdonTests`はclient向けUdonコンパイルを強制�
 - [GGUF仕様](https://github.com/ggml-org/ggml/blob/master/docs/gguf.md)
 - [llama2.c checkpoint・tokenizer形式](https://github.com/karpathy/llama2.c)
 
-外部の推論ライブラリや学習済み重みは本パッケージへ取り込んでいません。
+外部の推論ライブラリのバイナリやソースファイル、学習済み重みは本パッケージへ取り込んでいません。ただし、tokenizer・CPU参照推論・FP32 v0形式の読み込み・runtimeの文字列処理は、llama2.c（MIT）の`run.c`と同じアルゴリズムと処理順序に従っています。
 
 ## ライセンス
 
-本パッケージは Apache License 2.0 で提供します。全文は [LICENSE.md](LICENSE.md) を参照してください。外部依存・モデル・素材には、それぞれの配布元のライセンスが適用されます。
+本パッケージは Apache License 2.0 で提供します。全文は [LICENSE.md](LICENSE.md) を参照してください。llama2.cに基づく部分の著作権表示と許諾条件は [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md) に掲載しています。外部依存・モデル・素材には、それぞれの配布元のライセンスが適用されます。

@@ -4,6 +4,9 @@ using UnityEngine.UI;
 using VRC.SDK3.Rendering;
 using VRC.SDKBase;
 
+// Part of SabaProps Llama (Apache-2.0). The tokenizer and the text assembly
+// follow llama2.c's run.c (MIT, Copyright (c) 2023 Andrej); see
+// THIRD-PARTY-NOTICES.md in the package for the full notice.
 [UdonBehaviourSyncMode(BehaviourSyncMode.None)]
 public class SabaLlamaRunner : UdonSharpBehaviour
 {

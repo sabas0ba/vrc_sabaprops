@@ -5,6 +5,7 @@
 ### Changed
 
 - Apache-2.0 の宣言、公式ライセンスURL、同梱するライセンス全文と README の表記を統一。
+- llama2.c（MIT）に基づく部分の著作権表示と許諾条件を`THIRD-PARTY-NOTICES.md`に掲載し、READMEの記述を実態に合わせて修正。
 - World Runnerの出力Canvasに暗色の背景パネルを追加。明るい背景で白い出力文字が読めなかったため。
 
 ### Fixed
