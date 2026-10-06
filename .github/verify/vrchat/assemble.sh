@@ -87,6 +87,8 @@ replace "$SOFT_PROPS_PACKAGE" "$PROJECT/Packages/io.github.sabas0ba.sabaprops.so
 replace "$PUT_ITEMS_PACKAGE" "$PROJECT/Packages/io.github.sabas0ba.sabaprops.putitems"
 replace "$TABLET_PACKAGE" "$PROJECT/Packages/io.github.sabas0ba.sabaprops.tablet"
 replace "$TREES_PACKAGE" "$PROJECT/Packages/io.github.sabas0ba.sabaprops.trees"
+replace "$REPO/Packages/io.github.sabas0ba.sabaprops.screenfx" "$PROJECT/Packages/io.github.sabas0ba.sabaprops.screenfx"
+replace "$REPO/Packages/io.github.sabas0ba.sabaprops.screenfx/Samples~/UdonDriver" "$PROJECT/Assets/ScreenFxSample"
 replace "$VPM/com.vrchat.base" "$PROJECT/Packages/com.vrchat.base"
 replace "$VPM/com.vrchat.worlds" "$PROJECT/Packages/com.vrchat.worlds"
 

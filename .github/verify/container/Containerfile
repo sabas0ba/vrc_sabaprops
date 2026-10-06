@@ -1,0 +1,9 @@
+# sabas0ba/dotfiles の既存ローカルイメージ。タグの更新による環境変化を防ぐ。
+FROM localhost/dotfiles-dev@sha256:2e43382813a10f5fb45660aa86704d6bd88186b0440cd0e66dd2b6ec50fb0436
+
+COPY tools.nix /opt/sabaprops/tools.nix
+RUN nix build --impure --file /opt/sabaprops/tools.nix --out-link /opt/sabaprops/tools
+
+COPY run.sh /opt/sabaprops/run.sh
+ENV DOTNET_CLI_TELEMETRY_OPTOUT=1 DOTNET_SKIP_FIRST_TIME_EXPERIENCE=1
+CMD ["bash", "/opt/sabaprops/run.sh"]
