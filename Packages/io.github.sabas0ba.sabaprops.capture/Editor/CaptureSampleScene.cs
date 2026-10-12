@@ -2,6 +2,7 @@ using System.IO;
 using System.Text;
 using UdonSharpEditor;
 using UnityEditor;
+using UnityEditor.Animations;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -36,6 +37,7 @@ namespace SabaProps.Capture.Editors
         public const string LiveScreenMaterialPath = SampleFolder + "/LiveScreen.mat";
         public const string GroundMaterialPath = SampleFolder + "/DemoGround.mat";
         public const string OrbitClipPath = SampleFolder + "/SubjectOrbit.anim";
+        public const string OrbitControllerPath = SampleFolder + "/SubjectOrbit.controller";
 
         // 検証用のテストがシーンをこの名前でたどるため、定数にしています。
         public const string SetRootName = "Set";
@@ -227,7 +229,8 @@ namespace SabaProps.Capture.Editors
         }
 
         /// <summary>
-        /// 中心の周りを一定の速さで回る球。Udon を使わず、Animation コンポーネントで動かします。
+        /// 中心の周りを一定の速さで回る球。Udon を使わず、Animator で動かします。
+        /// legacy の Animation コンポーネントは使えません。VRChat クライアントが読み込み時に除去します。
         /// </summary>
         private static void BuildSubject(Transform parent)
         {
@@ -246,23 +249,44 @@ namespace SabaProps.Capture.Editors
             // プレイヤーが押されないよう、当たり判定は持たせません。
             Object.DestroyImmediate(subject.GetComponent<Collider>());
 
-            AnimationClip clip = CreateOrLoadOrbitClip();
-            var animation = subject.AddComponent<Animation>();
-            animation.AddClip(clip, clip.name);
-            animation.clip = clip;
-            animation.playAutomatically = true;
+            var animator = subject.AddComponent<Animator>();
+            animator.runtimeAnimatorController = CreateOrLoadOrbitController(CreateOrLoadOrbitClip());
+            animator.applyRootMotion = false;
+        }
+
+        /// <summary>周回のクリップを再生し続けるだけの AnimatorController。</summary>
+        private static AnimatorController CreateOrLoadOrbitController(AnimationClip clip)
+        {
+            var controller = AssetDatabase.LoadAssetAtPath<AnimatorController>(OrbitControllerPath);
+            if (controller != null)
+            {
+                return controller;
+            }
+
+            // 作成時点で空のレイヤーが 1 つあります。最初に足した状態が既定の状態になります。
+            controller = AnimatorController.CreateAnimatorControllerAtPath(OrbitControllerPath);
+            AnimatorStateMachine stateMachine = controller.layers[0].stateMachine;
+            AnimatorState state = stateMachine.AddState("Orbit");
+            state.motion = clip;
+            stateMachine.defaultState = state;
+            EditorUtility.SetDirty(controller);
+            return controller;
         }
 
         /// <summary>
         /// 半径 OrbitRadius の円を OrbitPeriod 秒で 1 周する動き。
         /// 接線を円の導関数から与えるので、周の継ぎ目で速度が変わりません。
+        /// <para>
+        /// 既にあるクリップも設定し直します。以前の版が作った legacy のクリップは Animator で再生できないためです。
+        /// </para>
         /// </summary>
         private static AnimationClip CreateOrLoadOrbitClip()
         {
-            var existing = AssetDatabase.LoadAssetAtPath<AnimationClip>(OrbitClipPath);
-            if (existing != null)
+            var clip = AssetDatabase.LoadAssetAtPath<AnimationClip>(OrbitClipPath);
+            bool created = clip == null;
+            if (created)
             {
-                return existing;
+                clip = new AnimationClip { name = "SubjectOrbit" };
             }
 
             const int segments = 16;
@@ -282,13 +306,25 @@ namespace SabaProps.Capture.Editors
                 z[i] = new Keyframe(time, OrbitRadius * Mathf.Sin(angle), slopeZ, slopeZ);
             }
 
-            // Animation コンポーネントが再生できるのは legacy のクリップだけです。
-            var clip = new AnimationClip { name = "SubjectOrbit", legacy = true, wrapMode = WrapMode.Loop };
+            clip.legacy = false;
+            clip.ClearCurves();
             clip.SetCurve("", typeof(Transform), "localPosition.x", new AnimationCurve(x));
             clip.SetCurve("", typeof(Transform), "localPosition.y", new AnimationCurve(y));
             clip.SetCurve("", typeof(Transform), "localPosition.z", new AnimationCurve(z));
 
-            AssetDatabase.CreateAsset(clip, OrbitClipPath);
+            AnimationClipSettings settings = AnimationUtility.GetAnimationClipSettings(clip);
+            settings.loopTime = true;
+            AnimationUtility.SetAnimationClipSettings(clip, settings);
+
+            if (created)
+            {
+                AssetDatabase.CreateAsset(clip, OrbitClipPath);
+            }
+            else
+            {
+                EditorUtility.SetDirty(clip);
+            }
+
             return clip;
         }
 

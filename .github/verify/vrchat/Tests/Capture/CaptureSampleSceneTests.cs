@@ -126,11 +126,18 @@ namespace SabaProps.Capture.WorldTests
             Assert.That(screen.layer, Is.EqualTo(CapturePanelBuilder.PanelLayer));
             Assert.That(screen.GetComponent<MeshRenderer>().sharedMaterial.mainTexture, Is.EqualTo(live.targetTexture));
 
-            Animation orbit = GameObject.Find(CaptureSampleScene.SubjectName).GetComponent<Animation>();
-            Assert.That(orbit.clip, Is.Not.Null, "without the clip every captured frame is identical");
-            Assert.That(orbit.clip.legacy, Is.True);
-            Assert.That(orbit.clip.length, Is.EqualTo(CaptureSampleScene.OrbitPeriod).Within(1e-3f));
-            Assert.That(orbit.playAutomatically, Is.True);
+            // The VRChat client strips the legacy Animation component on load, which leaves the
+            // subject still and every captured frame identical. It has to be an Animator.
+            GameObject subject = GameObject.Find(CaptureSampleScene.SubjectName);
+            Assert.That(subject.GetComponent<Animation>(), Is.Null, "the client removes legacy Animation components");
+            Animator orbit = subject.GetComponent<Animator>();
+            Assert.That(orbit, Is.Not.Null);
+            Assert.That(orbit.runtimeAnimatorController, Is.Not.Null, "without the controller the subject does not move");
+            AnimationClip[] clips = orbit.runtimeAnimatorController.animationClips;
+            Assert.That(clips.Length, Is.EqualTo(1));
+            Assert.That(clips[0].legacy, Is.False, "an Animator cannot play a legacy clip");
+            Assert.That(clips[0].isLooping, Is.True);
+            Assert.That(clips[0].length, Is.EqualTo(CaptureSampleScene.OrbitPeriod).Within(1e-3f));
 
             VRCSceneDescriptor world = Object.FindObjectOfType<VRCSceneDescriptor>();
             Assert.That(world, Is.Not.Null);
