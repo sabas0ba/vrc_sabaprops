@@ -9,7 +9,7 @@
 
 1. Unity Package Managerで`SabaProps Water`を選択します。
 2. `Samples`タブから`Water Feature Gallery`をimportします。
-3. `Assets/Samples/SabaProps Water/0.1.0/Water Feature Gallery/WaterFeatureGallery.unity`を開きます。
+3. `Assets/Samples/SabaProps Water/0.1.1/Water Feature Gallery/WaterFeatureGallery.unity`を開きます。
 4. Play Modeへ入り、Particle SystemとShader animationを確認します。
 
 Package Managerを使用しない場合は、`Tools > SabaProps > Water > Create Feature Gallery`を実行します。

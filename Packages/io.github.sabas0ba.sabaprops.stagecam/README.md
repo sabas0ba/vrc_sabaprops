@@ -9,8 +9,8 @@
 - 被写体の周囲を自動で回り込むクレーン風のカメラワーク
 - アバターの身長差を吸収する自動フレーミング
 
-0.1.0 はローカル専用です。各クライアントが自分の見たい対象を自分で追います。
-全員で同じ画を見る運用は 0.2.0 で入れます（[ロードマップ](Documentation~/roadmap.md)）。
+0.2.0 まではローカル専用です。各クライアントが自分の見たい対象を自分で追います。
+全員で同じ画を見る運用は 0.3.0 で入れます（[ロードマップ](Documentation~/roadmap.md)）。
 
 ![Stage Camera World Sample をUnityで表示した画面](Documentation~/images/stagecam-demo.png)
 
@@ -18,7 +18,7 @@
 
 ![Stage Cam の実行時構成図](Documentation~/images/stagecam-architecture.svg)
 
-追従対象と Pickup 操作を Stage Cam Rig が受け取り、Camera の RenderTexture を経由して World Screen に表示します。0.1.0 では表示は各クライアントのローカルです。
+追従対象と Pickup 操作を Stage Cam Rig が受け取り、Camera の RenderTexture を経由して World Screen に表示します。0.2.0 までは表示は各クライアントのローカルです。
 
 ---
 
@@ -203,7 +203,7 @@ VRChat はアバターの身長差が大きく、しかもアバタースケー�
   100〜200 ms 程度の遅延があります。これは VRChat の仕組み上どうにもなりません
 - **roll は保持されません。** Pickup でカメラを傾けて離しても、水平に戻ります。
   これは意図した挙動で、傾いた地平線が残らないようにしています
-- **同期しません。** 0.1.0 はローカル専用です
+- **同期しません。** 0.2.0 まではローカル専用です
 - **リアルタイムカメラは重い処理です。** RenderTexture へ描くカメラの同時稼働は
   1〜2 台に抑え、カリングマスクと解像度を絞ってください
 

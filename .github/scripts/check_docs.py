@@ -8,7 +8,9 @@ fine to the build and wrong to a reader, so they are checked here instead.
 
 Figures fail the same quiet way: an image whose file was never copied into the
 site is a broken icon on the page and a clean exit here, so every <img> is
-resolved as well, and every one of them has to carry alt text.
+resolved as well, and every one of them has to carry alt text. The thumbnails
+on the listing page (Website/index.html) are checked the same way: every
+package needs one, and it has to exist in the built site.
 
 Run after build_docs.py, against the same output directory.
 """
@@ -152,6 +154,8 @@ def main() -> int:
                     "which is what the listing page's card links to"
                 )
 
+    problems.extend(check_listing_cards(repo, out))
+
     if problems:
         for problem in problems:
             print(f"error: {problem}", file=sys.stderr)
@@ -159,6 +163,58 @@ def main() -> int:
 
     print(f"ok: {pages} documentation page(s) render cleanly")
     return 0
+
+
+# The listing page's cards take their category label and thumbnail from two
+# object literals in its script, keyed by package id. The thumbnails are paths
+# into the docs site, so they only resolve once build_docs.py has copied the
+# image there, and a package added without an entry gets no thumbnail at all.
+# Neither shows up in the <img> checks above, which only see static HTML.
+LISTING_MAP = re.compile(r"var\s+(categories|images)\s*=\s*\{(.*?)\};", re.DOTALL)
+LISTING_ENTRY = re.compile(r"'([^']+)'\s*:\s*'([^']*)'")
+
+
+def check_listing_cards(repo: str, out: str) -> list[str]:
+    listing = os.path.join(repo, "Website", "index.html")
+    if not os.path.isfile(listing):
+        return ["Website/index.html is missing"]
+
+    with open(listing, encoding="utf-8") as handle:
+        source = handle.read()
+
+    maps = {
+        name: dict(LISTING_ENTRY.findall(body))
+        for name, body in LISTING_MAP.findall(source)
+    }
+    problems: list[str] = []
+
+    for name in ("categories", "images"):
+        if name not in maps:
+            problems.append(f"Website/index.html: no `var {name} = {{...}}` in the script")
+    if problems:
+        return problems
+
+    for package_id in sorted(os.listdir(os.path.join(repo, "Packages"))):
+        if not os.path.isfile(os.path.join(repo, "Packages", package_id, "package.json")):
+            continue
+
+        for name in ("categories", "images"):
+            if not maps[name].get(package_id):
+                problems.append(f"Website/index.html: {name} has no entry for {package_id}")
+
+        # Resolved the way the browser does, relative to the listing page at
+        # the site root, so a path that leaves the site fails here even when
+        # it happens to name a file in the repository.
+        image = maps["images"].get(package_id)
+        problem = image and check_link(image, os.path.join(out, "index.html"), out)
+        if problem:
+            problems.append(
+                f"Website/index.html: thumbnail for {package_id}: "
+                f"{problem.replace('link', 'image')}; the image has to be referenced "
+                "from one of the package's documents for build_docs.py to copy it"
+            )
+
+    return problems
 
 
 def check_link(href: str, page_path: str, out: str) -> str | None:

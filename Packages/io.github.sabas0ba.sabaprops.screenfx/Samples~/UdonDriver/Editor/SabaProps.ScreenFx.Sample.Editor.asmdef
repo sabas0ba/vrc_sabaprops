@@ -1,0 +1,17 @@
+{
+    "name":  "SabaProps.ScreenFx.Sample.Editor",
+    "references":  [
+                       "SabaProps.ScreenFx.Sample",
+                       "SabaProps.ScreenFx.Editor",
+                       "UdonSharp.Runtime",
+                       "UdonSharp.Editor",
+                       "VRC.SDKBase",
+                       "VRC.SDK3",
+                       "VRC.Udon",
+                       "UnityEngine.UI"
+                   ],
+    "includePlatforms":  [
+                             "Editor"
+                         ],
+    "autoReferenced":  true
+}
