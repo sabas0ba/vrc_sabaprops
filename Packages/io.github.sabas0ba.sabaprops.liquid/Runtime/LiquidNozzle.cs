@@ -539,7 +539,12 @@ namespace SabaProps.Liquid
             _raysHit++;
             if (_pendingCount >= MaxPending)
             {
-                DeliverAll();
+                DeliverPending();
+                // 未到達の命中は早送りしません。満杯なら今回の命中を破棄します。
+                if (_pendingCount >= MaxPending)
+                {
+                    return;
+                }
             }
 
             int i = _pendingCount;
@@ -568,16 +573,6 @@ namespace SabaProps.Liquid
                     i++;
                 }
             }
-        }
-
-        private void DeliverAll()
-        {
-            for (int i = 0; i < _pendingCount; i++)
-            {
-                Deliver(i);
-            }
-
-            _pendingCount = 0;
         }
 
         private void Deliver(int i)
