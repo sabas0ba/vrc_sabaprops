@@ -50,6 +50,9 @@ namespace VRC.Udon
 {
     public class UdonBehaviour : MonoBehaviour
     {
+        public string interactText;
+
         public void SendCustomEvent(string eventName) { }
     }
 }
+

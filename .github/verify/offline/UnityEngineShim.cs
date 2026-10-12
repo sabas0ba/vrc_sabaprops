@@ -97,6 +97,8 @@ namespace UnityEngine
         public static float Atan2(float y, float x) => (float)Math.Atan2(y, x);
         public static float Exp(float v) => (float)Math.Exp(v);
         public static float Floor(float v) => (float)Math.Floor(v);
+        // Unity rounds half to even, as Math.Round does by default.
+        public static float Round(float v) => (float)Math.Round(v);
         public static float Pow(float v, float p) => (float)Math.Pow(v, p);
 
         public static float Repeat(float t, float length) =>
@@ -128,6 +130,9 @@ namespace UnityEngine
         public static Vector2 operator +(Vector2 a, Vector2 b) => new Vector2(a.x + b.x, a.y + b.y);
         public static Vector2 operator -(Vector2 a, Vector2 b) => new Vector2(a.x - b.x, a.y - b.y);
         public static Vector2 operator *(Vector2 a, float s) => new Vector2(a.x * s, a.y * s);
+        public static Vector2 operator *(float s, Vector2 a) => new Vector2(a.x * s, a.y * s);
+        public static Vector2 operator /(Vector2 a, float s) => new Vector2(a.x / s, a.y / s);
+        public static float Dot(Vector2 a, Vector2 b) => a.x * b.x + a.y * b.y;
 
         public override string ToString() => $"({x}, {y})";
     }

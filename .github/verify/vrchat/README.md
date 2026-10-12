@@ -117,7 +117,7 @@ Unity は Unity Hub の既定の場所から `ProjectVersion.txt` に一致す�
 初回は SDK が要求する UPM パッケージ（burst、collections、cinemachine 等）を
 Unity がレジストリから取得するため、数分かかります。
 
-テストは `SabaProps.Foliage.CITests`、`SabaProps.Foliage.WorldTests`、`SabaProps.SoftProps.WorldTests`、`SabaProps.StageCam.WorldTests`、`SabaProps.Tablet.WorldTests`、`SabaProps.BodyContact.WorldTests`、`SabaProps.ScreenFx.WorldTests`、`SabaProps.PutItems.Tests`、`SabaProps.Llama.CITests`、`SabaProps.Llama.WorldTests` に絞って実行します。
+テストは `SabaProps.Foliage.CITests`、`SabaProps.Foliage.WorldTests`、`SabaProps.SoftProps.WorldTests`、`SabaProps.StageCam.WorldTests`、`SabaProps.Tablet.WorldTests`、`SabaProps.BodyContact.WorldTests`、`SabaProps.ScreenFx.WorldTests`、`SabaProps.PutItems.Tests`、`SabaProps.Liquid.WorldTests`、`SabaProps.Llama.CITests`、`SabaProps.Llama.WorldTests` に絞って実行します。
 SDK 自身のテストアセンブリも同じプロジェクトに存在しますが、
 本パッケージとは無関係な理由で 2 件失敗する（ランダム生成の JSON ファズケースと、
 docs.microsoft.com の URL 到達性を検証するもの）ため、終了コードを意味のあるものにするためです。
@@ -136,6 +136,7 @@ docs.microsoft.com の URL 到達性を検証するもの）ため、終了コ�
 | `SabaProps.PutItems.Tests` | EditMode | 吸着対象と Pickup の設定、同梱デモの構成を検証 |
 | `SabaProps.Llama.CITests` | EditMode | 未学習 fixture の全 logit を GPU と CPU 参照で比較。実 graphics device が必要 |
 | `SabaProps.Llama.WorldTests` | EditMode + Playへの遷移 | runner の client 向け Udon コンパイル、ClientSim での生成・停止・無効化後の再実行を CPU 参照の文字列と比較 |
+| `SabaProps.Liquid.WorldTests` | EditMode | 全 Udon behaviour の UdonSharp コンパイルと公開イベント・同期変数、シェーダのコンパイル、生成された Projector と Source の構成、Canvas 更新シェーダの GPU 上での付着・蒸発・洗浄・奥行きの記録、サンプルシーンの構成（トリガーと液面の位置、泥に沈む床、スロープ、鏡、服を着たマネキンの素材、天候の範囲と屋根の下のマネキン）と、比較シーンの構成（マネキンの数、Projector マテリアルがデモと重ならないこと）を検証。`TestResults/liquid-preview.png` に代用の体へ Projector で描いた確認画像を、`liquid-preview-pigment.png` と `liquid-preview-film.png` に Canvas のアトラスを出力。デモを ClientSim で 20 秒動かし、操作なしで全マネキンに付着が付くこと、雨と雪が屋外のマネキンにだけ届くこと、雪が止むと溶けて水が残ることを検査して、`liquid-demo-clothed.png`・`liquid-demo-sources.png`・`liquid-demo-immersion.png`・`liquid-demo-overview.png`・`liquid-demo-yards.png`・`liquid-demo-rain.png`・`liquid-demo-snow.png`・`liquid-demo-snow-melting.png` などを出力。操作と環境のシーンでは、ノズルを放ち、湿度と結露、傘の遮蔽、暗い部屋の点灯・紫外線のみ・消灯での蛍光と蓄光を検査して `liquid-interactive-*.png` を出力。壁と床のシーンでは、Surface Canvas の登録と Projector の対象レイヤ、描画ツールの番号と履歴の並びを検査し、ClientSim でペン・スタンプ・消しゴムを動かして、描画、消去、履歴からの描き直し、自動の噴射と雨の付着、暗いスタジオの蛍光と蓄光を検査して `liquid-painting-*.png` を出力。Prefab が液体を自分で持ち、パッケージ外のアセットを参照しないことを検査。同梱サンプルの 4 つのシーンを取り込んで参照が解決することを検査 |
 
 ### Llama の実行テスト
 
@@ -284,3 +285,17 @@ GameCI のイメージを使えば Unity もコンテナ化できますが、ラ
 （podman machine の既定は小さいことが多いので、`podman machine set --memory` で拡張が必要です）。
 
 Put Items 単体の準備・検証手順は [PUT_ITEMS.md](PUT_ITEMS.md) を参照してください。
+
+## Liquid の同梱サンプルの書き出し
+
+`io.github.sabas0ba.sabaprops.liquid` の `Samples~/LiquidDemo` は生成器の出力です。手で編集せず、
+生成器を変えたら次で書き出し直します。組み立て済みのプロジェクト（`run-tests.sh` を一度実行したもの）が必要です。
+
+```sh
+./.github/verify/vrchat/export-liquid-sample.sh
+```
+
+作業ツリーのパッケージをプロジェクトへ入れ直し、前回の生成物を消してから
+`LiquidSampleScene.CreateForExport` を batch mode で実行し、パッケージの `Prefabs` と、4 つのシーン（デモ、比較、操作と環境、壁と床）・マテリアル・
+シーンが参照する Udon のシリアライズ済みプログラムをパッケージへ複製します。
+生成物は書き出すたびに GUID が変わります。
