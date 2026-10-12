@@ -117,7 +117,7 @@ Unity は Unity Hub の既定の場所から `ProjectVersion.txt` に一致す�
 初回は SDK が要求する UPM パッケージ（burst、collections、cinemachine 等）を
 Unity がレジストリから取得するため、数分かかります。
 
-テストは `SabaProps.Foliage.CITests`、`SabaProps.Foliage.WorldTests`、`SabaProps.SoftProps.WorldTests`、`SabaProps.StageCam.WorldTests`、`SabaProps.Tablet.WorldTests`、`SabaProps.BodyContact.WorldTests`、`SabaProps.ScreenFx.WorldTests`、`SabaProps.PutItems.Tests`、`SabaProps.Liquid.WorldTests` に絞って実行します。
+テストは `SabaProps.Foliage.CITests`、`SabaProps.Foliage.WorldTests`、`SabaProps.SoftProps.WorldTests`、`SabaProps.StageCam.WorldTests`、`SabaProps.Tablet.WorldTests`、`SabaProps.BodyContact.WorldTests`、`SabaProps.ScreenFx.WorldTests`、`SabaProps.PutItems.Tests`、`SabaProps.Liquid.WorldTests`、`SabaProps.Llama.CITests`、`SabaProps.Llama.WorldTests` に絞って実行します。
 SDK 自身のテストアセンブリも同じプロジェクトに存在しますが、
 本パッケージとは無関係な理由で 2 件失敗する（ランダム生成の JSON ファズケースと、
 docs.microsoft.com の URL 到達性を検証するもの）ため、終了コードを意味のあるものにするためです。
@@ -134,7 +134,52 @@ docs.microsoft.com の URL 到達性を検証するもの）ため、終了コ�
 | `SabaProps.BodyContact.WorldTests` | EditMode（ClientSim検査ではPlayModeへ移行） | Udonコンパイル、生成シーン、描画、通常UpdateとInteract、HUD・Gizmoの実行時検査。配布シーンとビルド済みワールドの追加検査にも対応 |
 | `SabaProps.ScreenFx.WorldTests` | EditMode | Udonコンパイル、Prefabの参照、サンプル構成を検証 |
 | `SabaProps.PutItems.Tests` | EditMode | 吸着対象と Pickup の設定、同梱デモの構成を検証 |
+| `SabaProps.Llama.CITests` | EditMode | 未学習 fixture の全 logit を GPU と CPU 参照で比較。実 graphics device が必要 |
+| `SabaProps.Llama.WorldTests` | EditMode + Playへの遷移 | runner の client 向け Udon コンパイル、ClientSim での生成・停止・無効化後の再実行を CPU 参照の文字列と比較 |
 | `SabaProps.Liquid.WorldTests` | EditMode | 全 Udon behaviour の UdonSharp コンパイルと公開イベント・同期変数、シェーダのコンパイル、生成された Projector と Source の構成、Canvas 更新シェーダの GPU 上での付着・蒸発・洗浄・奥行きの記録、サンプルシーンの構成（トリガーと液面の位置、泥に沈む床、スロープ、鏡、服を着たマネキンの素材、天候の範囲と屋根の下のマネキン）と、比較シーンの構成（マネキンの数、Projector マテリアルがデモと重ならないこと）を検証。`TestResults/liquid-preview.png` に代用の体へ Projector で描いた確認画像を、`liquid-preview-pigment.png` と `liquid-preview-film.png` に Canvas のアトラスを出力。デモを ClientSim で 20 秒動かし、操作なしで全マネキンに付着が付くこと、雨と雪が屋外のマネキンにだけ届くこと、雪が止むと溶けて水が残ることを検査して、`liquid-demo-clothed.png`・`liquid-demo-sources.png`・`liquid-demo-immersion.png`・`liquid-demo-overview.png`・`liquid-demo-yards.png`・`liquid-demo-rain.png`・`liquid-demo-snow.png`・`liquid-demo-snow-melting.png` などを出力。操作と環境のシーンでは、ノズルを放ち、湿度と結露、傘の遮蔽、暗い部屋の点灯・紫外線のみ・消灯での蛍光と蓄光を検査して `liquid-interactive-*.png` を出力。壁と床のシーンでは、Surface Canvas の登録と Projector の対象レイヤ、描画ツールの番号と履歴の並びを検査し、ClientSim でペン・スタンプ・消しゴムを動かして、描画、消去、履歴からの描き直し、自動の噴射と雨の付着、暗いスタジオの蛍光と蓄光を検査して `liquid-painting-*.png` を出力。Prefab が液体を自分で持ち、パッケージ外のアセットを参照しないことを検査。同梱サンプルの 4 つのシーンを取り込んで参照が解決することを検査 |
+
+### Llama の実行テスト
+
+`LlamaWorldRunTests` は Import ウィンドウと同じ手順（変換、アセット保存、World Runner 作成）でシーンを作り、
+Udon の Interact イベントだけで runner を操作します。次の 3 経路で、表示された文字列が CPU 参照の greedy 生成と一致することを検査します。
+
+1. 完全な生成
+2. 生成中に停止し、再実行
+3. 生成中に GameObject を無効化し、有効化してから再実行
+
+未学習 fixture は常に実行します。学習済みモデルは `SABAPROPS_LLAMA_GGUF` に GGUF のパスを指定した場合のみ実行し、
+未指定なら skip します。
+
+```sh
+bash .github/verify/llama/fetch-model.sh stories260K
+SABAPROPS_LLAMA_GGUF="$(cygpath -wa .verify/llama/models/stories260K.gguf)" \
+  TEST_FILTER=SabaProps.Llama.WorldTests ./.github/verify/vrchat/run-tests.sh
+```
+
+描画結果は `TestResults/llama-world-fixture.png` と `llama-world-gguf.png` に保存します。
+待機の上限はフレーム数ではなく実時間です。バッチ実行の Editor は毎秒数千フレーム進みますが、readback の完了は GPU 側の進行によります。
+ClientSim での実行であり、VRChat クライアントでの速度と動作は別途確認してください。
+
+手動の Build & Test 用のシーンは、セットアップ済みのプロジェクトを GUI で起動して生成します。
+`-batchmode` と `-quit` は指定しません。`SABAPROPS_LLAMA_GGUF` が未指定なら未学習の検証用モデルを使います。
+モデルを `Assets/SabaPropsLlama/SampleModel` へ変換し、`Assets/SabaPropsLlama/SampleScene/LlamaSample.unity` を開いた状態で Editor が残ります。
+
+```sh
+./.github/verify/vrchat/assemble.sh
+Unity -batchmode -quit -projectPath build/WorldProject \
+  -executeMethod SabaProps.Foliage.WorldSetup.FoliageWorldProjectSetup.ConfigureForVrchat
+SABAPROPS_LLAMA_GGUF="$(cygpath -wa .verify/llama/models/stories260K.gguf)" \
+  Unity -projectPath build/WorldProject \
+  -executeMethod SabaProps.Llama.WorldTests.LlamaSampleSceneSetup.Open
+```
+
+Import ウィンドウの画像は、Windows で次のメソッドを GUI 起動（`-batchmode` なし）で実行して撮影します。
+`TestResults/Documentation/import-window.png` に保存し、撮影後に Editor を終了します。
+
+```sh
+Unity -projectPath /path/to/WorldProject \
+  -executeMethod SabaProps.Llama.WorldTests.LlamaDocumentationCapture.Run
+```
 
 Soft Propsの実行テストは指・棒・板の100 mmおよび0.5 mmの空隙、20 mmの侵入、離脱後の復元、自動上下運動、ローカルプレイヤーのFutonへの接地を検証します。VRChat実clientの手・胴体・リモートプレイヤーの接触を保証するテストではありません。
 

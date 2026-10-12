@@ -1,0 +1,7 @@
+{
+  "name": "SabaProps.Llama.Editor",
+  "rootNamespace": "SabaProps.Llama",
+  "references": ["UnityEngine.UI"],
+  "includePlatforms": ["Editor"],
+  "autoReferenced": true
+}
