@@ -134,6 +134,79 @@ namespace SabaProps.Liquid.WorldTests
                 + "; emittedUntil=" + splashBacking.GetProgramVariable("_next"));
         }
 
+        [UnityTest]
+        public IEnumerator DesktopButtons_TransferPaintAndThrowBalloonAtFeet()
+        {
+            _optionsEnabled = EditorSettings.enterPlayModeOptionsEnabled;
+            _options = EditorSettings.enterPlayModeOptions;
+            UdonSharpCompilerV1.CompileSync(new UdonSharpCompileOptions { IsEditorBuild = true });
+            LiquidContactScene.Create();
+            UdonSharpCompilerV1.CompileSync(new UdonSharpCompileOptions { IsEditorBuild = true });
+            EditorSettings.enterPlayModeOptionsEnabled = true;
+            EditorSettings.enterPlayModeOptions = EnterPlayModeOptions.DisableDomainReload;
+            ClientSimRuntimeLoader.BeginUnityTesting(new ClientSimSettings {
+                enableClientSim = true, initializationDelay = 0, spawnPlayer = true,
+                localPlayerIsMaster = true, displayLogs = false });
+            LogAssert.ignoreFailingMessages = true;
+            yield return new EnterPlayMode();
+            for (int i = 0; i < 120; i++) yield return null;
+            LogAssert.ignoreFailingMessages = false;
+            var demo = Object.FindObjectOfType<LiquidContactDemo>();
+            var backing = UdonSharpEditorUtility.GetBackingUdonBehaviour(demo);
+            var button = GameObject.Find("Reset / Run demo").GetComponent<LiquidButton>();
+            UdonSharpEditorUtility.GetBackingUdonBehaviour(button).Interact();
+            float deadline = Time.realtimeSinceStartup + 20f;
+            while ((int)backing.GetProgramVariable("_phase") < 2 && Time.realtimeSinceStartup < deadline) yield return null;
+            Assert.AreEqual(1, backing.GetProgramVariable("_runs"), "button did not start the demo");
+            Assert.AreEqual(2, backing.GetProgramVariable("_phase"), "rub stage did not complete");
+            float padBefore = Sum(demo.padCanvas.projectorMaterial);
+            Assert.Greater(padBefore, 0.001f, "demo pad did not receive paint");
+            LiquidDemoPlayTests.Capture("liquid-contact-desktop.png", new Vector3(0, 2.5f, -4), new Vector3(0, 1.4f, 1), 65f);
+            // Clear only the destination texture to prove that subsequent paint is transferred from the pad.
+            UdonSharpEditorUtility.GetBackingUdonBehaviour(demo.surface).SendCustomEvent("Clear");
+            while ((int)backing.GetProgramVariable("_phase") < 4 && Time.realtimeSinceStartup < deadline) yield return null;
+            Assert.AreEqual(4, backing.GetProgramVariable("_phase"));
+            Assert.Greater(Sum(demo.surface.projectorMaterial), 0.001f, "pad did not transfer paint to the other wall");
+            Assert.Less(Sum(demo.padCanvas.projectorMaterial), padBefore, "transfer did not reduce pad paint");
+            while ((int)backing.GetProgramVariable("_phase") < 5 && Time.realtimeSinceStartup < deadline) yield return null;
+            Assert.AreEqual(5, backing.GetProgramVariable("_phase"));
+            UdonSharpEditorUtility.GetBackingUdonBehaviour(button).Interact();
+            yield return Wait(0.2f);
+            Assert.AreEqual(2, backing.GetProgramVariable("_runs"), "reset did not restart the demo");
+            var balloon = Object.FindObjectOfType<LiquidWaterBalloon>();
+            var balloonBacking = UdonSharpEditorUtility.GetBackingUdonBehaviour(balloon);
+            balloonBacking.SetProgramVariable("respawnSeconds", 1f);
+            var launch = GameObject.Find("Throw at my feet").GetComponent<LiquidButton>();
+            UdonSharpEditorUtility.GetBackingUdonBehaviour(launch).Interact();
+            deadline = Time.realtimeSinceStartup + 3f;
+            while (!(bool)balloonBacking.GetProgramVariable("_burst") && Time.realtimeSinceStartup < deadline) yield return null;
+            Assert.IsTrue((bool)balloonBacking.GetProgramVariable("_burst"), "launched balloon did not burst");
+            Vector3 delta = balloon.transform.position - Networking.LocalPlayer.GetPosition();
+            Assert.Less(new Vector2(delta.x, delta.z).magnitude, 0.5f, "balloon missed the player's feet");
+            Assert.Greater((int)UdonSharpEditorUtility.GetBackingUdonBehaviour(balloon.splash).GetProgramVariable("_received"), 0);
+            yield return Wait(1.2f);
+            Assert.IsFalse((bool)balloonBacking.GetProgramVariable("_burst"), "balloon did not respawn");
+            // Exercise ClientSim's real pickup/drop path, including its release velocity.
+            ClientSimPlayerHand hand = null;
+            foreach (var candidate in Resources.FindObjectsOfTypeAll<ClientSimPlayerHand>())
+                if (candidate.gameObject.scene.IsValid() && candidate.gameObject.activeInHierarchy)
+                { hand = candidate; break; }
+            Assert.IsNotNull(hand);
+            var pickupMethod = typeof(ClientSimPlayerHand).GetMethod("Pickup",
+                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+            pickupMethod.Invoke(hand, new object[] { balloon.GetComponent<ClientSimPickupHelper>() });
+            yield return Wait(0.6f);
+            Assert.IsTrue(balloon.pickup.IsHeld, "ClientSim pickup failed");
+            balloonBacking.OnPickupUseDown();
+            yield return null;
+            Assert.IsFalse(balloon.pickup.IsHeld, "Use did not drop the balloon");
+            deadline = Time.realtimeSinceStartup + 3f;
+            while (!(bool)balloonBacking.GetProgramVariable("_burst") && Time.realtimeSinceStartup < deadline) yield return null;
+            Assert.IsTrue((bool)balloonBacking.GetProgramVariable("_burst"), "Use throw did not burst");
+            delta = balloon.transform.position - Networking.LocalPlayer.GetPosition();
+            Assert.Less(new Vector2(delta.x, delta.z).magnitude, 0.5f, "Use throw missed the player's feet");
+        }
+
         private static IEnumerator Wait(float seconds)
         {
             float until = Time.realtimeSinceStartup + seconds;

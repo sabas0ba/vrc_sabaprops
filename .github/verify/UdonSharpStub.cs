@@ -72,6 +72,7 @@ namespace UdonSharp
         // The real method takes a third, optional EventTiming argument; the
         // two-argument call compiles against both.
         public void SendCustomEventDelayedSeconds(string eventName, float delaySeconds) { }
+        public void SendCustomEventDelayedFrames(string eventName, int delayFrames) { }
 
         public void SetProgramVariable(string name, object value) { }
 

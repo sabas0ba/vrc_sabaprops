@@ -1,3 +1,4 @@
+using UdonSharp;
 using UdonSharpEditor;
 using UnityEditor;
 using UnityEditor.SceneManagement;
@@ -64,7 +65,8 @@ namespace SabaProps.Liquid.Editors
             glowPen.transform.position = new Vector3(-0.6f, 0.8f, -0.5f);
             CreateWipeTool(pool, "Sponge", new Vector3(0, 0.8f, -0.5f), false);
             CreateWipeTool(pool, "Towel", new Vector3(0.5f, 0.8f, -0.5f), true);
-            CreateBalloon(pool, new Vector3(1, 1, -0.5f));
+            GameObject balloon = CreateBalloon(pool, new Vector3(1, 1, -0.5f));
+            LiquidContactDemo demo = CreateDesktopDemo(pool, paint, glow);
             GameObject puddle = LiquidSourceBuilder.CreateImmersionVolume("Step Splash", pool,
                 LiquidSourceBuilder.GetProfile(LiquidSourceBuilder.WaterName), new Vector3(2, 0.15f, 2));
             puddle.transform.position = new Vector3(-3, 0.12f, -2);
@@ -100,9 +102,11 @@ namespace SabaProps.Liquid.Editors
             zone.blacklight.color = new Color(0.2f, 0, 1);
             UdonSharpEditorUtility.CopyProxyToUdon(zone);
             var contact = pool.GetComponent<LiquidContact>();
-            Button("Hide liquid locally", new Vector3(-1, 1, -2), contact, nameof(LiquidContact.HideLiquid), wall);
-            Button("Show liquid locally", new Vector3(1, 1, -2), contact, nameof(LiquidContact.ShowLiquid), wall);
-            Label("Draw, rub with a hand, then touch the other wall.\nSponge / towel: wipe. Balloon: throw.\nCheck ordinary and glowing paint in both eyes.", new Vector3(-3, 3, 1.8f));
+            Button("Reset / Run demo", new Vector3(-0.9f, 0.65f, -2), demo, nameof(LiquidContactDemo.Run), wall);
+            Button("Throw at my feet", new Vector3(0.9f, 0.65f, -2), balloon.GetComponent<LiquidWaterBalloon>(), nameof(LiquidWaterBalloon.ThrowAtFeet), wall);
+            Button("Hide liquid locally", new Vector3(-2.2f, 1, -0.8f), contact, nameof(LiquidContact.HideLiquid), wall);
+            Button("Show liquid locally", new Vector3(2.2f, 1, -0.8f), contact, nameof(LiquidContact.ShowLiquid), wall);
+            Label("Desktop: Reset / Run demo. Balloon: Use to throw at your feet.\nVR: draw, rub with a hand, then touch the other wall.", new Vector3(-3, 3.1f, 1.8f), 0.04f);
             LiquidSampleScene.BuildWorld(new Vector3(0, 0.05f, -4));
             AssetDatabase.SaveAssets();
             EditorSceneManager.SaveScene(UnityEngine.SceneManagement.SceneManager.GetActiveScene(), ScenePath);
@@ -131,13 +135,20 @@ namespace SabaProps.Liquid.Editors
             tool.tip = tip.transform;
             tool.radius = towel ? 0.11f : 0.055f;
             tool.redeposit = towel ? 0.02f : 0.08f;
+            tool.clothCanvas = CreateClothCanvas(root, name, 0.18f);
+            UdonSharpEditorUtility.CopyProxyToUdon(tool);
+            return root;
+        }
+
+        private static LiquidBodyCanvas CreateClothCanvas(GameObject root, string name, float extent)
+        {
             var canvasObject = new GameObject("Cloth Canvas");
             canvasObject.transform.SetParent(root.transform, false);
             var canvas = canvasObject.AddUdonSharpComponent<LiquidBodyCanvas>();
             canvas.anchor = root.transform;
             canvas.canvasRoot = canvasObject.transform;
             canvas.centerOffset = Vector3.zero;
-            canvas.halfExtents = Vector3.one * 0.18f;
+            canvas.halfExtents = Vector3.one * extent;
             canvas.faceResolution = 64;
             canvas.estimateRegions = false;
             canvas.bodySurface = LiquidSurfaceBuilder.GetSurface(LiquidSurfaceBuilder.SoftClothName);
@@ -149,10 +160,52 @@ namespace SabaProps.Liquid.Editors
             canvas.projectorObject = new GameObject("Projector");
             canvas.projectorObject.transform.SetParent(canvasObject.transform, false);
             LiquidCanvasPoolBuilder.ConfigureProjector(canvas.projectorObject, canvas.halfExtents, canvas.projectorMaterial, 13, ~(1 << 13));
-            tool.clothCanvas = canvas;
             UdonSharpEditorUtility.CopyProxyToUdon(canvas);
-            UdonSharpEditorUtility.CopyProxyToUdon(tool);
-            return root;
+            return canvas;
+        }
+
+        private static LiquidContactDemo CreateDesktopDemo(LiquidCanvasPool pool, LiquidProfile paint, LiquidProfile glow)
+        {
+            var root = new GameObject("Desktop contact demo");
+            var demo = root.AddUdonSharpComponent<LiquidContactDemo>();
+            demo.pool = pool;
+            demo.surface = GameObject.Find("Contact Surfaces").GetComponentInChildren<LiquidBodyCanvas>();
+            demo.paint = paint;
+            demo.fluorescentPaint = glow;
+            Material cloth = LiquidAssets.CreateOrLoadSurfaceMaterial(Materials + "/DemoPad.mat", Color.white, 0.1f);
+            GameObject pad = Part("Demo contact pad", new Vector3(0, 1.5f, 0.6f), new Vector3(0.4f, 0.32f, 0.06f), cloth);
+            // Keep the canvas transform unscaled; only the visible mesh has dimensions.
+            var anchor = new GameObject("Demo pad anchor");
+            anchor.transform.position = pad.transform.position;
+            pad.transform.SetParent(anchor.transform, true);
+            LiquidPrefabBuilder.SetLayer(anchor, 13);
+            demo.pad = anchor.transform;
+            demo.padCanvas = CreateClothCanvas(anchor, "DemoPad", 0.3f);
+            demo.sourceStart = Pose(root, "Source start", new Vector3(-2.25f, 1.4f, 1.925f));
+            demo.sourceEnd = Pose(root, "Source end", new Vector3(-1.15f, 1.4f, 1.925f));
+            demo.destinationStart = Pose(root, "Destination start", new Vector3(1.15f, 1.4f, 1.925f));
+            demo.destinationEnd = Pose(root, "Destination end", new Vector3(2.25f, 1.4f, 1.925f));
+            demo.displayPose = Pose(root, "Display pose", anchor.transform.position);
+            demo.displayPose.rotation = Quaternion.Euler(0, 180, 0);
+            string[] messages = { "1 / 5  Paint prepared", "2 / 5  Rub: paint moves onto the pad",
+                "3 / 5  Paint on the pad", "4 / 5  Transfer to the other wall", "5 / 5  Wipe the original paint",
+                "Done. Reset / Run demo to repeat.", "Reset / Run demo to begin" };
+            demo.phaseLabels = new GameObject[messages.Length];
+            for (int i = 0; i < messages.Length; i++)
+            {
+                demo.phaseLabels[i] = Label(messages[i], new Vector3(-2.7f, 2.4f, 1.8f), 0.03f).gameObject;
+                demo.phaseLabels[i].SetActive(i == messages.Length - 1);
+            }
+            UdonSharpEditorUtility.CopyProxyToUdon(demo);
+            return demo;
+        }
+
+        private static Transform Pose(GameObject root, string name, Vector3 position)
+        {
+            var point = new GameObject(name);
+            point.transform.SetParent(root.transform, false);
+            point.transform.position = position;
+            return point.transform;
         }
 
         public static GameObject CreateBalloon(LiquidCanvasPool pool, Vector3 position)
@@ -160,7 +213,7 @@ namespace SabaProps.Liquid.Editors
             var root = new GameObject("Water Balloon");
             root.transform.position = position;
             root.AddComponent<SphereCollider>().radius = 0.08f;
-            LiquidPrefabBuilder.MakePickup(root, "Throw", null, "");
+            LiquidPrefabBuilder.MakePickup(root, "Use: throw at feet", null, "");
             var body = root.GetComponent<Rigidbody>();
             body.isKinematic = false;
             body.useGravity = true;
@@ -196,7 +249,7 @@ namespace SabaProps.Liquid.Editors
             return LiquidPrefabBuilder.Part(null, name, PrimitiveType.Cube, position, scale, Quaternion.identity, material, true);
         }
 
-        private static void Label(string text, Vector3 position, float characterSize = 0.07f)
+        private static TextMesh Label(string text, Vector3 position, float characterSize = 0.07f)
         {
             var label = new GameObject("Instructions");
             label.transform.position = position;
@@ -204,9 +257,10 @@ namespace SabaProps.Liquid.Editors
             mesh.text = text;
             mesh.characterSize = characterSize;
             mesh.fontSize = 48;
+            return mesh;
         }
 
-        private static void Button(string name, Vector3 position, LiquidContact contact, string method, Material material)
+        private static void Button(string name, Vector3 position, UdonSharpBehaviour contact, string method, Material material)
         {
             GameObject root = Part(name, position, new Vector3(0.6f, 0.2f, 0.15f), material);
             var button = root.AddUdonSharpComponent<LiquidButton>();

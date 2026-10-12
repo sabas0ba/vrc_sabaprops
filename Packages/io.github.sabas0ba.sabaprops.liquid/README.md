@@ -18,7 +18,7 @@
 | [利用方法](Documentation~/authoring.md) | 自分のワールドへの組み込み、Prefab、壁と床、描画ツール、環境、同期、メモリの目安 |
 | [サンプルの導入とレビュー](Documentation~/demo.md) | 同梱の 4 つのワールドの内容と確認項目 |
 | [設計](Documentation~/design.md) | 方式、制約とその理由、未確定事項 |
-| [接触、転写と飛散](Documentation~/contact.md) | こすれ、手・体・道具への転写、Limb Canvas、水風船、踏み込み、負荷制御 |
+| [接触、転写と飛散](Documentation~/contact.md) | こすれ、手・体・道具への転写、Desktop 自動デモ、Limb Canvas、水風船、踏み込み、負荷制御 |
 | [変更履歴](CHANGELOG.md) | バージョンごとの変更点 |
 
 ## 導入

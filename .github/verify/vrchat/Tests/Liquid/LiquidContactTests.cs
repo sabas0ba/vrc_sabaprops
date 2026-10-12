@@ -147,8 +147,9 @@ namespace SabaProps.Liquid.WorldTests
                 var wipe = root.AddUdonSharpComponent<LiquidWipeTool>();
                 var splash = root.AddUdonSharpComponent<LiquidSplash>();
                 var balloon = root.AddUdonSharpComponent<LiquidWaterBalloon>();
+                var demo = root.AddUdonSharpComponent<LiquidContactDemo>();
                 UdonSharpCompilerV1.CompileSync(new UdonSharpCompileOptions { IsEditorBuild = true });
-                foreach (var behaviour in new UdonSharp.UdonSharpBehaviour[] { contact, wipe, splash, balloon })
+                foreach (var behaviour in new UdonSharp.UdonSharpBehaviour[] { contact, wipe, splash, balloon, demo })
                 {
                     var backing = UdonSharpEditorUtility.GetBackingUdonBehaviour(behaviour);
                     var asset = UdonSharpEditorUtility.GetUdonSharpProgramAsset(backing);
@@ -156,6 +157,21 @@ namespace SabaProps.Liquid.WorldTests
                 }
             }
             finally { Object.DestroyImmediate(root); }
+        }
+
+        [TestCase(0.3f)]
+        [TestCase(0.7f)]
+        [TestCase(1.5f)]
+        [TestCase(0f)]
+        public void BalloonTrajectory_ReachesFeetFromAnElevatedOrigin(float seconds)
+        {
+            Vector3 origin = new Vector3(1, 1.4f, -0.5f);
+            Vector3 target = new Vector3(-2, 0.08f, -4);
+            Vector3 gravity = new Vector3(0, -9.81f, 0);
+            Vector3 velocity = LiquidWaterBalloon.ThrowVelocity(origin, target, gravity, seconds);
+            float time = Mathf.Clamp(seconds, 0.3f, 1.5f);
+            Vector3 landing = origin + velocity * time + gravity * (0.5f * time * time);
+            Assert.Less(Vector3.Distance(landing, target), 0.0001f);
         }
 
         [TestCase(64)]

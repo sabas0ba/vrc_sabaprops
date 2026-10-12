@@ -24,6 +24,18 @@
 - 浅い水の範囲へ踏み込み、歩行による飛散を確認します。
 - `Hide liquid locally` / `Show liquid locally` は、その利用者だけの表示設定です。
 
+### Desktop での最短確認
+
+![自動デモの付着確認。左壁の赤・蛍光塗料を中央のパッドへ転写した状態](images/contact-desktop.png)
+
+1. 生成したシーンを ClientSim の Play、または VRChat の Desktop mode で開きます。
+2. 正面の `Reset / Run demo` を押します。約 11 秒で、左壁への塗布 → パッドでこする → パッドへの付着を表示 → 右壁へ転写 → 左壁を拭き取る、の順に進みます。左壁の模様の減衰、パッドの色、右壁への再付着を確認します。再度押すと初期化して繰り返します。
+3. `Throw at my feet` を押します。水風船が、押した時点の自分の足元へ投げ出されます。床への衝突・飛散・8 秒後の再出現を確認します。水風船を拾って Use しても同じ投擲になります。途中の壁や物体に当たった場合は、その位置で破裂します。
+
+デモは通常の接触と同じ Canvas 転写処理を使います。パッドの移動を自動化しているため、アバターのボーンによる接触判定・追従や VR の両眼描画の確認は別途必要です。接触判定は手だけでなく、既定では両足・胸・頭も対象です。Desktop のアバター姿勢で狙った部位を壁に当てる操作を省くためのデモです。
+
+`Reset / Run demo` は現在参加している利用者に開始を通知し、デモの壁とパッドの塗料およびシーンの Paint Log を消します。途中参加者へのデモ再生はありません。通常の描画を残したい場合は押さないでください。
+
 ## 設定
 
 | 対象 | 主な項目 | 効果 |
@@ -34,6 +46,7 @@
 | `LiquidWipeTool` | `absorption` / `redeposit` | 除去・吸着の強さと、汚れた道具からの再付着率 |
 | 同上 | `clothCanvas` | 道具の汚れを保持する Canvas。未設定なら除去だけ行います |
 | `LiquidWaterBalloon` | `impactSpeed` / `respawnSeconds` | 破裂する衝突速度と再出現時間 |
+| 同上 | `throwAtFeetOnUse` / `throwFlightSeconds` | Use による足元への投擲と、障害物がない場合の到達時間（0.3～1.5 秒）。通常の手投げも使用できます |
 | `LiquidSplash` | `rays` / `range` / `markRadius` / `amount` | 飛散の判定数、距離、付着半径と量。量は判定数で分配します |
 | `LiquidImmersionVolume` | `stepSplash` / `stepDistance` | 踏み込み用の飛散と歩行間隔。未設定なら従来の浸漬だけです |
 

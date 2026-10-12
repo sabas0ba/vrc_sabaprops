@@ -27,8 +27,10 @@ namespace SabaProps.Liquid.Editors
             if (contact == null) contact = pool.gameObject.AddUdonSharpComponent<LiquidContact>();
             contact.pool = pool;
             var tools = Object.FindObjectsOfType<LiquidWipeTool>(true);
-            pool.contactTools = new LiquidBodyCanvas[tools.Length];
+            var demos = Object.FindObjectsOfType<LiquidContactDemo>(true);
+            pool.contactTools = new LiquidBodyCanvas[tools.Length + demos.Length];
             for (int i = 0; i < tools.Length; i++) pool.contactTools[i] = tools[i].clothCanvas;
+            for (int i = 0; i < demos.Length; i++) pool.contactTools[tools.Length + i] = demos[i].padCanvas;
             Material material = LiquidAssets.CreateOrLoadMaterial(
                 LiquidAssets.MaterialFolder + "/LiquidContact.mat", "Hidden/SabaProps/Liquid/Contact");
             foreach (LiquidBodyCanvas canvas in Object.FindObjectsOfType<LiquidBodyCanvas>(true))
