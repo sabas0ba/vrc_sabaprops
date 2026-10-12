@@ -36,6 +36,7 @@ https://sabas0ba.github.io/vrc_sabaprops/index.json
 | `io.github.sabas0ba.sabaprops.flock` | SabaProps Flock | 鳥 27 種・魚・水生生物 41 種の群れを、Shader が時刻から計算する固定配置を含む 13 種の群れの動きで配置。Silhouette / Low / High の 3 段階 LOD。 |
 | `io.github.sabas0ba.sabaprops.liquid` | SabaProps Liquid | アバターとワールドの壁や床へ液体の付着を Projector で描画する PC 向け Udon パッケージ。発生源（プール、シャワー、噴射器、雨と雪など）とペン、スタンプ、消しゴムを含む。 |
 | `io.github.sabas0ba.sabaprops.bodycontact` | SabaProps Body Contact | 頭・体幹同士の貫通を水平位置の補正で抑える Udon コンポーネント。VR・Desktop共通、独自同期なし。検証シーン生成とWorld内の診断表示付き。 |
+| `io.github.sabas0ba.sabaprops.llama` | [SabaProps Llama](Packages/io.github.sabas0ba.sabaprops.llama/README.md) | 小型Llama系モデルの重みtexture変換とワールド内GPU推論。実験段階、学習済み重みは別途必要。 |
 
 各パッケージの詳細は `Packages/<package-id>/README.md` を参照してください。
 
@@ -99,6 +100,7 @@ Liquid は `Tools > SabaProps > Liquid` の `Create Sample Scene`、`Create Comp
 │   │   ├── Editor/                 # 生成器、Setup Window、サンプルシーン
 │   │   ├── Samples~/               # Stage Cam 連携の実装例
 │   │   └── Documentation~/
+│   ├── io.github.sabas0ba.sabaprops.llama/
 │   ├── io.github.sabas0ba.sabaprops.flock/
 │   │   ├── Runtime/                # 種のプリセット、運動の基準実装、群れのShader
 │   │   ├── Editor/                 # 個体形状と群れMeshの生成器、ギャラリーScene

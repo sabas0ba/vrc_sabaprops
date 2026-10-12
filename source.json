@@ -22,6 +22,7 @@
     "io.github.sabas0ba.sabaprops.flock",
     "io.github.sabas0ba.sabaprops.liquid",
     "io.github.sabas0ba.sabaprops.bodycontact",
-    "io.github.sabas0ba.sabaprops.screenfx"
+    "io.github.sabas0ba.sabaprops.screenfx",
+    "io.github.sabas0ba.sabaprops.llama"
   ]
 }
