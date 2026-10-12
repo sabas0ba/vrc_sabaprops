@@ -60,6 +60,22 @@ Unity -batchmode -projectPath /path/to/WorldProject \
 
 ## 方針
 
+### Screen FX Udon デモ
+
+`assemble.sh` は Screen FX 本体と Udon Driver サンプルを組み込みます。
+`TEST_FILTER=SabaProps.ScreenFx.WorldTests` で実 Udon コンパイル、Prefab の参照、
+ClientSim のボタン・パラメータ・複製間独立性・自動停止・Trigger を検証できます。
+
+Windows の組み立て済み専用プロジェクトでは、次も使用できます。
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .github/verify/vrchat/run-screenfx-tests.ps1 -Project build/WorldProject -Mode Setup
+powershell -NoProfile -ExecutionPolicy Bypass -File .github/verify/vrchat/run-screenfx-tests.ps1 -Project build/WorldProject
+```
+
+`-Mode Capture` は新規の `Assets/ScreenFxDemoDeliverable` にシーンと Prefab を生成し、
+`TestResults/screenfx-udon-demo.png` に画像を保存します。既存の同名フォルダーは上書きせず失敗します。
+
 SDK の取得はコンテナ内で行い、ローカルの VCC / ALCOM のキャッシュには依存しません。
 再現性の担保は次の 2 点です。
 

@@ -501,6 +501,12 @@ namespace NUnit.Framework
         public TestCaseAttribute(params object[] arguments) { }
     }
 
+    [AttributeUsage(AttributeTargets.Parameter)]
+    public sealed class ValuesAttribute : Attribute
+    {
+        public ValuesAttribute(params object[] arguments) { }
+    }
+
     [AttributeUsage(AttributeTargets.Method)]
     public sealed class SetUpAttribute : Attribute { }
 
@@ -516,6 +522,7 @@ namespace NUnit.Framework
     public static class Assert
     {
         public static void Fail(string message) { }
+        public static void Ignore(string message) { }
 
         public static void IsNull(object value) { }
         public static void IsNull(object value, string message) { }
@@ -549,6 +556,11 @@ namespace NUnit.Framework
         public static void Less(double arg1, double arg2, string message) { }
         public static void LessOrEqual(double arg1, double arg2) { }
         public static void LessOrEqual(double arg1, double arg2, string message) { }
+    }
+
+    public static class StringAssert
+    {
+        public static void Contains(string expected, string actual) { }
     }
 
     public static class CollectionAssert

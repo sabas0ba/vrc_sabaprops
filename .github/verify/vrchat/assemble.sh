@@ -88,6 +88,8 @@ replace "$TREES_PACKAGE" "$PROJECT/Packages/io.github.sabas0ba.sabaprops.trees"
 
 # The liquid package is Udon as well; see Tests/Liquid for what is checked here.
 replace "$LIQUID_PACKAGE" "$PROJECT/Packages/io.github.sabas0ba.sabaprops.liquid"
+replace "$REPO/Packages/io.github.sabas0ba.sabaprops.screenfx" "$PROJECT/Packages/io.github.sabas0ba.sabaprops.screenfx"
+replace "$REPO/Packages/io.github.sabas0ba.sabaprops.screenfx/Samples~/UdonDriver" "$PROJECT/Assets/ScreenFxSample"
 replace "$VPM/com.vrchat.base" "$PROJECT/Packages/com.vrchat.base"
 replace "$VPM/com.vrchat.worlds" "$PROJECT/Packages/com.vrchat.worlds"
 
