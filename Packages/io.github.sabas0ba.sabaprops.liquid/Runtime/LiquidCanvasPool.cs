@@ -107,6 +107,7 @@ namespace SabaProps.Liquid
         /// </summary>
         public LiquidBodyCanvas AcquireCanvas(VRCPlayerApi player)
         {
+            if (!_localDisplayEnabled) return null;
             LiquidBodyCanvas existing = FindCanvas(player);
             if (existing != null || !Utilities.IsValid(player) || canvases == null)
             {
@@ -148,6 +149,7 @@ namespace SabaProps.Liquid
 
             if (chosen != null)
             {
+                chosen.owningPool = this;
                 chosen.Assign(player);
             }
 
@@ -157,6 +159,7 @@ namespace SabaProps.Liquid
         /// <summary>ターゲットの Canvas。プレイヤーなら割り当て、マネキンならその Canvas を返します。</summary>
         public LiquidBodyCanvas CanvasForTarget(int target)
         {
+            if (!_localDisplayEnabled) return null;
             if (target >= 0)
             {
                 VRCPlayerApi player = VRCPlayerApi.GetPlayerById(target);
@@ -579,6 +582,7 @@ namespace SabaProps.Liquid
         /// <summary>プレイヤーの付着を消します。Canvas が割り当たっていなければ何もしません。</summary>
         public void ClearPlayer(int playerId)
         {
+            ReleaseLimbs(playerId);
             LiquidBodyCanvas canvas = FindCanvas(VRCPlayerApi.GetPlayerById(playerId));
             if (canvas != null)
             {
@@ -620,6 +624,7 @@ namespace SabaProps.Liquid
         /// <summary>全員とマネキンの付着を消します。</summary>
         public void ClearEveryone()
         {
+            ReleaseLimbs(-1);
             if (canvases != null)
             {
                 for (int i = 0; i < canvases.Length; i++)
@@ -640,6 +645,7 @@ namespace SabaProps.Liquid
         /// </summary>
         public override void OnAvatarChanged(VRCPlayerApi player)
         {
+            if (Utilities.IsValid(player)) ReleaseLimbs(player.playerId);
             LiquidBodyCanvas canvas = FindCanvas(player);
             if (canvas != null)
             {
@@ -649,6 +655,7 @@ namespace SabaProps.Liquid
 
         public override void OnPlayerLeft(VRCPlayerApi player)
         {
+            if (Utilities.IsValid(player)) ReleaseLimbs(player.playerId);
             LiquidBodyCanvas canvas = FindCanvas(player);
             if (canvas != null)
             {

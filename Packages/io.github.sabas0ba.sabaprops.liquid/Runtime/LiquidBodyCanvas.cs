@@ -102,6 +102,21 @@ namespace SabaProps.Liquid
         [Tooltip("プレイヤーの代わりに追従する Transform（マネキンの腰）。設定するとプールを介さず常に有効になります。")]
         public Transform anchor;
 
+        [Header("Limb Canvas")]
+        [Tooltip("全身ではなく指定ボーンに追従します。付着した時点でプールが割り当てます。")]
+        public bool limbCanvas;
+        public HumanBodyBones followBone = HumanBodyBones.LeftHand;
+        [HideInInspector] public LiquidCanvasPool owningPool;
+
+        [Header("表示距離")]
+        [Min(0f)] public float simulationDistance = 25f;
+        [Min(0f)] public float displayDistance = 50f;
+        [HideInInspector] public bool localDisplayEnabled = true;
+
+        [Header("接触")]
+        [Tooltip("接触更新用マテリアル。生成器で設定します。")]
+        public Material contactMaterial;
+
         [Header("ワールドの面")]
         [Tooltip("体ではなく、ワールドの壁や床に付着を描く Canvas（Surface Canvas）かどうか。anchor を中心とする箱の中の面に描きます。")]
         public bool worldSurface;
@@ -506,6 +521,16 @@ namespace SabaProps.Liquid
                 return;
             }
 
+            if (!limbCanvas && !worldSurface && anchor == null && owningPool != null)
+            {
+                LiquidBodyCanvas limb = owningPool.LimbAtPoint(_player, worldPoint);
+                if (limb != null && limb != this)
+                {
+                    limb.QueueStamp(worldPoint, worldNormal, radius, profile, amount, seed);
+                    return;
+                }
+            }
+
             if (_stampCount >= MaxStampsPerUpdate)
             {
                 AdvanceCanvas(Time.time - _lastUpdateTime);
@@ -548,6 +573,16 @@ namespace SabaProps.Liquid
             if (!_active || !_frameValid || shape <= ShapeSplash)
             {
                 return;
+            }
+
+            if (!limbCanvas && !worldSurface && anchor == null && owningPool != null)
+            {
+                LiquidBodyCanvas limb = owningPool.LimbAtPoint(_player, worldFrom);
+                if (limb != null && limb != this)
+                {
+                    limb.QueueShape(worldFrom, worldTo, worldNormal, radius, profile, shape, angle, erase);
+                    return;
+                }
             }
 
             if (_stampCount >= MaxStampsPerUpdate)
@@ -599,6 +634,8 @@ namespace SabaProps.Liquid
         /// </summary>
         public void ApplyImmersion(float surfaceWorldY, LiquidProfile profile, float deltaSeconds)
         {
+            if (!limbCanvas && owningPool != null && _playerId >= 0)
+                owningPool.ImmerseLimbs(_playerId, surfaceWorldY, profile, deltaSeconds);
             // 体を伝って下を濡らす近似は、壁や床には当てはまりません。
             if (!_active || !_frameValid || profile == null || worldSurface)
             {
@@ -816,6 +853,15 @@ namespace SabaProps.Liquid
                 UpdateFrame();
             }
 
+            if (!_active || !_frameValid) return;
+            VRCPlayerApi viewer = Networking.LocalPlayer;
+            float distance = Utilities.IsValid(viewer) ? Vector3.Distance(viewer.GetPosition(), _origin) : 0f;
+            bool visible = localDisplayEnabled && (displayDistance <= 0f || distance <= displayDistance);
+            if (projectorObject != null && projectorObject.activeSelf != visible)
+            {
+                projectorObject.SetActive(visible);
+            }
+
             canvasRoot.SetPositionAndRotation(_origin, Quaternion.LookRotation(_forward, _up));
             projectorMaterial.SetVector("_CanvasRowX", CanvasRow(_right, _origin, halfExtents.x));
             projectorMaterial.SetVector("_CanvasRowY", CanvasRow(_up, _origin, halfExtents.y));
@@ -825,7 +871,7 @@ namespace SabaProps.Liquid
             float elapsed = Time.time - _lastUpdateTime;
             if (elapsed >= updateInterval)
             {
-                if (IsIdleSurface())
+                if (!visible || (simulationDistance > 0f && distance > simulationDistance) || IsIdleSurface())
                 {
                     AdvanceEnvironment(Mathf.Clamp(elapsed, 0f, 1f));
                 }
@@ -849,9 +895,12 @@ namespace SabaProps.Liquid
         private void AdvanceEnvironment(float dt)
         {
             _lastUpdateTime = Time.time;
+            AdvanceImmersion(dt);
             AdvanceSnow(dt);
             AdvanceHumidity(dt);
             AdvanceLight(dt);
+            AdvanceBareSkin();
+            PushImmersion();
         }
 
         /// <summary>
@@ -869,6 +918,22 @@ namespace SabaProps.Liquid
 
         private void UpdateFrame()
         {
+            if (limbCanvas)
+            {
+                Vector3 bone = _player.GetBonePosition(followBone);
+                if (IsMissingBone(bone))
+                {
+                    Release();
+                    return;
+                }
+                Quaternion rotation = _player.GetBoneRotation(followBone);
+                _right = rotation * Vector3.right;
+                _up = rotation * Vector3.up;
+                _forward = rotation * Vector3.forward;
+                _origin = bone + rotation * centerOffset;
+                _frameValid = true;
+                return;
+            }
             Vector3 hips = _player.GetBonePosition(HumanBodyBones.Hips);
             Vector3 chest = _player.GetBonePosition(HumanBodyBones.Chest);
             if (IsMissingBone(chest))

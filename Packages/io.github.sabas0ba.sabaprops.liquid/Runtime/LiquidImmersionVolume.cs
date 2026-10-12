@@ -35,6 +35,12 @@ namespace SabaProps.Liquid
         [Tooltip("液面の高さを示す Transform。未設定ならトリガーの上端を液面とします。")]
         public Transform surface;
 
+        [Tooltip("踏み込み時の飛散。未設定なら飛散しません。")]
+        public LiquidSplash stepSplash;
+        [Min(0.1f)] public float stepDistance = 0.65f;
+        private Vector3 _lastStepPosition;
+        private bool _localInside;
+
         [Header("波")]
         [Tooltip("液面が上下する振幅（m）。0 で静水です。")]
         [Min(0f)]
@@ -70,6 +76,12 @@ namespace SabaProps.Liquid
             }
 
             int id = player.playerId;
+            if (player.isLocal)
+            {
+                _localInside = true;
+                _lastStepPosition = player.GetPosition();
+                EmitStep(_lastStepPosition);
+            }
             for (int i = 0; i < _insideCount; i++)
             {
                 if (_inside[i] == id)
@@ -181,6 +193,8 @@ namespace SabaProps.Liquid
 
         private void RemovePlayer(int id)
         {
+            VRCPlayerApi local = Networking.LocalPlayer;
+            if (Utilities.IsValid(local) && id == local.playerId) _localInside = false;
             for (int i = 0; i < _insideCount; i++)
             {
                 if (_inside[i] == id)
@@ -190,6 +204,28 @@ namespace SabaProps.Liquid
                     return;
                 }
             }
+        }
+
+        private void LateUpdate()
+        {
+            if (!_localInside || stepSplash == null) return;
+            VRCPlayerApi local = Networking.LocalPlayer;
+            if (!Utilities.IsValid(local) || !local.IsPlayerGrounded()) return;
+            Vector3 position = local.GetPosition();
+            Vector3 horizontal = position - _lastStepPosition;
+            horizontal.y = 0;
+            if (horizontal.magnitude < Mathf.Max(stepDistance, 0.1f)) return;
+            _lastStepPosition = position;
+            EmitStep(position);
+        }
+
+        private void EmitStep(Vector3 position)
+        {
+            if (stepSplash == null) return;
+            float level = GetSurfaceHeight();
+            // Shallow water only; swimming below the surface is not a footstep.
+            if (position.y < level - 0.35f || position.y > level + 0.1f) return;
+            stepSplash.Emit(new Vector3(position.x, level + 0.02f, position.z));
         }
     }
 }

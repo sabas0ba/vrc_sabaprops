@@ -178,6 +178,21 @@ namespace SabaProps.Liquid
         /// <summary>ワールドの面に、明かりの光を環境光として渡す割合。</summary>
         private const float SurfaceLampShare = 0.7f;
 
+        private void IlluminateAdditional(LiquidBodyCanvas[] canvases, bool lampOn, bool blacklightOn)
+        {
+            if (canvases == null) return;
+            Vector3 half = areaSize * 0.5f;
+            for (int i = 0; i < canvases.Length; i++)
+            {
+                LiquidBodyCanvas canvas = canvases[i];
+                if (canvas == null || (canvas.anchor == null && canvas.GetPlayerId() < 0)) continue;
+                Vector3 centre = canvas.canvasRoot.position;
+                Vector3 local = transform.InverseTransformPoint(centre);
+                if (Mathf.Abs(local.x) <= half.x && Mathf.Abs(local.y) <= half.y && Mathf.Abs(local.z) <= half.z)
+                    Illuminate(canvas, centre, lampOn, blacklightOn, false);
+            }
+        }
+
         private void Update()
         {
             bool lampOn = IsLampOn();
@@ -198,6 +213,8 @@ namespace SabaProps.Liquid
             }
 
             _lastEvaluation = Time.time;
+            IlluminateAdditional(pool.limbs, lampOn, blacklightOn);
+            IlluminateAdditional(pool.contactTools, lampOn, blacklightOn);
             int count = pool.CollectTargetsInBox(transform, areaSize, affectPlayers, _targets, _centres, _tops);
             for (int i = 0; i < count; i++)
             {
