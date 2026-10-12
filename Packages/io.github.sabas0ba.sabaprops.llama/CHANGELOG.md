@@ -1,30 +1,34 @@
 # Changelog
 
+このパッケージの変更点をまとめています。
+フォーマットは [Keep a Changelog](https://keepachangelog.com/ja/1.1.0/) に、
+バージョニングは [Semantic Versioning](https://semver.org/lang/ja/) に従います。
+
 ## [Unreleased]
 
-### Changed
+## [0.1.0] - 2026-10-12
 
-- Apache-2.0 の宣言、公式ライセンスURL、同梱するライセンス全文と README の表記を統一。
-- llama2.c（MIT）に基づく部分の著作権表示と許諾条件を`THIRD-PARTY-NOTICES.md`に掲載し、READMEの記述を実態に合わせて修正。
-- World Runnerの出力Canvasに暗色の背景パネルを追加。明るい背景で白い出力文字が読めなかったため。
-
-### Fixed
-
-- `LlamaWorldBuilder`の`PackageInfo`曖昧参照によりUnity Editorでコンパイルできなかった問題を修正。
-- `SabaLlamaRunner.OnAsyncGpuReadbackComplete`が基底メンバーを隠蔽していた問題を修正。
+最初の公開版です。概念実証（PoC）向けの最小構成で、入力の続きを生成するcompletionのみに対応します。
 
 ### Added
 
-- Unity Editor・ClientSim・VRChatクライアントでの生成を確認。速度・VRAM・品質の測定は未完了。
-- 変換済みモデルからBuild & Test用の最小シーンを生成する`Create Sample Scene`を追加。
-- GGUF v2/v3のLlama F32/F16/Q4_0/Q8_0をFP32 textureへ変換し、内蔵tokenizerを取り込むEditor readerを追加。
-- 固定revision・SHA-256によるStories260K / Stories15M Q4_0の取得手順と実ファイルCPU検査を追加。
-- 変換済みモデルのCPU/GPU照合ボタンと、FP32展開後の重み容量表示を追加。
+- GGUF v2/v3のLlama（F32/F16/Q4_0/Q8_0）と内蔵tokenizer、またはFP32 llama2.c v0 checkpointとtokenizer.binを、RFloat textureと推論Materialへ変換するEditor拡張。
+- 寸法・ファイル長・非有限値の検査と、入力ファイルのSHA-256・出典・ライセンスの記録。
+- RMSNorm、RoPE、GQA対応の因果Attention、SwiGLU、greedy生成のfragment shader実装。
+- フレーム分割・非同期readback・停止と再実行に対応した、ローカル専用のUdonSharp runtime。
+- ワールド用のCube・入力欄・出力パネルを生成するWorld Runnerと、Build & Test用の最小シーンを生成する`Create Sample Scene`。
+- 変換済みモデルのCPU/GPU照合ボタンと、FP32展開後の重み容量・作業VRAMの表示。
+- 数値検証用の未学習モデル、CPU参照実装、GPU比較テスト、ClientSimでの実行テスト。
+- 固定revision・SHA-256によるStories260K / Stories15M Q4_0の取得手順と、実ファイルのCPU検査。
+- llama2.c（MIT）に基づく部分の著作権表示と許諾条件（`THIRD-PARTY-NOTICES.md`）。
 
-## [0.1.0]
+### 確認状況
 
-- FP32 llama2.c v0 checkpointとtokenizer.binのEditor変換を追加。
-- RMSNorm、RoPE、GQA対応の因果Attention、SwiGLU、greedy生成をfragment shaderで実装。
-- フレーム分割・非同期readback・ローカル専用のUdonSharp runtimeを追加。
-- 数値検証用の未学習モデル、CPU参照実装、GPU比較テストを追加。
-- Unity / VRChat実機検証と学習済みモデルでの速度・品質測定は未完了。
+- Unity 2022.3.22f1・Direct3D 11・VRChat Worlds SDK 3.10.4で、GPUとCPU参照の全logitの一致、client向けUdonコンパイル、ClientSimでの生成・停止・再実行を確認。
+- Stories260Kのサンプルシーンが、VRChatクライアント上のワールドで生成することを確認。
+- 速度・VRAM・品質の測定と、upload後の動作確認は未完了。
+
+### 制限
+
+- chat template、温度・top-p、K/IQ量子化、Llama 3系のtokenizer、Questには対応しません。
+- 学習済みの重みは同梱しません。変換した重みはワールドに含まれるため、元モデルの再配布条件に従ってください。
