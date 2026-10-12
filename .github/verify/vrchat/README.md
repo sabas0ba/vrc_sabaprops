@@ -122,7 +122,7 @@ Unity は Unity Hub の既定の場所から `ProjectVersion.txt` に一致す�
 初回は SDK が要求する UPM パッケージ（burst、collections、cinemachine 等）を
 Unity がレジストリから取得するため、数分かかります。
 
-テストは `SabaProps.Foliage.CITests`、`SabaProps.Foliage.WorldTests`、`SabaProps.SoftProps.WorldTests`、`SabaProps.StageCam.WorldTests`、`SabaProps.Capture.WorldTests`、`SabaProps.Tablet.WorldTests`、`SabaProps.PutItems.Tests` に絞って実行します。
+テストは `SabaProps.Foliage.CITests`、`SabaProps.Foliage.WorldTests`、`SabaProps.SoftProps.WorldTests`、`SabaProps.StageCam.WorldTests`、`SabaProps.Capture.WorldTests`、`SabaProps.Tablet.WorldTests`、`SabaProps.BodyContact.WorldTests`、`SabaProps.ScreenFx.WorldTests`、`SabaProps.PutItems.Tests` に絞って実行します。
 SDK 自身のテストアセンブリも同じプロジェクトに存在しますが、
 本パッケージとは無関係な理由で 2 件失敗する（ランダム生成の JSON ファズケースと、
 docs.microsoft.com の URL 到達性を検証するもの）ため、終了コードを意味のあるものにするためです。
@@ -137,6 +137,8 @@ docs.microsoft.com の URL 到達性を検証するもの）ため、終了コ�
 | `SabaProps.Capture.WorldTests` | EditMode | Recorder と Player の Udon コンパイル、公開イベントとフィールド、再生パネルの UI イベント接続を検証。Recorder を実物の RenderTexture で動かし、Blit による複製と満杯時の 3 種類の動作を確認。生成したサンプルシーンと、`Samples~` に同梱したシーンの両方について、配線を検証し、ClientSim で実行して Udon VM 上の撮影・間引き・停止・解放を確認。`TestResults/capture-sample.png` と `capture-sample-shipped.png` に配置確認画像を出力 |
 | `SabaProps.SoftProps.WorldTests` | EditMode + Playへの遷移 | Prefab生成、同梱デモのimport・参照・比較台、ClientSimでのCollider接触・復元・自動運動・立位荷重 |
 | `SabaProps.Tablet.WorldTests` | EditMode | 全コンポーネントの Udon コンパイル、サンプルシーンの全ボタンがエクスポート済みのイベントを呼ぶこと、ミラーの排他、テレポート地点の番号、Build の再実行で生成物が重複しないことを検証 |
+| `SabaProps.BodyContact.WorldTests` | EditMode（ClientSim検査ではPlayModeへ移行） | Udonコンパイル、生成シーン、描画、通常UpdateとInteract、HUD・Gizmoの実行時検査。配布シーンとビルド済みワールドの追加検査にも対応 |
+| `SabaProps.ScreenFx.WorldTests` | EditMode | Udonコンパイル、Prefabの参照、サンプル構成を検証 |
 | `SabaProps.PutItems.Tests` | EditMode | 吸着対象と Pickup の設定、同梱デモの構成を検証 |
 
 Soft Propsの実行テストは指・棒・板の100 mmおよび0.5 mmの空隙、20 mmの侵入、離脱後の復元、自動上下運動、ローカルプレイヤーのFutonへの接地を検証します。VRChat実clientの手・胴体・リモートプレイヤーの接触を保証するテストではありません。
@@ -221,6 +223,34 @@ cp -r build/WorldProjectCI/Packages/io.github.sabas0ba.sabaprops.capture/Samples
 生成されるアセットで、その GUID は利用者のプロジェクトには存在しません。SDK はシーンを開いた時点で
 プログラムソースから参照を張り直します。`ShippedSample_ImportsAndIsWiredLikeAGeneratedOne` が
 これを確かめます。
+
+## Burst の DLL が読み込めない場合
+
+Windows のアプリケーション制御ポリシーが、Burst の生成した DLL の読み込みを拒否することがあります。
+`unity.log` に `Unexpected error in Burst compilation` と `error code 4551` が出ます。
+Burst はこの失敗をスクリプトのコンパイルエラーとして記録するため、UdonSharp が Udon のコンパイルを
+中止し、Udon プログラムを必要とするテストがすべて
+`All Unity C# compiler errors must be resolved before running an UdonSharp compile.` で失敗します。
+C# のコンパイルエラーは実際には存在しません。
+
+この場合は Burst のコンパイルを無効にして実行します。ここで検証する対象は Burst に依存しません。
+
+```sh
+UNITY_EXTRA_ARGS=--burst-disable-compilation ./.github/verify/vrchat/run-tests.sh
+```
+
+## Body Contactの実行時表示検査
+
+`SabaProps.BodyContact.WorldTests` はClientSimでPlayModeへ入り、Udon VM経由のHUD更新、
+描画画素、Gizmoメッシュと切替を確認します。ClientSimではPostLateUpdateをテストから明示的に送ります。
+これは実クライアントでの自動発火やVR描画を保証しません。
+
+追加で配布物を調べる場合は、Unityプロセスへ以下の環境変数を渡します。
+
+- `BODYCONTACT_DELIVERED_SCENE`: 検証プロジェクト内へ取り込んだシーンのAssets相対パス
+- `BODYCONTACT_BUILT_WORLD`: Build & Testで使われた `.vrcw` ファイルの絶対パス
+
+未指定の配布物検査はスキップします。HUD画像は `TestResults/bodycontact-hud-*.png` に保存します。
 
 ## SDK のバージョンを上げるには
 

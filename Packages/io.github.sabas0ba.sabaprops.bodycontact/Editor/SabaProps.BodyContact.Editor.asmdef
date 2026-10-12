@@ -1,0 +1,24 @@
+{
+    "name": "SabaProps.BodyContact.Editor",
+    "rootNamespace": "SabaProps.BodyContact.Editors",
+    "references": [
+        "SabaProps.BodyContact.Runtime",
+        "UnityEngine.UI",
+        "VRC.SDKBase",
+        "VRC.SDK3",
+        "VRC.Udon",
+        "UdonSharp.Runtime",
+        "UdonSharp.Editor"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
