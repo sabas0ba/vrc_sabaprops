@@ -157,6 +157,19 @@ SABAPROPS_LLAMA_GGUF="$(cygpath -wa .verify/llama/models/stories260K.gguf)" \
 待機の上限はフレーム数ではなく実時間です。バッチ実行の Editor は毎秒数千フレーム進みますが、readback の完了は GPU 側の進行によります。
 ClientSim での実行であり、VRChat クライアントでの速度と動作は別途確認してください。
 
+手動の Build & Test 用のシーンは、セットアップ済みのプロジェクトを GUI で起動して生成します。
+`-batchmode` と `-quit` は指定しません。`SABAPROPS_LLAMA_GGUF` が未指定なら未学習の検証用モデルを使います。
+モデルを `Assets/SabaPropsLlama/SampleModel` へ変換し、`Assets/SabaPropsLlama/SampleScene/LlamaSample.unity` を開いた状態で Editor が残ります。
+
+```sh
+./.github/verify/vrchat/assemble.sh
+Unity -batchmode -quit -projectPath build/WorldProject \
+  -executeMethod SabaProps.Foliage.WorldSetup.FoliageWorldProjectSetup.ConfigureForVrchat
+SABAPROPS_LLAMA_GGUF="$(cygpath -wa .verify/llama/models/stories260K.gguf)" \
+  Unity -projectPath build/WorldProject \
+  -executeMethod SabaProps.Llama.WorldTests.LlamaSampleSceneSetup.Open
+```
+
 Import ウィンドウの画像は、Windows で次のメソッドを GUI 起動（`-batchmode` なし）で実行して撮影します。
 `TestResults/Documentation/import-window.png` に保存し、撮影後に Editor を終了します。
 

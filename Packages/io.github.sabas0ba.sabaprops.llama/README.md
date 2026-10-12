@@ -37,6 +37,8 @@ GGUFはコンテナー形式であり、すべてのモデルへの対応を意�
 6. 変換済みモデルを選択し、「選択モデルのWorld Runnerを作成」を実行します。既存のワールドシーンにCubeとテキスト入力・出力Canvasを追加します。ワールドのEventSystem、VRCSceneDescriptor、Spawnは既存設定を使用します。
 7. シーン上で位置を調整して保存します。入力欄へ文章を入力し、CubeをInteractすると生成を開始します。生成中のInteractは停止です。
 
+Build & Testだけを試す場合は、ProjectウィンドウでModel.assetを選択し、`Tools > SabaProps > Llama > Create Sample Scene`を実行します。床、Spawn、VRCSceneDescriptor、World Runnerを置いたシーンを`Assets/SabaPropsLlama/SampleScene/LlamaSample.unity`へ保存します。現在のシーンは置き換わります。
+
 `Generate`と`StopGeneration`はUdon custom eventとしても呼び出せます。入力欄を接続しない場合はrunnerの`prompt`を使用します。テキストは入力の続きを生成するcompletion形式です。チャットモデル用の役割タグなどは自動挿入しません。
 
 まず導入だけ確認する場合は「検証用モデルを作成（未学習）」を使用できます。入力例は`ab`です。小さい語彙と決定的な重みを持つ数値検証用モデルなので、自然な文章や会話は生成しません。
