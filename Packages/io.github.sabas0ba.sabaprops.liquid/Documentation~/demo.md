@@ -2,6 +2,8 @@
 
 ## 開く
 
+接触・転写、スポンジ・タオル、水風船の確認には、別途生成する [Contact デモ](contact.md) を使用します。Desktop の自動デモと手動確認の手順を掲載しています。以下は Package Manager から取り込む 4 シーンの説明です。
+
 Package Manager の Samples から **Liquid Demo World** を取り込むと、`Assets/SabaProps/Liquid/Samples` に次の 4 つのシーンが入ります。どれも `VRCSceneDescriptor` とスポーン地点を含み、そのままアップロードできます。
 
 | シーン | 内容 | 作り直すメニュー |

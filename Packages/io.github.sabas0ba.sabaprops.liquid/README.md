@@ -47,6 +47,10 @@ Package Manager の Samples から **Liquid Demo World** を取り込むと、`A
 
 各区画の内容と画像は [サンプルの導入とレビュー](Documentation~/demo.md) にあります。
 
+接触・転写を試す `LiquidContact.unity` は、別途 `Tools > SabaProps > Liquid > Create Contact Scene` で生成します。
+Desktop ではボタン1回で塗布・こすれ・転写・拭き取りを実行でき、水風船の足元への投擲も試せます。
+操作手順と画像は [接触、転写と飛散](Documentation~/contact.md) を参照してください。
+
 ## 構成
 
 ### Canvas
@@ -71,6 +75,16 @@ Package Manager の Samples から **Liquid Demo World** を取り込むと、`A
 | `LiquidWeather` | 範囲に雨または雪を降らせる。屋根と傘の下には降らない。雪は積もり、溶けて濡れる |
 | `LiquidHumidity` | 湿度。乾きを遅らせ、結露と垂れる水滴を生じさせる。湯気、霧、面の曇り |
 | `LiquidPaintTool` | ペン、スタンプ、消しゴム。向けた先のワールドの面、マネキン、プレイヤーに描く |
+
+### 接触と飛散
+
+| コンポーネント | 役割 |
+|---|---|
+| `LiquidContact` | 両手・両足・胸・頭で接触を検出し、塗料を変形・転写する。接触対象の部位と利用者ごとの表示を設定する |
+| `LiquidWipeTool` | スポンジ・タオルによる拭き取り、道具への吸着と再付着 |
+| `LiquidWaterBalloon` | 衝突で破裂し、液を飛散させて再出現する。Use で自分の足元へ投げることもできる |
+| `LiquidSplash` | 衝突位置や浅水への踏み込み位置から、周囲へ液を付ける |
+| `LiquidContactDemo` | パッドを動かして接触・転写を確認する自動デモ（サンプル用） |
 
 ### 環境と操作
 
