@@ -29,6 +29,7 @@ PUT_ITEMS_PACKAGE="$REPO/Packages/io.github.sabas0ba.sabaprops.putitems"
 TABLET_PACKAGE="$REPO/Packages/io.github.sabas0ba.sabaprops.tablet"
 BODYCONTACT_PACKAGE="$REPO/Packages/io.github.sabas0ba.sabaprops.bodycontact"
 TREES_PACKAGE="$REPO/Packages/io.github.sabas0ba.sabaprops.trees"
+LIQUID_PACKAGE="$REPO/Packages/io.github.sabas0ba.sabaprops.liquid"
 
 PROJECT="${1:-$REPO/build/WorldProject}"
 VPM="${VPM_DIR:-$REPO/build/vpm}"
@@ -90,6 +91,9 @@ replace "$PUT_ITEMS_PACKAGE" "$PROJECT/Packages/io.github.sabas0ba.sabaprops.put
 replace "$TABLET_PACKAGE" "$PROJECT/Packages/io.github.sabas0ba.sabaprops.tablet"
 replace "$BODYCONTACT_PACKAGE" "$PROJECT/Packages/io.github.sabas0ba.sabaprops.bodycontact"
 replace "$TREES_PACKAGE" "$PROJECT/Packages/io.github.sabas0ba.sabaprops.trees"
+
+# The liquid package is Udon as well; see Tests/Liquid for what is checked here.
+replace "$LIQUID_PACKAGE" "$PROJECT/Packages/io.github.sabas0ba.sabaprops.liquid"
 replace "$REPO/Packages/io.github.sabas0ba.sabaprops.screenfx" "$PROJECT/Packages/io.github.sabas0ba.sabaprops.screenfx"
 replace "$REPO/Packages/io.github.sabas0ba.sabaprops.screenfx/Samples~/UdonDriver" "$PROJECT/Assets/ScreenFxSample"
 replace "$VPM/com.vrchat.base" "$PROJECT/Packages/com.vrchat.base"

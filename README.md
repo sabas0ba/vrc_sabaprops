@@ -34,6 +34,7 @@ https://sabas0ba.github.io/vrc_sabaprops/index.json
 | `io.github.sabas0ba.sabaprops.putitems` | SabaProps Put Items | Pickup を手放した位置の近くにある机・壁へ位置と姿勢を補正。Object Sync 接続と独自同期向けの計算 API を提供。 |
 | `io.github.sabas0ba.sabaprops.tablet` | SabaProps Tablet | キー・頭上からの取り出し・アイテムの Interact で呼び出すタブレット型 UI。物理ボタンでミラー・コライダー・エフェクトの切り替え、テレポート、任意の Udon イベント呼び出しを行う。 |
 | `io.github.sabas0ba.sabaprops.flock` | SabaProps Flock | 鳥 27 種・魚・水生生物 41 種の群れを、Shader が時刻から計算する固定配置を含む 13 種の群れの動きで配置。Silhouette / Low / High の 3 段階 LOD。 |
+| `io.github.sabas0ba.sabaprops.liquid` | SabaProps Liquid | アバターとワールドの壁や床へ液体の付着を Projector で描画する PC 向け Udon パッケージ。発生源（プール、シャワー、噴射器、雨と雪など）とペン、スタンプ、消しゴムを含む。 |
 | `io.github.sabas0ba.sabaprops.bodycontact` | SabaProps Body Contact | 頭・体幹同士の貫通を水平位置の補正で抑える Udon コンポーネント。VR・Desktop共通、独自同期なし。検証シーン生成とWorld内の診断表示付き。 |
 
 各パッケージの詳細は `Packages/<package-id>/README.md` を参照してください。
@@ -52,6 +53,8 @@ Soft Propsは `Tools > SabaProps > Soft Props > Generate All Prefabs` で4種の
 Flock は Hierarchy の `SabaProps > Flock` から群れを追加し、Inspector で種を選びます。全種の一覧は `Tools > SabaProps > Flock > Create Species Gallery Scene` で生成できます。[利用方法](Packages/io.github.sabas0ba.sabaprops.flock/Documentation~/authoring.md)と[収録種](Packages/io.github.sabas0ba.sabaprops.flock/Documentation~/elements.md)を参照してください。
 
 Put Items は `Tools > SabaProps > Put Items > Open Demo Scene` から、食卓と冷蔵庫を含む完成済み Scene を開けます。食器の机への吸着、メモやアクセサリーの冷蔵庫への貼り付け、おぼん・皿・料理の入れ子追従を確認できます。[デモの操作手順](Packages/io.github.sabas0ba.sabaprops.putitems/Documentation~/demo-review.md)と[配置・同期の設定](Packages/io.github.sabas0ba.sabaprops.putitems/Documentation~/authoring.md)を参照してください。
+
+Liquid は `Tools > SabaProps > Liquid` の `Create Sample Scene`、`Create Comparison Scene`、`Create Interactive Scene`、`Create Painting Scene` で、4 つのワールドを生成します。鏡の前で自分のアバターが濡れる・泥が付く・洗い流される様子、噴射器でのかけ合い、壁と床へのペンやスタンプでの描画を確認できます。[利用方法](Packages/io.github.sabas0ba.sabaprops.liquid/Documentation~/authoring.md)と[サンプルの内容](Packages/io.github.sabas0ba.sabaprops.liquid/Documentation~/demo.md)を参照してください。
 
 ---
 
@@ -100,6 +103,11 @@ Put Items は `Tools > SabaProps > Put Items > Open Demo Scene` から、食卓�
 │   │   ├── Runtime/                # 種のプリセット、運動の基準実装、群れのShader
 │   │   ├── Editor/                 # 個体形状と群れMeshの生成器、ギャラリーScene
 │   │   └── Documentation~/
+│   ├── io.github.sabas0ba.sabaprops.liquid/
+│   │   ├── package.json            # VRChat Worlds SDK に依存
+│   │   ├── Runtime/                # Body Canvas と Canvas 更新・Projector シェーダ
+│   │   ├── Editor/                 # Canvas Pool の生成器
+│   │   └── Documentation~/         # 設計文書
 │   └── io.github.sabas0ba.sabaprops.bodycontact/
 │       ├── Runtime/                # UdonSharp の接触判定、判定規則のソルバ、デバッグ表示
 │       ├── Editor/                 # System とダミーを配置するメニュー
@@ -124,7 +132,7 @@ Put Items は `Tools > SabaProps > Put Items > Open Demo Scene` から、食卓�
 `Packages/` 配下に、このリポジトリの `Packages/<package-id>` をシンボリックリンク（または
 クローンごと配置）してください。編集するパッケージの分だけ張ります。
 
-`io.github.sabas0ba.sabaprops.stagecam`、`io.github.sabas0ba.sabaprops.capture`、`io.github.sabas0ba.sabaprops.tablet`、`io.github.sabas0ba.sabaprops.bodycontact` は Udon を使うため、リンク先のプロジェクトには
+`io.github.sabas0ba.sabaprops.stagecam`、`io.github.sabas0ba.sabaprops.capture`、`io.github.sabas0ba.sabaprops.tablet`、`io.github.sabas0ba.sabaprops.bodycontact`、`io.github.sabas0ba.sabaprops.liquid` は Udon を使うため、リンク先のプロジェクトには
 VRChat Worlds SDK が入っている必要があります。`io.github.sabas0ba.sabaprops.foliage` の方は
 SDK が無くても動きます。
 
@@ -249,6 +257,8 @@ Markdown 変換は `build_listing.py` と同じ方針で自前実装です。CI 
 | **Stage Cam の追従計算** | **実際に実行**して幾何の性質を検査（下記） |
 | Tablet の Runtime / Authoring / Editor | 実物の VRChat SDK アセンブリ（`VRCSDKBase.dll`、`VRCSDK3.dll`、`VRC.Udon.Common.dll`）に対してコンパイル。TextMeshPro は手書きのスタブ |
 | **Tablet の判定と生成** | 召喚位置、指先の押下の状態遷移、取り出し位置、プレイヤー選択、ボタン配置、角丸メッシュの閉包性と面の向きを**実際に実行**して検査 |
+| Liquid の Runtime / Editor | Stage Cam と同じく実物の VRChat SDK アセンブリに対してコンパイル |
+| **Liquid の Body Canvas 計算** | **実際に実行**して体の座標系とアトラスの性質を検査（下記） |
 | Body Contact の Runtime / Editor | 実物の VRChat SDK アセンブリ（`VRCSDKBase.dll`）に対してコンパイル |
 | **Body Contact の判定と応答** | 退く側の規則、侵入量と分離方向、通り抜けの状態遷移、遅延を入れた 2 クライアントの収束を**実際に実行**して検査 |
 | **ドキュメントの図** | 生成器を実行し直し、committed の図と一致するかを検査 |
@@ -308,6 +318,24 @@ Markdown 変換は `build_listing.py` と同じ方針で自前実装です。CI 
 | リングバッファ | 添字が折り返すこと、2 周目に入った状態でも時刻から画像を探せること |
 | 間引き | 並べ替えが置換になっていること、最古の画像を残すこと、繰り返し間引いても等間隔を保つこと |
 | 再生 | 再生位置がフレームレートに依存しないこと、端での折り返しと停止、スライダーとの往復、サムネイルが両端を含むこと、時刻の表示 |
+
+#### Body Canvas の実行検査
+
+`LiquidCanvasSolver.cs` も `LiquidBodyCanvas` の部分クラスとして同じ構成を取り、
+Unity 無しで実行します。
+
+| 検査 | 内容 |
+| --- | --- |
+| 体の座標系 | 任意の姿勢で正規直交かつ左手系であること、欠損ボーンでプレイヤーの向きへ落ちること |
+| Canvas 空間 | 箱が [-1, 1] に写ること、ローカル座標の往復 |
+| アトラス | 各面が自分のタイルに収まり余白を保つこと、面内の軸の対応、表と裏が同じタイルを共有しないこと |
+| 付着と浸漬 | 減衰の形、蒸発率の符号化とシェーダの計算の一致、液面高さと液膜の下降 |
+| シェーダとの一致 | HLSL 側の定数と面内の軸の対応が C# 側と一致すること |
+| Source の幾何 | 光線と体のカプセルの交差（側面・両端・内側・平行）、交点が表面上にあり法線が外向きであること、円錐の標本、乱数の値域、プレイヤー基準座標の往復 |
+
+故障注入で確認済みです。座標系の外積の順序、裏面への重み、面内の軸、蒸発率の符号化を
+それぞれ壊すと、対応する検査が落ちます。シェーダの描画結果そのものは、
+VRChat SDK を含む Unity の EditMode テストで GPU 上に書き込んで確認します。
 
 ### 検証できないこと
 
