@@ -15,6 +15,8 @@ namespace SabaProps.Liquid.WorldTests
         private bool _optionsEnabled;
         private EnterPlayModeOptions _options;
 
+        protected virtual void CreateScene() { LiquidPlayroomScene.Create(); }
+
         [UnityTearDown]
         public IEnumerator TearDown()
         {
@@ -31,7 +33,7 @@ namespace SabaProps.Liquid.WorldTests
             _optionsEnabled = EditorSettings.enterPlayModeOptionsEnabled;
             _options = EditorSettings.enterPlayModeOptions;
             UdonSharpCompilerV1.CompileSync(new UdonSharpCompileOptions { IsEditorBuild = true });
-            LiquidPlayroomScene.Create();
+            CreateScene();
             UdonSharpCompilerV1.CompileSync(new UdonSharpCompileOptions { IsEditorBuild = true });
             EditorSettings.enterPlayModeOptionsEnabled = true;
             EditorSettings.enterPlayModeOptions = EnterPlayModeOptions.DisableDomainReload;

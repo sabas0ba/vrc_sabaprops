@@ -20,6 +20,11 @@ namespace SabaProps.Liquid.Editors
 
         public static void Create()
         {
+            CreateContents(true);
+        }
+
+        internal static void CreateContents(bool saveScene)
+        {
             EditorSceneManager.NewScene(NewSceneSetup.DefaultGameObjects, NewSceneMode.Single);
             LiquidSampleScene.ConfigureLight();
             LiquidAssets.EnsureFolder(LiquidSampleScene.SampleFolder);
@@ -119,7 +124,7 @@ namespace SabaProps.Liquid.Editors
             Camera.main.transform.position = new Vector3(0, 2, -4.5f);
             Camera.main.transform.LookAt(new Vector3(0, 1.3f, 3));
             AssetDatabase.SaveAssets();
-            EditorSceneManager.SaveScene(UnityEngine.SceneManagement.SceneManager.GetActiveScene(), ScenePath);
+            if (saveScene) EditorSceneManager.SaveScene(UnityEngine.SceneManagement.SceneManager.GetActiveScene(), ScenePath);
         }
 
         private static void Spray(LiquidCanvasPool pool, string name, LiquidProfile profile, Color colour, Vector3 position, string folder)
