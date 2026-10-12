@@ -63,22 +63,29 @@ namespace SabaProps.Liquid.WorldTests
             Assert.Greater(before, 0.001f, "pen did not paint the wall");
             ClientSimPlayerAvatarManager avatar = null;
             foreach (var candidate in Resources.FindObjectsOfTypeAll<ClientSimPlayerAvatarManager>())
-                if (candidate.gameObject.scene.IsValid()) { avatar = candidate; break; }
+                if (candidate.gameObject.scene.IsValid()
+                    && Vector3.Distance(candidate.GetBonePosition(HumanBodyBones.LeftHand),
+                        Networking.LocalPlayer.GetBonePosition(HumanBodyBones.LeftHand)) < 0.001f)
+                { avatar = candidate; break; }
             Assert.IsNotNull(avatar, "ClientSim avatar manager was not instantiated");
             Transform hand = avatar.GetBoneTransform(HumanBodyBones.LeftHand);
             Assert.IsNotNull(hand, "ClientSim avatar has no left hand");
             var animator = hand.GetComponentInParent<Animator>();
             animator.enabled = false;
             hand.position = new Vector3(-1.7f, 1.4f, 1.89f);
-            yield return Wait(0.7f);
             var pool = Object.FindObjectOfType<LiquidCanvasPool>();
             LiquidBodyCanvas handCanvas = null;
-            foreach (LiquidBodyCanvas limb in pool.limbs)
+            float contactDeadline = Time.realtimeSinceStartup + 8f;
+            while (handCanvas == null && Time.realtimeSinceStartup < contactDeadline)
             {
-                var backing = UdonSharpEditorUtility.GetBackingUdonBehaviour(limb);
-                if ((int)backing.GetProgramVariable("_playerId") == Networking.LocalPlayer.playerId
-                    && (HumanBodyBones)backing.GetProgramVariable("followBone") == HumanBodyBones.LeftHand)
-                    handCanvas = limb;
+                foreach (LiquidBodyCanvas limb in pool.limbs)
+                {
+                    var backing = UdonSharpEditorUtility.GetBackingUdonBehaviour(limb);
+                    if ((int)backing.GetProgramVariable("_playerId") == Networking.LocalPlayer.playerId
+                        && (HumanBodyBones)backing.GetProgramVariable("followBone") == HumanBodyBones.LeftHand)
+                        handCanvas = limb;
+                }
+                yield return null;
             }
             Assert.IsNotNull(handCanvas, "hand contact did not allocate a limb canvas");
             Assert.Greater(Sum(handCanvas.projectorMaterial), 0.001f, "hand did not receive wall paint");
