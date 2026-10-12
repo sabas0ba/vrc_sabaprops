@@ -94,6 +94,8 @@ Liquid Nozzle Stand、Liquid Umbrella、Liquid Pen、Liquid Stamp、Liquid Erase
 
 ## 制限
 
+実機での確認手順は [公開前の VR 確認](Documentation~/authoring.md#公開前の-vr-確認)、確認結果と左右眼の画像は [VR 描画の確認](Documentation~/demo.md#vr-描画の確認)を参照してください。ワールドのリアルタイムシャドウを無効にする導入条件はありません。付着自体が Unity の影を受けない点は、`LiquidLightZone` で補います。
+
 - PC のみを対象としています
 - Canvas 1 つは約 240 × 解像度² バイトの RenderTexture を使います。同時に付着を表示できる人数は、プールの Canvas の数（既定 12）です
 - 付着の途中の状態は同期しません。後から入った人に伝わるのは、Source の状態と、壁と床への直近の描画だけです

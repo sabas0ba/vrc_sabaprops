@@ -18,7 +18,7 @@ Package Manager の Samples から **Liquid Demo World** を取り込むと、`A
 
 各シーンのスポーンの横に、付着を消す操作盤（自分、マネキン、全員、壁と床）があります。
 
-以下の画像は、テスト（`.github/verify/vrchat/Tests/Liquid`）が ClientSim でシーンを 20 秒動かした後に、Unity のカメラで撮ったものです。
+各サンプルの紹介画像は、テスト（`.github/verify/vrchat/Tests/Liquid`）が ClientSim でシーンを 20 秒動かした後に、Unity のカメラで撮ったものです。「VR 描画の確認」の画像は、実機接続中の Editor から取得した左右眼の画像です。
 
 ## LiquidDemo
 
@@ -165,6 +165,29 @@ Package Manager の Samples から **Liquid Demo World** を取り込むと、`A
 
 35 秒降って 40 秒止む雨です。雨粒が敷石と腰掛けに落ち、止むと乾きます。屋根の下の敷石には落ちません。
 
+## VR 描画の確認
+
+2026-10-12 に、不具合調査に使用した `LiquidPainting` シーンのコピーで確認しました。Unity 2022.3.22f1、VRChat Worlds SDK 3.10.4、Direct3D 11、GeForce RTX 2070 SUPER、PICO + PICO Streaming Assistant + SteamVR の構成です。
+
+| 実行環境 | 確認結果 |
+|---|---|
+| Unity Editor + OpenXR 1.10.0 / SteamVR 2.17.10 | 元のシーンと描画設定を保持し、Directional Light の Soft Shadows を有効にして実行。頭部追跡と Single Pass Instanced の左右眼出力を確認。実機と保存画像で、別視点の物体が重なる症状は再現せず、蛍光・蓄光塗料も両眼で表示 |
+| VRChat クライアント | 同日の利用者による再確認で、表示は問題ないとの報告。以下の画像は VRChat クライアントのキャプチャではありません |
+
+### スタジオの左右眼
+
+| 左眼 | 右眼 |
+|---|---|
+| ![実機接続した Editor のスタジオ左眼、Soft Shadows 有効](images/vr-studio-left.png) | ![同じフレームのスタジオ右眼](images/vr-studio-right.png) |
+
+### 蛍光・蓄光塗料の左右眼
+
+| 左眼 | 右眼 |
+|---|---|
+| ![実機接続した Editor の蛍光・蓄光塗料、左眼](images/vr-dark-left.png) | ![同じフレームの蛍光・蓄光塗料、右眼](images/vr-dark-right.png) |
+
+画像は各眼 2352 × 2352 の RenderTexture から取得したものです。今回の再確認で症状は再現していませんが、過去の重なり表示と片眼欠落の原因を特定したものではありません。Editor の OpenXR と VRChat の OpenVR では実行経路が異なります。検証専用の OpenXR パッケージと診断コードは配布パッケージに含めていません。
+
 ## レビュー項目
 
 1. **自分の体**：LiquidDemo の鏡の前で、プールに入る、シャワーを浴びる、泥に沈むなどして、液面の高さまでの付着、流下、乾燥を確認します。
@@ -174,6 +197,7 @@ Package Manager の Samples から **Liquid Demo World** を取り込むと、`A
 5. **壁と床に描く**：LiquidPainting の道具の台のペン、スタンプ、消しゴムで、壁、床、マネキンに描き、
    他の人の画面にも同じものが出ることを確認します。後から入った人に、それまでの描画が出ることを確認します。
 6. **壁と床の消去**：操作盤の Walls で、壁と床の付着と描画が全員の画面で消えることを確認します。
+7. **VR の両眼表示**：実際に使用する影の設定で頭を動かし、壁・床・文字に重なりがないこと、通常・蛍光・蓄光塗料が両眼で見えることを確認します。手順は [公開前の VR 確認](authoring.md#公開前の-vr-確認)を参照してください。
 
 ClientSim では、リモートプレイヤーへの付着、ネットワークイベントの遅延、VR 機器での操作、途中参加者への
 同期変数の受け渡しは確認できません。テストは、道具を持たずに動かし、履歴の受け渡しを同じクライアントの中で
