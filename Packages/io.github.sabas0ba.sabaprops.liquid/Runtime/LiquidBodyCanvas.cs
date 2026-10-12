@@ -871,7 +871,7 @@ namespace SabaProps.Liquid
             float elapsed = Time.time - _lastUpdateTime;
             if (elapsed >= updateInterval)
             {
-                if (!visible || (simulationDistance > 0f && distance > simulationDistance) || IsIdleSurface())
+                if (!localDisplayEnabled || (simulationDistance > 0f && distance > simulationDistance) || IsIdleSurface())
                 {
                     AdvanceEnvironment(Mathf.Clamp(elapsed, 0f, 1f));
                 }

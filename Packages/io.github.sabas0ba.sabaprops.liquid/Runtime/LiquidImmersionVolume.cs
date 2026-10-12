@@ -178,7 +178,7 @@ namespace SabaProps.Liquid
             for (int i = 0; i < mannequins; i++)
             {
                 LiquidBodyCanvas mannequin = pool.CanvasForTarget(pool.GetMannequinTarget(i));
-                if (mannequin != null && _trigger.bounds.Contains(mannequin.GetBodyBottom()))
+                if (mannequin != null && ContainsPoint(mannequin.GetBodyBottom()))
                 {
                     mannequin.ApplyImmersion(level, profile, elapsed);
                 }
@@ -206,7 +206,7 @@ namespace SabaProps.Liquid
             Vector3 position = local.GetPosition();
             // A shallow puddle may sit below the player's collision capsule.
             // Test the grounded foot position rather than relying on its trigger events.
-            if (!local.IsPlayerGrounded() || !_trigger.bounds.Contains(position))
+            if (!local.IsPlayerGrounded() || !ContainsPoint(position))
             {
                 _stepInside = false;
                 return;
@@ -223,6 +223,14 @@ namespace SabaProps.Liquid
             if (horizontal.magnitude < Mathf.Max(stepDistance, 0.1f)) return;
             _lastStepPosition = position;
             EmitStep(position);
+        }
+
+        public bool ContainsPoint(Vector3 position)
+        {
+            // Bounds alone include empty corners of rotated boxes, spheres and capsules.
+            // Disabled colliders return the input from ClosestPoint, so reject them first.
+            return _trigger != null && _trigger.enabled && _trigger.gameObject.activeInHierarchy
+                && (_trigger.ClosestPoint(position) - position).sqrMagnitude <= 1e-8f;
         }
 
         private void EmitStep(Vector3 position)

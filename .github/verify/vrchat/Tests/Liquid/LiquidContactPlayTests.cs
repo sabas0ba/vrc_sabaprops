@@ -207,6 +207,118 @@ namespace SabaProps.Liquid.WorldTests
             Assert.Less(new Vector2(delta.x, delta.z).magnitude, 0.5f, "Use throw missed the player's feet");
         }
 
+        [UnityTest]
+        public IEnumerator DisplayCutoff_DoesNotStopSimulationInsideItsOwnRange()
+        {
+            PrepareReviewScene();
+            yield return new EnterPlayMode();
+            for (int i = 0; i < 120; i++) yield return null;
+            LogAssert.ignoreFailingMessages = false;
+            var demo = Object.FindObjectOfType<LiquidContactDemo>();
+            var canvas = UdonSharpEditorUtility.GetBackingUdonBehaviour(demo.surface);
+            var runner = UdonSharpEditorUtility.GetBackingUdonBehaviour(demo);
+            var button = UdonSharpEditorUtility.GetBackingUdonBehaviour(
+                GameObject.Find("Reset / Run demo").GetComponent<LiquidButton>());
+            canvas.SetProgramVariable("displayDistance", 1f);
+            canvas.SetProgramVariable("simulationDistance", 20f);
+            button.Interact();
+            yield return Wait(0.5f);
+            runner.SetProgramVariable("_running", false);
+            Assert.IsFalse(demo.surface.projectorObject.activeSelf, "display cutoff did not hide the projector");
+            Assert.AreEqual(0, canvas.GetProgramVariable("_stampCount"), "hidden canvas did not process queued paint");
+            Assert.Greater(Sum(demo.surface.projectorMaterial), 0.001f, "paint was not simulated outside the display range");
+
+            canvas.SetProgramVariable("displayDistance", 20f);
+            canvas.SetProgramVariable("simulationDistance", 1f);
+            yield return Wait(0.2f);
+            Assert.IsTrue(demo.surface.projectorObject.activeSelf, "simulation cutoff also hid the projector");
+            yield return AssertTextureFrozen(canvas, 0.4f);
+
+            canvas.SetProgramVariable("simulationDistance", 20f);
+            canvas.SetProgramVariable("localDisplayEnabled", false);
+            yield return Wait(0.2f);
+            Assert.IsFalse(demo.surface.projectorObject.activeSelf);
+            yield return AssertTextureFrozen(canvas, 0.4f);
+        }
+
+        [UnityTest]
+        public IEnumerator Footsteps_RejectEmptyBoundsCornersOfRotatedBoxAndSphere()
+        {
+            PrepareReviewScene();
+            yield return new EnterPlayMode();
+            for (int i = 0; i < 120; i++) yield return null;
+            LogAssert.ignoreFailingMessages = false;
+            var puddle = GameObject.Find("Step Splash").GetComponent<LiquidImmersionVolume>();
+            var backing = UdonSharpEditorUtility.GetBackingUdonBehaviour(puddle);
+            var splash = UdonSharpEditorUtility.GetBackingUdonBehaviour(puddle.stepSplash);
+            var box = puddle.GetComponent<BoxCollider>();
+            puddle.transform.rotation = Quaternion.Euler(0, 45, 0);
+            Physics.SyncTransforms();
+            int received = (int)splash.GetProgramVariable("_received");
+            Vector3 corner = puddle.transform.position + new Vector3(1.2f, 0, 1.2f);
+            corner.y = 0.02f;
+            Networking.LocalPlayer.TeleportTo(corner, Quaternion.identity);
+            yield return Wait(0.7f);
+            Assert.IsTrue(Networking.LocalPlayer.IsPlayerGrounded());
+            Assert.IsTrue(box.bounds.Contains(Networking.LocalPlayer.GetPosition()));
+            Assert.IsFalse((bool)backing.GetProgramVariable("_stepInside"), "rotated box AABB corner counted as liquid");
+            Assert.AreEqual(received, splash.GetProgramVariable("_received"));
+            Vector3 centre = puddle.transform.position;
+            centre.y = 0.02f;
+            Networking.LocalPlayer.TeleportTo(centre, Quaternion.identity);
+            yield return Wait(0.7f);
+            Assert.IsTrue((bool)backing.GetProgramVariable("_stepInside"));
+            Assert.Greater((int)splash.GetProgramVariable("_received"), received, "box interior did not splash");
+
+            box.enabled = false;
+            var sphere = puddle.gameObject.AddComponent<SphereCollider>();
+            sphere.isTrigger = true;
+            sphere.radius = 1f;
+            sphere.center = new Vector3(0, -0.97f, 0);
+            backing.SetProgramVariable("_trigger", sphere);
+            splash.SetProgramVariable("emissionVolume", sphere);
+            Physics.SyncTransforms();
+            received = (int)splash.GetProgramVariable("_received");
+            Networking.LocalPlayer.TeleportTo(centre + new Vector3(0.8f, 0, 0.8f), Quaternion.identity);
+            yield return Wait(0.7f);
+            Assert.IsTrue(sphere.bounds.Contains(Networking.LocalPlayer.GetPosition()));
+            Assert.IsFalse((bool)backing.GetProgramVariable("_stepInside"), "sphere AABB corner counted as liquid");
+            Assert.AreEqual(received, splash.GetProgramVariable("_received"));
+            Networking.LocalPlayer.TeleportTo(centre, Quaternion.identity);
+            yield return Wait(0.7f);
+            Assert.IsTrue((bool)backing.GetProgramVariable("_stepInside"));
+            Assert.Greater((int)splash.GetProgramVariable("_received"), received, "sphere interior did not splash");
+            sphere.enabled = false;
+            yield return Wait(0.2f);
+            Assert.IsFalse((bool)backing.GetProgramVariable("_stepInside"), "disabled collider counted as liquid");
+        }
+
+        private static IEnumerator AssertTextureFrozen(UdonBehaviour canvas, float seconds)
+        {
+            bool front = (bool)canvas.GetProgramVariable("_frontIsA");
+            float until = Time.realtimeSinceStartup + seconds;
+            while (Time.realtimeSinceStartup < until)
+            {
+                yield return null;
+                Assert.AreEqual(front, canvas.GetProgramVariable("_frontIsA"), "disabled simulation updated its texture");
+            }
+        }
+
+        private void PrepareReviewScene()
+        {
+            _optionsEnabled = EditorSettings.enterPlayModeOptionsEnabled;
+            _options = EditorSettings.enterPlayModeOptions;
+            UdonSharpCompilerV1.CompileSync(new UdonSharpCompileOptions { IsEditorBuild = true });
+            LiquidContactScene.Create();
+            UdonSharpCompilerV1.CompileSync(new UdonSharpCompileOptions { IsEditorBuild = true });
+            EditorSettings.enterPlayModeOptionsEnabled = true;
+            EditorSettings.enterPlayModeOptions = EnterPlayModeOptions.DisableDomainReload;
+            ClientSimRuntimeLoader.BeginUnityTesting(new ClientSimSettings {
+                enableClientSim = true, initializationDelay = 0, spawnPlayer = true,
+                localPlayerIsMaster = true, displayLogs = false });
+            LogAssert.ignoreFailingMessages = true;
+        }
+
         private static IEnumerator Wait(float seconds)
         {
             float until = Time.realtimeSinceStartup + seconds;

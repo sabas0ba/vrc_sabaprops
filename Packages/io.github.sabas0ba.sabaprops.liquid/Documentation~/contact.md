@@ -56,6 +56,8 @@
 
 独自の浅い水に飛散を追加する場合は `LiquidSplash` を置き、`pool` と `profile`、`emissionVolume` に液体の Trigger Collider を設定します。`LiquidImmersionVolume.stepSplash` から参照します。足元が液面から 35 cm より深い場合は、踏み込みによる飛散を発生させません。
 
+踏み込みとマネキンの浸漬は Collider の形状内に足元があるかで判定します。回転した Box Collider や Sphere Collider の外接箱に含まれるだけの場所は対象になりません。無効な Collider は対象外です。
+
 道具を複製する場合、Projector マテリアルも道具ごとに複製してください。メニューから追加した道具には、それぞれ別のマテリアルを生成します。
 
 ## Limb Canvas
@@ -69,6 +71,8 @@
 ## 負荷制御
 
 Canvas の `simulationDistance` より遠くでは流下・乾燥の定期 RenderTexture 更新を止め、`displayDistance` より遠くでは Projector を非表示にします。0 は距離制限なしです。既定は Body / Surface が 25 m・50 m、Limb が 12 m・20 m です。近づくと再開しますが、停止中の流下の経過を再計算するものではありません。入力の確定に必要な更新は距離制限中も発生します。
+
+表示距離と更新距離は独立しています。`displayDistance` を `simulationDistance` より小さくしても、更新範囲内なら非表示中の流下・乾燥・描画入力の処理を継続します。利用者によるローカル非表示は両方を停止します。
 
 接触は既定で 1 クライアントあたり 1 フレーム 2 回、1 秒 20 回までです。超過した接触は両側を変更せず省略します。`GetAcceptedContacts()` と `GetDroppedContacts()` で件数を確認できます。複数人が同時に接触する場合は、上限と描画負荷の両方を確認してください。
 
