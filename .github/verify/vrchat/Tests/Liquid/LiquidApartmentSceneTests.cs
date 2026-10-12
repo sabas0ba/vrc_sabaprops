@@ -10,6 +10,16 @@ namespace SabaProps.Liquid.WorldTests
     public class LiquidApartmentPlayTests : LiquidPlayroomPlayTests
     {
         protected override void CreateScene() { LiquidApartmentScene.Create(); }
+        protected override void CaptureSurface(string phase)
+        {
+            bool asynchronous = UnityEditor.ShaderUtil.allowAsyncCompilation;
+            UnityEditor.ShaderUtil.allowAsyncCompilation = false;
+            try
+            {
+                LiquidDemoPlayTests.Capture("liquid-apartment-" + phase + ".png", new Vector3(2.7f, 1.8f, -1.5f), new Vector3(5, 0.55f, 0), 75);
+            }
+            finally { UnityEditor.ShaderUtil.allowAsyncCompilation = asynchronous; }
+        }
     }
 
     public class LiquidApartmentSceneTests
@@ -43,6 +53,27 @@ namespace SabaProps.Liquid.WorldTests
         }
 
         [Test]
+        public void RoundedFurniture_HasOutwardFacesAndMetricUVs()
+        {
+            Mesh mesh = LiquidApartmentMesh.Build(new Vector3(2, 1, 3), 0.05f);
+            try
+            {
+                Assert.AreEqual(new Vector3(2, 1, 3), mesh.bounds.size);
+                Vector3[] vertices = mesh.vertices;
+                Vector3[] normals = mesh.normals;
+                int[] indices = mesh.triangles;
+                for (int i = 0; i < indices.Length; i += 3)
+                {
+                    int a = indices[i], b = indices[i + 1], c = indices[i + 2];
+                    Vector3 cross = Vector3.Cross(vertices[b] - vertices[a], vertices[c] - vertices[a]);
+                    Assert.Greater(Vector3.Dot(cross, normals[a] + normals[b] + normals[c]), 0);
+                }
+                Assert.Greater(mesh.uv[35].y - mesh.uv[0].y, 2.9f);
+            }
+            finally { Object.DestroyImmediate(mesh); }
+        }
+
+        [Test]
         public void HouseholdProps_AreConnectedAndBalloonRespawnsStayInBathroom()
         {
             var pool = Object.FindObjectOfType<LiquidCanvasPool>();
@@ -58,9 +89,31 @@ namespace SabaProps.Liquid.WorldTests
                 Assert.Less(Vector3.Distance(balloon.transform.position, balloon.respawnPoint.position), 0.001f);
             foreach (var nozzle in Object.FindObjectsOfType<LiquidNozzle>()) Assert.AreEqual(pool, nozzle.pool);
             LiquidSampleSceneTests.AssertEveryProgramLoads();
+            bool asynchronous = UnityEditor.ShaderUtil.allowAsyncCompilation;
+            UnityEditor.ShaderUtil.allowAsyncCompilation = false;
+            try
+            {
             LiquidDemoPlayTests.Capture("liquid-apartment-living.png", new Vector3(-0.2f, 2.6f, -0.7f), new Vector3(-2.8f, 1.1f, 2.5f), 85);
             LiquidDemoPlayTests.Capture("liquid-apartment-bath.png", new Vector3(1.25f, 2.5f, -1.2f), new Vector3(4.4f, 0.9f, -2.5f), 90);
             LiquidDemoPlayTests.Capture("liquid-apartment-kitchen.png", new Vector3(0.5f, 2.4f, 1.3f), new Vector3(3.7f, 1.2f, 3.5f), 85);
+            AssertNoErrorMaterial("liquid-apartment-living.png");
+            AssertNoErrorMaterial("liquid-apartment-kitchen.png");
+            }
+            finally { UnityEditor.ShaderUtil.allowAsyncCompilation = asynchronous; }
+        }
+
+        private static void AssertNoErrorMaterial(string file)
+        {
+            var image = new Texture2D(2, 2);
+            try
+            {
+                image.LoadImage(System.IO.File.ReadAllBytes(System.IO.Path.Combine("TestResults", file)));
+                int pink = 0;
+                foreach (Color32 pixel in image.GetPixels32())
+                    if (pixel.r > 245 && pixel.b > 245 && pixel.g < 10) pink++;
+                Assert.Less(pink, image.width * image.height / 1000, "error-material pixels in " + file);
+            }
+            finally { Object.DestroyImmediate(image); }
         }
     }
 }

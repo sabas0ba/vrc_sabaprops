@@ -21,6 +21,8 @@ namespace SabaProps.Liquid.Editors
             if (EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo()) Create();
         }
 
+        public static void OpenExisting() { EditorSceneManager.OpenScene(ScenePath); }
+
         public static void Create()
         {
             // Reuse independent pickups; leave the previously generated Playroom scene intact.
@@ -44,6 +46,8 @@ namespace SabaProps.Liquid.Editors
             Bathroom(pool);
             Entrance(pool);
             Balcony(pool);
+            LiquidApartmentMaterials.ConfigureLighting();
+            LiquidApartmentMaterials.CaptureReflections();
             // A single volume avoids duplicate projections at internal partitions.
             var canvas = pool.surfaces[0];
             canvas.anchor.position = new Vector3(0, 1.5f, 1.1f);
@@ -66,25 +70,34 @@ namespace SabaProps.Liquid.Editors
 
         private static void Architecture()
         {
-            Box("Floor", new Vector3(0, -0.1f, 0), new Vector3(12.4f, 0.2f, 10.4f), _wood);
+            Box("Floor", new Vector3(0, -0.1f, 0), new Vector3(12.4f, 0.2f, 10.4f), Mat("Floor", Color.white));
             Box("Ceiling", new Vector3(0, 3.1f, 0), new Vector3(12.4f, 0.2f, 10.4f), _wall);
             Box("South wall", new Vector3(0, 1.5f, -5.1f), new Vector3(12.4f, 3, 0.2f), _wall);
             Box("West wall", new Vector3(-6.1f, 1.5f, 0), new Vector3(0.2f, 3, 10), _wall);
             Box("East wall", new Vector3(6.1f, 1.5f, 0), new Vector3(0.2f, 3, 10), _wall);
             // Open passages are 1.4 m or wider; lintels leave 2.3 m of headroom.
-            Partition("Balcony doorway", true, 5.1f, -6, 6, -2.3f, -0.7f);
+            Partition("Balcony doorway", true, 5.1f, -3, 6, -2.3f, -0.7f);
+            Box("Window pier", new Vector3(-5.75f, 1.5f, 5.1f), new Vector3(0.5f, 3, 0.15f), _wall);
+            Box("Window sill wall", new Vector3(-4.25f, 0.525f, 5.1f), new Vector3(2.5f, 1.05f, 0.15f), _wall);
+            Box("Window header", new Vector3(-4.25f, 2.775f, 5.1f), new Vector3(2.5f, 0.45f, 0.15f), _wall);
             Partition("Living doorway", true, -1, -6, 1, -2.7f, -1.1f);
             Partition("Bathroom doorway", false, 1, -5, 1, -3.5f, -1.9f);
             Box("Kitchen partition", new Vector3(3.5f, 1.5f, 1), new Vector3(5, 3, 0.15f), _wall);
             Box("Entry tiles", new Vector3(-2.5f, 0.005f, -3.7f), new Vector3(6.8f, 0.01f, 2.5f), _tile);
             Box("Bathroom tiles", new Vector3(3.5f, 0.008f, -2), new Vector3(4.8f, 0.016f, 5.8f), _tile);
-            for (int i = 0; i < 23; i++)
-                Box("Floorboard joint", new Vector3(-5.75f + i * 0.5f, 0.003f, 2.9f), new Vector3(0.008f, 0.006f, 4.1f), _wood);
             Box("Front door", new Vector3(-2, 1.1f, -4.98f), new Vector3(1.1f, 2.2f, 0.06f), _wood);
             Box("Door handle", new Vector3(-1.6f, 1, -4.89f), new Vector3(0.16f, 0.04f, 0.08f), _metal);
-            Box("Living window", new Vector3(-4.25f, 1.8f, 4.96f), new Vector3(2.5f, 1.5f, 0.04f), Mat("Window", new Color(0.48f, 0.7f, 0.84f)));
+            Material glass = LiquidAssets.CreateOrLoadTransparentMaterial(Folder + "/WindowGlass.mat", new Color(0.78f, 0.87f, 0.92f, 0.12f), 0.92f);
+            Box("Living window", new Vector3(-4.25f, 1.8f, 5.05f), new Vector3(2.5f, 1.5f, 0.02f), glass);
+            _root.Find("Living window").GetComponent<Renderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             for (int side = -1; side <= 1; side += 2)
-                Box("Curtain", new Vector3(-4.25f + side * 1.25f, 1.65f, 4.83f), new Vector3(0.35f, 2.3f, 0.12f), _white);
+            {
+                Box("Window frame", new Vector3(-4.25f + side * 1.25f, 1.8f, 4.98f), new Vector3(0.07f, 1.55f, 0.08f), _white);
+                Box("Window frame", new Vector3(-4.25f, 1.8f + side * 0.75f, 4.98f), new Vector3(2.55f, 0.07f, 0.08f), _white);
+            }
+            Box("Window mullion", new Vector3(-4.25f, 1.8f, 4.98f), new Vector3(0.045f, 1.5f, 0.08f), _white);
+            for (int side = -1; side <= 1; side += 2)
+                Box("Curtain", new Vector3(-4.25f + side * 1.25f, 1.65f, 4.83f), new Vector3(0.45f, 2.3f, 0.16f), Mat("Curtain", new Color(0.94f, 0.91f, 0.84f)));
         }
 
         private static void Living(LiquidCanvasPool pool)
@@ -93,10 +106,17 @@ namespace SabaProps.Liquid.Editors
             Box("Sofa back", new Vector3(-5.4f, 0.85f, 2.2f), new Vector3(0.25f, 1.1f, 2.8f), _fabric);
             for (int side = -1; side <= 1; side += 2)
                 Box("Sofa arm", new Vector3(-4.8f, 0.7f, 2.2f + side * 1.3f), new Vector3(1.35f, 0.7f, 0.18f), _fabric);
+            for (int i = 0; i < 3; i++)
+            {
+                Box("Sofa cushion", new Vector3(-4.7f, 0.67f, 1.4f + i * 0.8f), new Vector3(1.02f, 0.18f, 0.77f), _fabric);
+                Box("Sofa back cushion", new Vector3(-5.16f, 1, 1.4f + i * 0.8f), new Vector3(0.22f, 0.55f, 0.77f), _fabric);
+            }
+            Box("Sofa pillow", new Vector3(-4.93f, 0.98f, 1.16f), new Vector3(0.3f, 0.44f, 0.48f), Mat("Linen", new Color(0.73f, 0.65f, 0.51f)));
             Box("Rug", new Vector3(-3, 0.015f, 2.2f), new Vector3(3.5f, 0.03f, 3.6f), Mat("Rug", new Color(0.7f, 0.61f, 0.48f)));
             Table("Coffee table", new Vector3(-3, 0.55f, 2.1f), new Vector2(1.2f, 2));
             Box("TV cabinet", new Vector3(0.45f, 0.35f, 2.8f), new Vector3(0.7f, 0.7f, 2.5f), _wood);
             Box("TV", new Vector3(0.6f, 1.2f, 2.8f), new Vector3(0.08f, 1, 1.8f), _metal);
+            Box("TV screen", new Vector3(0.55f, 1.2f, 2.8f), new Vector3(0.012f, 0.91f, 1.7f), Mat("Screen", new Color(0.025f, 0.031f, 0.036f)));
             Table("Art desk", new Vector3(-4, 0.8f, -0.45f), new Vector2(3.3f, 0.8f));
             for (int i = 0; i < 4; i++)
             {
@@ -119,13 +139,20 @@ namespace SabaProps.Liquid.Editors
         private static void Kitchen(LiquidCanvasPool pool)
         {
             Box("Kitchen units", new Vector3(3.5f, 0.45f, 4.5f), new Vector3(4.6f, 0.9f, 0.85f), _white);
-            Box("Countertop", new Vector3(3.5f, 0.93f, 4.5f), new Vector3(4.7f, 0.06f, 0.9f), _wood);
+            Box("Countertop", new Vector3(3.5f, 0.93f, 4.5f), new Vector3(4.7f, 0.06f, 0.9f), Mat("Counter", Color.white));
             Box("Upper cupboards", new Vector3(3.5f, 2.25f, 4.7f), new Vector3(4.6f, 0.8f, 0.5f), _white);
             for (int i = 0; i < 4; i++)
+            {
+                Box("Lower cabinet door", new Vector3(1.775f + i * 1.15f, 0.46f, 4.06f), new Vector3(1.12f, 0.78f, 0.035f), _white);
+                Box("Upper cabinet door", new Vector3(1.775f + i * 1.15f, 2.25f, 4.43f), new Vector3(1.12f, 0.76f, 0.035f), _white);
                 Box("Cabinet handle", new Vector3(1.7f + i * 1.15f, 0.7f, 4.04f), new Vector3(0.24f, 0.035f, 0.035f), _metal);
+            }
             Box("Refrigerator", new Vector3(5.5f, 1, 2), new Vector3(0.9f, 2, 0.8f), _white);
             Box("Fridge handle", new Vector3(5.18f, 1.2f, 1.56f), new Vector3(0.04f, 0.55f, 0.05f), _metal);
             Box("Hob", new Vector3(4.3f, 0.97f, 4.4f), new Vector3(0.9f, 0.025f, 0.6f), _metal);
+            for (int i = 0; i < 2; i++)
+                LiquidPrefabBuilder.Part(_root, "Hob ring", PrimitiveType.Cylinder, new Vector3(4.08f + i * 0.42f, 0.987f, 4.4f),
+                    new Vector3(0.3f, 0.002f, 0.3f), Quaternion.identity, Mat("Hob ring", new Color(0.3f, 0.32f, 0.33f)), false);
             var faucet = LiquidPrefabBuilder.BuildFaucet();
             faucet.name = "Kitchen faucet";
             faucet.transform.position = new Vector3(2, 0.17f, 4.35f);
@@ -189,6 +216,9 @@ namespace SabaProps.Liquid.Editors
             mirror.layer = 18;
             Box("Washing machine", new Vector3(3.1f, 0.45f, 0.45f), new Vector3(0.85f, 0.9f, 0.8f), _white);
             Box("Washer door", new Vector3(3.1f, 0.42f, 0.03f), new Vector3(0.58f, 0.55f, 0.03f), _metal);
+            LiquidPrefabBuilder.Part(_root, "Washer porthole", PrimitiveType.Cylinder, new Vector3(3.1f, 0.42f, 0),
+                new Vector3(0.45f, 0.015f, 0.45f), Quaternion.Euler(90, 0, 0), Mat("Screen", new Color(0.025f, 0.031f, 0.036f)), false);
+            Box("Washer controls", new Vector3(3.1f, 0.79f, 0.01f), new Vector3(0.7f, 0.1f, 0.02f), _metal);
             Box("Towel shelf", new Vector3(4.35f, 0.8f, 0.45f), new Vector3(1.4f, 0.1f, 0.8f), _wood);
             Box("Bath stool", new Vector3(2.25f, 0.12f, -4), new Vector3(1.1f, 0.24f, 0.7f), _white);
             for (int i = 0; i < 2; i++)
@@ -255,7 +285,11 @@ namespace SabaProps.Liquid.Editors
             light.transform.position = new Vector3(centre.x, 2.75f, centre.z);
             light.type = LightType.Point; light.range = 9; light.intensity = 1.3f;
             zone.lamp = light;
-            Box("Ceiling fixture", light.transform.position + Vector3.up * 0.15f, new Vector3(0.8f, 0.1f, 0.8f), _white);
+            Material diffuser = Mat("Diffuser", Color.white);
+            diffuser.SetColor("_EmissionColor", new Color(0.75f, 0.7f, 0.6f));
+            diffuser.EnableKeyword("_EMISSION");
+            EditorUtility.SetDirty(diffuser);
+            Box("Ceiling fixture", new Vector3(centre.x, 2.96f, centre.z), new Vector3(0.8f, 0.07f, 0.8f), diffuser);
             if (uv)
             {
                 var blacklight = new GameObject("Living UV").AddComponent<Light>();
@@ -296,9 +330,14 @@ namespace SabaProps.Liquid.Editors
         }
 
         private static void Move(string name, Vector3 position) { GameObject.Find(name).transform.position = position; }
-        private static Material Mat(string name, Color colour) { return LiquidAssets.CreateOrLoadSurfaceMaterial(Folder + "/" + name + ".mat", colour, 0.3f); }
+        private static Material Mat(string name, Color colour) { return LiquidApartmentMaterials.Get(name, colour); }
         private static void Box(string name, Vector3 position, Vector3 size, Material material, bool solid = true)
-        { LiquidPrefabBuilder.Part(_root, name, PrimitiveType.Cube, position, size, Quaternion.identity, material, solid); }
+        {
+            GameObject part = LiquidPrefabBuilder.Part(_root, name, PrimitiveType.Cube, position, size, Quaternion.identity, material, solid);
+            float radius = name.StartsWith("Sofa") ? 0.08f : 0.012f;
+            LiquidApartmentMesh.RoundBox(part, radius);
+            if (name == "Curtain") LiquidApartmentMesh.Drape(part, size);
+        }
         private static void Label(string text, Vector3 position, float yaw = 0)
         {
             var label = new GameObject(text).AddComponent<TextMesh>();

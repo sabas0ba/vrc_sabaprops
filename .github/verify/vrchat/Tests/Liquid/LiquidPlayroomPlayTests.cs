@@ -16,6 +16,7 @@ namespace SabaProps.Liquid.WorldTests
         private EnterPlayModeOptions _options;
 
         protected virtual void CreateScene() { LiquidPlayroomScene.Create(); }
+        protected virtual void CaptureSurface(string phase) { }
 
         [UnityTearDown]
         public IEnumerator TearDown()
@@ -25,6 +26,7 @@ namespace SabaProps.Liquid.WorldTests
             EditorSettings.enterPlayModeOptionsEnabled = _optionsEnabled;
             EditorSettings.enterPlayModeOptions = _options;
             LogAssert.ignoreFailingMessages = false;
+            CaptureSurface("clean");
         }
 
         [UnityTest]
@@ -72,6 +74,7 @@ namespace SabaProps.Liquid.WorldTests
                     Assert.Greater(pigment, 0, "sprayer did not paint direction " + direction);
                 }
                 finally { RenderTexture.active = previous; Object.DestroyImmediate(read); }
+                CaptureSurface(direction == Vector3.down ? "floor" : "wall");
             }
         }
     }
