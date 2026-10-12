@@ -2,7 +2,7 @@
 
 このパッケージの変更点をまとめています。フォーマットは [Keep a Changelog](https://keepachangelog.com/ja/1.1.0/) に、バージョニングは [Semantic Versioning](https://semver.org/lang/ja/) に従います。
 
-## [0.1.0] - 未リリース
+## [0.1.0] - 2026-10-12
 
 最初のリリースです。ローカル専用の Recorder と再生パネルを収録します。
 
