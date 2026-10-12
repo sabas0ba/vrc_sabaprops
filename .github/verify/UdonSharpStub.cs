@@ -123,7 +123,5 @@ namespace UdonSharp
         public virtual void OnOwnershipTransferred(VRC.SDKBase.VRCPlayerApi player) { }
 
         public virtual void OnAvatarEyeHeightChanged(VRC.SDKBase.VRCPlayerApi player, float prevEyeHeightAsMeters) { }
-
-        public virtual void OnAvatarChanged(VRC.SDKBase.VRCPlayerApi player) { }
     }
 }
