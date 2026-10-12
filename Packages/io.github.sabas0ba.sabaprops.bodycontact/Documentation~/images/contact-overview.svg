@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="540" viewBox="0 0 960 540" role="img" aria-labelledby="title desc">
+  <title id="title">Body Contact: head and torso contact</title>
+  <desc id="desc">Two players represented by head spheres and torso capsules. Arrows show horizontal position correction away from contact. This is a schematic, not a screenshot.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 Z" fill="#eef4ff"/>
+    </marker>
+  </defs>
+  <rect width="960" height="540" fill="#162333"/>
+  <g font-family="sans-serif" fill="#eef4ff">
+    <text x="48" y="65" font-size="32" font-weight="bold">Body Contact</text>
+    <text x="48" y="101" font-size="19">Head and torso / horizontal position correction</text>
+  </g>
+  <path d="M 80 432 H 880" stroke="#66788e" stroke-width="2"/>
+  <g fill="#43b8db" fill-opacity="0.22" stroke="#62d5f3" stroke-width="4">
+    <circle cx="409" cy="183" r="38"/>
+    <rect x="333" y="232" width="152" height="184" rx="76"/>
+  </g>
+  <g fill="#efb452" fill-opacity="0.22" stroke="#ffcd7a" stroke-width="4">
+    <circle cx="551" cy="183" r="38"/>
+    <rect x="475" y="232" width="152" height="184" rx="76"/>
+  </g>
+  <g stroke="#eef4ff" stroke-width="3" fill="none">
+    <path d="M 403 335 H 253" marker-end="url(#arrow)"/>
+    <path d="M 557 335 H 707" marker-end="url(#arrow)"/>
+    <path d="M 362 180 H 254 M 330 272 H 254" stroke-width="1.5"/>
+  </g>
+  <g font-family="sans-serif" fill="#eef4ff" font-size="20">
+    <text x="145" y="187">Head</text>
+    <text x="145" y="279">Torso</text>
+    <text x="338" y="467" fill="#62d5f3">Player A</text>
+    <text x="511" y="467" fill="#ffcd7a">Player B</text>
+    <text x="48" y="510" font-size="16" fill="#b8c8da">Schematic: dimensions depend on avatar proportions.</text>
+  </g>
+</svg>
