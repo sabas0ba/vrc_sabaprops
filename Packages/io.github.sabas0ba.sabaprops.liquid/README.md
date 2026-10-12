@@ -51,6 +51,9 @@ Package Manager の Samples から **Liquid Demo World** を取り込むと、`A
 Desktop ではボタン1回で塗布・こすれ・転写・拭き取りを実行でき、水風船の足元への投擲も試せます。
 操作手順と画像は [接触、転写と飛散](Documentation~/contact.md) を参照してください。
 
+複数人で汚し合う屋内サンプルは `Tools > SabaProps > Liquid > Create Playroom Scene` で生成できます。
+床・壁、4 色の描画道具、水鉄砲、布、水風船を備えます。[Playroom の使い方](Documentation~/playroom.md) を参照してください。
+
 ## 構成
 
 ### Canvas

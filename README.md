@@ -57,6 +57,8 @@ Liquid は `Tools > SabaProps > Liquid` の `Create Sample Scene`、`Create Comp
 
 別途 `Create Contact Scene` で、手・体への塗料の転写、こすれ、拭き取り、水風船、浅水への踏み込みを確認できます。Desktop で操作を省略できる自動デモも含みます。[接触・転写の確認手順](Packages/io.github.sabas0ba.sabaprops.liquid/Documentation~/contact.md)を参照してください。
 
+複数人で互いと床・壁を汚す屋内サンプルは `Create Playroom Scene` で生成できます。[Playroom の使い方](Packages/io.github.sabas0ba.sabaprops.liquid/Documentation~/playroom.md)に道具と確認手順を掲載しています。
+
 ---
 
 ## リポジトリ構成
