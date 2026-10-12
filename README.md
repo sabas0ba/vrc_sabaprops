@@ -57,6 +57,11 @@ Put Items は `Tools > SabaProps > Put Items > Open Demo Scene` から、食卓�
 
 Liquid は `Tools > SabaProps > Liquid` の `Create Sample Scene`、`Create Comparison Scene`、`Create Interactive Scene`、`Create Painting Scene` で、4 つのワールドを生成します。鏡の前で自分のアバターが濡れる・泥が付く・洗い流される様子、噴射器でのかけ合い、壁と床へのペンやスタンプでの描画を確認できます。[利用方法](Packages/io.github.sabas0ba.sabaprops.liquid/Documentation~/authoring.md)と[サンプルの内容](Packages/io.github.sabas0ba.sabaprops.liquid/Documentation~/demo.md)を参照してください。
 
+別途 `Create Contact Scene` で、手・体への塗料の転写、こすれ、拭き取り、水風船、浅水への踏み込みを確認できます。Desktop で操作を省略できる自動デモも含みます。[接触・転写の確認手順](Packages/io.github.sabas0ba.sabaprops.liquid/Documentation~/contact.md)を参照してください。
+
+複数人で互いと床・壁を汚す屋内サンプルは `Create Playroom Scene` で生成できます。[Playroom の使い方](Packages/io.github.sabas0ba.sabaprops.liquid/Documentation~/playroom.md)に道具と確認手順を掲載しています。
+マンションの間取りと家具・生活用品を使う場合は `Create Apartment Scene` を使用します。[Apartment の使い方](Packages/io.github.sabas0ba.sabaprops.liquid/Documentation~/apartment.md)に各部屋の機能を掲載しています。
+
 ---
 
 ## リポジトリ構成

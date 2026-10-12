@@ -95,6 +95,8 @@ namespace SabaProps.Liquid.Editors
             canvas.projectorObject = projectorObject;
             canvas.projectorMaterial = projectorMaterial;
             canvas.updateMaterial = update;
+            canvas.contactMaterial = LiquidAssets.CreateOrLoadMaterial(
+                LiquidAssets.MaterialFolder + "/LiquidContact.mat", "Hidden/SabaProps/Liquid/Contact");
             LiquidSurfaceBuilder.AssignAvatarDefaults(canvas);
             UdonSharpEditorUtility.CopyProxyToUdon(canvas);
             EditorUtility.SetDirty(canvas);

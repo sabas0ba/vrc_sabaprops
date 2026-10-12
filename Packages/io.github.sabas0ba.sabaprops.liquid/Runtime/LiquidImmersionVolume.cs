@@ -35,6 +35,12 @@ namespace SabaProps.Liquid
         [Tooltip("液面の高さを示す Transform。未設定ならトリガーの上端を液面とします。")]
         public Transform surface;
 
+        [Tooltip("踏み込み時の飛散。未設定なら飛散しません。")]
+        public LiquidSplash stepSplash;
+        [Min(0.1f)] public float stepDistance = 0.65f;
+        private Vector3 _lastStepPosition;
+        private bool _stepInside;
+
         [Header("波")]
         [Tooltip("液面が上下する振幅（m）。0 で静水です。")]
         [Min(0f)]
@@ -172,7 +178,7 @@ namespace SabaProps.Liquid
             for (int i = 0; i < mannequins; i++)
             {
                 LiquidBodyCanvas mannequin = pool.CanvasForTarget(pool.GetMannequinTarget(i));
-                if (mannequin != null && _trigger.bounds.Contains(mannequin.GetBodyBottom()))
+                if (mannequin != null && ContainsPoint(mannequin.GetBodyBottom()))
                 {
                     mannequin.ApplyImmersion(level, profile, elapsed);
                 }
@@ -190,6 +196,50 @@ namespace SabaProps.Liquid
                     return;
                 }
             }
+        }
+
+        private void LateUpdate()
+        {
+            if (stepSplash == null || _trigger == null) return;
+            VRCPlayerApi local = Networking.LocalPlayer;
+            if (!Utilities.IsValid(local)) return;
+            Vector3 position = local.GetPosition();
+            // A shallow puddle may sit below the player's collision capsule.
+            // Test the grounded foot position rather than relying on its trigger events.
+            if (!local.IsPlayerGrounded() || !ContainsPoint(position))
+            {
+                _stepInside = false;
+                return;
+            }
+            if (!_stepInside)
+            {
+                _stepInside = true;
+                _lastStepPosition = position;
+                EmitStep(position);
+                return;
+            }
+            Vector3 horizontal = position - _lastStepPosition;
+            horizontal.y = 0;
+            if (horizontal.magnitude < Mathf.Max(stepDistance, 0.1f)) return;
+            _lastStepPosition = position;
+            EmitStep(position);
+        }
+
+        public bool ContainsPoint(Vector3 position)
+        {
+            // Bounds alone include empty corners of rotated boxes, spheres and capsules.
+            // Disabled colliders return the input from ClosestPoint, so reject them first.
+            return _trigger != null && _trigger.enabled && _trigger.gameObject.activeInHierarchy
+                && (_trigger.ClosestPoint(position) - position).sqrMagnitude <= 1e-8f;
+        }
+
+        private void EmitStep(Vector3 position)
+        {
+            if (stepSplash == null) return;
+            float level = GetSurfaceHeight();
+            // Shallow water only; swimming below the surface is not a footstep.
+            if (position.y < level - 0.35f || position.y > level + 0.1f) return;
+            stepSplash.Emit(new Vector3(position.x, level + 0.02f, position.z));
         }
     }
 }

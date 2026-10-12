@@ -167,10 +167,16 @@ namespace UnityEditor
 
     public static class ShaderUtil
     {
+        public static bool allowAsyncCompilation { get; set; }
         public static bool ShaderHasError(Shader s) => false;
         public static int GetShaderMessageCount(Shader s) => 0;
         public static ShaderMessage[] GetShaderMessages(Shader s) =>
             new ShaderMessage[0];
+    }
+
+    public static class Lightmapping
+    {
+        public static bool BakeReflectionProbe(ReflectionProbe probe, string path) => true;
     }
 
     public static class EditorGUIUtility

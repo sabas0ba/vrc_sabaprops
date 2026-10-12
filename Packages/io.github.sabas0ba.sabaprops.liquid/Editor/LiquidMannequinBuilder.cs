@@ -138,6 +138,8 @@ namespace SabaProps.Liquid.Editors
             canvas.projectorObject = projectorObject;
             canvas.projectorMaterial = projectorMaterial;
             canvas.updateMaterial = update;
+            canvas.contactMaterial = LiquidAssets.CreateOrLoadMaterial(
+                LiquidAssets.MaterialFolder + "/LiquidContact.mat", "Hidden/SabaProps/Liquid/Contact");
             canvas.anchor = hips.transform;
             canvas.anchorFeetBelow = HipHeight;
             // The head top is at 1.78 m; a capsule reaching higher records hits above the head, and the depth mask then hides them.

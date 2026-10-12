@@ -18,6 +18,7 @@
 | [利用方法](Documentation~/authoring.md) | 自分のワールドへの組み込み、Prefab、壁と床、描画ツール、環境、同期、メモリの目安 |
 | [サンプルの導入とレビュー](Documentation~/demo.md) | 同梱の 4 つのワールドの内容と確認項目 |
 | [設計](Documentation~/design.md) | 方式、制約とその理由、未確定事項 |
+| [接触、転写と飛散](Documentation~/contact.md) | こすれ、手・体・道具への転写、Desktop 自動デモ、Limb Canvas、水風船、踏み込み、負荷制御 |
 | [変更履歴](CHANGELOG.md) | バージョンごとの変更点 |
 
 ## 導入
@@ -46,6 +47,17 @@ Package Manager の Samples から **Liquid Demo World** を取り込むと、`A
 
 各区画の内容と画像は [サンプルの導入とレビュー](Documentation~/demo.md) にあります。
 
+接触・転写を試す `LiquidContact.unity` は、別途 `Tools > SabaProps > Liquid > Create Contact Scene` で生成します。
+Desktop ではボタン1回で塗布・こすれ・転写・拭き取りを実行でき、水風船の足元への投擲も試せます。
+操作手順と画像は [接触、転写と飛散](Documentation~/contact.md) を参照してください。
+
+複数人で汚し合う屋内サンプルは `Tools > SabaProps > Liquid > Create Playroom Scene` で生成できます。
+床・壁、4 色の描画道具、水鉄砲、布、水風船を備えます。[Playroom の使い方](Documentation~/playroom.md) を参照してください。
+
+マンションの間取りで試す場合は `Tools > SabaProps > Liquid > Create Apartment Scene` を使います。
+リビング・キッチン・浴室・玄関・バルコニーに、蛇口、シャワー、浴槽、傘などを配置しています。[Apartment の使い方](Documentation~/apartment.md) を参照してください。
+生成画像による木床・布・石目、面取りした家具、室内反射を使って、住宅内装と液体表現を比較できます。外部配布素材や追加ライブラリは使っていません。
+
 ## 構成
 
 ### Canvas
@@ -70,6 +82,16 @@ Package Manager の Samples から **Liquid Demo World** を取り込むと、`A
 | `LiquidWeather` | 範囲に雨または雪を降らせる。屋根と傘の下には降らない。雪は積もり、溶けて濡れる |
 | `LiquidHumidity` | 湿度。乾きを遅らせ、結露と垂れる水滴を生じさせる。湯気、霧、面の曇り |
 | `LiquidPaintTool` | ペン、スタンプ、消しゴム。向けた先のワールドの面、マネキン、プレイヤーに描く |
+
+### 接触と飛散
+
+| コンポーネント | 役割 |
+|---|---|
+| `LiquidContact` | 両手・両足・胸・頭で接触を検出し、塗料を変形・転写する。接触対象の部位と利用者ごとの表示を設定する |
+| `LiquidWipeTool` | スポンジ・タオルによる拭き取り、道具への吸着と再付着 |
+| `LiquidWaterBalloon` | 衝突で破裂し、液を飛散させて再出現する。Use で自分の足元へ投げることもできる |
+| `LiquidSplash` | 衝突位置や浅水への踏み込み位置から、周囲へ液を付ける |
+| `LiquidContactDemo` | パッドを動かして接触・転写を確認する自動デモ（サンプル用） |
 
 ### 環境と操作
 

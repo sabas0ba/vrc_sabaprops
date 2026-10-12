@@ -1,6 +1,11 @@
 # サンプルの導入とレビュー
 
+複数人で互いと床・壁を汚す室内サンプルは [Playroom](playroom.md) で生成できます。
+マンションの部屋と生活用品を使うサンプルは [Apartment](apartment.md) にあります。
+
 ## 開く
+
+接触・転写、スポンジ・タオル、水風船の確認には、別途生成する [Contact デモ](contact.md) を使用します。Desktop の自動デモと手動確認の手順を掲載しています。以下は Package Manager から取り込む 4 シーンの説明です。
 
 Package Manager の Samples から **Liquid Demo World** を取り込むと、`Assets/SabaProps/Liquid/Samples` に次の 4 つのシーンが入ります。どれも `VRCSceneDescriptor` とスポーン地点を含み、そのままアップロードできます。
 
