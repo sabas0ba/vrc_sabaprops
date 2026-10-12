@@ -13,6 +13,11 @@ Udon です。オフライン層は Roslyn で C# としてコンパイルする
 分かりません。実際、この層を通したことで 2 つの同梱漏れが見つかっています
 （`UdonSharpAssemblyDefinition` と `UdonSharpProgramAsset`）。
 
+**Capture の UdonSharp コンパイルと RenderTexture への複製。** `io.github.sabas0ba.sabaprops.capture` も
+Udon です。Stage Cam と同じ理由で UdonSharp のコンパイルをここで確かめます。あわせて、Recorder を
+実物の RenderTexture に対して動かし、`VRCGraphics.Blit` が保存枠へ画像を複製することと、
+満杯時の動作を確かめます。オフライン層は RenderTexture を持たないため、計算部分しか実行できません。
+
 **Soft Props の接触動作と UdonSharp コンパイル。** 実際の SDK と ClientSim で
 World Contacts、Pickup、家具の変形と復元を確認します。
 
@@ -117,7 +122,7 @@ Unity は Unity Hub の既定の場所から `ProjectVersion.txt` に一致す�
 初回は SDK が要求する UPM パッケージ（burst、collections、cinemachine 等）を
 Unity がレジストリから取得するため、数分かかります。
 
-テストは `SabaProps.Foliage.CITests`、`SabaProps.Foliage.WorldTests`、`SabaProps.SoftProps.WorldTests`、`SabaProps.StageCam.WorldTests`、`SabaProps.Tablet.WorldTests`、`SabaProps.BodyContact.WorldTests`、`SabaProps.ScreenFx.WorldTests`、`SabaProps.PutItems.Tests`、`SabaProps.Liquid.WorldTests`、`SabaProps.Llama.CITests`、`SabaProps.Llama.WorldTests` に絞って実行します。
+テストは `SabaProps.Foliage.CITests`、`SabaProps.Foliage.WorldTests`、`SabaProps.SoftProps.WorldTests`、`SabaProps.StageCam.WorldTests`、`SabaProps.Capture.WorldTests`、`SabaProps.Tablet.WorldTests`、`SabaProps.BodyContact.WorldTests`、`SabaProps.ScreenFx.WorldTests`、`SabaProps.PutItems.Tests`、`SabaProps.Liquid.WorldTests`、`SabaProps.Llama.CITests`、`SabaProps.Llama.WorldTests` に絞って実行します。
 SDK 自身のテストアセンブリも同じプロジェクトに存在しますが、
 本パッケージとは無関係な理由で 2 件失敗する（ランダム生成の JSON ファズケースと、
 docs.microsoft.com の URL 到達性を検証するもの）ため、終了コードを意味のあるものにするためです。
@@ -129,6 +134,7 @@ docs.microsoft.com の URL 到達性を検証するもの）ため、終了コ�
 | `SabaProps.Foliage.CITests` | EditMode | シーンが正しく作られているか。SDK の有無で期待値が切り替わります |
 | `SabaProps.Foliage.WorldTests` | PlayMode | ClientSim でワールドとして実行し、プレイヤーが Spawn するか |
 | `SabaProps.StageCam.WorldTests` | EditMode | リグと操作パネルの Udon コンパイル、保存後の UI イベント接続、カメラ設定の独立性、サンプル構成を検証。`TestResults/stagecam-panel.png` にレイアウト確認画像を出力 |
+| `SabaProps.Capture.WorldTests` | EditMode | Recorder と Player の Udon コンパイル、公開イベントとフィールド、再生パネルの UI イベント接続を検証。Recorder を実物の RenderTexture で動かし、Blit による複製と満杯時の 3 種類の動作を確認。生成したサンプルシーンと、`Samples~` に同梱したシーンの両方について、配線を検証し、ClientSim で実行して Udon VM 上の撮影・間引き・停止・解放と、無効化の間は撮影時計が止まることを確認。`TestResults/capture-sample.png` と `capture-sample-shipped.png` に配置確認画像を出力 |
 | `SabaProps.SoftProps.WorldTests` | EditMode + Playへの遷移 | Prefab生成、同梱デモのimport・参照・比較台、ClientSimでのCollider接触・復元・自動運動・立位荷重 |
 | `SabaProps.Tablet.WorldTests` | EditMode | 全コンポーネントの Udon コンパイル、サンプルシーンの全ボタンがエクスポート済みのイベントを呼ぶこと、ミラーの排他、テレポート地点の番号、Build の再実行で生成物が重複しないことを検証 |
 | `SabaProps.BodyContact.WorldTests` | EditMode（ClientSim検査ではPlayModeへ移行） | Udonコンパイル、生成シーン、描画、通常UpdateとInteract、HUD・Gizmoの実行時検査。配布シーンとビルド済みワールドの追加検査にも対応 |
@@ -241,6 +247,28 @@ SDK の有無を見て期待値を切り替えるため、同じテストが両�
 ClientSim の起動時 `NullReferenceException` で落ちることがあります。2 回目以降は通ります。
 初回インポートで API Updater がアセンブリを差し替える間に起動順が崩れるためで、
 このリポジトリのコードとは関係ありません。
+
+## Capture の同梱サンプルを作り直すには
+
+`io.github.sabas0ba.sabaprops.capture` の `Samples~/CaptureDemo` は、生成メニュー
+(`CaptureSampleScene.Create`) の出力を書き出したものです。手で編集せず、生成器を変更した後に
+次の手順で作り直します。
+
+```sh
+./.github/verify/vrchat/assemble.sh build/WorldProjectCI
+"<Unity>" -batchmode -quit -projectPath build/WorldProjectCI \
+  -executeMethod SabaProps.Capture.WorldTests.CaptureSampleBundle.Export
+cp -r build/WorldProjectCI/Packages/io.github.sabas0ba.sabaprops.capture/Samples~ \
+      Packages/io.github.sabas0ba.sabaprops.capture/
+```
+
+書き出しは、検証プロジェクト内のパッケージの複製へ行います。最後の `cp` でリポジトリへ戻します。
+既に同梱しているアセットの GUID は引き継ぐため、差分は生成器が変えた部分だけになります。
+
+シーン内の `serializedProgramAsset` への参照は、書き出し時に外します。参照先はプロジェクトごとに
+生成されるアセットで、その GUID は利用者のプロジェクトには存在しません。SDK はシーンを開いた時点で
+プログラムソースから参照を張り直します。`ShippedSample_ImportsAndIsWiredLikeAGeneratedOne` が
+これを確かめます。
 
 ## Burst の DLL が読み込めない場合
 

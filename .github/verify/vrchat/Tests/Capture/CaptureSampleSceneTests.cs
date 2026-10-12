@@ -1,0 +1,156 @@
+using NUnit.Framework;
+using SabaProps.Capture.Editors;
+using UdonSharpEditor;
+using UnityEditor;
+using UnityEditor.SceneManagement;
+using UnityEngine;
+using UnityEngine.UI;
+using VRC.SDK3.Components;
+using VRC.Udon;
+
+namespace SabaProps.Capture.WorldTests
+{
+    /// <summary>
+    /// Generates the sample scene, reopens it from disk, and checks that what a user gets
+    /// is wired the way the README describes. Reopening matters: references that only
+    /// exist on the in-memory objects do not survive the save.
+    /// </summary>
+    public class CaptureSampleSceneTests
+    {
+        [Test]
+        public void SavedSample_KeepsBothRecordersWiredToTheirInputsAndPanels()
+        {
+            CaptureSampleScene.Create();
+            EditorSceneManager.OpenScene(CaptureSampleScene.ScenePath);
+            AssertWiring(CaptureSampleScene.SampleFolder);
+        }
+
+        /// <summary>
+        /// The copy in Samples~, imported the way the Package Manager does it. It ships
+        /// without the per-project serialized program references, so this also checks that
+        /// opening the scene is enough for the SDK to restore them.
+        /// </summary>
+        [Test]
+        public void ShippedSample_ImportsAndIsWiredLikeAGeneratedOne()
+        {
+            string scenePath = CaptureSampleBundle.Import();
+            EditorSceneManager.OpenScene(scenePath);
+            AssertWiring(System.IO.Path.GetDirectoryName(scenePath).Replace('\\', '/'));
+
+            foreach (string dependency in AssetDatabase.GetDependencies(scenePath, true))
+            {
+                Assert.That(dependency, Does.Not.Contain("Samples~"),
+                    "the imported scene still points into the package's hidden sample folder");
+            }
+
+            foreach (UdonBehaviour udon in Object.FindObjectsOfType<UdonBehaviour>())
+            {
+                Object serialized = new SerializedObject(udon).FindProperty("serializedProgramAsset").objectReferenceValue;
+                Assert.That(serialized, Is.Not.Null,
+                    $"{udon.name}: the SDK did not restore the serialized program when the scene was opened");
+            }
+        }
+
+        private static void AssertWiring(string sampleFolder)
+        {
+
+            CaptureRecorder textureRecorder = Recorder(CaptureSampleScene.TextureRecorderName);
+            CaptureRecorder cameraRecorder = Recorder(CaptureSampleScene.CameraRecorderName);
+
+            Camera live = GameObject.Find(CaptureSampleScene.LiveCameraName).GetComponent<Camera>();
+            // GameObject.Find skips nothing here: the object is active, only the component is disabled.
+            Camera timelapse = GameObject.Find(CaptureSampleScene.TimelapseCameraName).GetComponent<Camera>();
+
+            Assert.That(live.enabled, Is.True);
+            Assert.That(live.targetTexture, Is.Not.Null);
+            Assert.That(AssetDatabase.GetAssetPath(live.targetTexture),
+                Is.EqualTo(sampleFolder + "/" + System.IO.Path.GetFileName(CaptureSampleScene.LiveTexturePath)));
+            Assert.That(timelapse.enabled, Is.False, "the timelapse camera must only render when the recorder asks");
+            Assert.That(timelapse.targetTexture, Is.Null);
+
+            foreach (Camera camera in new[] { live, timelapse })
+            {
+                Assert.That(camera.cullingMask & (1 << CapturePanelBuilder.PanelLayer), Is.Zero,
+                    $"{camera.name} would film the panels showing its own frames");
+            }
+
+            Assert.That(textureRecorder.sourceTexture, Is.EqualTo(live.targetTexture));
+            Assert.That(textureRecorder.sourceCamera, Is.Null);
+            Assert.That(textureRecorder.fullPolicy, Is.EqualTo(CaptureRecorder.PolicyThin));
+            Assert.That(cameraRecorder.sourceCamera, Is.EqualTo(timelapse));
+            Assert.That(cameraRecorder.sourceTexture, Is.Null);
+            Assert.That(cameraRecorder.fullPolicy, Is.EqualTo(CaptureRecorder.PolicyRing));
+
+            // The frame must match the source's aspect, or the Blit stretches the picture.
+            float sourceAspect = (float)live.targetTexture.width / live.targetTexture.height;
+            float frameAspect = (float)textureRecorder.frameWidth / textureRecorder.frameHeight;
+            Assert.That(frameAspect, Is.EqualTo(sourceAspect).Within(1e-4f));
+
+            foreach (CaptureRecorder recorder in new[] { textureRecorder, cameraRecorder })
+            {
+                Assert.That(recorder.recordOnStart, Is.True, recorder.name);
+                Assert.That(recorder.interval, Is.EqualTo(CaptureSampleScene.SampleInterval), recorder.name);
+                Assert.That(recorder.maxFrames, Is.EqualTo(CaptureSampleScene.SampleMaxFrames), recorder.name);
+
+                // What runs in the client is the UdonBehaviour, not the proxy checked above.
+                UdonBehaviour udon = UdonSharpEditorUtility.GetBackingUdonBehaviour(recorder);
+                Assert.That(udon, Is.Not.Null, recorder.name);
+                Assert.That(udon.programSource, Is.Not.Null, recorder.name);
+                Assert.That(udon.publicVariables.TryGetVariableValue("recordOnStart", out bool onStart), Is.True, recorder.name);
+                Assert.That(onStart, Is.True, $"{recorder.name}: the proxy's settings did not reach the UdonBehaviour");
+                Assert.That(udon.publicVariables.TryGetVariableValue("maxFrames", out int maxFrames), Is.True, recorder.name);
+                Assert.That(maxFrames, Is.EqualTo(CaptureSampleScene.SampleMaxFrames), recorder.name);
+            }
+
+            CapturePlayer texturePanel = GameObject.Find(CaptureSampleScene.TexturePanelName).GetComponent<CapturePlayer>();
+            CapturePlayer cameraPanel = GameObject.Find(CaptureSampleScene.CameraPanelName).GetComponent<CapturePlayer>();
+            Assert.That(texturePanel.recorder, Is.EqualTo(textureRecorder));
+            Assert.That(cameraPanel.recorder, Is.EqualTo(cameraRecorder));
+
+            foreach (CapturePlayer panel in new[] { texturePanel, cameraPanel })
+            {
+                Assert.That(panel.gameObject.layer, Is.EqualTo(CapturePanelBuilder.PanelLayer), panel.name);
+                Assert.That(panel.GetComponentsInChildren<Button>().Length, Is.EqualTo(11), panel.name);
+
+                // The canvas is readable from the side its forward axis points away from.
+                Vector3 toPanel = panel.transform.position - CaptureSampleScene.SpawnPosition;
+                Assert.That(Vector3.Dot(panel.transform.forward, toPanel), Is.GreaterThan(0f),
+                    $"{panel.name} faces away from the spawn");
+            }
+
+            Assert.That(texturePanel.transform.Find("Title").GetComponent<Text>().text,
+                Is.Not.EqualTo(cameraPanel.transform.Find("Title").GetComponent<Text>().text),
+                "the two panels must be told apart by their titles");
+
+            GameObject screen = GameObject.Find(CaptureSampleScene.LiveScreenName);
+            Assert.That(screen.layer, Is.EqualTo(CapturePanelBuilder.PanelLayer));
+            Assert.That(screen.GetComponent<MeshRenderer>().sharedMaterial.mainTexture, Is.EqualTo(live.targetTexture));
+
+            // The VRChat client strips the legacy Animation component on load, which leaves the
+            // subject still and every captured frame identical. It has to be an Animator.
+            GameObject subject = GameObject.Find(CaptureSampleScene.SubjectName);
+            Assert.That(subject.GetComponent<Animation>(), Is.Null, "the client removes legacy Animation components");
+            Animator orbit = subject.GetComponent<Animator>();
+            Assert.That(orbit, Is.Not.Null);
+            Assert.That(orbit.runtimeAnimatorController, Is.Not.Null, "without the controller the subject does not move");
+            AnimationClip[] clips = orbit.runtimeAnimatorController.animationClips;
+            Assert.That(clips.Length, Is.EqualTo(1));
+            Assert.That(clips[0].legacy, Is.False, "an Animator cannot play a legacy clip");
+            Assert.That(clips[0].isLooping, Is.True);
+            Assert.That(clips[0].length, Is.EqualTo(CaptureSampleScene.OrbitPeriod).Within(1e-3f));
+
+            VRCSceneDescriptor world = Object.FindObjectOfType<VRCSceneDescriptor>();
+            Assert.That(world, Is.Not.Null);
+            Assert.That(world.spawns.Length, Is.EqualTo(1));
+            Assert.That(world.spawns[0].position, Is.EqualTo(CaptureSampleScene.SpawnPosition));
+            Assert.That(world.ReferenceCamera, Is.Not.Null);
+        }
+
+        private static CaptureRecorder Recorder(string name)
+        {
+            GameObject go = GameObject.Find(name);
+            Assert.That(go, Is.Not.Null, $"'{name}' is missing from the saved scene");
+            return go.GetComponent<CaptureRecorder>();
+        }
+    }
+}

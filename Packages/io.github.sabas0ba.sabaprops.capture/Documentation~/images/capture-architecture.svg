@@ -1,0 +1,86 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 600" role="img" aria-labelledby="title desc">
+  <title id="title">Capture の構成</title>
+  <desc id="desc">RenderTexture または Camera を入力として Capture Recorder が一定間隔で撮影し、RenderTexture の配列に保持する。Capture Player が配列の画像を参照して RawImage や Renderer に表示する。満杯時は上書き、停止、間引きのいずれかを行う。</desc>
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#176b70"/></marker>
+    <style>
+      .bg { fill: #f4f7f6; }
+      .box { fill: #ffffff; stroke: #176b70; stroke-width: 3; }
+      .input { fill: #e4f2f1; stroke: #176b70; stroke-width: 3; }
+      .output { fill: #fff0e8; stroke: #b65f32; stroke-width: 3; }
+      .frame { fill: #dfe8e7; stroke: #176b70; stroke-width: 2; }
+      .kept { fill: #176b70; }
+      .title { font: 700 26px system-ui, sans-serif; fill: #182426; }
+      .label { font: 700 22px system-ui, sans-serif; fill: #182426; text-anchor: middle; }
+      .small { font: 18px system-ui, sans-serif; fill: #5c6c6d; text-anchor: middle; }
+      .left { text-anchor: start; }
+      .arrow { stroke: #176b70; stroke-width: 4; fill: none; marker-end: url(#arrow); }
+    </style>
+  </defs>
+  <rect class="bg" width="1200" height="600" rx="24"/>
+  <text class="title" x="54" y="58">SabaProps Capture — 撮影と再生のデータフロー</text>
+
+  <rect class="input" x="60" y="120" width="230" height="110" rx="18"/>
+  <text class="label" x="175" y="165">Source Texture</text>
+  <text class="small" x="175" y="198">Blit で写す</text>
+
+  <rect class="input" x="60" y="260" width="230" height="110" rx="18"/>
+  <text class="label" x="175" y="305">Source Camera</text>
+  <text class="small" x="175" y="338">撮影時だけ Render()</text>
+
+  <rect class="box" x="380" y="120" width="440" height="250" rx="18"/>
+  <text class="label" x="600" y="162">Capture Recorder</text>
+  <text class="small" x="600" y="194">予定時刻の格子で撮影</text>
+  <g>
+    <rect class="frame" x="410" y="220" width="40" height="40" rx="4"/>
+    <rect class="frame" x="458" y="220" width="40" height="40" rx="4"/>
+    <rect class="frame" x="506" y="220" width="40" height="40" rx="4"/>
+    <rect class="frame" x="554" y="220" width="40" height="40" rx="4"/>
+    <rect class="frame" x="602" y="220" width="40" height="40" rx="4"/>
+    <rect class="frame" x="650" y="220" width="40" height="40" rx="4"/>
+    <rect class="frame" x="698" y="220" width="40" height="40" rx="4"/>
+    <rect class="frame" x="746" y="220" width="40" height="40" rx="4"/>
+  </g>
+  <text class="small" x="600" y="292">RenderTexture[] (実行時に確保)</text>
+  <text class="small" x="600" y="322">幅・高さ・形式・枚数・VRAM 予算</text>
+  <text class="small" x="600" y="350">一時停止中は撮影時計も停止</text>
+
+  <rect class="output" x="910" y="120" width="230" height="110" rx="18"/>
+  <text class="label" x="1025" y="165">Capture Player</text>
+  <text class="small" x="1025" y="198">スクラブ・再生・追従</text>
+
+  <rect class="output" x="910" y="260" width="230" height="110" rx="18"/>
+  <text class="label" x="1025" y="305">表示先</text>
+  <text class="small" x="1025" y="338">RawImage / Renderer</text>
+
+  <path class="arrow" d="M290 175 H372"/>
+  <path class="arrow" d="M290 315 H372"/>
+  <path class="arrow" d="M820 175 H902"/>
+  <path class="arrow" d="M1025 230 V252"/>
+
+  <text class="label left" x="60" y="430" style="text-anchor:start">満杯時の動作</text>
+  <text class="small left" x="60" y="466">上書き</text>
+  <text class="small left" x="60" y="502">停止</text>
+  <text class="small left" x="60" y="538">間引き</text>
+  <text class="small left" x="160" y="466">最古の枠から上書きし、直近の一定時間を保持</text>
+  <text class="small left" x="160" y="502">上限に達したら撮影を止める</text>
+  <text class="small left" x="160" y="538">1 枚おきに捨てて間隔を 2 倍にする</text>
+
+  <g>
+    <rect class="kept" x="700" y="450" width="30" height="30" rx="3"/>
+    <rect class="frame" x="736" y="450" width="30" height="30" rx="3"/>
+    <rect class="kept" x="772" y="450" width="30" height="30" rx="3"/>
+    <rect class="frame" x="808" y="450" width="30" height="30" rx="3"/>
+    <rect class="kept" x="844" y="450" width="30" height="30" rx="3"/>
+    <rect class="frame" x="880" y="450" width="30" height="30" rx="3"/>
+    <rect class="kept" x="916" y="450" width="30" height="30" rx="3"/>
+    <rect class="frame" x="952" y="450" width="30" height="30" rx="3"/>
+    <path class="arrow" d="M840 492 V514"/>
+    <rect class="kept" x="772" y="522" width="30" height="30" rx="3"/>
+    <rect class="kept" x="808" y="522" width="30" height="30" rx="3"/>
+    <rect class="kept" x="844" y="522" width="30" height="30" rx="3"/>
+    <rect class="kept" x="880" y="522" width="30" height="30" rx="3"/>
+    <text class="small left" x="996" y="472">撮影順 (間隔 d)</text>
+    <text class="small left" x="996" y="544">間引き後 (間隔 2d)</text>
+  </g>
+</svg>

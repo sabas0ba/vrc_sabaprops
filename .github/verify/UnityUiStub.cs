@@ -27,6 +27,21 @@ namespace UnityEngine.UI
         public ButtonClickedEvent onClick = new ButtonClickedEvent();
         public class ButtonClickedEvent : UnityEvent { }
     }
+    public class Slider : MonoBehaviour
+    {
+        public float minValue;
+        public float maxValue;
+        public bool wholeNumbers;
+        public float value;
+        public SliderEvent onValueChanged = new SliderEvent();
+        public void SetValueWithoutNotify(float input) { value = input; }
+        public class SliderEvent : UnityEvent<float> { }
+    }
+    public static class DefaultControls
+    {
+        public struct Resources { }
+        public static GameObject CreateSlider(Resources resources) { return null; }
+    }
 }
 namespace UnityEngine.EventSystems
 {
