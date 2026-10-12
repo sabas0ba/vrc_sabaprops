@@ -40,6 +40,9 @@ VRChat Worlds SDKとUdonSharpを備えたUnityプロジェクトへパッケー�
 床は1 mの格子と10 cmの補助線です。表示用マネキンにはColliderを付けません。
 最終配布では、シーンと必要なアセットを利用者が取り込めるサンプルとして同梱する予定です。現在は生成メニューによる提供です。
 
+旧Pull版・過去の診断用シーンを使用している場合は、上記メニューから現行シーンを生成してください。
+開発中の `BodyContactDemoCoreStartup.unity` などの別名シーンは、最終配布の保存先ではありません。
+
 ### Station
 
 `Tools > SabaProps > Body Contact > Connect Scene Stations` でWorldのStationに停止用の補助コンポーネントを接続します。
@@ -65,7 +68,8 @@ VRChat Worlds SDKとUdonSharpを備えたUnityプロジェクトへパッケー�
 サンプルの操作ボタンは保存時に `WAITING FOR UDON` と表示し、通常のUpdateが動くと `ON` に変わります。
 サンプルでは `Startup Diagnostics` を有効にし、`[BodyContact]` を接頭辞としてSystem/View/ControlのStart、
 最初のPostLateUpdateとControlのUpdate、Interactをログに記録します。通常配置のシステムでは既定OFFです。
-これらは起動経路を調べる診断であり、HUD非表示の原因を修正するものではありません。
+ボタンが起動待ちのままの場合は、実際に新しいビルドを読み込んでいるかと、クライアントログの `[BodyContact]` を確認してください。
+診断ログ自体は起動不良を修正するものではありません。
 
 - 頭・体幹を緑、有効な通り抜け状態を黄、接触点を赤で表示します。
 - 対象外の腕・脚の線は既定で非表示です。Show Inactive Limbsで灰色表示できます。
@@ -103,6 +107,21 @@ VRChat Worlds SDKとUdonSharpを備えたUnityプロジェクトへパッケー�
 
 この環境ではSDKのReload Your Last BuildでClients=2を指定して同一インスタンスへ入れています。
 コードやシーンを更新した場合は、先に新しいビルドを作成してください。
+
+### 確認済みの範囲
+
+| 日付 | 確認 | 結果と範囲 |
+| --- | --- | --- |
+| 2026-10-06 | Unity 2022.3.22f1 / Burst無効 | Body Contactの自動テスト17件成功、失敗0件。Udonコンパイル、シーン参照、描画、ClientSim上の通常UpdateとInteractを含む |
+| 2026-10-12 | 利用者による実クライアント確認 | 起動診断版の表示と動作について問題なしとの報告を受領 |
+
+自動テストでは生成シーン、配布したCoreシーン、Build & Testで使用されたワールドファイルを検査しました。
+ClientSimではPostLateUpdateを明示的に送るため、実クライアントの確認を併用しています。
+実機報告は利用者環境での動作確認です。個別項目の数値計測や全環境での検証完了を示すものではありません。
+
+過去にVR・Desktop双方でHUD・Gizmoとボタンが動かない報告がありましたが、起動診断版では動作確認できています。
+当時の原因は特定しておらず、特定の修正によって解消したとは断定していません。
+性能の追加調査は保留中です。
 
 ## 制限
 

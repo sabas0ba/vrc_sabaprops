@@ -33,7 +33,7 @@ https://sabas0ba.github.io/vrc_sabaprops/index.json
 | `io.github.sabas0ba.sabaprops.putitems` | SabaProps Put Items | Pickup を手放した位置の近くにある机・壁へ位置と姿勢を補正。Object Sync 接続と独自同期向けの計算 API を提供。 |
 | `io.github.sabas0ba.sabaprops.tablet` | SabaProps Tablet | キー・頭上からの取り出し・アイテムの Interact で呼び出すタブレット型 UI。物理ボタンでミラー・コライダー・エフェクトの切り替え、テレポート、任意の Udon イベント呼び出しを行う。 |
 | `io.github.sabas0ba.sabaprops.flock` | SabaProps Flock | 鳥 27 種・魚・水生生物 41 種の群れを、Shader が時刻から計算する固定配置を含む 13 種の群れの動きで配置。Silhouette / Low / High の 3 段階 LOD。 |
-| `io.github.sabas0ba.sabaprops.bodycontact` | SabaProps Body Contact | 相手の頭・体幹・四肢を部位ごとに判定し、自分の体が侵入した分だけ自分の位置を戻す Udon コンポーネント。同期なし。World 内のデバッグ表示付き。 |
+| `io.github.sabas0ba.sabaprops.bodycontact` | SabaProps Body Contact | 頭・体幹同士の貫通を水平位置の補正で抑える Udon コンポーネント。VR・Desktop共通、独自同期なし。検証シーン生成とWorld内の診断表示付き。 |
 
 各パッケージの詳細は `Packages/<package-id>/README.md` を参照してください。
 
