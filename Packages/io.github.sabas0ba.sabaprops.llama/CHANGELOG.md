@@ -15,6 +15,7 @@
 
 ### Added
 
+- Unity Editor・ClientSim・VRChatクライアントでの生成を確認。速度・VRAM・品質の測定は未完了。
 - 変換済みモデルからBuild & Test用の最小シーンを生成する`Create Sample Scene`を追加。
 - GGUF v2/v3のLlama F32/F16/Q4_0/Q8_0をFP32 textureへ変換し、内蔵tokenizerを取り込むEditor readerを追加。
 - 固定revision・SHA-256によるStories260K / Stories15M Q4_0の取得手順と実ファイルCPU検査を追加。

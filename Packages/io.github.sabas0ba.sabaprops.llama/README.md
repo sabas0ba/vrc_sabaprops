@@ -2,7 +2,7 @@
 
 VRChatのPCワールドで、小型Llama系モデルをfragment shaderにより推論する実験パッケージです。Unity Editor拡張で重みをtextureへ変換し、UdonSharpが推論passとテキスト入出力を制御します。外部サーバー、native DLL、compute shaderは使用しません。
 
-**初期実装です。Unity EditorとClientSimでの生成は確認済みですが、VRChatクライアントでの動作確認と、学習済みモデルでの速度・品質測定は未完了です。会話できる学習済みモデルは同梱していません。** 数値比較テストの存在と実行済みの結果は区別してください。
+**概念実証（PoC）向けの最小構成です。Unity Editor・ClientSim・VRChatクライアントでの生成は確認済みですが、速度・VRAM・品質の測定は未完了です。会話できる学習済みモデルは同梱していません。** 数値比較テストの存在と実行済みの結果は区別してください。
 
 ![World RunnerがStories260Kで入力の続きを生成した表示](Documentation~/images/world-runner.png)
 
@@ -165,7 +165,7 @@ World検証経路の`LlamaUdonTests`はclient向けUdonコンパイルを強制�
 
 `LlamaWorldRunTests`はClientSim上でrunnerをUdonのInteractイベントだけで操作し、完全な生成、生成中の停止後の再実行、GameObjectの無効化・有効化後の再実行の各経路で、表示文字列がCPU参照のgreedy生成と一致することを検査します。未学習fixtureは常に実行し、学習済みモデルは環境変数`SABAPROPS_LLAMA_GGUF`にGGUFを指定した場合のみ実行します。手順は`.github/verify/vrchat/README.md`を参照してください。
 
-上記1は、この検査とUnity 2022.3.22f1・Direct3D 11・SDK 3.10.4で確認済みです。2はClientSim上のUdonイベントによる確認のみで、入力欄への実際の入力とBuild & Testは未確認です。3のうちStories260KでのCPUとの一致は確認済み、FPS・tokens/s・VRAM・日本語品質は未測定です。4は未確認です。ClientSimはVRChatクライアントではないため、実機の描画・入力・速度は別途確認が必要です。
+上記1は、この検査とUnity 2022.3.22f1・Direct3D 11・SDK 3.10.4で確認済みです。2は、ClientSim上のUdonイベントによる検査に加え、`Create Sample Scene`で生成したStories260Kのシーンが VRChatクライアント上のワールドで生成することを手動で確認済みです（2026-10-12）。この手動確認は生成が動作することまでで、停止・再実行・disable/enableの各操作を実機で個別に確認した記録はありません。3のうちStories260KでのCPUとの一致は確認済み、FPS・tokens/s・VRAM・日本語品質は未測定です。4は未確認です。
 
 ## 参照した仕様
 
