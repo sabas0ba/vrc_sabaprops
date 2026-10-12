@@ -60,6 +60,22 @@ Unity -batchmode -projectPath /path/to/WorldProject \
 
 ## 方針
 
+### Screen FX Udon デモ
+
+`assemble.sh` は Screen FX 本体と Udon Driver サンプルを組み込みます。
+`TEST_FILTER=SabaProps.ScreenFx.WorldTests` で実 Udon コンパイル、Prefab の参照、
+ClientSim のボタン・パラメータ・複製間独立性・自動停止・Trigger を検証できます。
+
+Windows の組み立て済み専用プロジェクトでは、次も使用できます。
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .github/verify/vrchat/run-screenfx-tests.ps1 -Project build/WorldProject -Mode Setup
+powershell -NoProfile -ExecutionPolicy Bypass -File .github/verify/vrchat/run-screenfx-tests.ps1 -Project build/WorldProject
+```
+
+`-Mode Capture` は新規の `Assets/ScreenFxDemoDeliverable` にシーンと Prefab を生成し、
+`TestResults/screenfx-udon-demo.png` に画像を保存します。既存の同名フォルダーは上書きせず失敗します。
+
 SDK の取得はコンテナ内で行い、ローカルの VCC / ALCOM のキャッシュには依存しません。
 再現性の担保は次の 2 点です。
 
@@ -101,7 +117,7 @@ Unity は Unity Hub の既定の場所から `ProjectVersion.txt` に一致す�
 初回は SDK が要求する UPM パッケージ（burst、collections、cinemachine 等）を
 Unity がレジストリから取得するため、数分かかります。
 
-テストは `SabaProps.Foliage.CITests`、`SabaProps.Foliage.WorldTests`、`SabaProps.SoftProps.WorldTests`、`SabaProps.StageCam.WorldTests`、`SabaProps.Tablet.WorldTests`、`SabaProps.BodyContact.WorldTests`、`SabaProps.PutItems.Tests` に絞って実行します。
+テストは `SabaProps.Foliage.CITests`、`SabaProps.Foliage.WorldTests`、`SabaProps.SoftProps.WorldTests`、`SabaProps.StageCam.WorldTests`、`SabaProps.Tablet.WorldTests`、`SabaProps.BodyContact.WorldTests`、`SabaProps.ScreenFx.WorldTests`、`SabaProps.PutItems.Tests` に絞って実行します。
 SDK 自身のテストアセンブリも同じプロジェクトに存在しますが、
 本パッケージとは無関係な理由で 2 件失敗する（ランダム生成の JSON ファズケースと、
 docs.microsoft.com の URL 到達性を検証するもの）ため、終了コードを意味のあるものにするためです。
@@ -116,6 +132,7 @@ docs.microsoft.com の URL 到達性を検証するもの）ため、終了コ�
 | `SabaProps.SoftProps.WorldTests` | EditMode + Playへの遷移 | Prefab生成、同梱デモのimport・参照・比較台、ClientSimでのCollider接触・復元・自動運動・立位荷重 |
 | `SabaProps.Tablet.WorldTests` | EditMode | 全コンポーネントの Udon コンパイル、サンプルシーンの全ボタンがエクスポート済みのイベントを呼ぶこと、ミラーの排他、テレポート地点の番号、Build の再実行で生成物が重複しないことを検証 |
 | `SabaProps.BodyContact.WorldTests` | EditMode（ClientSim検査ではPlayModeへ移行） | Udonコンパイル、生成シーン、描画、通常UpdateとInteract、HUD・Gizmoの実行時検査。配布シーンとビルド済みワールドの追加検査にも対応 |
+| `SabaProps.ScreenFx.WorldTests` | EditMode | Udonコンパイル、Prefabの参照、サンプル構成を検証 |
 | `SabaProps.PutItems.Tests` | EditMode | 吸着対象と Pickup の設定、同梱デモの構成を検証 |
 
 Soft Propsの実行テストは指・棒・板の100 mmおよび0.5 mmの空隙、20 mmの侵入、離脱後の復元、自動上下運動、ローカルプレイヤーのFutonへの接地を検証します。VRChat実clientの手・胴体・リモートプレイヤーの接触を保証するテストではありません。

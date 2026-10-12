@@ -27,6 +27,8 @@
 #     and separation geometry, the pass-through state machine, and two simulated
 #     clients settling against each other with a network delay. See
 #     offline/OfflineBodyContactTests.cs.
+#   * the screen FX presets, shader property blocks, uniforms, menu and preset
+#     reference agree with each other. See offline/OfflineScreenFxTests.cs.
 #   * the documentation figures still match what the generators produce, and
 #     the site renders, with no raw Markdown left in the text, no broken
 #     internal links and no missing images
@@ -66,6 +68,7 @@ TREE_PACKAGE="${TREE_PACKAGE:-$REPO/Packages/io.github.sabas0ba.sabaprops.trees}
 FLOCK_PACKAGE="$REPO/Packages/io.github.sabas0ba.sabaprops.flock"
 TABLET="$REPO/Packages/io.github.sabas0ba.sabaprops.tablet"
 BODYCONTACT="$REPO/Packages/io.github.sabas0ba.sabaprops.bodycontact"
+SCREENFX_PACKAGE="$REPO/Packages/io.github.sabas0ba.sabaprops.screenfx"
 
 WORK="${VERIFY_WORK_DIR:-$REPO/.verify}"
 REFS="$WORK/refs"
@@ -229,6 +232,18 @@ csc "${COMMON[@]}" "${BCL[@]}" "${UNITY_ARGS[@]}" \
 echo "ok: ${#FLOCK_RUNTIME_SOURCES[@]} Runtime, ${#FLOCK_EDITOR_SOURCES[@]} Editor file(s)"
 
 # ---------------------------------------------------------------------------
+log "Compiling Screen FX Editor assembly (real UnityEngine references + stub)"
+# ---------------------------------------------------------------------------
+# The package has no Runtime C#: its runtime half is the two shaders.
+mapfile -t SCREENFX_EDITOR_SOURCES < <(find "$SCREENFX_PACKAGE/Editor" -name '*.cs' | sort)
+[ "${#SCREENFX_EDITOR_SOURCES[@]}" -gt 0 ] || fail "no Editor sources found under $SCREENFX_PACKAGE"
+
+csc "${COMMON[@]}" "${BCL[@]}" "${UNITY_ARGS[@]}" \
+    -r:"$OUT/UnityEditor.dll" \
+    -out:"$OUT/SabaProps.ScreenFx.Editor.dll" "${SCREENFX_EDITOR_SOURCES[@]}"
+echo "ok: ${#SCREENFX_EDITOR_SOURCES[@]} Editor file(s)"
+
+# ---------------------------------------------------------------------------
 log "Compiling the documentation capture tool"
 # ---------------------------------------------------------------------------
 # .github/figures/capture/ is not shipped, so nothing else would ever compile
@@ -304,6 +319,18 @@ if [ -d "$FLOCK_TEST_DIR" ]; then
             -r:"$OUT/UnityEditor.dll" \
             -out:"$OUT/SabaProps.Flock.CITests.dll" "${FLOCK_TEST_SOURCES[@]}"
         echo "ok: ${#FLOCK_TEST_SOURCES[@]} Flock test file(s)"
+    fi
+fi
+
+SCREENFX_TEST_DIR="$HERE/CIProject/Assets/ScreenFxTests"
+if [ -d "$SCREENFX_TEST_DIR" ]; then
+    mapfile -t SCREENFX_TEST_SOURCES < <(find "$SCREENFX_TEST_DIR" -name '*.cs' | sort)
+    if [ "${#SCREENFX_TEST_SOURCES[@]}" -gt 0 ]; then
+        csc "${COMMON[@]}" "${BCL[@]}" "${UNITY_ARGS[@]}" \
+            -r:"$OUT/SabaProps.ScreenFx.Editor.dll" \
+            -r:"$OUT/UnityEditor.dll" \
+            -out:"$OUT/SabaProps.ScreenFx.CITests.dll" "${SCREENFX_TEST_SOURCES[@]}"
+        echo "ok: ${#SCREENFX_TEST_SOURCES[@]} Screen FX test file(s)"
     fi
 fi
 
@@ -457,6 +484,18 @@ csc "${COMMON[@]}" "${NETSTANDARD_ARGS[@]}" "${UNITY_ARGS[@]}" "${BODYCONTACT_RE
     -r:"$OUT/SabaProps.BodyContact.Runtime.dll" \
     -out:"$OUT/SabaProps.BodyContact.Editor.dll" "${BODYCONTACT_EDITOR_SOURCES[@]}"
 echo "ok: ${#BODYCONTACT_RUNTIME_SOURCES[@]} Runtime, ${#BODYCONTACT_EDITOR_SOURCES[@]} Editor file(s)"
+
+# ---------------------------------------------------------------------------
+log "Compiling the Screen FX Udon sample (real VRChat SDK references + stub)"
+# ---------------------------------------------------------------------------
+# The runtime driver and its panel ship as a sample, so the package itself
+# stays free of the SDK. The sample's Editor builder is checked in Unity.
+mapfile -t SCREENFX_SAMPLE_SOURCES < <(find "$SCREENFX_PACKAGE/Samples~/UdonDriver" -path '*/Editor/*' -prune -o -name '*.cs' -print | sort)
+csc "${COMMON[@]}" "${NETSTANDARD_ARGS[@]}" "${UNITY_ARGS[@]}" \
+    -r:"$OUT/UnityEngine.UI.dll" \
+    -r:"$SDK_PLUGINS/VRCSDKBase.dll" -r:"$UDON_COMMON" -r:"$OUT/UdonSharp.Runtime.dll" \
+    -out:"$OUT/SabaProps.ScreenFx.UdonDriver.dll" "${SCREENFX_SAMPLE_SOURCES[@]}"
+echo "ok: ${#SCREENFX_SAMPLE_SOURCES[@]} sample file(s)"
 
 # ---------------------------------------------------------------------------
 log "Type-checking shader HLSL"
@@ -693,6 +732,23 @@ cp "$OFFLINE_OUT/OfflineMeshTests.runtimeconfig.json" \
    "$OFFLINE_OUT/OfflineBodyContactTests.runtimeconfig.json"
 
 dotnet "$OFFLINE_OUT/OfflineBodyContactTests.dll" || fail "offline body contact checks failed"
+
+# ---------------------------------------------------------------------------
+log "Running the screen FX contract checks (no Unity)"
+# ---------------------------------------------------------------------------
+# The presets are plain data; the checks read the shader sources, the menu and
+# the preset reference from the package directory and compare them with it.
+csc_exe -out:"$OFFLINE_OUT/OfflineScreenFxTests.dll" \
+    -r:"$RUNTIME_DIR/System.Text.RegularExpressions.dll" \
+    "$OFFLINE/UnityEngineShim.cs" \
+    "$OFFLINE/OfflineScreenFxTests.cs" \
+    "$SCREENFX_PACKAGE/Editor/ScreenFxPresets.cs"
+
+cp "$OFFLINE_OUT/OfflineMeshTests.runtimeconfig.json" \
+   "$OFFLINE_OUT/OfflineScreenFxTests.runtimeconfig.json"
+
+dotnet "$OFFLINE_OUT/OfflineScreenFxTests.dll" "$SCREENFX_PACKAGE" \
+    || fail "offline screen FX checks failed"
 
 # ---------------------------------------------------------------------------
 log "Checking the documentation figures"

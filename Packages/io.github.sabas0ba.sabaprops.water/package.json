@@ -1,7 +1,7 @@
 {
   "name": "io.github.sabas0ba.sabaprops.water",
   "displayName": "SabaProps Water",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "unity": "2022.3",
   "description": "VRChat World向けの水面、水たまり、河川、雨、霧、雲、水中エフェクトを作成するShaderとbake型Editorツールです。動的な波動シミュレーションや必須のruntime scriptを使用しません。",
   "author": {
