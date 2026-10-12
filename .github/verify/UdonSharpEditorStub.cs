@@ -56,17 +56,3 @@ namespace VRC.Udon
     }
 }
 
-// The liquid sample exporter compiles the programs before generating the scene,
-// so the scene's behaviours point at serialized programs that exist.
-namespace UdonSharp.Compiler
-{
-    public class UdonSharpCompileOptions
-    {
-        public bool IsEditorBuild { get; set; } = true;
-    }
-
-    public static class UdonSharpCompilerV1
-    {
-        public static void CompileSync(UdonSharpCompileOptions options = null) { }
-    }
-}
