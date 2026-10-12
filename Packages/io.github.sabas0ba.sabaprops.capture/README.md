@@ -195,6 +195,8 @@ Recorder の状態は次のメソッドで読めます。画像の順番は古�
 
 `VRCGraphics.Blit`、`Camera.Render()`、実行時の `RenderTexture` 生成が VRChat クライアント上で想定どおり動くことは、自動では確かめられません。[Build & Test での確認手順](Documentation~/build-and-test.md) に従って確認してください。
 
+0.1.0 は、同梱サンプルを Windows の Desktop クライアントで Build & Test し、両方の入力での撮影、再生、被写体の動きを確認しています。Quest では確認していません。
+
 設計の判断は [Documentation~/design.md](Documentation~/design.md) にまとめています。
 
 ## ライセンス
