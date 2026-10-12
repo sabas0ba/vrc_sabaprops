@@ -77,6 +77,9 @@ namespace SabaProps.Capture
         private bool recording;
         private double clockBeforeResume;
         private double resumedAt;
+
+        /// <summary>撮影中にコンポーネントか GameObject が無効になり、撮影時計を止めている状態。</summary>
+        private bool suspended;
         private double nextCaptureTime;
         private double currentInterval;
 
@@ -90,6 +93,28 @@ namespace SabaProps.Capture
             if (recordOnStart)
             {
                 _StartRecording();
+            }
+        }
+
+        /// <summary>
+        /// 撮影中に無効化された場合は撮影時計を止めます。止めないと、無効だった時間が
+        /// 再有効化後の最初の Update でまとめて加算され、その間の予定が飛ばされます。
+        /// </summary>
+        private void OnDisable()
+        {
+            if (recording && !suspended)
+            {
+                clockBeforeResume = RecordingClock();
+                suspended = true;
+            }
+        }
+
+        private void OnEnable()
+        {
+            if (suspended)
+            {
+                resumedAt = Time.timeAsDouble;
+                suspended = false;
             }
         }
 
@@ -299,7 +324,7 @@ namespace SabaProps.Capture
 
         private double RecordingClock()
         {
-            if (!recording)
+            if (!recording || suspended)
             {
                 return clockBeforeResume;
             }

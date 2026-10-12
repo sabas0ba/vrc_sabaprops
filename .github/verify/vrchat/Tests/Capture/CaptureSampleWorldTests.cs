@@ -221,6 +221,30 @@ namespace SabaProps.Capture.WorldTests
             int head = (int)textureRecorder.GetProgramVariable("head");
             Assert.That(times[head], Is.EqualTo(firstFrameTime).Within(1e-9),
                 "thinning dropped the first frame of the session");
+
+            // --- Disabled: the recording clock stops while the behaviour is disabled, so
+            // re-enabling it does not add the disabled time and skip the slots in between.
+            textureRecorder.enabled = false;
+            yield return null;
+            Assert.That((bool)textureRecorder.GetProgramVariable("suspended"), Is.True,
+                "disabling the recorder did not suspend its clock");
+            double frozen = (double)textureRecorder.GetProgramVariable("clockBeforeResume");
+
+            double reenableAt = EditorApplication.timeSinceStartup + 0.6;
+            while (EditorApplication.timeSinceStartup < reenableAt)
+            {
+                yield return null;
+            }
+
+            textureRecorder.enabled = true;
+            yield return null;
+            Assert.That((bool)textureRecorder.GetProgramVariable("suspended"), Is.False,
+                "re-enabling the recorder did not resume its clock");
+            double resumed = (double)textureRecorder.GetProgramVariable("clockBeforeResume")
+                + (Time.timeAsDouble - (double)textureRecorder.GetProgramVariable("resumedAt"));
+            Assert.That(resumed - frozen, Is.LessThan(0.3),
+                "the recording clock counted the 0.6 s the recorder was disabled");
+
             textureRecorder.SendCustomEvent("_StopRecording");
 
             // --- Stop: recording ends on the frame that fills the buffer.

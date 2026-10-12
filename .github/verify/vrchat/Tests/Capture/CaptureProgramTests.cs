@@ -52,6 +52,10 @@ namespace SabaProps.Capture.WorldTests
 
             // Without _update nothing is ever captured.
             CollectionAssert.Contains(exported, "_update", "Update is not exported as an Udon event");
+
+            // Without these the recording clock keeps running while the recorder is disabled.
+            CollectionAssert.Contains(exported, "_onEnable", "OnEnable is not exported as an Udon event");
+            CollectionAssert.Contains(exported, "_onDisable", "OnDisable is not exported as an Udon event");
             foreach (string name in new[]
                      {
                          "_StartRecording", "_StopRecording", "_ToggleRecording",
