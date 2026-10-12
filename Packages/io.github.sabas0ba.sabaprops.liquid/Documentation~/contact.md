@@ -12,6 +12,8 @@
 
 ## Contact デモ
 
+![描画・転写用の壁、道具、表示切替ボタンと左手前の浅水範囲](images/contact-overview.png)
+
 `Tools > SabaProps > Liquid > Create Contact Scene` は、`Assets/SabaProps/Liquid/Samples/LiquidContact.unity` を生成します。0.1.0 の同梱 4 シーンとは別のシーンです。生成先を編集済みの場合、再生成で置き換わるため先に別名で保存してください。
 
 - 左の壁に赤いペンで線や文字を描き、手でなぞります。模様の伸びと減衰、手への付着を確認します。
