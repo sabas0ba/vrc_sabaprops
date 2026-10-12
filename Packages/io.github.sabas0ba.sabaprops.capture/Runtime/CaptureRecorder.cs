@@ -78,7 +78,7 @@ namespace SabaProps.Capture
         private double clockBeforeResume;
         private double resumedAt;
 
-        /// <summary>撮影中にコンポーネントか GameObject が無効になり、撮影時計を止めている状態。</summary>
+        /// <summary>コンポーネントか GameObject が無効で、撮影時計を止めている状態。</summary>
         private bool suspended;
         private double nextCaptureTime;
         private double currentInterval;
@@ -97,12 +97,16 @@ namespace SabaProps.Capture
         }
 
         /// <summary>
-        /// 撮影中に無効化された場合は撮影時計を止めます。止めないと、無効だった時間が
+        /// 無効化された時点で撮影時計を止めます。止めないと、無効だった時間が
         /// 再有効化後の最初の Update でまとめて加算され、その間の予定が飛ばされます。
+        /// <para>
+        /// 撮影中でなくても止めます。無効な状態の Recorder へ他の Udon から _StartRecording が
+        /// 届いた場合に、有効になる前から時計が進むのを防ぐためです。
+        /// </para>
         /// </summary>
         private void OnDisable()
         {
-            if (recording && !suspended)
+            if (!suspended)
             {
                 clockBeforeResume = RecordingClock();
                 suspended = true;

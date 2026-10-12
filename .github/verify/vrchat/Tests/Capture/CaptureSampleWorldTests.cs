@@ -247,6 +247,74 @@ namespace SabaProps.Capture.WorldTests
 
             textureRecorder.SendCustomEvent("_StopRecording");
 
+            // --- Deactivated GameObject: the same, seen from outside. The frames either side
+            // of the time the recorder was off must not be that far apart.
+            const double InactiveFor = 3.0;
+            textureRecorder.SendCustomEvent("_Clear");
+            textureRecorder.SetProgramVariable("maxFrames", 64);
+            textureRecorder.SendCustomEvent("_StartRecording");
+
+            deadline = EditorApplication.timeSinceStartup + Timeout;
+            while (Count(textureRecorder) < 2 && EditorApplication.timeSinceStartup < deadline)
+            {
+                yield return null;
+            }
+
+            Assert.That(Count(textureRecorder), Is.GreaterThanOrEqualTo(2), "recording did not restart");
+            textureRecorder.gameObject.SetActive(false);
+            int countWhenDeactivated = Count(textureRecorder);
+
+            deadline = EditorApplication.timeSinceStartup + InactiveFor;
+            while (EditorApplication.timeSinceStartup < deadline)
+            {
+                yield return null;
+            }
+
+            Assert.That(Count(textureRecorder), Is.EqualTo(countWhenDeactivated), "an inactive recorder kept capturing");
+            textureRecorder.gameObject.SetActive(true);
+
+            deadline = EditorApplication.timeSinceStartup + Timeout;
+            while (Count(textureRecorder) <= countWhenDeactivated && EditorApplication.timeSinceStartup < deadline)
+            {
+                yield return null;
+            }
+
+            Assert.That(Count(textureRecorder), Is.GreaterThan(countWhenDeactivated), "recording did not continue after reactivating");
+            double[] timesAcrossGap = (double[])textureRecorder.GetProgramVariable("frameTimes");
+            double gap = timesAcrossGap[countWhenDeactivated] - timesAcrossGap[countWhenDeactivated - 1];
+            Assert.That(gap, Is.LessThan(InactiveFor / 2.0),
+                $"the clock ran while the recorder was inactive: the frames either side are {gap:F2} s apart");
+
+            // --- Started while inactive: another behaviour can send _StartRecording to a
+            // recorder that is switched off. Its clock must not run until it is switched on.
+            // One Update still reaches the recorder after it is deactivated and takes the first
+            // frame, so what is checked is the distance from that frame to the next one.
+            textureRecorder.SendCustomEvent("_Clear");
+            textureRecorder.gameObject.SetActive(false);
+            textureRecorder.SendCustomEvent("_StartRecording");
+            Assert.That((bool)textureRecorder.GetProgramVariable("recording"), Is.True,
+                "an inactive recorder ignored _StartRecording");
+
+            deadline = EditorApplication.timeSinceStartup + InactiveFor;
+            while (EditorApplication.timeSinceStartup < deadline)
+            {
+                yield return null;
+            }
+
+            Assert.That(Count(textureRecorder), Is.LessThanOrEqualTo(1), "an inactive recorder kept capturing");
+            textureRecorder.gameObject.SetActive(true);
+            deadline = EditorApplication.timeSinceStartup + Timeout;
+            while (Count(textureRecorder) < 2 && EditorApplication.timeSinceStartup < deadline)
+            {
+                yield return null;
+            }
+
+            Assert.That(Count(textureRecorder), Is.GreaterThanOrEqualTo(2), "recording did not continue after activating");
+            double[] timesFromInactiveStart = (double[])textureRecorder.GetProgramVariable("frameTimes");
+            Assert.That(timesFromInactiveStart[1], Is.LessThan(InactiveFor / 2.0),
+                $"the clock ran before the recorder was active: its second frame is stamped {timesFromInactiveStart[1]:F2} s");
+            textureRecorder.SendCustomEvent("_StopRecording");
+
             // --- Stop: recording ends on the frame that fills the buffer.
             cameraRecorder.SendCustomEvent("_Clear");
             cameraRecorder.SetProgramVariable("interval", 0.2f);
