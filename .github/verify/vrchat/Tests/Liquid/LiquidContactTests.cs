@@ -103,6 +103,40 @@ namespace SabaProps.Liquid.WorldTests
             Assert.Greater(Read(160, 96).r, 0.05f);
         }
 
+        [TestCase(true, false)]
+        [TestCase(false, false)]
+        [TestCase(true, true)]
+        public void Smear_MovesOnlyWetPaintAtContactDepth(bool wet, bool distant)
+        {
+            var pattern = new Texture2D(192, 128, TextureFormat.RGBAFloat, false, true);
+            try
+            {
+                for (int y = 0; y < 128; y++)
+                    for (int x = 0; x < 192; x++)
+                        pattern.SetPixel(x, y, new Color(x / 192f, 0, 0, 1));
+                pattern.Apply();
+                _material.SetTexture("_DonorPigment", pattern);
+                _material.SetVector("_Contact", new Vector4(0.3f, 0.5f, 1f, 1f));
+                _film.SetPixel(0, 0, new Color(wet ? 1 : 0, 0.9f, 0, 0));
+                _film.Apply();
+                _depth.SetPixel(0, 0, new Color(distant ? 1 : 0, 1, 0, 0));
+                _depth.Apply();
+                _material.SetVector("_Motion", Vector3.zero);
+                Graphics.Blit(pattern, _result, _material, 1);
+                float still = Read(96, 96).r;
+                _material.SetVector("_Motion", Vector3.right * 0.2f);
+                Graphics.Blit(pattern, _result, _material, 1);
+                float moved = Read(96, 96).r;
+                if (wet && !distant) Assert.Less(moved, still - 0.001f);
+                else Assert.AreEqual(still, moved, 0.0001f);
+                Assert.AreEqual(pattern.GetPixel(160, 96).r, Read(160, 96).r, 0.001f,
+                    "motion modified another atlas face");
+                Assert.AreEqual(pattern.GetPixel(64, 96).r, Read(64, 96).r, 0.001f,
+                    "motion modified pixels outside the contact patch");
+            }
+            finally { Object.DestroyImmediate(pattern); }
+        }
+
         [Test]
         public void Behaviours_CompileToUdonPrograms()
         {

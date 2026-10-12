@@ -67,7 +67,11 @@ namespace SabaProps.Liquid.Editors
             CreateBalloon(pool, new Vector3(1, 1, -0.5f));
             GameObject puddle = LiquidSourceBuilder.CreateImmersionVolume("Step Splash", pool,
                 LiquidSourceBuilder.GetProfile(LiquidSourceBuilder.WaterName), new Vector3(2, 0.15f, 2));
-            puddle.transform.position = new Vector3(-3, 0, -2);
+            puddle.transform.position = new Vector3(-3, 0.12f, -2);
+            Material water = LiquidAssets.CreateOrLoadSurfaceMaterial(Materials + "/Puddle.mat", new Color(0.15f, 0.45f, 0.65f), 0.8f);
+            LiquidPrefabBuilder.Part(null, "Shallow water marker", PrimitiveType.Cube, new Vector3(-3, 0.01f, -2),
+                new Vector3(2, 0.01f, 2), Quaternion.identity, water, false);
+            Label("Walk here: shallow water", new Vector3(-4, 0.35f, -2), 0.025f);
             var splash = puddle.AddUdonSharpComponent<LiquidSplash>();
             splash.pool = pool;
             splash.profile = LiquidSourceBuilder.GetProfile(LiquidSourceBuilder.WaterName);
@@ -192,13 +196,13 @@ namespace SabaProps.Liquid.Editors
             return LiquidPrefabBuilder.Part(null, name, PrimitiveType.Cube, position, scale, Quaternion.identity, material, true);
         }
 
-        private static void Label(string text, Vector3 position)
+        private static void Label(string text, Vector3 position, float characterSize = 0.07f)
         {
             var label = new GameObject("Instructions");
             label.transform.position = position;
             var mesh = label.AddComponent<TextMesh>();
             mesh.text = text;
-            mesh.characterSize = 0.07f;
+            mesh.characterSize = characterSize;
             mesh.fontSize = 48;
         }
 
@@ -209,7 +213,7 @@ namespace SabaProps.Liquid.Editors
             button.target = contact;
             button.eventName = method;
             UdonSharpEditorUtility.CopyProxyToUdon(button);
-            Label(name, position + new Vector3(-0.3f, 0.25f, -0.1f));
+            Label(name.Replace(" locally", "\n(local only)"), position + new Vector3(-0.3f, 0.25f, -0.1f), 0.02f);
         }
     }
 }

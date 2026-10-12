@@ -39,7 +39,7 @@ namespace SabaProps.Liquid
         public LiquidSplash stepSplash;
         [Min(0.1f)] public float stepDistance = 0.65f;
         private Vector3 _lastStepPosition;
-        private bool _localInside;
+        private bool _stepInside;
 
         [Header("波")]
         [Tooltip("液面が上下する振幅（m）。0 で静水です。")]
@@ -76,12 +76,6 @@ namespace SabaProps.Liquid
             }
 
             int id = player.playerId;
-            if (player.isLocal)
-            {
-                _localInside = true;
-                _lastStepPosition = player.GetPosition();
-                EmitStep(_lastStepPosition);
-            }
             for (int i = 0; i < _insideCount; i++)
             {
                 if (_inside[i] == id)
@@ -193,8 +187,6 @@ namespace SabaProps.Liquid
 
         private void RemovePlayer(int id)
         {
-            VRCPlayerApi local = Networking.LocalPlayer;
-            if (Utilities.IsValid(local) && id == local.playerId) _localInside = false;
             for (int i = 0; i < _insideCount; i++)
             {
                 if (_inside[i] == id)
@@ -208,10 +200,24 @@ namespace SabaProps.Liquid
 
         private void LateUpdate()
         {
-            if (!_localInside || stepSplash == null) return;
+            if (stepSplash == null || _trigger == null) return;
             VRCPlayerApi local = Networking.LocalPlayer;
-            if (!Utilities.IsValid(local) || !local.IsPlayerGrounded()) return;
+            if (!Utilities.IsValid(local)) return;
             Vector3 position = local.GetPosition();
+            // A shallow puddle may sit below the player's collision capsule.
+            // Test the grounded foot position rather than relying on its trigger events.
+            if (!local.IsPlayerGrounded() || !_trigger.bounds.Contains(position))
+            {
+                _stepInside = false;
+                return;
+            }
+            if (!_stepInside)
+            {
+                _stepInside = true;
+                _lastStepPosition = position;
+                EmitStep(position);
+                return;
+            }
             Vector3 horizontal = position - _lastStepPosition;
             horizontal.y = 0;
             if (horizontal.magnitude < Mathf.Max(stepDistance, 0.1f)) return;

@@ -7,6 +7,7 @@ using UnityEditor;
 using UnityEngine;
 using UnityEngine.TestTools;
 using VRC.SDK3.ClientSim;
+using VRC.SDKBase;
 using VRC.Udon;
 
 namespace SabaProps.Liquid.WorldTests
@@ -31,6 +32,7 @@ namespace SabaProps.Liquid.WorldTests
         {
             _optionsEnabled = EditorSettings.enterPlayModeOptionsEnabled;
             _options = EditorSettings.enterPlayModeOptions;
+            UdonSharpCompilerV1.CompileSync(new UdonSharpCompileOptions { IsEditorBuild = true });
             LiquidContactScene.Create();
             UdonSharpCompilerV1.CompileSync(new UdonSharpCompileOptions { IsEditorBuild = true });
             EditorSettings.enterPlayModeOptionsEnabled = true;
@@ -42,6 +44,9 @@ namespace SabaProps.Liquid.WorldTests
             yield return new EnterPlayMode();
             for (int i = 0; i < 120; i++) yield return null;
             LogAssert.ignoreFailingMessages = false;
+            Networking.LocalPlayer.TeleportTo(new Vector3(-5, 0.02f, -4), Quaternion.identity);
+            yield return Wait(0.3f);
+            LiquidDemoPlayTests.Capture("liquid-contact-overview.png", new Vector3(0, 3, -5), new Vector3(0, 1, 1), 65f);
             var pen = GameObject.Find("Wet red pen").GetComponentInChildren<LiquidPaintTool>();
             var penBacking = UdonSharpEditorUtility.GetBackingUdonBehaviour(pen);
             penBacking.SetProgramVariable("pickup", null);
@@ -56,6 +61,31 @@ namespace SabaProps.Liquid.WorldTests
             LiquidBodyCanvas surface = GameObject.Find("Contact Surfaces").GetComponentInChildren<LiquidBodyCanvas>();
             float before = Sum(surface.projectorMaterial);
             Assert.Greater(before, 0.001f, "pen did not paint the wall");
+            ClientSimPlayerAvatarManager avatar = null;
+            foreach (var candidate in Resources.FindObjectsOfTypeAll<ClientSimPlayerAvatarManager>())
+                if (candidate.gameObject.scene.IsValid()) { avatar = candidate; break; }
+            Assert.IsNotNull(avatar, "ClientSim avatar manager was not instantiated");
+            Transform hand = avatar.GetBoneTransform(HumanBodyBones.LeftHand);
+            Assert.IsNotNull(hand, "ClientSim avatar has no left hand");
+            var animator = hand.GetComponentInParent<Animator>();
+            animator.enabled = false;
+            hand.position = new Vector3(-1.7f, 1.4f, 1.89f);
+            yield return Wait(0.7f);
+            var pool = Object.FindObjectOfType<LiquidCanvasPool>();
+            LiquidBodyCanvas handCanvas = null;
+            foreach (LiquidBodyCanvas limb in pool.limbs)
+            {
+                var backing = UdonSharpEditorUtility.GetBackingUdonBehaviour(limb);
+                if ((int)backing.GetProgramVariable("_playerId") == Networking.LocalPlayer.playerId
+                    && (HumanBodyBones)backing.GetProgramVariable("followBone") == HumanBodyBones.LeftHand)
+                    handCanvas = limb;
+            }
+            Assert.IsNotNull(handCanvas, "hand contact did not allocate a limb canvas");
+            Assert.Greater(Sum(handCanvas.projectorMaterial), 0.001f, "hand did not receive wall paint");
+            hand.position += Vector3.back * 0.5f;
+            yield return Wait(0.2f);
+            Assert.Less(Vector3.Distance(hand.position, handCanvas.canvasRoot.position), 0.01f,
+                "paint canvas did not follow the hand");
             var wipe = GameObject.Find("Sponge").GetComponentInChildren<LiquidWipeTool>();
             var wipeBacking = UdonSharpEditorUtility.GetBackingUdonBehaviour(wipe);
             wipeBacking.SetProgramVariable("pickup", null);
@@ -84,6 +114,17 @@ namespace SabaProps.Liquid.WorldTests
             Assert.Greater((int)UdonSharpEditorUtility.GetBackingUdonBehaviour(balloon.splash).GetProgramVariable("_received"), 0);
             yield return Wait(1.1f);
             Assert.IsFalse((bool)balloonBacking.GetProgramVariable("_burst"), "balloon did not respawn");
+
+            var puddle = GameObject.Find("Step Splash").GetComponent<LiquidImmersionVolume>();
+            var splashBacking = UdonSharpEditorUtility.GetBackingUdonBehaviour(puddle.stepSplash);
+            int splashes = (int)splashBacking.GetProgramVariable("_received");
+            Networking.LocalPlayer.TeleportTo(new Vector3(-3f, 0.02f, -2f), Quaternion.identity);
+            yield return Wait(0.7f);
+            Assert.Greater((int)splashBacking.GetProgramVariable("_received"), splashes,
+                "entering shallow water did not generate a splash; position=" + Networking.LocalPlayer.GetPosition()
+                + "; grounded=" + Networking.LocalPlayer.IsPlayerGrounded()
+                + "; bounds=" + puddle.GetComponent<Collider>().bounds
+                + "; emittedUntil=" + splashBacking.GetProgramVariable("_next"));
         }
 
         private static IEnumerator Wait(float seconds)

@@ -39,8 +39,10 @@ namespace SabaProps.Liquid
             if (emissionVolume != null)
             {
                 Bounds bounds = emissionVolume.bounds;
-                bounds.Expand(0.1f);
-                if (!bounds.Contains(centre) || !(Vector3.Distance(centre, sender.GetPosition()) < 1f)) return;
+                Vector3 offset = centre - bounds.center;
+                Vector3 extent = bounds.extents + Vector3.one * 0.05f;
+                if (Mathf.Abs(offset.x) > extent.x || Mathf.Abs(offset.y) > extent.y || Mathf.Abs(offset.z) > extent.z
+                    || !(Vector3.Distance(centre, sender.GetPosition()) < 1f)) return;
             }
             else if (!(Vector3.Distance(centre, transform.position) < Mathf.Max(range, 2f))) return;
             int count = Mathf.Clamp(rays, 1, 48);

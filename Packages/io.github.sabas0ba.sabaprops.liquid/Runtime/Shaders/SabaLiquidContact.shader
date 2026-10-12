@@ -80,9 +80,12 @@ Shader "Hidden/SabaProps/Liquid/Contact"
         if (face != faceFor(_DonorNormal)) return self;
         float3 p = metric(i.uv, face / 2, _DonorExtent, _DonorInset, _DonorPoint);
         float weight = patch(p - _DonorPoint);
+        if (weight <= 0) return self;
         float amount = weight * transfer(i.uv, p);
         float4 film = tex2D(_DonorFilm, i.uv);
-        float smear = weight * _Contact.z * saturate(film.r) * (1 - film.b);
+        float2 depth = tex2D(_DonorDepth, i.uv).rg;
+        float valid = SabaLiquidDepthMask(component(p, face / 2), depth.r, depth.g, 0.03);
+        float smear = weight * _Contact.z * saturate(film.r) * (1 - film.b) * valid;
         float3 upstream = p - _Motion * smear;
         // Keep the warp within the contact patch: no remote pixels enter the smear.
         float2 uv = donorUv(lerp(p, upstream, patch(upstream - _DonorPoint)));

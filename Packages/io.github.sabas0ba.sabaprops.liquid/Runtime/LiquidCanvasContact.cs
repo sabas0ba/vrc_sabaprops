@@ -50,6 +50,8 @@ namespace SabaProps.Liquid
             if (recipient != null && !recipient.CanContact()) return;
             FlushContact();
             if (recipient != null) recipient.FlushContact();
+            // A missing bone can release a canvas while its frame is refreshed.
+            if (!CanContact() || (recipient != null && !recipient.CanContact())) return;
 
             Material material = contactMaterial;
             Vector3 sourcePoint = ContactLocalPoint(point);

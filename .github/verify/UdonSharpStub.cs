@@ -86,7 +86,16 @@ namespace UdonSharp
             object parameter0) { }
 
         public void SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget target, string eventName,
+            object parameter0, object parameter1) { }
+
+        public void SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget target, string eventName,
             object parameter0, object parameter1, object parameter2, object parameter3) { }
+
+        public void SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget target, string eventName,
+            object parameter0, object parameter1, object parameter2, object parameter3, object parameter4) { }
+
+        public void SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget target, string eventName,
+            object parameter0, object parameter1, object parameter2, object parameter3, object parameter4, object parameter5) { }
 
         public virtual void Interact() { }
 
