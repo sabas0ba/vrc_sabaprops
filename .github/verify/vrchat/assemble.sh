@@ -26,6 +26,7 @@ STAGECAM="$REPO/Packages/io.github.sabas0ba.sabaprops.stagecam"
 SOFT_PROPS_PACKAGE="$REPO/Packages/io.github.sabas0ba.sabaprops.softprops"
 PUT_ITEMS_PACKAGE="$REPO/Packages/io.github.sabas0ba.sabaprops.putitems"
 TABLET_PACKAGE="$REPO/Packages/io.github.sabas0ba.sabaprops.tablet"
+BODYCONTACT_PACKAGE="$REPO/Packages/io.github.sabas0ba.sabaprops.bodycontact"
 TREES_PACKAGE="$REPO/Packages/io.github.sabas0ba.sabaprops.trees"
 LIQUID_PACKAGE="$REPO/Packages/io.github.sabas0ba.sabaprops.liquid"
 
@@ -84,6 +85,7 @@ replace "$STAGECAM" "$PROJECT/Packages/io.github.sabas0ba.sabaprops.stagecam"
 replace "$SOFT_PROPS_PACKAGE" "$PROJECT/Packages/io.github.sabas0ba.sabaprops.softprops"
 replace "$PUT_ITEMS_PACKAGE" "$PROJECT/Packages/io.github.sabas0ba.sabaprops.putitems"
 replace "$TABLET_PACKAGE" "$PROJECT/Packages/io.github.sabas0ba.sabaprops.tablet"
+replace "$BODYCONTACT_PACKAGE" "$PROJECT/Packages/io.github.sabas0ba.sabaprops.bodycontact"
 replace "$TREES_PACKAGE" "$PROJECT/Packages/io.github.sabas0ba.sabaprops.trees"
 
 # The liquid package is Udon as well; see Tests/Liquid for what is checked here.

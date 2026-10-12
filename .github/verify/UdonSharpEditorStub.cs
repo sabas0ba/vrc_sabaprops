@@ -14,6 +14,20 @@
 // scene is built by the real editor with the real UdonSharp.
 using UnityEngine;
 
+namespace UdonSharp.Compiler
+{
+    public class UdonSharpCompileOptions
+    {
+        public bool IsEditorBuild { get; set; } = true;
+    }
+
+    public class UdonSharpCompilerV1
+    {
+        // Type checking only; the real compilation runs in the Unity tests.
+        public static void CompileSync(UdonSharpCompileOptions options = null) { }
+    }
+}
+
 namespace UdonSharpEditor
 {
     public static class UdonSharpEditorUtility

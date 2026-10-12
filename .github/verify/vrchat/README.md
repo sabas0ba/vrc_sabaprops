@@ -117,7 +117,7 @@ Unity は Unity Hub の既定の場所から `ProjectVersion.txt` に一致す�
 初回は SDK が要求する UPM パッケージ（burst、collections、cinemachine 等）を
 Unity がレジストリから取得するため、数分かかります。
 
-テストは `SabaProps.Foliage.CITests`、`SabaProps.Foliage.WorldTests`、`SabaProps.SoftProps.WorldTests`、`SabaProps.StageCam.WorldTests`、`SabaProps.Tablet.WorldTests`、`SabaProps.PutItems.Tests`、`SabaProps.Liquid.WorldTests` に絞って実行します。
+テストは `SabaProps.Foliage.CITests`、`SabaProps.Foliage.WorldTests`、`SabaProps.SoftProps.WorldTests`、`SabaProps.StageCam.WorldTests`、`SabaProps.Tablet.WorldTests`、`SabaProps.BodyContact.WorldTests`、`SabaProps.ScreenFx.WorldTests`、`SabaProps.PutItems.Tests`、`SabaProps.Liquid.WorldTests` に絞って実行します。
 SDK 自身のテストアセンブリも同じプロジェクトに存在しますが、
 本パッケージとは無関係な理由で 2 件失敗する（ランダム生成の JSON ファズケースと、
 docs.microsoft.com の URL 到達性を検証するもの）ため、終了コードを意味のあるものにするためです。
@@ -131,6 +131,8 @@ docs.microsoft.com の URL 到達性を検証するもの）ため、終了コ�
 | `SabaProps.StageCam.WorldTests` | EditMode | リグと操作パネルの Udon コンパイル、保存後の UI イベント接続、カメラ設定の独立性、サンプル構成を検証。`TestResults/stagecam-panel.png` にレイアウト確認画像を出力 |
 | `SabaProps.SoftProps.WorldTests` | EditMode + Playへの遷移 | Prefab生成、同梱デモのimport・参照・比較台、ClientSimでのCollider接触・復元・自動運動・立位荷重 |
 | `SabaProps.Tablet.WorldTests` | EditMode | 全コンポーネントの Udon コンパイル、サンプルシーンの全ボタンがエクスポート済みのイベントを呼ぶこと、ミラーの排他、テレポート地点の番号、Build の再実行で生成物が重複しないことを検証 |
+| `SabaProps.BodyContact.WorldTests` | EditMode（ClientSim検査ではPlayModeへ移行） | Udonコンパイル、生成シーン、描画、通常UpdateとInteract、HUD・Gizmoの実行時検査。配布シーンとビルド済みワールドの追加検査にも対応 |
+| `SabaProps.ScreenFx.WorldTests` | EditMode | Udonコンパイル、Prefabの参照、サンプル構成を検証 |
 | `SabaProps.PutItems.Tests` | EditMode | 吸着対象と Pickup の設定、同梱デモの構成を検証 |
 | `SabaProps.Liquid.WorldTests` | EditMode | 全 Udon behaviour の UdonSharp コンパイルと公開イベント・同期変数、シェーダのコンパイル、生成された Projector と Source の構成、Canvas 更新シェーダの GPU 上での付着・蒸発・洗浄・奥行きの記録、サンプルシーンの構成（トリガーと液面の位置、泥に沈む床、スロープ、鏡、服を着たマネキンの素材、天候の範囲と屋根の下のマネキン）と、比較シーンの構成（マネキンの数、Projector マテリアルがデモと重ならないこと）を検証。`TestResults/liquid-preview.png` に代用の体へ Projector で描いた確認画像を、`liquid-preview-pigment.png` と `liquid-preview-film.png` に Canvas のアトラスを出力。デモを ClientSim で 20 秒動かし、操作なしで全マネキンに付着が付くこと、雨と雪が屋外のマネキンにだけ届くこと、雪が止むと溶けて水が残ることを検査して、`liquid-demo-clothed.png`・`liquid-demo-sources.png`・`liquid-demo-immersion.png`・`liquid-demo-overview.png`・`liquid-demo-yards.png`・`liquid-demo-rain.png`・`liquid-demo-snow.png`・`liquid-demo-snow-melting.png` などを出力。操作と環境のシーンでは、ノズルを放ち、湿度と結露、傘の遮蔽、暗い部屋の点灯・紫外線のみ・消灯での蛍光と蓄光を検査して `liquid-interactive-*.png` を出力。壁と床のシーンでは、Surface Canvas の登録と Projector の対象レイヤ、描画ツールの番号と履歴の並びを検査し、ClientSim でペン・スタンプ・消しゴムを動かして、描画、消去、履歴からの描き直し、自動の噴射と雨の付着、暗いスタジオの蛍光と蓄光を検査して `liquid-painting-*.png` を出力。Prefab が液体を自分で持ち、パッケージ外のアセットを参照しないことを検査。同梱サンプルの 4 つのシーンを取り込んで参照が解決することを検査 |
 
@@ -194,6 +196,34 @@ SDK の有無を見て期待値を切り替えるため、同じテストが両�
 ClientSim の起動時 `NullReferenceException` で落ちることがあります。2 回目以降は通ります。
 初回インポートで API Updater がアセンブリを差し替える間に起動順が崩れるためで、
 このリポジトリのコードとは関係ありません。
+
+## Burst の DLL が読み込めない場合
+
+Windows のアプリケーション制御ポリシーが、Burst の生成した DLL の読み込みを拒否することがあります。
+`unity.log` に `Unexpected error in Burst compilation` と `error code 4551` が出ます。
+Burst はこの失敗をスクリプトのコンパイルエラーとして記録するため、UdonSharp が Udon のコンパイルを
+中止し、Udon プログラムを必要とするテストがすべて
+`All Unity C# compiler errors must be resolved before running an UdonSharp compile.` で失敗します。
+C# のコンパイルエラーは実際には存在しません。
+
+この場合は Burst のコンパイルを無効にして実行します。ここで検証する対象は Burst に依存しません。
+
+```sh
+UNITY_EXTRA_ARGS=--burst-disable-compilation ./.github/verify/vrchat/run-tests.sh
+```
+
+## Body Contactの実行時表示検査
+
+`SabaProps.BodyContact.WorldTests` はClientSimでPlayModeへ入り、Udon VM経由のHUD更新、
+描画画素、Gizmoメッシュと切替を確認します。ClientSimではPostLateUpdateをテストから明示的に送ります。
+これは実クライアントでの自動発火やVR描画を保証しません。
+
+追加で配布物を調べる場合は、Unityプロセスへ以下の環境変数を渡します。
+
+- `BODYCONTACT_DELIVERED_SCENE`: 検証プロジェクト内へ取り込んだシーンのAssets相対パス
+- `BODYCONTACT_BUILT_WORLD`: Build & Testで使われた `.vrcw` ファイルの絶対パス
+
+未指定の配布物検査はスキップします。HUD画像は `TestResults/bodycontact-hud-*.png` に保存します。
 
 ## SDK のバージョンを上げるには
 
