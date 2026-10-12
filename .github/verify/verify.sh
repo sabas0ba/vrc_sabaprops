@@ -22,6 +22,11 @@
 #     same pinned SDK, and its solvers RUN: summon pose, finger press state
 #     machine, page wrapping, reach anchor, player cycling, the button grid and
 #     the rounded meshes. See offline/OfflineTabletTests.cs.
+#   * the body contact Runtime and Editor assemblies compile against the same
+#     pinned SDK, and its solver RUNS: the rules for who gives way, penetration
+#     and separation geometry, the pass-through state machine, and two simulated
+#     clients settling against each other with a network delay. See
+#     offline/OfflineBodyContactTests.cs.
 #   * the screen FX presets, shader property blocks, uniforms, menu and preset
 #     reference agree with each other. See offline/OfflineScreenFxTests.cs.
 #   * the documentation figures still match what the generators produce, and
@@ -62,6 +67,7 @@ STAGECAM="$REPO/Packages/io.github.sabas0ba.sabaprops.stagecam"
 TREE_PACKAGE="${TREE_PACKAGE:-$REPO/Packages/io.github.sabas0ba.sabaprops.trees}"
 FLOCK_PACKAGE="$REPO/Packages/io.github.sabas0ba.sabaprops.flock"
 TABLET="$REPO/Packages/io.github.sabas0ba.sabaprops.tablet"
+BODYCONTACT="$REPO/Packages/io.github.sabas0ba.sabaprops.bodycontact"
 SCREENFX_PACKAGE="$REPO/Packages/io.github.sabas0ba.sabaprops.screenfx"
 
 WORK="${VERIFY_WORK_DIR:-$REPO/.verify}"
@@ -457,6 +463,29 @@ csc "${COMMON[@]}" "${NETSTANDARD_ARGS[@]}" "${UNITY_ARGS[@]}" "${TABLET_REFS[@]
 echo "ok: ${#TABLET_SAMPLE_RUNTIME[@]} sample Runtime, ${#TABLET_SAMPLE_EDITOR[@]} sample Editor file(s)"
 
 # ---------------------------------------------------------------------------
+log "Compiling body contact assemblies (real VRChat SDK references + stubs)"
+# ---------------------------------------------------------------------------
+# VRCPlayerApi, Networking, Utilities and VRC_SceneDescriptor come from the real
+# VRCSDKBase.dll, so the bone, tracking and TeleportTo calls are checked against
+# what the SDK ships. The sample scene builder takes VRCSceneDescriptor from the
+# real VRCSDK3.dll. UdonSharpBehaviour and uGUI are the hand-written stubs.
+mapfile -t BODYCONTACT_RUNTIME_SOURCES < <(find "$BODYCONTACT/Runtime" -name '*.cs' | sort)
+mapfile -t BODYCONTACT_EDITOR_SOURCES < <(find "$BODYCONTACT/Editor" -name '*.cs' | sort)
+[ "${#BODYCONTACT_RUNTIME_SOURCES[@]}" -gt 0 ] || fail "no Runtime sources found under $BODYCONTACT"
+[ "${#BODYCONTACT_EDITOR_SOURCES[@]}" -gt 0 ] || fail "no Editor sources found under $BODYCONTACT"
+
+BODYCONTACT_REFS=(-r:"$SDK_PLUGINS/VRCSDKBase.dll" -r:"$OUT/UdonSharp.Runtime.dll" -r:"$OUT/UnityEngine.UI.dll")
+
+csc "${COMMON[@]}" "${NETSTANDARD_ARGS[@]}" "${UNITY_ARGS[@]}" "${BODYCONTACT_REFS[@]}" \
+    -out:"$OUT/SabaProps.BodyContact.Runtime.dll" "${BODYCONTACT_RUNTIME_SOURCES[@]}"
+csc "${COMMON[@]}" "${NETSTANDARD_ARGS[@]}" "${UNITY_ARGS[@]}" "${BODYCONTACT_REFS[@]}" \
+    -r:"$SDK3_PLUGINS/VRCSDK3.dll" \
+    -r:"$OUT/UdonSharp.Editor.dll" -r:"$OUT/UnityEditor.NetStandard.dll" \
+    -r:"$OUT/SabaProps.BodyContact.Runtime.dll" \
+    -out:"$OUT/SabaProps.BodyContact.Editor.dll" "${BODYCONTACT_EDITOR_SOURCES[@]}"
+echo "ok: ${#BODYCONTACT_RUNTIME_SOURCES[@]} Runtime, ${#BODYCONTACT_EDITOR_SOURCES[@]} Editor file(s)"
+
+# ---------------------------------------------------------------------------
 log "Compiling the Screen FX Udon sample (real VRChat SDK references + stub)"
 # ---------------------------------------------------------------------------
 # The runtime driver and its panel ship as a sample, so the package itself
@@ -685,6 +714,24 @@ cp "$OFFLINE_OUT/OfflineMeshTests.runtimeconfig.json" \
    "$OFFLINE_OUT/OfflineTabletTests.runtimeconfig.json"
 
 dotnet "$OFFLINE_OUT/OfflineTabletTests.dll" || fail "offline tablet checks failed"
+
+# ---------------------------------------------------------------------------
+log "Running the body contact solver (no Unity)"
+# ---------------------------------------------------------------------------
+# The same partial-class arrangement again. Besides the individual rules, this
+# steps two simulated clients against each other with a fixed network delay,
+# which is the closest this tier gets to the question the real client has to
+# answer: whether two symmetric corrections settle or chase each other.
+csc_exe -out:"$OFFLINE_OUT/OfflineBodyContactTests.dll" \
+    "$OFFLINE/UnityEngineShim.cs" \
+    "$OFFLINE/OfflineBodyContactTests.cs" \
+    "$BODYCONTACT/Runtime/BodyContactSolver.cs" \
+    "$BODYCONTACT/Runtime/BodyContactDebugViewSolver.cs"
+
+cp "$OFFLINE_OUT/OfflineMeshTests.runtimeconfig.json" \
+   "$OFFLINE_OUT/OfflineBodyContactTests.runtimeconfig.json"
+
+dotnet "$OFFLINE_OUT/OfflineBodyContactTests.dll" || fail "offline body contact checks failed"
 
 # ---------------------------------------------------------------------------
 log "Running the screen FX contract checks (no Unity)"
